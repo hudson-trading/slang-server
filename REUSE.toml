@@ -1,0 +1,27 @@
+version = 1
+SPDX-PackageName = "slang-server"
+SPDX-PackageSupplier = "Hudson River Trading <opensource@hudson-trading.com>"
+
+[[annotations]]
+path = "**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Hudson River Trading"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "external/boost_unordered.hpp"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Boost authors"
+SPDX-License-Identifier = "BSL-1.0"
+
+[[annotations]]
+path = "external/expected.hpp"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Martin Moene"
+SPDX-License-Identifier = "BSL-1.0"
+
+[[annotations]]
+path = "external/BS_thread_pool.hpp"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Barak Shoshany"
+SPDX-License-Identifier = "MIT"

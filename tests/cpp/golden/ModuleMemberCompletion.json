@@ -1,0 +1,266 @@
+[
+  {
+    "lhs": [
+      {
+        "label": "bus_transaction_t",
+        "labelDetails": {
+          "detail": " UnpackedStructType"
+        },
+        "kind": "Struct",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\n// Type definitions\ntypedef struct {\n    logic [7:0] addr;\n    logic [31:0] data;\n} bus_transaction_t;\n````"
+        },
+        "filterText": "bus_transaction_t"
+      },
+      {
+        "label": "state_t",
+        "labelDetails": {
+          "detail": " EnumType"
+        },
+        "kind": "Enum",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\ntypedef enum logic [1:0] {\n    IDLE = 2'b00,\n    ACTIVE = 2'b01,\n    WAIT = 2'b10\n} state_t;\n````"
+        },
+        "filterText": "state_t"
+      },
+      {
+        "label": "Dut",
+        "labelDetails": {
+          "detail": " Module"
+        },
+        "kind": "Module",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nmodule Dut  #(\n    parameter int a = 0,\n    parameter int b = 1\n) (\n    input logic foo\n);\n````"
+        },
+        "filterText": "Dut",
+        "insertText": "Dut #(\n    .a(${1:a = 0}),\n    .b(${2:b = 1})\n ) ${3:dut} (\n    .foo(${4:foo})\n);",
+        "insertTextFormat": "Snippet"
+      },
+      {
+        "label": "tb",
+        "labelDetails": {
+          "detail": " Module"
+        },
+        "kind": "Module",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nmodule tb;\n````"
+        },
+        "filterText": "tb",
+        "insertText": "tb #(\n) ${1:tb} (\n);",
+        "insertTextFormat": "Snippet"
+      }
+    ]
+  },
+  {
+    "rhs": [
+      {
+        "label": "clk",
+        "labelDetails": {
+          "detail": " input logic"
+        },
+        "kind": "Interface",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\ninput logic clk\n````"
+        },
+        "filterText": "clk"
+      },
+      {
+        "label": "rst",
+        "labelDetails": {
+          "detail": " input logic"
+        },
+        "kind": "Interface",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\ninput logic rst\n````"
+        },
+        "filterText": "rst"
+      },
+      {
+        "label": "data_out",
+        "labelDetails": {
+          "detail": " output logic[7:0]"
+        },
+        "kind": "Interface",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\noutput logic [7:0] data_out\n````"
+        },
+        "filterText": "data_out"
+      },
+      {
+        "label": "internal_signal",
+        "labelDetails": {
+          "detail": " logic"
+        },
+        "kind": "Variable",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\n// Local variables of different types\nlogic internal_signal;\n````"
+        },
+        "filterText": "internal_signal"
+      },
+      {
+        "label": "wide_signal",
+        "labelDetails": {
+          "detail": " logic [15:0]"
+        },
+        "kind": "Variable",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic [15:0] wide_signal;\n````"
+        },
+        "filterText": "wide_signal"
+      },
+      {
+        "label": "PARAM_INT",
+        "labelDetails": {
+          "detail": " int"
+        },
+        "kind": "TypeParameter",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\n// Parameters\nparameter int PARAM_INT = 42\n````"
+        },
+        "filterText": "PARAM_INT"
+      },
+      {
+        "label": "PARAM_LOGIC",
+        "labelDetails": {
+          "detail": " logic [7:0]"
+        },
+        "kind": "TypeParameter",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nparameter logic [7:0] PARAM_LOGIC = 8'hAA\n````"
+        },
+        "filterText": "PARAM_LOGIC"
+      },
+      {
+        "label": "bus_transaction_t",
+        "labelDetails": {
+          "detail": " UnpackedStructType"
+        },
+        "kind": "Struct",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\n// Type definitions\ntypedef struct {\n    logic [7:0] addr;\n    logic [31:0] data;\n} bus_transaction_t;\n````"
+        },
+        "filterText": "bus_transaction_t"
+      },
+      {
+        "label": "IDLE",
+        "labelDetails": {
+          "detail": " EnumValue"
+        },
+        "kind": "EnumMember",
+        "filterText": "IDLE"
+      },
+      {
+        "label": "ACTIVE",
+        "labelDetails": {
+          "detail": " EnumValue"
+        },
+        "kind": "EnumMember",
+        "filterText": "ACTIVE"
+      },
+      {
+        "label": "WAIT",
+        "labelDetails": {
+          "detail": " EnumValue"
+        },
+        "kind": "EnumMember",
+        "filterText": "WAIT"
+      },
+      {
+        "label": "state_t",
+        "labelDetails": {
+          "detail": " EnumType"
+        },
+        "kind": "Enum",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\ntypedef enum logic [1:0] {\n    IDLE = 2'b00,\n    ACTIVE = 2'b01,\n    WAIT = 2'b10\n} state_t;\n````"
+        },
+        "filterText": "state_t"
+      },
+      {
+        "label": "calc_parity",
+        "labelDetails": {
+          "detail": " function"
+        },
+        "kind": "Function",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\n// Local functions\nfunction logic [7:0] calc_parity(input logic [7:0] data);\n    return ^data;\nendfunction\n````"
+        },
+        "filterText": "calc_parity"
+      },
+      {
+        "label": "reset_signals",
+        "labelDetails": {
+          "detail": " task"
+        },
+        "kind": "Function",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\n// Task\ntask reset_signals();\n    internal_signal <= 1'b0;\n    wide_signal <= 16'h0;\nendtask\n````"
+        },
+        "filterText": "reset_signals"
+      },
+      {
+        "label": "u_sub",
+        "labelDetails": {
+          "detail": " sub_module"
+        },
+        "kind": "Class",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\n// Instance of another module\nsub_module u_sub (\n    .clk(clk),\n    .rst(rst),\n    .enable(internal_signal)\n);\n````"
+        },
+        "filterText": "u_sub"
+      },
+      {
+        "label": "i",
+        "labelDetails": {
+          "detail": " "
+        },
+        "kind": "Property",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\ni\n````"
+        },
+        "filterText": "i"
+      },
+      {
+        "label": "gen_array",
+        "labelDetails": {
+          "detail": " "
+        },
+        "kind": "Snippet",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nfor (i = 0; i < 4; i++) begin : gen_array\n    logic [7:0] gen_signal;\nend\n````"
+        },
+        "filterText": "gen_array"
+      },
+      {
+        "label": "intf",
+        "labelDetails": {
+          "detail": " simple_interface"
+        },
+        "kind": "Class",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\n// Interface port example\nsimple_interface intf();\n````"
+        },
+        "filterText": "intf"
+      }
+    ]
+  }
+]

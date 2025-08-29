@@ -1,0 +1,13 @@
+{
+  "python.testing.pytestArgs": [],
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestEnabled": true,
+  "testMate.cpp.test.workingDirectory": "${workspaceFolder}",
+  // Prevents accidentally opening and editing build output files
+  "files.readonlyInclude": {
+    "build": true
+  },
+  "search.exclude": {
+    "external/reflect-cpp": true
+  }
+}

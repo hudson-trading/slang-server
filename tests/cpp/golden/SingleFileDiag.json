@@ -1,0 +1,36 @@
+[
+  [
+    {
+      "range": {
+        "start": {
+          "line": 4,
+          "character": 21
+        },
+        "end": {
+          "line": 4,
+          "character": 22
+        }
+      },
+      "severity": "Warning",
+      "code": "constant-conversion",
+      "codeDescription": {
+        "href": "https://sv-lang.com/warning-ref.html#constant-conversion"
+      },
+      "message": "implicit conversion from 'int' to 'bit' changes value from 5 to 1'b1"
+    },
+    {
+      "range": {
+        "start": {
+          "line": 6,
+          "character": 0
+        },
+        "end": {
+          "line": 6,
+          "character": 1
+        }
+      },
+      "severity": "Error",
+      "message": "expected a declaration name"
+    }
+  ]
+]

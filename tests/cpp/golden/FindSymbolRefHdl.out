@@ -1,0 +1,616 @@
+
+package test_pkg;
+        ^^^^^^^^ Sym test_pkg : PackageDeclaration
+
+    parameter int WIDTH = 32;
+                  ^^^^^ Sym WIDTH : Declarator
+
+    typedef logic [WIDTH-1:0] id_t;
+                   ^^^^^ Ref -> `parameter int WIDTH = 32`
+                              ^^^^ Sym id_t : TypedefDeclaration
+
+
+
+    typedef struct packed {
+
+        id_t id;
+        ^^^^ Ref -> `typedef logic [WIDTH-1:0] id_t;`
+
+        logic [15:0] data;
+
+    } packet_t;
+      ^^^^^^^^ Sym packet_t : TypedefDeclaration
+
+
+
+    typedef enum logic [1:0] {
+
+        STATE_A,
+
+        STATE_B,
+
+        STATE_C
+
+    } state_t;
+      ^^^^^^^ Sym state_t : TypedefDeclaration
+
+
+
+    parameter type data_t = logic [7:0];
+                   ^^^^^^ Sym data_t : TypeAssignment
+
+endpackage
+
+
+
+interface bus_if #(
+          ^^^^^^ Sym bus_if : InterfaceDeclaration
+
+    parameter type data_t = bit,
+                   ^^^^^^ Sym data_t : TypeAssignment
+
+    parameter int ADDR_WIDTH = 32
+                  ^^^^^^^^^^ Sym ADDR_WIDTH : Declarator
+
+)(
+
+    input logic clk,
+                ^^^ Sym clk : Declarator
+
+    input logic rst
+                ^^^ Sym rst : Declarator
+
+);
+
+
+
+    logic valid;
+          ^^^^^ Sym valid : Declarator
+
+    logic ready;
+          ^^^^^ Sym ready : Declarator
+
+    logic [ADDR_WIDTH-1:0] addr;
+           ^^^^^^^^^^ Ref -> `parameter int ADDR_WIDTH = 32`
+                           ^^^^ Sym addr : Declarator
+
+    data_t data;
+    ^^^^^^ Ref -> `data_t = bit`
+           ^^^^ Sym data : Declarator
+
+    logic write_enable;
+          ^^^^^^^^^^^^ Sym write_enable : Declarator
+
+
+
+    // Modport for master
+
+    modport master (
+            ^^^^^^ Sym master : ModportDeclaration
+
+        input clk, rst, ready,
+              ^^^ Sym clk : ModportSimplePortList
+                   ^^^ Sym rst : ModportSimplePortList
+                        ^^^^^ Sym ready : ModportSimplePortList
+
+        output valid, addr, data, write_enable
+               ^^^^^ Sym valid : ModportSimplePortList
+                      ^^^^ Sym addr : ModportSimplePortList
+                            ^^^^ Sym data : ModportSimplePortList
+                                  ^^^^^^^^^^^^ Sym write_enable : ModportSimplePortList
+
+    );
+
+
+
+    // Modport for follower
+
+    modport follower (
+            ^^^^^^^^ Sym follower : ModportDeclaration
+
+        input clk, rst, valid, addr, data, write_enable,
+              ^^^ Sym clk : ModportSimplePortList
+                   ^^^ Sym rst : ModportSimplePortList
+                        ^^^^^ Sym valid : ModportSimplePortList
+                               ^^^^ Sym addr : ModportSimplePortList
+                                     ^^^^ Sym data : ModportSimplePortList
+                                           ^^^^^^^^^^^^ Sym write_enable : ModportSimplePortList
+
+        output ready
+               ^^^^^ Sym ready : ModportSimplePortList
+
+    );
+
+
+
+    // Task for master to write data
+
+    task automatic write_data(input logic [ADDR_WIDTH-1:0] address, input data_t write_data);
+                   ^^^^^^^^^^ Sym write_data : TaskDeclaration
+                                           ^^^^^^^^^^ Ref -> `parameter int ADDR_WIDTH = 32`
+                                                           ^^^^^^^ Sym address : Declarator
+                                                                          ^^^^^^ Ref -> `data_t = bit`
+                                                                                 ^^^^^^^^^^ Sym write_data : Declarator
+
+        @(posedge clk);
+                  ^^^ Ref -> `input logic clk`
+
+        addr <= address;
+        ^^^^ Ref -> `logic [ADDR_WIDTH-1:0] addr;`
+                ^^^^^^^ Ref -> `input logic [ADDR_WIDTH-1:0] address`
+
+        data <= write_data;
+        ^^^^ Ref -> `data_t data;`
+                ^^^^^^^^^^ Ref -> `input data_t write_data`
+
+        write_enable <= 1'b1;
+        ^^^^^^^^^^^^ Ref -> `logic write_enable;`
+
+        valid <= 1'b1;
+        ^^^^^ Ref -> `logic valid;`
+
+        @(posedge clk iff ready);
+                  ^^^ Ref -> `input logic clk`
+                          ^^^^^ Ref -> `logic ready;`
+
+        valid <= 1'b0;
+        ^^^^^ Ref -> `logic valid;`
+
+        write_enable <= 1'b0;
+        ^^^^^^^^^^^^ Ref -> `logic write_enable;`
+
+    endtask
+
+
+
+    // Task for master to read data
+
+    task automatic read_data(input logic [ADDR_WIDTH-1:0] address, output data_t read_data);
+                   ^^^^^^^^^ Sym read_data : TaskDeclaration
+                                          ^^^^^^^^^^ Ref -> `parameter int ADDR_WIDTH = 32`
+                                                          ^^^^^^^ Sym address : Declarator
+                                                                          ^^^^^^ Ref -> `data_t = bit`
+                                                                                 ^^^^^^^^^ Sym read_data : Declarator
+
+        @(posedge clk);
+                  ^^^ Ref -> `input logic clk`
+
+        addr <= address;
+        ^^^^ Ref -> `logic [ADDR_WIDTH-1:0] addr;`
+                ^^^^^^^ Ref -> `input logic [ADDR_WIDTH-1:0] address`
+
+        write_enable <= 1'b0;
+        ^^^^^^^^^^^^ Ref -> `logic write_enable;`
+
+        valid <= 1'b1;
+        ^^^^^ Ref -> `logic valid;`
+
+        @(posedge clk iff ready);
+                  ^^^ Ref -> `input logic clk`
+                          ^^^^^ Ref -> `logic ready;`
+
+        read_data = data;
+        ^^^^^^^^^ Ref -> `output data_t read_data`
+                    ^^^^ Ref -> `data_t data;`
+
+        valid <= 1'b0;
+        ^^^^^ Ref -> `logic valid;`
+
+    endtask
+
+
+
+endinterface
+
+
+
+module Sub #(
+       ^^^ Sym Sub : ModuleDeclaration
+
+    parameter int WIDTH = 16
+                  ^^^^^ Sym WIDTH : Declarator
+
+)(
+
+    input logic clk,
+                ^^^ Sym clk : Declarator
+
+    input logic rst,
+                ^^^ Sym rst : Declarator
+
+    input logic [WIDTH-1:0] data_in,
+                 ^^^^^ Ref -> `parameter int WIDTH = 16`
+                            ^^^^^^^ Sym data_in : Declarator
+
+    output logic [WIDTH-1:0] data_out
+                  ^^^^^ Ref -> `parameter int WIDTH = 16`
+                             ^^^^^^^^ Sym data_out : Declarator
+
+);
+
+
+
+    always_ff @(posedge clk or posedge rst) begin
+                        ^^^ Ref -> `input logic clk`
+                                       ^^^ Ref -> `input logic rst`
+
+        if (rst) begin
+            ^^^ Ref -> `input logic rst`
+
+            data_out <= '0;
+            ^^^^^^^^ Ref -> `output logic [WIDTH-1:0] data_out`
+
+        end else begin
+
+            data_out <= data_in;
+            ^^^^^^^^ Ref -> `output logic [WIDTH-1:0] data_out`
+                        ^^^^^^^ Ref -> `input logic [WIDTH-1:0] data_in`
+
+        end
+
+    end
+
+
+
+endmodule
+
+
+
+module TestModule (
+       ^^^^^^^^^^ Sym TestModule : ModuleDeclaration
+
+    input logic clk,
+                ^^^ Sym clk : Declarator
+
+    input logic rst,
+                ^^^ Sym rst : Declarator
+
+    input logic [test_pkg::WIDTH-1:0] width_port,
+                 ^^^^^^^^ Ref -> `package test_pkg;`
+                           ^^^^^ Ref -> `parameter int WIDTH = 32`
+                                      ^^^^^^^^^^ Sym width_port : Declarator
+
+    input test_pkg::id_t [test_pkg::WIDTH-1:0] id_array,
+          ^^^^^^^^ Ref -> `package test_pkg;`
+                    ^^^^ Ref -> `typedef logic [WIDTH-1:0] id_t;`
+                          ^^^^^^^^ Ref -> `package test_pkg;`
+                                    ^^^^^ Ref -> `parameter int WIDTH = 32`
+                                               ^^^^^^^^ Sym id_array : Declarator
+
+    input test_pkg::packet_t pkt_in,
+          ^^^^^^^^ Ref -> `package test_pkg;`
+                    ^^^^^^^^ Ref -> `typedef struct packed {\n\    id_t id;\n\    logic [15:0] data;\n\} packet_t;`
+                             ^^^^^^ Sym pkt_in : Declarator
+
+    output test_pkg::data_t data_out,
+           ^^^^^^^^ Ref -> `package test_pkg;`
+                     ^^^^^^ Ref -> `data_t = logic [7:0]`
+                            ^^^^^^^^ Sym data_out : Declarator
+
+    bus_if.master bus_master,
+    ^^^^^^ Ref -> `interface bus_if #(\n\    parameter type data_t = bit,\n\    parameter int ADDR_WIDTH = 32\n\)(\n\    input logic clk,\n\    input logic rst\n\);`
+           ^^^^^^ Ref -> `// Modport for master\n\modport master (\n\    input clk, rst, ready,\n\    output valid, addr, data, write_enable\n\);`
+                  ^^^^^^^^^^ Sym bus_master : Declarator
+
+    bus_if.follower bus_follower
+    ^^^^^^ Ref -> `interface bus_if #(\n\    parameter type data_t = bit,\n\    parameter int ADDR_WIDTH = 32\n\)(\n\    input logic clk,\n\    input logic rst\n\);`
+           ^^^^^^^^ Ref -> `// Modport for follower\n\modport follower (\n\    input clk, rst, valid, addr, data, write_enable,\n\    output ready\n\);`
+                    ^^^^^^^^^^^^ Sym bus_follower : Declarator
+
+);
+
+
+
+    test_pkg::state_t state, state_next;
+    ^^^^^^^^ Ref -> `package test_pkg;`
+              ^^^^^^^ Ref -> `typedef enum logic [1:0] {\n\    STATE_A,\n\    STATE_B,\n\    STATE_C\n\} state_t;`
+                      ^^^^^ Sym state : Declarator
+                             ^^^^^^^^^^ Sym state_next : Declarator
+
+    test_pkg::id_t counter;
+    ^^^^^^^^ Ref -> `package test_pkg;`
+              ^^^^ Ref -> `typedef logic [WIDTH-1:0] id_t;`
+                   ^^^^^^^ Sym counter : Declarator
+
+
+
+    always_ff @(posedge clk) begin
+                        ^^^ Ref -> `input logic clk`
+
+        if (rst) begin
+            ^^^ Ref -> `input logic rst`
+
+            state <= test_pkg::STATE_A;
+            ^^^^^ Ref -> `test_pkg::state_t state, state_next;`
+                     ^^^^^^^^ Ref -> `package test_pkg;`
+                               ^^^^^^^ Ref -> `enum logic [1:0] {\n\       STATE_A,\n\       STATE_B,\n\       STATE_C\n\   }`
+
+            counter <= '0;
+            ^^^^^^^ Ref -> `test_pkg::id_t counter;`
+
+        end else begin
+
+            state <= state_next;
+            ^^^^^ Ref -> `test_pkg::state_t state, state_next;`
+                     ^^^^^^^^^^ Ref -> `test_pkg::state_t state, state_next;`
+
+            counter <= counter + 1'b1;
+            ^^^^^^^ Ref -> `test_pkg::id_t counter;`
+                       ^^^^^^^ Ref -> `test_pkg::id_t counter;`
+
+        end
+
+    end
+
+
+
+    always_comb begin
+
+        case (state)
+              ^^^^^ Ref -> `test_pkg::state_t state, state_next;`
+
+            test_pkg::STATE_A: state_next = test_pkg::STATE_B;
+            ^^^^^^^^ Ref -> `package test_pkg;`
+                      ^^^^^^^ Ref -> `enum logic [1:0] {\n\       STATE_A,\n\       STATE_B,\n\       STATE_C\n\   }`
+                               ^^^^^^^^^^ Ref -> `test_pkg::state_t state, state_next;`
+                                            ^^^^^^^^ Ref -> `package test_pkg;`
+                                                      ^^^^^^^ Ref -> `enum logic [1:0] {\n\       STATE_A,\n\       STATE_B,\n\       STATE_C\n\   }`
+
+            test_pkg::STATE_B: state_next = test_pkg::STATE_C;
+            ^^^^^^^^ Ref -> `package test_pkg;`
+                      ^^^^^^^ Ref -> `enum logic [1:0] {\n\       STATE_A,\n\       STATE_B,\n\       STATE_C\n\   }`
+                               ^^^^^^^^^^ Ref -> `test_pkg::state_t state, state_next;`
+                                            ^^^^^^^^ Ref -> `package test_pkg;`
+                                                      ^^^^^^^ Ref -> `enum logic [1:0] {\n\       STATE_A,\n\       STATE_B,\n\       STATE_C\n\   }`
+
+            default: state_next = test_pkg::STATE_A;
+                     ^^^^^^^^^^ Ref -> `test_pkg::state_t state, state_next;`
+                                  ^^^^^^^^ Ref -> `package test_pkg;`
+                                            ^^^^^^^ Ref -> `enum logic [1:0] {\n\       STATE_A,\n\       STATE_B,\n\       STATE_C\n\   }`
+
+        endcase
+
+    end
+
+
+
+    // Use the bus interfaces
+
+    always_ff @(posedge clk) begin
+                        ^^^ Ref -> `input logic clk`
+
+        if (rst) begin
+            ^^^ Ref -> `input logic rst`
+
+            data_out <= '0;
+            ^^^^^^^^ Ref -> `output test_pkg::data_t data_out`
+
+            bus_follower.ready <= 1'b0;
+            ^^^^^^^^^^^^ Ref -> `bus_if.follower bus_follower`
+                         ^^^^^ Ref -> `output ready`
+
+        end else begin
+
+            // Simple follower logic - always ready, echo data
+
+            bus_follower.ready <= 1'b1;
+            ^^^^^^^^^^^^ Ref -> `bus_if.follower bus_follower`
+                         ^^^^^ Ref -> `output ready`
+
+            if (bus_follower.valid && bus_follower.write_enable) begin
+                ^^^^^^^^^^^^ Ref -> `bus_if.follower bus_follower`
+                             ^^^^^ Ref -> `input clk, rst, valid, addr, data, write_enable`
+                                      ^^^^^^^^^^^^ Ref -> `bus_if.follower bus_follower`
+                                                   ^^^^^^^^^^^^ Ref -> `input clk, rst, valid, addr, data, write_enable`
+
+                data_out <= bus_follower.data[7:0]; // Convert to data_t size
+                ^^^^^^^^ Ref -> `output test_pkg::data_t data_out`
+                            ^^^^^^^^^^^^ Ref -> `bus_if.follower bus_follower`
+                                         ^^^^ Ref -> `input clk, rst, valid, addr, data, write_enable`
+
+            end
+
+        end
+
+    end
+
+
+
+    // Master interface usage example
+
+    initial begin
+
+        bus_master.valid <= 1'b0;
+        ^^^^^^^^^^ Ref -> `bus_if.master bus_master`
+                   ^^^^^ Ref -> `output valid, addr, data, write_enable`
+
+        bus_master.write_enable <= 1'b0;
+        ^^^^^^^^^^ Ref -> `bus_if.master bus_master`
+                   ^^^^^^^^^^^^ Ref -> `output valid, addr, data, write_enable`
+
+        bus_master.addr <= '0;
+        ^^^^^^^^^^ Ref -> `bus_if.master bus_master`
+                   ^^^^ Ref -> `output valid, addr, data, write_enable`
+
+        bus_master.data <= state;
+        ^^^^^^^^^^ Ref -> `bus_if.master bus_master`
+                   ^^^^ Ref -> `output valid, addr, data, write_enable`
+                           ^^^^^ Ref -> `test_pkg::state_t state, state_next;`
+
+    end
+
+
+
+endmodule
+
+
+
+
+
+module NoDefaults #(
+       ^^^^^^^^^^ Sym NoDefaults : ModuleDeclaration
+
+    parameter int WIDTH,
+                  ^^^^^ Sym WIDTH : Declarator
+
+    parameter int n_iters,
+                  ^^^^^^^ Sym n_iters : Declarator
+
+    parameter bit gen_branch = 0
+                  ^^^^^^^^^^ Sym gen_branch : Declarator
+
+)(
+
+    input logic clk,
+                ^^^ Sym clk : Declarator
+
+    input logic rst,
+                ^^^ Sym rst : Declarator
+
+    input logic [WIDTH-1:0] data_in,
+                 ^^^^^ Ref -> `parameter int WIDTH`
+                            ^^^^^^^ Sym data_in : Declarator
+
+    output logic [WIDTH-1:0] data_out
+                  ^^^^^ Ref -> `parameter int WIDTH`
+                             ^^^^^^^^ Sym data_out : Declarator
+
+);
+
+
+
+    Sub #(
+    ^^^ Ref -> `module Sub #(\n\    parameter int WIDTH = 16\n\)(\n\    input logic clk,\n\    input logic rst,\n\    input logic [WIDTH-1:0] data_in,\n\    output logic [WIDTH-1:0] data_out\n\);`
+
+        .WIDTH(WIDTH)
+         ^^^^^ Ref -> `parameter int WIDTH = 16`
+               ^^^^^ Ref -> `parameter int WIDTH`
+
+    ) sub_inst (
+
+        .clk(clk),
+         ^^^ Ref -> `input logic clk`
+             ^^^ Ref -> `input logic clk`
+
+        .rst(rst),
+         ^^^ Ref -> `input logic rst`
+             ^^^ Ref -> `input logic rst`
+
+        .data_in(data_in),
+         ^^^^^^^ Ref -> `input logic [WIDTH-1:0] data_in`
+                 ^^^^^^^ Ref -> `input logic [WIDTH-1:0] data_in`
+
+        .data_out(data_out)
+         ^^^^^^^^ Ref -> `output logic [WIDTH-1:0] data_out`
+                  ^^^^^^^^ Ref -> `output logic [WIDTH-1:0] data_out`
+
+    );
+
+
+
+    genvar i;
+           ^ Sym i : IdentifierName
+
+    for(i = 0; i < n_iters; i++) begin : gen_loop
+               ^ Ref -> `i`
+                   ^^^^^^^ Ref -> `parameter int n_iters`
+                            ^ Ref -> `i`
+                                         ^^^^^^^^ Sym gen_loop : LoopGenerate
+
+        Sub #(
+        ^^^ Ref -> `module Sub #(\n\    parameter int WIDTH = 16\n\)(\n\    input logic clk,\n\    input logic rst,\n\    input logic [WIDTH-1:0] data_in,\n\    output logic [WIDTH-1:0] data_out\n\);`
+
+            .WIDTH(WIDTH)
+             ^^^^^ Ref -> `parameter int WIDTH = 16`
+                   ^^^^^ Ref -> `parameter int WIDTH`
+
+         ) sub (
+
+            .clk(clk),
+             ^^^ Ref -> `input logic clk`
+                 ^^^ Ref -> `input logic clk`
+
+            .rst(rst),
+             ^^^ Ref -> `input logic rst`
+                 ^^^ Ref -> `input logic rst`
+
+            .data_in(data_in),
+             ^^^^^^^ Ref -> `input logic [WIDTH-1:0] data_in`
+                     ^^^^^^^ Ref -> `input logic [WIDTH-1:0] data_in`
+
+            .data_out(data_out)
+             ^^^^^^^^ Ref -> `output logic [WIDTH-1:0] data_out`
+                      ^^^^^^^^ Ref -> `output logic [WIDTH-1:0] data_out`
+
+        );
+
+    end
+
+
+
+    if (gen_branch) begin : gen_branch_block
+        ^^^^^^^^^^ Ref -> `parameter bit gen_branch = 0`
+                            ^^^^^^^^^^^^^^^^ Sym gen_branch_block : GenerateBlock
+
+        Sub #(
+        ^^^ Ref -> `module Sub #(\n\    parameter int WIDTH = 16\n\)(\n\    input logic clk,\n\    input logic rst,\n\    input logic [WIDTH-1:0] data_in,\n\    output logic [WIDTH-1:0] data_out\n\);`
+
+            .WIDTH(WIDTH)
+             ^^^^^ Ref -> `parameter int WIDTH = 16`
+                   ^^^^^ Ref -> `parameter int WIDTH`
+
+        ) sub_branch (
+
+            .clk(clk),
+             ^^^ Ref -> `input logic clk`
+                 ^^^ Ref -> `input logic clk`
+
+            .rst(rst),
+             ^^^ Ref -> `input logic rst`
+                 ^^^ Ref -> `input logic rst`
+
+            .data_in(data_in),
+             ^^^^^^^ Ref -> `input logic [WIDTH-1:0] data_in`
+                     ^^^^^^^ Ref -> `input logic [WIDTH-1:0] data_in`
+
+            .data_out(data_out)
+             ^^^^^^^^ Ref -> `output logic [WIDTH-1:0] data_out`
+                      ^^^^^^^^ Ref -> `output logic [WIDTH-1:0] data_out`
+
+        );
+
+    end else begin : gen_no_branch_block
+                     ^^^^^^^^^^^^^^^^^^^ Sym gen_no_branch_block : GenerateBlock
+
+        Sub #(
+        ^^^ Ref -> `module Sub #(\n\    parameter int WIDTH = 16\n\)(\n\    input logic clk,\n\    input logic rst,\n\    input logic [WIDTH-1:0] data_in,\n\    output logic [WIDTH-1:0] data_out\n\);`
+
+            .WIDTH(WIDTH)
+             ^^^^^ Ref -> `parameter int WIDTH = 16`
+                   ^^^^^ Ref -> `parameter int WIDTH`
+
+        ) sub_no_branch (
+
+            .clk(clk),
+             ^^^ Ref -> `input logic clk`
+                 ^^^ Ref -> `input logic clk`
+
+            .rst(rst),
+             ^^^ Ref -> `input logic rst`
+                 ^^^ Ref -> `input logic rst`
+
+            .data_in(data_in),
+             ^^^^^^^ Ref -> `input logic [WIDTH-1:0] data_in`
+                     ^^^^^^^ Ref -> `input logic [WIDTH-1:0] data_in`
+
+            .data_out(data_out)
+             ^^^^^^^^ Ref -> `output logic [WIDTH-1:0] data_out`
+                      ^^^^^^^^ Ref -> `output logic [WIDTH-1:0] data_out`
+
+        );
+
+    end
+
+
+
+endmodule

@@ -1,0 +1,3963 @@
+
+timeunit 1ns / 1ps;
+^^^^^^^^ TimeUnitKeyword
+         ^^^ TimeLiteral
+             ^ Slash
+               ^^^ TimeLiteral
+                  ^ Semicolon
+
+timeprecision 1ps;
+^^^^^^^^^^^^^ TimePrecisionKeyword
+              ^^^ TimeLiteral
+                 ^ Semicolon
+
+
+
+(* foo = 1 *) package static p;
+^ OpenParenthesis
+ ^ Star
+   ^^^ Identifier
+       ^ Equals
+         ^ IntegerLiteral
+           ^ Star
+            ^ CloseParenthesis
+              ^^^^^^^ PackageKeyword
+                      ^^^^^^ StaticKeyword
+                             ^ Identifier
+                              ^ Semicolon
+
+    timeunit 1ns;
+    ^^^^^^^^ TimeUnitKeyword
+             ^^^ TimeLiteral
+                ^ Semicolon
+
+    parameter int x = 1;
+    ^^^^^^^^^ ParameterKeyword
+              ^^^ IntKeyword
+                  ^ Identifier
+                    ^ Equals
+                      ^ IntegerLiteral
+                       ^ Semicolon
+
+    parameter type y_t = logic[x:0];
+    ^^^^^^^^^ ParameterKeyword
+              ^^^^ TypeKeyword
+                   ^^^ Identifier
+                       ^ Equals
+                         ^^^^^ LogicKeyword
+                              ^ OpenBracket
+                               ^ Identifier
+                                ^ Colon
+                                 ^ IntegerLiteral
+                                  ^ CloseBracket
+                                   ^ Semicolon
+
+    parameter int x2 = x + 1;
+    ^^^^^^^^^ ParameterKeyword
+              ^^^ IntKeyword
+                  ^^ Identifier
+                     ^ Equals
+                       ^ Identifier
+                         ^ Plus
+                           ^ IntegerLiteral
+                            ^ Semicolon
+
+    parameter type y = logic[x:0];
+    ^^^^^^^^^ ParameterKeyword
+              ^^^^ TypeKeyword
+                   ^ Identifier
+                     ^ Equals
+                       ^^^^^ LogicKeyword
+                            ^ OpenBracket
+                             ^ Identifier
+                              ^ Colon
+                               ^ IntegerLiteral
+                                ^ CloseBracket
+                                 ^ Semicolon
+
+    parameter type y2 = logic[x2:0];
+    ^^^^^^^^^ ParameterKeyword
+              ^^^^ TypeKeyword
+                   ^^ Identifier
+                      ^ Equals
+                        ^^^^^ LogicKeyword
+                             ^ OpenBracket
+                              ^^ Identifier
+                                ^ Colon
+                                 ^ IntegerLiteral
+                                  ^ CloseBracket
+                                   ^ Semicolon
+
+    program; endprogram
+    ^^^^^^^ ProgramKeyword
+           ^ Semicolon
+             ^^^^^^^^^^ EndProgramKeyword
+
+    export *::*;
+    ^^^^^^ ExportKeyword
+           ^ Star
+            ^^ DoubleColon
+              ^ Star
+               ^ Semicolon
+
+endpackage
+^^^^^^^^^^ EndPackageKeyword
+
+
+
+module automatic m1 import p::*; #(int i = 1)
+^^^^^^ ModuleKeyword
+       ^^^^^^^^^ AutomaticKeyword
+                 ^^ Identifier
+                    ^^^^^^ ImportKeyword
+                           ^ Identifier
+                            ^^ DoubleColon
+                              ^ Star
+                               ^ Semicolon
+                                 ^ Hash
+                                  ^ OpenParenthesis
+                                   ^^^ IntKeyword
+                                       ^ Identifier
+                                         ^ Equals
+                                           ^ IntegerLiteral
+                                            ^ CloseParenthesis
+
+    (a, b, , .c({a, b[0]}));
+    ^ OpenParenthesis
+     ^ Identifier
+      ^ Comma
+        ^ Identifier
+         ^ Comma
+           ^ Comma
+             ^ Dot
+              ^ Identifier
+               ^ OpenParenthesis
+                ^ OpenBrace
+                 ^ Identifier
+                  ^ Comma
+                    ^ Identifier
+                     ^ OpenBracket
+                      ^ IntegerLiteral
+                       ^ CloseBracket
+                        ^ CloseBrace
+                         ^ CloseParenthesis
+                          ^ CloseParenthesis
+                           ^ Semicolon
+
+    input a;
+    ^^^^^ InputKeyword
+          ^ Identifier
+           ^ Semicolon
+
+    output [1:0] b;
+    ^^^^^^ OutputKeyword
+           ^ OpenBracket
+            ^ IntegerLiteral
+             ^ Colon
+              ^ IntegerLiteral
+               ^ CloseBracket
+                 ^ Identifier
+                  ^ Semicolon
+
+    localparam int c = p::x;
+    ^^^^^^^^^^ LocalParamKeyword
+               ^^^ IntKeyword
+                   ^ Identifier
+                     ^ Equals
+                       ^ Identifier
+                        ^^ DoubleColon
+                          ^ Identifier
+                           ^ Semicolon
+
+    localparam p::y d = {1'b0, 1'b1};
+    ^^^^^^^^^^ LocalParamKeyword
+               ^ Identifier
+                ^^ DoubleColon
+                  ^ Identifier
+                    ^ Identifier
+                      ^ Equals
+                        ^ OpenBrace
+                         ^ IntegerLiteral
+                          ^^ IntegerBase
+                            ^ IntegerLiteral
+                             ^ Comma
+                               ^ IntegerLiteral
+                                ^^ IntegerBase
+                                  ^ IntegerLiteral
+                                   ^ CloseBrace
+                                    ^ Semicolon
+
+endmodule
+^^^^^^^^^ EndModuleKeyword
+
+
+
+module m2 #(
+^^^^^^ ModuleKeyword
+       ^^ Identifier
+          ^ Hash
+           ^ OpenParenthesis
+
+    parameter i = 1,
+    ^^^^^^^^^ ParameterKeyword
+              ^ Identifier
+                ^ Equals
+                  ^ IntegerLiteral
+                   ^ Comma
+
+    localparam j = i,
+    ^^^^^^^^^^ LocalParamKeyword
+               ^ Identifier
+                 ^ Equals
+                   ^ Identifier
+                    ^ Comma
+
+    parameter type x_t = bit
+    ^^^^^^^^^ ParameterKeyword
+              ^^^^ TypeKeyword
+                   ^^^ Identifier
+                       ^ Equals
+                         ^^^ BitKeyword
+
+)
+^ CloseParenthesis
+
+    (input int a[], (* bar = "asdf" *) output logic b = 1, ref c,
+    ^ OpenParenthesis
+     ^^^^^ InputKeyword
+           ^^^ IntKeyword
+               ^ Identifier
+                ^ OpenBracket
+                 ^ CloseBracket
+                  ^ Comma
+                    ^ OpenParenthesis
+                     ^ Star
+                       ^^^ Identifier
+                           ^ Equals
+                             ^^^^^^ StringLiteral
+                                    ^ Star
+                                     ^ CloseParenthesis
+                                       ^^^^^^ OutputKeyword
+                                              ^^^^^ LogicKeyword
+                                                    ^ Identifier
+                                                      ^ Equals
+                                                        ^ IntegerLiteral
+                                                         ^ Comma
+                                                           ^^^ RefKeyword
+                                                               ^ Identifier
+                                                                ^ Comma
+
+    input p::y2 d2,
+    ^^^^^ InputKeyword
+          ^ Identifier
+           ^^ DoubleColon
+             ^^ Identifier
+                ^^ Identifier
+                  ^ Comma
+
+     interface.mod d, .e());
+     ^^^^^^^^^ InterfaceKeyword
+              ^ Dot
+               ^^^ Identifier
+                   ^ Identifier
+                    ^ Comma
+                      ^ Dot
+                       ^ Identifier
+                        ^ OpenParenthesis
+                         ^ CloseParenthesis
+                          ^ CloseParenthesis
+                           ^ Semicolon
+
+endmodule
+^^^^^^^^^ EndModuleKeyword
+
+
+
+extern interface I(input a, output b);
+^^^^^^ ExternKeyword
+       ^^^^^^^^^ InterfaceKeyword
+                 ^ Identifier
+                  ^ OpenParenthesis
+                   ^^^^^ InputKeyword
+                         ^ Identifier
+                          ^ Comma
+                            ^^^^^^ OutputKeyword
+                                   ^ Identifier
+                                    ^ CloseParenthesis
+                                     ^ Semicolon
+
+
+
+interface I(.*);
+^^^^^^^^^ InterfaceKeyword
+          ^ Identifier
+           ^ OpenParenthesis
+            ^ Dot
+             ^ Star
+              ^ CloseParenthesis
+               ^ Semicolon
+
+    modport mod(input a);
+    ^^^^^^^ ModPortKeyword
+            ^^^ Identifier
+               ^ OpenParenthesis
+                ^^^^^ InputKeyword
+                      ^ Identifier
+                       ^ CloseParenthesis
+                        ^ Semicolon
+
+endinterface
+^^^^^^^^^^^^ EndInterfaceKeyword
+
+
+
+extern macromodule m3;
+^^^^^^ ExternKeyword
+       ^^^^^^^^^^^ MacromoduleKeyword
+                   ^^ Identifier
+                     ^ Semicolon
+
+
+
+macromodule m3;
+^^^^^^^^^^^ MacromoduleKeyword
+            ^^ Identifier
+              ^ Semicolon
+
+    wire b;
+    ^^^^ WireKeyword
+         ^ Identifier
+          ^ Semicolon
+
+    logic c;
+    ^^^^^ LogicKeyword
+          ^ Identifier
+           ^ Semicolon
+
+    I d(.a(), .b());
+    ^ Identifier
+      ^ Identifier
+       ^ OpenParenthesis
+        ^ Dot
+         ^ Identifier
+          ^ OpenParenthesis
+           ^ CloseParenthesis
+            ^ Comma
+              ^ Dot
+               ^ Identifier
+                ^ OpenParenthesis
+                 ^ CloseParenthesis
+                  ^ CloseParenthesis
+                   ^ Semicolon
+
+
+
+    typedef p::y_t y_t;
+    ^^^^^^^ TypedefKeyword
+            ^ Identifier
+             ^^ DoubleColon
+               ^^^ Identifier
+                   ^^^ Identifier
+                      ^ Semicolon
+
+
+
+    m2 #(
+    ^^ Identifier
+       ^ Hash
+        ^ OpenParenthesis
+
+        .x_t(y_t)
+        ^ Dot
+         ^^^ Identifier
+            ^ OpenParenthesis
+             ^^^ Identifier
+                ^ CloseParenthesis
+
+    ) m (, b, c, d, );
+    ^ CloseParenthesis
+      ^ Identifier
+        ^ OpenParenthesis
+         ^ Comma
+           ^ Identifier
+            ^ Comma
+              ^ Identifier
+               ^ Comma
+                 ^ Identifier
+                  ^ Comma
+                    ^ CloseParenthesis
+                     ^ Semicolon
+
+
+
+
+
+    typedef p::y2 y2;
+    ^^^^^^^ TypedefKeyword
+            ^ Identifier
+             ^^ DoubleColon
+               ^^ Identifier
+                  ^^ Identifier
+                    ^ Semicolon
+
+
+
+    m2 #(
+    ^^ Identifier
+       ^ Hash
+        ^ OpenParenthesis
+
+        .i(1),
+        ^ Dot
+         ^ Identifier
+          ^ OpenParenthesis
+           ^ IntegerLiteral
+            ^ CloseParenthesis
+             ^ Comma
+
+        .x_t(y2)
+        ^ Dot
+         ^^^ Identifier
+            ^ OpenParenthesis
+             ^^ Identifier
+               ^ CloseParenthesis
+
+    ) m2_inst (
+    ^ CloseParenthesis
+      ^^^^^^^ Identifier
+              ^ OpenParenthesis
+
+        .a({1, 2}),
+        ^ Dot
+         ^ Identifier
+          ^ OpenParenthesis
+           ^ OpenBrace
+            ^ IntegerLiteral
+             ^ Comma
+               ^ IntegerLiteral
+                ^ CloseBrace
+                 ^ CloseParenthesis
+                  ^ Comma
+
+        .b(b),
+        ^ Dot
+         ^ Identifier
+          ^ OpenParenthesis
+           ^ Identifier
+            ^ CloseParenthesis
+             ^ Comma
+
+        .c(),
+        ^ Dot
+         ^ Identifier
+          ^ OpenParenthesis
+           ^ CloseParenthesis
+            ^ Comma
+
+        .d(d),
+        ^ Dot
+         ^ Identifier
+          ^ OpenParenthesis
+           ^ Identifier
+            ^ CloseParenthesis
+             ^ Comma
+
+        .e()
+        ^ Dot
+         ^ Identifier
+          ^ OpenParenthesis
+           ^ CloseParenthesis
+
+    );
+    ^ CloseParenthesis
+     ^ Semicolon
+
+
+
+    $info("Hello %s", "world");
+    ^^^^^ SystemIdentifier
+         ^ OpenParenthesis
+          ^^^^^^^^^^ StringLiteral
+                    ^ Comma
+                      ^^^^^^^ StringLiteral
+                             ^ CloseParenthesis
+                              ^ Semicolon
+
+
+
+    wor [1:0] w = 1;
+    ^^^ WOrKeyword
+        ^ OpenBracket
+         ^ IntegerLiteral
+          ^ Colon
+           ^ IntegerLiteral
+            ^ CloseBracket
+              ^ Identifier
+                ^ Equals
+                  ^ IntegerLiteral
+                   ^ Semicolon
+
+    assign (supply0, weak1) #(1:0:1, 2:1:0) w = 2;
+    ^^^^^^ AssignKeyword
+           ^ OpenParenthesis
+            ^^^^^^^ Supply0Keyword
+                   ^ Comma
+                     ^^^^^ Weak1Keyword
+                          ^ CloseParenthesis
+                            ^ Hash
+                             ^ OpenParenthesis
+                              ^ IntegerLiteral
+                               ^ Colon
+                                ^ IntegerLiteral
+                                 ^ Colon
+                                  ^ IntegerLiteral
+                                   ^ Comma
+                                     ^ IntegerLiteral
+                                      ^ Colon
+                                       ^ IntegerLiteral
+                                        ^ Colon
+                                         ^ IntegerLiteral
+                                          ^ CloseParenthesis
+                                            ^ Identifier
+                                              ^ Equals
+                                                ^ IntegerLiteral
+                                                 ^ Semicolon
+
+
+
+    wor u,v;
+    ^^^ WOrKeyword
+        ^ Identifier
+         ^ Comma
+          ^ Identifier
+           ^ Semicolon
+
+    alias {u,v} = w;
+    ^^^^^ AliasKeyword
+          ^ OpenBrace
+           ^ Identifier
+            ^ Comma
+             ^ Identifier
+              ^ CloseBrace
+                ^ Equals
+                  ^ Identifier
+                   ^ Semicolon
+
+
+
+    logic f, z;
+    ^^^^^ LogicKeyword
+          ^ Identifier
+           ^ Comma
+             ^ Identifier
+              ^ Semicolon
+
+    event ev;
+    ^^^^^ EventKeyword
+          ^^ Identifier
+            ^ Semicolon
+
+    initial begin
+    ^^^^^^^ InitialKeyword
+            ^^^^^ BeginKeyword
+
+        repeat (3) @(negedge b) f = #2 1;
+        ^^^^^^ RepeatKeyword
+               ^ OpenParenthesis
+                ^ IntegerLiteral
+                 ^ CloseParenthesis
+                   ^ At
+                    ^ OpenParenthesis
+                     ^^^^^^^ NegEdgeKeyword
+                             ^ Identifier
+                              ^ CloseParenthesis
+                                ^ Identifier
+                                  ^ Equals
+                                    ^ Hash
+                                     ^ IntegerLiteral
+                                       ^ IntegerLiteral
+                                        ^ Semicolon
+
+        wait (f) ++f;
+        ^^^^ WaitKeyword
+             ^ OpenParenthesis
+              ^ Identifier
+               ^ CloseParenthesis
+                 ^^ DoublePlus
+                   ^ Identifier
+                    ^ Semicolon
+
+        wait fork;
+        ^^^^ WaitKeyword
+             ^^^^ ForkKeyword
+                 ^ Semicolon
+
+        wait_order (m3.ev) f++;
+        ^^^^^^^^^^ WaitOrderKeyword
+                   ^ OpenParenthesis
+                    ^^ Identifier
+                      ^ Dot
+                       ^^ Identifier
+                         ^ CloseParenthesis
+                           ^ Identifier
+                            ^^ DoublePlus
+                              ^ Semicolon
+
+
+
+        fork : fkb
+        ^^^^ ForkKeyword
+             ^ Colon
+               ^^^ Identifier
+
+            static int i = 1;
+            ^^^^^^ StaticKeyword
+                   ^^^ IntKeyword
+                       ^ Identifier
+                         ^ Equals
+                           ^ IntegerLiteral
+                            ^ Semicolon
+
+            disable fork;
+            ^^^^^^^ DisableKeyword
+                    ^^^^ ForkKeyword
+                        ^ Semicolon
+
+        join_none
+        ^^^^^^^^^ JoinNoneKeyword
+
+
+
+        disable m3.foo;
+        ^^^^^^^ DisableKeyword
+                ^^ Identifier
+                  ^ Dot
+                   ^^^ Identifier
+                      ^ Semicolon
+
+
+
+        assign z = 1;
+        ^^^^^^ AssignKeyword
+               ^ Identifier
+                 ^ Equals
+                   ^ IntegerLiteral
+                    ^ Semicolon
+
+        deassign z;
+        ^^^^^^^^ DeassignKeyword
+                 ^ Identifier
+                  ^ Semicolon
+
+
+
+        if (1) begin end else begin end
+        ^^ IfKeyword
+           ^ OpenParenthesis
+            ^ IntegerLiteral
+             ^ CloseParenthesis
+               ^^^^^ BeginKeyword
+                     ^^^ EndKeyword
+                         ^^^^ ElseKeyword
+                              ^^^^^ BeginKeyword
+                                    ^^^ EndKeyword
+
+
+
+        unique0 casex (w)
+        ^^^^^^^ Unique0Keyword
+                ^^^^^ CaseXKeyword
+                      ^ OpenParenthesis
+                       ^ Identifier
+                        ^ CloseParenthesis
+
+            0, 1: ;
+            ^ IntegerLiteral
+             ^ Comma
+               ^ IntegerLiteral
+                ^ Colon
+                  ^ Semicolon
+
+            default ;
+            ^^^^^^^ DefaultKeyword
+                    ^ Semicolon
+
+        endcase
+        ^^^^^^^ EndCaseKeyword
+
+
+
+        case (w) inside
+        ^^^^ CaseKeyword
+             ^ OpenParenthesis
+              ^ Identifier
+               ^ CloseParenthesis
+                 ^^^^^^ InsideKeyword
+
+            [0: 3]: ;
+            ^ OpenBracket
+             ^ IntegerLiteral
+              ^ Colon
+                ^ IntegerLiteral
+                 ^ CloseBracket
+                  ^ Colon
+                    ^ Semicolon
+
+        endcase
+        ^^^^^^^ EndCaseKeyword
+
+    end
+    ^^^ EndKeyword
+
+
+
+    always_ff @(posedge b iff f == 1) begin
+    ^^^^^^^^^ AlwaysFFKeyword
+              ^ At
+               ^ OpenParenthesis
+                ^^^^^^^ PosEdgeKeyword
+                        ^ Identifier
+                          ^^^ IffKeyword
+                              ^ Identifier
+                                ^^ DoubleEquals
+                                   ^ IntegerLiteral
+                                    ^ CloseParenthesis
+                                      ^^^^^ BeginKeyword
+
+        forever break;
+        ^^^^^^^ ForeverKeyword
+                ^^^^^ BreakKeyword
+                     ^ Semicolon
+
+        repeat (f + 2) continue;
+        ^^^^^^ RepeatKeyword
+               ^ OpenParenthesis
+                ^ Identifier
+                  ^ Plus
+                    ^ IntegerLiteral
+                     ^ CloseParenthesis
+                       ^^^^^^^^ ContinueKeyword
+                               ^ Semicolon
+
+        while (1)
+        ^^^^^ WhileKeyword
+              ^ OpenParenthesis
+               ^ IntegerLiteral
+                ^ CloseParenthesis
+
+            ;
+            ^ Semicolon
+
+        for (int i = 0, j = i; i < 10; i += 2, j += i) begin end
+        ^^^ ForKeyword
+            ^ OpenParenthesis
+             ^^^ IntKeyword
+                 ^ Identifier
+                   ^ Equals
+                     ^ IntegerLiteral
+                      ^ Comma
+                        ^ Identifier
+                          ^ Equals
+                            ^ Identifier
+                             ^ Semicolon
+                               ^ Identifier
+                                 ^ LessThan
+                                   ^^ IntegerLiteral
+                                     ^ Semicolon
+                                       ^ Identifier
+                                         ^^ PlusEqual
+                                            ^ IntegerLiteral
+                                             ^ Comma
+                                               ^ Identifier
+                                                 ^^ PlusEqual
+                                                    ^ Identifier
+                                                     ^ CloseParenthesis
+                                                       ^^^^^ BeginKeyword
+                                                             ^^^ EndKeyword
+
+        foreach (w[q]) begin end
+        ^^^^^^^ ForeachKeyword
+                ^ OpenParenthesis
+                 ^ Identifier
+                  ^ OpenBracket
+                   ^ Identifier
+                    ^ CloseBracket
+                     ^ CloseParenthesis
+                       ^^^^^ BeginKeyword
+                             ^^^ EndKeyword
+
+    end
+    ^^^ EndKeyword
+
+
+
+    always @* begin : foo
+    ^^^^^^ AlwaysKeyword
+           ^ At
+            ^ Star
+              ^^^^^ BeginKeyword
+                    ^ Colon
+                      ^^^ Identifier
+
+    end : foo
+    ^^^ EndKeyword
+        ^ Colon
+          ^^^ Identifier
+
+
+
+    always_comb begin
+    ^^^^^^^^^^^ AlwaysCombKeyword
+                ^^^^^ BeginKeyword
+
+        typedef union tagged {
+        ^^^^^^^ TypedefKeyword
+                ^^^^^ UnionKeyword
+                      ^^^^^^ TaggedKeyword
+                             ^ OpenBrace
+
+            void Invalid;
+            ^^^^ VoidKeyword
+                 ^^^^^^^ Identifier
+                        ^ Semicolon
+
+            int Valid;
+            ^^^ IntKeyword
+                ^^^^^ Identifier
+                     ^ Semicolon
+
+        } VInt;
+        ^ CloseBrace
+          ^^^^ Identifier
+              ^ Semicolon
+
+
+
+        typedef union tagged {
+        ^^^^^^^ TypedefKeyword
+                ^^^^^ UnionKeyword
+                      ^^^^^^ TaggedKeyword
+                             ^ OpenBrace
+
+            struct {
+            ^^^^^^ StructKeyword
+                   ^ OpenBrace
+
+                bit [4:0] reg1, reg2, regd;
+                ^^^ BitKeyword
+                    ^ OpenBracket
+                     ^ IntegerLiteral
+                      ^ Colon
+                       ^ IntegerLiteral
+                        ^ CloseBracket
+                          ^^^^ Identifier
+                              ^ Comma
+                                ^^^^ Identifier
+                                    ^ Comma
+                                      ^^^^ Identifier
+                                          ^ Semicolon
+
+            } Add;
+            ^ CloseBrace
+              ^^^ Identifier
+                 ^ Semicolon
+
+            union tagged {
+            ^^^^^ UnionKeyword
+                  ^^^^^^ TaggedKeyword
+                         ^ OpenBrace
+
+                bit [9:0] JmpU;
+                ^^^ BitKeyword
+                    ^ OpenBracket
+                     ^ IntegerLiteral
+                      ^ Colon
+                       ^ IntegerLiteral
+                        ^ CloseBracket
+                          ^^^^ Identifier
+                              ^ Semicolon
+
+                struct {
+                ^^^^^^ StructKeyword
+                       ^ OpenBrace
+
+                    bit [1:0] cc;
+                    ^^^ BitKeyword
+                        ^ OpenBracket
+                         ^ IntegerLiteral
+                          ^ Colon
+                           ^ IntegerLiteral
+                            ^ CloseBracket
+                              ^^ Identifier
+                                ^ Semicolon
+
+                    bit [9:0] addr;
+                    ^^^ BitKeyword
+                        ^ OpenBracket
+                         ^ IntegerLiteral
+                          ^ Colon
+                           ^ IntegerLiteral
+                            ^ CloseBracket
+                              ^^^^ Identifier
+                                  ^ Semicolon
+
+                } JmpC;
+                ^ CloseBrace
+                  ^^^^ Identifier
+                      ^ Semicolon
+
+            } Jmp;
+            ^ CloseBrace
+              ^^^ Identifier
+                 ^ Semicolon
+
+        } Instr;
+        ^ CloseBrace
+          ^^^^^ Identifier
+               ^ Semicolon
+
+
+
+        VInt v;
+        ^^^^ Identifier
+             ^ Identifier
+              ^ Semicolon
+
+        Instr instr;
+        ^^^^^ Identifier
+              ^^^^^ Identifier
+                   ^ Semicolon
+
+        automatic int rf[] = new [3];
+        ^^^^^^^^^ AutomaticKeyword
+                  ^^^ IntKeyword
+                      ^^ Identifier
+                        ^ OpenBracket
+                         ^ CloseBracket
+                           ^ Equals
+                             ^^^ NewKeyword
+                                 ^ OpenBracket
+                                  ^ IntegerLiteral
+                                   ^ CloseBracket
+                                    ^ Semicolon
+
+        static longint pc = 'x;
+        ^^^^^^ StaticKeyword
+               ^^^^^^^ LongIntKeyword
+                       ^^ Identifier
+                          ^ Equals
+                            ^^ UnbasedUnsizedLiteral
+                              ^ Semicolon
+
+
+
+        case (v) matches
+        ^^^^ CaseKeyword
+             ^ OpenParenthesis
+              ^ Identifier
+               ^ CloseParenthesis
+                 ^^^^^^^ MatchesKeyword
+
+            tagged Invalid &&& ~w : $display ("v is Invalid");
+            ^^^^^^ TaggedKeyword
+                   ^^^^^^^ Identifier
+                           ^^^ TripleAnd
+                               ^ Tilde
+                                ^ Identifier
+                                  ^ Colon
+                                    ^^^^^^^^ SystemIdentifier
+                                             ^ OpenParenthesis
+                                              ^^^^^^^^^^^^^^ StringLiteral
+                                                            ^ CloseParenthesis
+                                                             ^ Semicolon
+
+            tagged Valid .n : $display ("v is Valid with value %d", n);
+            ^^^^^^ TaggedKeyword
+                   ^^^^^ Identifier
+                         ^ Dot
+                          ^ Identifier
+                            ^ Colon
+                              ^^^^^^^^ SystemIdentifier
+                                       ^ OpenParenthesis
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^ StringLiteral
+                                                                  ^ Comma
+                                                                    ^ Identifier
+                                                                     ^ CloseParenthesis
+                                                                      ^ Semicolon
+
+        endcase
+        ^^^^^^^ EndCaseKeyword
+
+
+
+        case (instr) matches
+        ^^^^ CaseKeyword
+             ^ OpenParenthesis
+              ^^^^^ Identifier
+                   ^ CloseParenthesis
+                     ^^^^^^^ MatchesKeyword
+
+            tagged Add .s: case (s) matches
+            ^^^^^^ TaggedKeyword
+                   ^^^ Identifier
+                       ^ Dot
+                        ^ Identifier
+                         ^ Colon
+                           ^^^^ CaseKeyword
+                                ^ OpenParenthesis
+                                 ^ Identifier
+                                  ^ CloseParenthesis
+                                    ^^^^^^^ MatchesKeyword
+
+                            '{.*, .*, 0} : ; // no op
+                            ^^ ApostropheOpenBrace
+                              ^ Dot
+                               ^ Star
+                                ^ Comma
+                                  ^ Dot
+                                   ^ Star
+                                    ^ Comma
+                                      ^ IntegerLiteral
+                                       ^ CloseBrace
+                                         ^ Colon
+                                           ^ Semicolon
+
+                            '{.r1, .r2, .rd} : rf[rd] = rf[r1] + rf[r2];
+                            ^^ ApostropheOpenBrace
+                              ^ Dot
+                               ^^ Identifier
+                                 ^ Comma
+                                   ^ Dot
+                                    ^^ Identifier
+                                      ^ Comma
+                                        ^ Dot
+                                         ^^ Identifier
+                                           ^ CloseBrace
+                                             ^ Colon
+                                               ^^ Identifier
+                                                 ^ OpenBracket
+                                                  ^^ Identifier
+                                                    ^ CloseBracket
+                                                      ^ Equals
+                                                        ^^ Identifier
+                                                          ^ OpenBracket
+                                                           ^^ Identifier
+                                                             ^ CloseBracket
+                                                               ^ Plus
+                                                                 ^^ Identifier
+                                                                   ^ OpenBracket
+                                                                    ^^ Identifier
+                                                                      ^ CloseBracket
+                                                                       ^ Semicolon
+
+                          endcase
+                          ^^^^^^^ EndCaseKeyword
+
+            tagged Jmp .j: case (j) matches
+            ^^^^^^ TaggedKeyword
+                   ^^^ Identifier
+                       ^ Dot
+                        ^ Identifier
+                         ^ Colon
+                           ^^^^ CaseKeyword
+                                ^ OpenParenthesis
+                                 ^ Identifier
+                                  ^ CloseParenthesis
+                                    ^^^^^^^ MatchesKeyword
+
+                            tagged JmpU .a : pc = pc + a;
+                            ^^^^^^ TaggedKeyword
+                                   ^^^^ Identifier
+                                        ^ Dot
+                                         ^ Identifier
+                                           ^ Colon
+                                             ^^ Identifier
+                                                ^ Equals
+                                                  ^^ Identifier
+                                                     ^ Plus
+                                                       ^ Identifier
+                                                        ^ Semicolon
+
+                            tagged JmpC '{.c, .a} : if (rf[c]) pc = a;
+                            ^^^^^^ TaggedKeyword
+                                   ^^^^ Identifier
+                                        ^^ ApostropheOpenBrace
+                                          ^ Dot
+                                           ^ Identifier
+                                            ^ Comma
+                                              ^ Dot
+                                               ^ Identifier
+                                                ^ CloseBrace
+                                                  ^ Colon
+                                                    ^^ IfKeyword
+                                                       ^ OpenParenthesis
+                                                        ^^ Identifier
+                                                          ^ OpenBracket
+                                                           ^ Identifier
+                                                            ^ CloseBracket
+                                                             ^ CloseParenthesis
+                                                               ^^ Identifier
+                                                                  ^ Equals
+                                                                    ^ Identifier
+                                                                     ^ Semicolon
+
+                           endcase
+                           ^^^^^^^ EndCaseKeyword
+
+        endcase
+        ^^^^^^^ EndCaseKeyword
+
+
+
+        if (instr matches (tagged Jmp .j) &&&
+        ^^ IfKeyword
+           ^ OpenParenthesis
+            ^^^^^ Identifier
+                  ^^^^^^^ MatchesKeyword
+                          ^ OpenParenthesis
+                           ^^^^^^ TaggedKeyword
+                                  ^^^ Identifier
+                                      ^ Dot
+                                       ^ Identifier
+                                        ^ CloseParenthesis
+                                          ^^^ TripleAnd
+
+            j matches (tagged JmpC '{cc:.c,addr:.a})) begin
+            ^ Identifier
+              ^^^^^^^ MatchesKeyword
+                      ^ OpenParenthesis
+                       ^^^^^^ TaggedKeyword
+                              ^^^^ Identifier
+                                   ^^ ApostropheOpenBrace
+                                     ^^ Identifier
+                                       ^ Colon
+                                        ^ Dot
+                                         ^ Identifier
+                                          ^ Comma
+                                           ^^^^ Identifier
+                                               ^ Colon
+                                                ^ Dot
+                                                 ^ Identifier
+                                                  ^ CloseBrace
+                                                   ^ CloseParenthesis
+                                                    ^ CloseParenthesis
+                                                      ^^^^^ BeginKeyword
+
+            pc = c[0] & a[0];
+            ^^ Identifier
+               ^ Equals
+                 ^ Identifier
+                  ^ OpenBracket
+                   ^ IntegerLiteral
+                    ^ CloseBracket
+                      ^ And
+                        ^ Identifier
+                         ^ OpenBracket
+                          ^ IntegerLiteral
+                           ^ CloseBracket
+                            ^ Semicolon
+
+            pc = instr matches (tagged Jmp .j) &&&
+            ^^ Identifier
+               ^ Equals
+                 ^^^^^ Identifier
+                       ^^^^^^^ MatchesKeyword
+                               ^ OpenParenthesis
+                                ^^^^^^ TaggedKeyword
+                                       ^^^ Identifier
+                                           ^ Dot
+                                            ^ Identifier
+                                             ^ CloseParenthesis
+                                               ^^^ TripleAnd
+
+                  j matches (tagged JmpC '{cc:.c,addr:.a}) ? c[0] & a[0] : 0;
+                  ^ Identifier
+                    ^^^^^^^ MatchesKeyword
+                            ^ OpenParenthesis
+                             ^^^^^^ TaggedKeyword
+                                    ^^^^ Identifier
+                                         ^^ ApostropheOpenBrace
+                                           ^^ Identifier
+                                             ^ Colon
+                                              ^ Dot
+                                               ^ Identifier
+                                                ^ Comma
+                                                 ^^^^ Identifier
+                                                     ^ Colon
+                                                      ^ Dot
+                                                       ^ Identifier
+                                                        ^ CloseBrace
+                                                         ^ CloseParenthesis
+                                                           ^ Question
+                                                             ^ Identifier
+                                                              ^ OpenBracket
+                                                               ^ IntegerLiteral
+                                                                ^ CloseBracket
+                                                                  ^ And
+                                                                    ^ Identifier
+                                                                     ^ OpenBracket
+                                                                      ^ IntegerLiteral
+                                                                       ^ CloseBracket
+                                                                         ^ Colon
+                                                                           ^ IntegerLiteral
+                                                                            ^ Semicolon
+
+        end
+        ^^^ EndKeyword
+
+        else begin
+        ^^^^ ElseKeyword
+             ^^^^^ BeginKeyword
+
+        end
+        ^^^ EndKeyword
+
+    end
+    ^^^ EndKeyword
+
+
+
+    always_latch begin
+    ^^^^^^^^^^^^ AlwaysLatchKeyword
+                 ^^^^^ BeginKeyword
+
+    end
+    ^^^ EndKeyword
+
+
+
+    genvar j;
+    ^^^^^^ GenVarKeyword
+           ^ Identifier
+            ^ Semicolon
+
+    for (genvar i = 0; i < 10; i += 2)
+    ^^^ ForKeyword
+        ^ OpenParenthesis
+         ^^^^^^ GenVarKeyword
+                ^ Identifier
+                  ^ Equals
+                    ^ IntegerLiteral
+                     ^ Semicolon
+                       ^ Identifier
+                         ^ LessThan
+                           ^^ IntegerLiteral
+                             ^ Semicolon
+                               ^ Identifier
+                                 ^^ PlusEqual
+                                    ^ IntegerLiteral
+                                     ^ CloseParenthesis
+
+        if (i == 7) begin
+        ^^ IfKeyword
+           ^ OpenParenthesis
+            ^ Identifier
+              ^^ DoubleEquals
+                 ^ IntegerLiteral
+                  ^ CloseParenthesis
+                    ^^^^^ BeginKeyword
+
+        end
+        ^^^ EndKeyword
+
+
+
+    ;
+    ^ Semicolon
+
+
+
+    generate
+    ^^^^^^^^ GenerateKeyword
+
+        case ($bits(w))
+        ^^^^ CaseKeyword
+             ^ OpenParenthesis
+              ^^^^^ SystemIdentifier
+                   ^ OpenParenthesis
+                    ^ Identifier
+                     ^ CloseParenthesis
+                      ^ CloseParenthesis
+
+            0, 1: begin end
+            ^ IntegerLiteral
+             ^ Comma
+               ^ IntegerLiteral
+                ^ Colon
+                  ^^^^^ BeginKeyword
+                        ^^^ EndKeyword
+
+            2: begin end
+            ^ IntegerLiteral
+             ^ Colon
+               ^^^^^ BeginKeyword
+                     ^^^ EndKeyword
+
+            default: begin end
+            ^^^^^^^ DefaultKeyword
+                   ^ Colon
+                     ^^^^^ BeginKeyword
+                           ^^^ EndKeyword
+
+        endcase
+        ^^^^^^^ EndCaseKeyword
+
+    endgenerate
+    ^^^^^^^^^^^ EndGenerateKeyword
+
+
+
+    assertion0: assert #0 (1 == 1) else $display("Hello!");
+    ^^^^^^^^^^ Identifier
+              ^ Colon
+                ^^^^^^ AssertKeyword
+                       ^ Hash
+                        ^ IntegerLiteral
+                          ^ OpenParenthesis
+                           ^ IntegerLiteral
+                             ^^ DoubleEquals
+                                ^ IntegerLiteral
+                                 ^ CloseParenthesis
+                                   ^^^^ ElseKeyword
+                                        ^^^^^^^^ SystemIdentifier
+                                                ^ OpenParenthesis
+                                                 ^^^^^^^^ StringLiteral
+                                                         ^ CloseParenthesis
+                                                          ^ Semicolon
+
+    assertion1: assume final (2 != 1) else $display("Hello!");
+    ^^^^^^^^^^ Identifier
+              ^ Colon
+                ^^^^^^ AssumeKeyword
+                       ^^^^^ FinalKeyword
+                             ^ OpenParenthesis
+                              ^ IntegerLiteral
+                                ^^ ExclamationEquals
+                                   ^ IntegerLiteral
+                                    ^ CloseParenthesis
+                                      ^^^^ ElseKeyword
+                                           ^^^^^^^^ SystemIdentifier
+                                                   ^ OpenParenthesis
+                                                    ^^^^^^^^ StringLiteral
+                                                            ^ CloseParenthesis
+                                                             ^ Semicolon
+
+
+
+    if (1) begin
+    ^^ IfKeyword
+       ^ OpenParenthesis
+        ^ IntegerLiteral
+         ^ CloseParenthesis
+           ^^^^^ BeginKeyword
+
+        logic a,b,c,d,e,f;
+        ^^^^^ LogicKeyword
+              ^ Identifier
+               ^ Comma
+                ^ Identifier
+                 ^ Comma
+                  ^ Identifier
+                   ^ Comma
+                    ^ Identifier
+                     ^ Comma
+                      ^ Identifier
+                       ^ Comma
+                        ^ Identifier
+                         ^ Semicolon
+
+
+
+        property p1(x,y);
+        ^^^^^^^^ PropertyKeyword
+                 ^^ Identifier
+                   ^ OpenParenthesis
+                    ^ Identifier
+                     ^ Comma
+                      ^ Identifier
+                       ^ CloseParenthesis
+                        ^ Semicolon
+
+            ##1 x |-> y;
+            ^^ DoubleHash
+              ^ IntegerLiteral
+                ^ Identifier
+                  ^^^ OrMinusArrow
+                      ^ Identifier
+                       ^ Semicolon
+
+        endproperty
+        ^^^^^^^^^^^ EndPropertyKeyword
+
+
+
+        wire clk;
+        ^^^^ WireKeyword
+             ^^^ Identifier
+                ^ Semicolon
+
+        property p2;
+        ^^^^^^^^ PropertyKeyword
+                 ^^ Identifier
+                   ^ Semicolon
+
+            @(posedge clk)
+            ^ At
+             ^ OpenParenthesis
+              ^^^^^^^ PosEdgeKeyword
+                      ^^^ Identifier
+                         ^ CloseParenthesis
+
+            a ##1 (b || c)[->1] |->
+            ^ Identifier
+              ^^ DoubleHash
+                ^ IntegerLiteral
+                  ^ OpenParenthesis
+                   ^ Identifier
+                     ^^ DoubleOr
+                        ^ Identifier
+                         ^ CloseParenthesis
+                          ^ OpenBracket
+                           ^^ MinusArrow
+                             ^ IntegerLiteral
+                              ^ CloseBracket
+                                ^^^ OrMinusArrow
+
+                if (b)
+                ^^ IfKeyword
+                   ^ OpenParenthesis
+                    ^ Identifier
+                     ^ CloseParenthesis
+
+                    p1(d,e)
+                    ^^ Identifier
+                      ^ OpenParenthesis
+                       ^ Identifier
+                        ^ Comma
+                         ^ Identifier
+                          ^ CloseParenthesis
+
+                else
+                ^^^^ ElseKeyword
+
+                    f;
+                    ^ Identifier
+                     ^ Semicolon
+
+        endproperty
+        ^^^^^^^^^^^ EndPropertyKeyword
+
+        cover property (p2 and p2);
+        ^^^^^ CoverKeyword
+              ^^^^^^^^ PropertyKeyword
+                       ^ OpenParenthesis
+                        ^^ Identifier
+                           ^^^ AndKeyword
+                               ^^ Identifier
+                                 ^ CloseParenthesis
+                                  ^ Semicolon
+
+    end
+    ^^^ EndKeyword
+
+
+
+    prim prim_inst(q, r);
+    ^^^^ Identifier
+         ^^^^^^^^^ Identifier
+                  ^ OpenParenthesis
+                   ^ Identifier
+                    ^ Comma
+                      ^ Identifier
+                       ^ CloseParenthesis
+                        ^ Semicolon
+
+    rcmos #1step (q, r, s, t);
+    ^^^^^ RcmosKeyword
+          ^ Hash
+           ^^^^^ OneStep
+                 ^ OpenParenthesis
+                  ^ Identifier
+                   ^ Comma
+                     ^ Identifier
+                      ^ Comma
+                        ^ Identifier
+                         ^ Comma
+                           ^ Identifier
+                            ^ CloseParenthesis
+                             ^ Semicolon
+
+
+
+    defparam m3.m.i = 1:1:1;
+    ^^^^^^^^ DefParamKeyword
+             ^^ Identifier
+               ^ Dot
+                ^ Identifier
+                 ^ Dot
+                  ^ Identifier
+                    ^ Equals
+                      ^ IntegerLiteral
+                       ^ Colon
+                        ^ IntegerLiteral
+                         ^ Colon
+                          ^ IntegerLiteral
+                           ^ Semicolon
+
+
+
+    clocking cb @(r or s);
+    ^^^^^^^^ ClockingKeyword
+             ^^ Identifier
+                ^ At
+                 ^ OpenParenthesis
+                  ^ Identifier
+                    ^^ OrKeyword
+                       ^ Identifier
+                        ^ CloseParenthesis
+                         ^ Semicolon
+
+        default input posedge #3ps;
+        ^^^^^^^ DefaultKeyword
+                ^^^^^ InputKeyword
+                      ^^^^^^^ PosEdgeKeyword
+                              ^ Hash
+                               ^^^ TimeLiteral
+                                  ^ Semicolon
+
+        input a = t;
+        ^^^^^ InputKeyword
+              ^ Identifier
+                ^ Equals
+                  ^ Identifier
+                   ^ Semicolon
+
+    endclocking
+    ^^^^^^^^^^^ EndClockingKeyword
+
+
+
+    global clocking cb2 @t; endclocking
+    ^^^^^^ GlobalKeyword
+           ^^^^^^^^ ClockingKeyword
+                    ^^^ Identifier
+                        ^ At
+                         ^ Identifier
+                          ^ Semicolon
+                            ^^^^^^^^^^^ EndClockingKeyword
+
+
+
+    default clocking cb;
+    ^^^^^^^ DefaultKeyword
+            ^^^^^^^^ ClockingKeyword
+                     ^^ Identifier
+                       ^ Semicolon
+
+    default disable iff 1 dist { [1:2] :/ 3, 2 };
+    ^^^^^^^ DefaultKeyword
+            ^^^^^^^ DisableKeyword
+                    ^^^ IffKeyword
+                        ^ IntegerLiteral
+                          ^^^^ DistKeyword
+                               ^ OpenBrace
+                                 ^ OpenBracket
+                                  ^ IntegerLiteral
+                                   ^ Colon
+                                    ^ IntegerLiteral
+                                     ^ CloseBracket
+                                       ^^ ColonSlash
+                                          ^ IntegerLiteral
+                                           ^ Comma
+                                             ^ IntegerLiteral
+                                               ^ CloseBrace
+                                                ^ Semicolon
+
+
+
+endmodule : m3
+^^^^^^^^^ EndModuleKeyword
+          ^ Colon
+            ^^ Identifier
+
+
+
+extern program p(a, b);
+^^^^^^ ExternKeyword
+       ^^^^^^^ ProgramKeyword
+               ^ Identifier
+                ^ OpenParenthesis
+                 ^ Identifier
+                  ^ Comma
+                    ^ Identifier
+                     ^ CloseParenthesis
+                      ^ Semicolon
+
+
+
+program p(a, b);
+^^^^^^^ ProgramKeyword
+        ^ Identifier
+         ^ OpenParenthesis
+          ^ Identifier
+           ^ Comma
+             ^ Identifier
+              ^ CloseParenthesis
+               ^ Semicolon
+
+    input a, b;
+    ^^^^^ InputKeyword
+          ^ Identifier
+           ^ Comma
+             ^ Identifier
+              ^ Semicolon
+
+endprogram : p
+^^^^^^^^^^ EndProgramKeyword
+           ^ Colon
+             ^ Identifier
+
+
+
+extern primitive prim(output reg a, input b);
+^^^^^^ ExternKeyword
+       ^^^^^^^^^ PrimitiveKeyword
+                 ^^^^ Identifier
+                     ^ OpenParenthesis
+                      ^^^^^^ OutputKeyword
+                             ^^^ RegKeyword
+                                 ^ Identifier
+                                  ^ Comma
+                                    ^^^^^ InputKeyword
+                                          ^ Identifier
+                                           ^ CloseParenthesis
+                                            ^ Semicolon
+
+
+
+primitive prim(output reg a, input b);
+^^^^^^^^^ PrimitiveKeyword
+          ^^^^ Identifier
+              ^ OpenParenthesis
+               ^^^^^^ OutputKeyword
+                      ^^^ RegKeyword
+                          ^ Identifier
+                           ^ Comma
+                             ^^^^^ InputKeyword
+                                   ^ Identifier
+                                    ^ CloseParenthesis
+                                     ^ Semicolon
+
+    table
+    ^^^^^ TableKeyword
+
+        0 : ? : 1;
+        ^ IntegerLiteral
+          ^ Colon
+            ^ Question
+              ^ Colon
+                ^ IntegerLiteral
+                 ^ Semicolon
+
+        1 : 0 : x;
+        ^ IntegerLiteral
+          ^ Colon
+            ^ IntegerLiteral
+              ^ Colon
+                ^ Identifier
+                 ^ Semicolon
+
+    endtable
+    ^^^^^^^^ EndTableKeyword
+
+endprimitive
+^^^^^^^^^^^^ EndPrimitiveKeyword
+
+
+
+(* attr = 3.14 *) bind m3.m m1 #(1) bound('x, , , );
+^ OpenParenthesis
+ ^ Star
+   ^^^^ Identifier
+        ^ Equals
+          ^^^^ RealLiteral
+               ^ Star
+                ^ CloseParenthesis
+                  ^^^^ BindKeyword
+                       ^^ Identifier
+                         ^ Dot
+                          ^ Identifier
+                            ^^ Identifier
+                               ^ Hash
+                                ^ OpenParenthesis
+                                 ^ IntegerLiteral
+                                  ^ CloseParenthesis
+                                    ^^^^^ Identifier
+                                         ^ OpenParenthesis
+                                          ^^ UnbasedUnsizedLiteral
+                                            ^ Comma
+                                              ^ Comma
+                                                ^ Comma
+                                                  ^ CloseParenthesis
+                                                   ^ Semicolon
+
+
+
+config cfg;
+^^^^^^ ConfigKeyword
+       ^^^ Identifier
+          ^ Semicolon
+
+    localparam i = 1;
+    ^^^^^^^^^^ LocalParamKeyword
+               ^ Identifier
+                 ^ Equals
+                   ^ IntegerLiteral
+                    ^ Semicolon
+
+    design work.m3;
+    ^^^^^^ DesignKeyword
+           ^^^^ Identifier
+               ^ Dot
+                ^^ Identifier
+                  ^ Semicolon
+
+    default liblist a b;
+    ^^^^^^^ DefaultKeyword
+            ^^^^^^^ LibListKeyword
+                    ^ Identifier
+                      ^ Identifier
+                       ^ Semicolon
+
+    cell m3 use work.m3;
+    ^^^^ CellKeyword
+         ^^ Identifier
+            ^^^ UseKeyword
+                ^^^^ Identifier
+                    ^ Dot
+                     ^^ Identifier
+                       ^ Semicolon
+
+endconfig
+^^^^^^^^^ EndConfigKeyword
+
+
+
+module ALU (o1, i1, i2, opcode);
+^^^^^^ ModuleKeyword
+       ^^^ Identifier
+           ^ OpenParenthesis
+            ^^ Identifier
+              ^ Comma
+                ^^ Identifier
+                  ^ Comma
+                    ^^ Identifier
+                      ^ Comma
+                        ^^^^^^ Identifier
+                              ^ CloseParenthesis
+                               ^ Semicolon
+
+    input [7:0] i1, i2;
+    ^^^^^ InputKeyword
+          ^ OpenBracket
+           ^ IntegerLiteral
+            ^ Colon
+             ^ IntegerLiteral
+              ^ CloseBracket
+                ^^ Identifier
+                  ^ Comma
+                    ^^ Identifier
+                      ^ Semicolon
+
+    input [2:1] opcode;
+    ^^^^^ InputKeyword
+          ^ OpenBracket
+           ^ IntegerLiteral
+            ^ Colon
+             ^ IntegerLiteral
+              ^ CloseBracket
+                ^^^^^^ Identifier
+                      ^ Semicolon
+
+    output [7:0] o1;
+    ^^^^^^ OutputKeyword
+           ^ OpenBracket
+            ^ IntegerLiteral
+             ^ Colon
+              ^ IntegerLiteral
+               ^ CloseBracket
+                 ^^ Identifier
+                   ^ Semicolon
+
+
+
+    specify
+    ^^^^^^^ SpecifyKeyword
+
+        specparam s1 = 2;
+        ^^^^^^^^^ SpecParamKeyword
+                  ^^ Identifier
+                     ^ Equals
+                       ^ IntegerLiteral
+                        ^ Semicolon
+
+        if (opcode == 2'b00) (i1,i2 *> o1) = (25.0, 25.0);
+        ^^ IfKeyword
+           ^ OpenParenthesis
+            ^^^^^^ Identifier
+                   ^^ DoubleEquals
+                      ^ IntegerLiteral
+                       ^^ IntegerBase
+                         ^^ IntegerLiteral
+                           ^ CloseParenthesis
+                             ^ OpenParenthesis
+                              ^^ Identifier
+                                ^ Comma
+                                 ^^ Identifier
+                                    ^^ StarArrow
+                                       ^^ Identifier
+                                         ^ CloseParenthesis
+                                           ^ Equals
+                                             ^ OpenParenthesis
+                                              ^^^^ RealLiteral
+                                                  ^ Comma
+                                                    ^^^^ RealLiteral
+                                                        ^ CloseParenthesis
+                                                         ^ Semicolon
+
+        if (opcode == 2'b01) (i1 => o1) = (5.6, 8.0);
+        ^^ IfKeyword
+           ^ OpenParenthesis
+            ^^^^^^ Identifier
+                   ^^ DoubleEquals
+                      ^ IntegerLiteral
+                       ^^ IntegerBase
+                         ^^ IntegerLiteral
+                           ^ CloseParenthesis
+                             ^ OpenParenthesis
+                              ^^ Identifier
+                                 ^^ EqualsArrow
+                                    ^^ Identifier
+                                      ^ CloseParenthesis
+                                        ^ Equals
+                                          ^ OpenParenthesis
+                                           ^^^ RealLiteral
+                                              ^ Comma
+                                                ^^^ RealLiteral
+                                                   ^ CloseParenthesis
+                                                    ^ Semicolon
+
+        if (opcode == s1) (i2 => o1) = (5.6, 8.0);
+        ^^ IfKeyword
+           ^ OpenParenthesis
+            ^^^^^^ Identifier
+                   ^^ DoubleEquals
+                      ^^ Identifier
+                        ^ CloseParenthesis
+                          ^ OpenParenthesis
+                           ^^ Identifier
+                              ^^ EqualsArrow
+                                 ^^ Identifier
+                                   ^ CloseParenthesis
+                                     ^ Equals
+                                       ^ OpenParenthesis
+                                        ^^^ RealLiteral
+                                           ^ Comma
+                                             ^^^ RealLiteral
+                                                ^ CloseParenthesis
+                                                 ^ Semicolon
+
+        (opcode *> o1) = (6.1, 6.5);
+        ^ OpenParenthesis
+         ^^^^^^ Identifier
+                ^^ StarArrow
+                   ^^ Identifier
+                     ^ CloseParenthesis
+                       ^ Equals
+                         ^ OpenParenthesis
+                          ^^^ RealLiteral
+                             ^ Comma
+                               ^^^ RealLiteral
+                                  ^ CloseParenthesis
+                                   ^ Semicolon
+
+    endspecify
+    ^^^^^^^^^^ EndSpecifyKeyword
+
+endmodule
+^^^^^^^^^ EndModuleKeyword
+
+
+
+interface Iface;
+^^^^^^^^^ InterfaceKeyword
+          ^^^^^ Identifier
+               ^ Semicolon
+
+    extern function void foo(int i, real r);
+    ^^^^^^ ExternKeyword
+           ^^^^^^^^ FunctionKeyword
+                    ^^^^ VoidKeyword
+                         ^^^ Identifier
+                            ^ OpenParenthesis
+                             ^^^ IntKeyword
+                                 ^ Identifier
+                                  ^ Comma
+                                    ^^^^ RealKeyword
+                                         ^ Identifier
+                                          ^ CloseParenthesis
+                                           ^ Semicolon
+
+    extern forkjoin task t3();
+    ^^^^^^ ExternKeyword
+           ^^^^^^^^ ForkJoinKeyword
+                    ^^^^ TaskKeyword
+                         ^^ Identifier
+                           ^ OpenParenthesis
+                            ^ CloseParenthesis
+                             ^ Semicolon
+
+
+
+    modport m(export foo, function void bar(int, logic), task baz, export func);
+    ^^^^^^^ ModPortKeyword
+            ^ Identifier
+             ^ OpenParenthesis
+              ^^^^^^ ExportKeyword
+                     ^^^ Identifier
+                        ^ Comma
+                          ^^^^^^^^ FunctionKeyword
+                                   ^^^^ VoidKeyword
+                                        ^^^ Identifier
+                                           ^ OpenParenthesis
+                                            ^^^ IntKeyword
+                                               ^ Comma
+                                                 ^^^^^ LogicKeyword
+                                                      ^ CloseParenthesis
+                                                       ^ Comma
+                                                         ^^^^ TaskKeyword
+                                                              ^^^ Identifier
+                                                                 ^ Comma
+                                                                   ^^^^^^ ExportKeyword
+                                                                          ^^^^ Identifier
+                                                                              ^ CloseParenthesis
+                                                                               ^ Semicolon
+
+    modport n(import function void func(int), import task t2);
+    ^^^^^^^ ModPortKeyword
+            ^ Identifier
+             ^ OpenParenthesis
+              ^^^^^^ ImportKeyword
+                     ^^^^^^^^ FunctionKeyword
+                              ^^^^ VoidKeyword
+                                   ^^^^ Identifier
+                                       ^ OpenParenthesis
+                                        ^^^ IntKeyword
+                                           ^ CloseParenthesis
+                                            ^ Comma
+                                              ^^^^^^ ImportKeyword
+                                                     ^^^^ TaskKeyword
+                                                          ^^ Identifier
+                                                            ^ CloseParenthesis
+                                                             ^ Semicolon
+
+    modport o(export t2);
+    ^^^^^^^ ModPortKeyword
+            ^ Identifier
+             ^ OpenParenthesis
+              ^^^^^^ ExportKeyword
+                     ^^ Identifier
+                       ^ CloseParenthesis
+                        ^ Semicolon
+
+endinterface
+^^^^^^^^^^^^ EndInterfaceKeyword
+
+
+
+module n(Iface.m a);
+^^^^^^ ModuleKeyword
+       ^ Identifier
+        ^ OpenParenthesis
+         ^^^^^ Identifier
+              ^ Dot
+               ^ Identifier
+                 ^ Identifier
+                  ^ CloseParenthesis
+                   ^ Semicolon
+
+    initial begin
+    ^^^^^^^ InitialKeyword
+            ^^^^^ BeginKeyword
+
+        a.foo(42, 3.14);
+        ^ Identifier
+         ^ Dot
+          ^^^ Identifier
+             ^ OpenParenthesis
+              ^^ IntegerLiteral
+                ^ Comma
+                  ^^^^ RealLiteral
+                      ^ CloseParenthesis
+                       ^ Semicolon
+
+        a.bar(1, 1);
+        ^ Identifier
+         ^ Dot
+          ^^^ Identifier
+             ^ OpenParenthesis
+              ^ IntegerLiteral
+               ^ Comma
+                 ^ IntegerLiteral
+                  ^ CloseParenthesis
+                   ^ Semicolon
+
+        a.baz();
+        ^ Identifier
+         ^ Dot
+          ^^^ Identifier
+             ^ OpenParenthesis
+              ^ CloseParenthesis
+               ^ Semicolon
+
+    end
+    ^^^ EndKeyword
+
+
+
+    function void a.bar(int i, logic l); endfunction
+    ^^^^^^^^ FunctionKeyword
+             ^^^^ VoidKeyword
+                  ^ Identifier
+                   ^ Dot
+                    ^^^ Identifier
+                       ^ OpenParenthesis
+                        ^^^ IntKeyword
+                            ^ Identifier
+                             ^ Comma
+                               ^^^^^ LogicKeyword
+                                     ^ Identifier
+                                      ^ CloseParenthesis
+                                       ^ Semicolon
+                                         ^^^^^^^^^^^ EndFunctionKeyword
+
+    task a.baz; endtask
+    ^^^^ TaskKeyword
+         ^ Identifier
+          ^ Dot
+           ^^^ Identifier
+              ^ Semicolon
+                ^^^^^^^ EndTaskKeyword
+
+    function void a.func(int i); endfunction
+    ^^^^^^^^ FunctionKeyword
+             ^^^^ VoidKeyword
+                  ^ Identifier
+                   ^ Dot
+                    ^^^^ Identifier
+                        ^ OpenParenthesis
+                         ^^^ IntKeyword
+                             ^ Identifier
+                              ^ CloseParenthesis
+                               ^ Semicolon
+                                 ^^^^^^^^^^^ EndFunctionKeyword
+
+
+
+    function void a.foo(int i, real r);
+    ^^^^^^^^ FunctionKeyword
+             ^^^^ VoidKeyword
+                  ^ Identifier
+                   ^ Dot
+                    ^^^ Identifier
+                       ^ OpenParenthesis
+                        ^^^ IntKeyword
+                            ^ Identifier
+                             ^ Comma
+                               ^^^^ RealKeyword
+                                    ^ Identifier
+                                     ^ CloseParenthesis
+                                      ^ Semicolon
+
+    endfunction
+    ^^^^^^^^^^^ EndFunctionKeyword
+
+endmodule
+^^^^^^^^^ EndModuleKeyword
+
+
+
+module m4;
+^^^^^^ ModuleKeyword
+       ^^ Identifier
+         ^ Semicolon
+
+    Iface i1();
+    ^^^^^ Identifier
+          ^^ Identifier
+            ^ OpenParenthesis
+             ^ CloseParenthesis
+              ^ Semicolon
+
+    n n1(i1);
+    ^ Identifier
+      ^^ Identifier
+        ^ OpenParenthesis
+         ^^ Identifier
+           ^ CloseParenthesis
+            ^ Semicolon
+
+
+
+    Iface i2();
+    ^^^^^ Identifier
+          ^^ Identifier
+            ^ OpenParenthesis
+             ^ CloseParenthesis
+              ^ Semicolon
+
+    n n2(i2.m);
+    ^ Identifier
+      ^^ Identifier
+        ^ OpenParenthesis
+         ^^ Identifier
+           ^ Dot
+            ^ Identifier
+             ^ CloseParenthesis
+              ^ Semicolon
+
+
+
+    localparam int baz = 3;
+    ^^^^^^^^^^ LocalParamKeyword
+               ^^^ IntKeyword
+                   ^^^ Identifier
+                       ^ Equals
+                         ^ IntegerLiteral
+                          ^ Semicolon
+
+    task i1.t2;
+    ^^^^ TaskKeyword
+         ^^ Identifier
+           ^ Dot
+            ^^ Identifier
+              ^ Semicolon
+
+        static int i = baz;
+        ^^^^^^ StaticKeyword
+               ^^^ IntKeyword
+                   ^ Identifier
+                     ^ Equals
+                       ^^^ Identifier
+                          ^ Semicolon
+
+    endtask
+    ^^^^^^^ EndTaskKeyword
+
+
+
+    task i2.t2;
+    ^^^^ TaskKeyword
+         ^^ Identifier
+           ^ Dot
+            ^^ Identifier
+              ^ Semicolon
+
+        static int i = baz;
+        ^^^^^^ StaticKeyword
+               ^^^ IntKeyword
+                   ^ Identifier
+                     ^ Equals
+                       ^^^ Identifier
+                          ^ Semicolon
+
+    endtask
+    ^^^^^^^ EndTaskKeyword
+
+endmodule
+^^^^^^^^^ EndModuleKeyword
+
+
+
+typedef enum { cover_none, cover_all } coverage_level;
+^^^^^^^ TypedefKeyword
+        ^^^^ EnumKeyword
+             ^ OpenBrace
+               ^^^^^^^^^^ Identifier
+                         ^ Comma
+                           ^^^^^^^^^ Identifier
+                                     ^ CloseBrace
+                                       ^^^^^^^^^^^^^^ Identifier
+                                                     ^ Semicolon
+
+checker assert_window1 (
+^^^^^^^ CheckerKeyword
+        ^^^^^^^^^^^^^^ Identifier
+                       ^ OpenParenthesis
+
+    logic test_expr,
+    ^^^^^ LogicKeyword
+          ^^^^^^^^^ Identifier
+                   ^ Comma
+
+    untyped start_event,
+    ^^^^^^^ UntypedKeyword
+            ^^^^^^^^^^^ Identifier
+                       ^ Comma
+
+    untyped end_event,
+    ^^^^^^^ UntypedKeyword
+            ^^^^^^^^^ Identifier
+                     ^ Comma
+
+    event clock = $inferred_clock,
+    ^^^^^ EventKeyword
+          ^^^^^ Identifier
+                ^ Equals
+                  ^^^^^^^^^^^^^^^ SystemIdentifier
+                                 ^ Comma
+
+    logic reset = $inferred_disable,
+    ^^^^^ LogicKeyword
+          ^^^^^ Identifier
+                ^ Equals
+                  ^^^^^^^^^^^^^^^^^ SystemIdentifier
+                                   ^ Comma
+
+    string error_msg = "violation",
+    ^^^^^^ StringKeyword
+           ^^^^^^^^^ Identifier
+                     ^ Equals
+                       ^^^^^^^^^^^ StringLiteral
+                                  ^ Comma
+
+    coverage_level clevel = cover_all
+    ^^^^^^^^^^^^^^ Identifier
+                   ^^^^^^ Identifier
+                          ^ Equals
+                            ^^^^^^^^^ Identifier
+
+);
+^ CloseParenthesis
+ ^ Semicolon
+
+    default clocking @clock; endclocking
+    ^^^^^^^ DefaultKeyword
+            ^^^^^^^^ ClockingKeyword
+                     ^ At
+                      ^^^^^ Identifier
+                           ^ Semicolon
+                             ^^^^^^^^^^^ EndClockingKeyword
+
+    default disable iff reset;
+    ^^^^^^^ DefaultKeyword
+            ^^^^^^^ DisableKeyword
+                    ^^^ IffKeyword
+                        ^^^^^ Identifier
+                             ^ Semicolon
+
+    bit window = 1'b0, next_window = 1'b1;
+    ^^^ BitKeyword
+        ^^^^^^ Identifier
+               ^ Equals
+                 ^ IntegerLiteral
+                  ^^ IntegerBase
+                    ^ IntegerLiteral
+                     ^ Comma
+                       ^^^^^^^^^^^ Identifier
+                                   ^ Equals
+                                     ^ IntegerLiteral
+                                      ^^ IntegerBase
+                                        ^ IntegerLiteral
+                                         ^ Semicolon
+
+    rand bit q;
+    ^^^^ RandKeyword
+         ^^^ BitKeyword
+             ^ Identifier
+              ^ Semicolon
+
+
+
+    always_comb begin
+    ^^^^^^^^^^^ AlwaysCombKeyword
+                ^^^^^ BeginKeyword
+
+        if (reset || window && end_event)
+        ^^ IfKeyword
+           ^ OpenParenthesis
+            ^^^^^ Identifier
+                  ^^ DoubleOr
+                     ^^^^^^ Identifier
+                            ^^ DoubleAnd
+                               ^^^^^^^^^ Identifier
+                                        ^ CloseParenthesis
+
+            next_window = 1'b0;
+            ^^^^^^^^^^^ Identifier
+                        ^ Equals
+                          ^ IntegerLiteral
+                           ^^ IntegerBase
+                             ^ IntegerLiteral
+                              ^ Semicolon
+
+        else if (!window && start_event)
+        ^^^^ ElseKeyword
+             ^^ IfKeyword
+                ^ OpenParenthesis
+                 ^ Exclamation
+                  ^^^^^^ Identifier
+                         ^^ DoubleAnd
+                            ^^^^^^^^^^^ Identifier
+                                       ^ CloseParenthesis
+
+            next_window = 1'b1;
+            ^^^^^^^^^^^ Identifier
+                        ^ Equals
+                          ^ IntegerLiteral
+                           ^^ IntegerBase
+                             ^ IntegerLiteral
+                              ^ Semicolon
+
+        else
+        ^^^^ ElseKeyword
+
+            next_window = window;
+            ^^^^^^^^^^^ Identifier
+                        ^ Equals
+                          ^^^^^^ Identifier
+                                ^ Semicolon
+
+    end
+    ^^^ EndKeyword
+
+
+
+    always_ff @clock
+    ^^^^^^^^^ AlwaysFFKeyword
+              ^ At
+               ^^^^^ Identifier
+
+        window <= next_window;
+        ^^^^^^ Identifier
+               ^^ LessThanEquals
+                  ^^^^^^^^^^^ Identifier
+                             ^ Semicolon
+
+
+
+    property p_window;
+    ^^^^^^^^ PropertyKeyword
+             ^^^^^^^^ Identifier
+                     ^ Semicolon
+
+        start_event && !window |=> test_expr[+] ##0 end_event;
+        ^^^^^^^^^^^ Identifier
+                    ^^ DoubleAnd
+                       ^ Exclamation
+                        ^^^^^^ Identifier
+                               ^^^ OrEqualsArrow
+                                   ^^^^^^^^^ Identifier
+                                            ^ OpenBracket
+                                             ^ Plus
+                                              ^ CloseBracket
+                                                ^^ DoubleHash
+                                                  ^ IntegerLiteral
+                                                    ^^^^^^^^^ Identifier
+                                                             ^ Semicolon
+
+    endproperty
+    ^^^^^^^^^^^ EndPropertyKeyword
+
+
+
+    a_window: assert property (p_window) else $error(error_msg);
+    ^^^^^^^^ Identifier
+            ^ Colon
+              ^^^^^^ AssertKeyword
+                     ^^^^^^^^ PropertyKeyword
+                              ^ OpenParenthesis
+                               ^^^^^^^^ Identifier
+                                       ^ CloseParenthesis
+                                         ^^^^ ElseKeyword
+                                              ^^^^^^ SystemIdentifier
+                                                    ^ OpenParenthesis
+                                                     ^^^^^^^^^ Identifier
+                                                              ^ CloseParenthesis
+                                                               ^ Semicolon
+
+
+
+    generate if (clevel != cover_none) begin : cover_b
+    ^^^^^^^^ GenerateKeyword
+             ^^ IfKeyword
+                ^ OpenParenthesis
+                 ^^^^^^ Identifier
+                        ^^ ExclamationEquals
+                           ^^^^^^^^^^ Identifier
+                                     ^ CloseParenthesis
+                                       ^^^^^ BeginKeyword
+                                             ^ Colon
+                                               ^^^^^^^ Identifier
+
+        cover_window_open: cover property (start_event && !window)
+        ^^^^^^^^^^^^^^^^^ Identifier
+                         ^ Colon
+                           ^^^^^ CoverKeyword
+                                 ^^^^^^^^ PropertyKeyword
+                                          ^ OpenParenthesis
+                                           ^^^^^^^^^^^ Identifier
+                                                       ^^ DoubleAnd
+                                                          ^ Exclamation
+                                                           ^^^^^^ Identifier
+                                                                 ^ CloseParenthesis
+
+        $display("window_open covered");
+        ^^^^^^^^ SystemIdentifier
+                ^ OpenParenthesis
+                 ^^^^^^^^^^^^^^^^^^^^^ StringLiteral
+                                      ^ CloseParenthesis
+                                       ^ Semicolon
+
+        cover_window: cover property (
+        ^^^^^^^^^^^^ Identifier
+                    ^ Colon
+                      ^^^^^ CoverKeyword
+                            ^^^^^^^^ PropertyKeyword
+                                     ^ OpenParenthesis
+
+            start_event && !window
+            ^^^^^^^^^^^ Identifier
+                        ^^ DoubleAnd
+                           ^ Exclamation
+                            ^^^^^^ Identifier
+
+            ##1 (!end_event && window) [*]
+            ^^ DoubleHash
+              ^ IntegerLiteral
+                ^ OpenParenthesis
+                 ^ Exclamation
+                  ^^^^^^^^^ Identifier
+                            ^^ DoubleAnd
+                               ^^^^^^ Identifier
+                                     ^ CloseParenthesis
+                                       ^ OpenBracket
+                                        ^ Star
+                                         ^ CloseBracket
+
+            ##1 end_event && window
+            ^^ DoubleHash
+              ^ IntegerLiteral
+                ^^^^^^^^^ Identifier
+                          ^^ DoubleAnd
+                             ^^^^^^ Identifier
+
+        ) $display("window covered");
+        ^ CloseParenthesis
+          ^^^^^^^^ SystemIdentifier
+                  ^ OpenParenthesis
+                   ^^^^^^^^^^^^^^^^ StringLiteral
+                                   ^ CloseParenthesis
+                                    ^ Semicolon
+
+    end : cover_b
+    ^^^ EndKeyword
+        ^ Colon
+          ^^^^^^^ Identifier
+
+    endgenerate
+    ^^^^^^^^^^^ EndGenerateKeyword
+
+endchecker : assert_window1
+^^^^^^^^^^ EndCheckerKeyword
+           ^ Colon
+             ^^^^^^^^^^^^^^ Identifier
+
+
+
+module m5;
+^^^^^^ ModuleKeyword
+       ^^ Identifier
+         ^ Semicolon
+
+    logic a, b, c, d, e, clk;
+    ^^^^^ LogicKeyword
+          ^ Identifier
+           ^ Comma
+             ^ Identifier
+              ^ Comma
+                ^ Identifier
+                 ^ Comma
+                   ^ Identifier
+                    ^ Comma
+                      ^ Identifier
+                       ^ Comma
+                         ^^^ Identifier
+                            ^ Semicolon
+
+
+
+    default clocking @(posedge clk); endclocking
+    ^^^^^^^ DefaultKeyword
+            ^^^^^^^^ ClockingKeyword
+                     ^ At
+                      ^ OpenParenthesis
+                       ^^^^^^^ PosEdgeKeyword
+                               ^^^ Identifier
+                                  ^ CloseParenthesis
+                                   ^ Semicolon
+                                     ^^^^^^^^^^^ EndClockingKeyword
+
+
+
+    assert_window1 aw1(1 + 1, a, b);
+    ^^^^^^^^^^^^^^ Identifier
+                   ^^^ Identifier
+                      ^ OpenParenthesis
+                       ^ IntegerLiteral
+                         ^ Plus
+                           ^ IntegerLiteral
+                            ^ Comma
+                              ^ Identifier
+                               ^ Comma
+                                 ^ Identifier
+                                  ^ CloseParenthesis
+                                   ^ Semicolon
+
+
+
+    initial begin
+    ^^^^^^^ InitialKeyword
+            ^^^^^ BeginKeyword
+
+        assert_window1 aw2(1 + 1, a, b);
+        ^^^^^^^^^^^^^^ Identifier
+                       ^^^ Identifier
+                          ^ OpenParenthesis
+                           ^ IntegerLiteral
+                             ^ Plus
+                               ^ IntegerLiteral
+                                ^ Comma
+                                  ^ Identifier
+                                   ^ Comma
+                                     ^ Identifier
+                                      ^ CloseParenthesis
+                                       ^ Semicolon
+
+    end
+    ^^^ EndKeyword
+
+
+
+    sequence abc;
+    ^^^^^^^^ SequenceKeyword
+             ^^^ Identifier
+                ^ Semicolon
+
+        @(posedge clk) a ##1 b ##1 c;
+        ^ At
+         ^ OpenParenthesis
+          ^^^^^^^ PosEdgeKeyword
+                  ^^^ Identifier
+                     ^ CloseParenthesis
+                       ^ Identifier
+                         ^^ DoubleHash
+                           ^ IntegerLiteral
+                             ^ Identifier
+                               ^^ DoubleHash
+                                 ^ IntegerLiteral
+                                   ^ Identifier
+                                    ^ Semicolon
+
+    endsequence
+    ^^^^^^^^^^^ EndSequenceKeyword
+
+
+
+    sequence de;
+    ^^^^^^^^ SequenceKeyword
+             ^^ Identifier
+               ^ Semicolon
+
+        @(negedge clk) d ##[2:5] e;
+        ^ At
+         ^ OpenParenthesis
+          ^^^^^^^ NegEdgeKeyword
+                  ^^^ Identifier
+                     ^ CloseParenthesis
+                       ^ Identifier
+                         ^^ DoubleHash
+                           ^ OpenBracket
+                            ^ IntegerLiteral
+                             ^ Colon
+                              ^ IntegerLiteral
+                               ^ CloseBracket
+                                 ^ Identifier
+                                  ^ Semicolon
+
+    endsequence
+    ^^^^^^^^^^^ EndSequenceKeyword
+
+
+
+    program check;
+    ^^^^^^^ ProgramKeyword
+            ^^^^^ Identifier
+                 ^ Semicolon
+
+        initial begin
+        ^^^^^^^ InitialKeyword
+                ^^^^^ BeginKeyword
+
+            wait( abc.triggered || de.triggered );
+            ^^^^ WaitKeyword
+                ^ OpenParenthesis
+                  ^^^ Identifier
+                     ^ Dot
+                      ^^^^^^^^^ Identifier
+                                ^^ DoubleOr
+                                   ^^ Identifier
+                                     ^ Dot
+                                      ^^^^^^^^^ Identifier
+                                                ^ CloseParenthesis
+                                                 ^ Semicolon
+
+            if( abc.triggered )
+            ^^ IfKeyword
+              ^ OpenParenthesis
+                ^^^ Identifier
+                   ^ Dot
+                    ^^^^^^^^^ Identifier
+                              ^ CloseParenthesis
+
+                $display( "abc succeeded" );
+                ^^^^^^^^ SystemIdentifier
+                        ^ OpenParenthesis
+                          ^^^^^^^^^^^^^^^ StringLiteral
+                                          ^ CloseParenthesis
+                                           ^ Semicolon
+
+            if( de.triggered )
+            ^^ IfKeyword
+              ^ OpenParenthesis
+                ^^ Identifier
+                  ^ Dot
+                   ^^^^^^^^^ Identifier
+                             ^ CloseParenthesis
+
+                $display( "de succeeded" );
+                ^^^^^^^^ SystemIdentifier
+                        ^ OpenParenthesis
+                          ^^^^^^^^^^^^^^ StringLiteral
+                                         ^ CloseParenthesis
+                                          ^ Semicolon
+
+        end
+        ^^^ EndKeyword
+
+    endprogram
+    ^^^^^^^^^^ EndProgramKeyword
+
+endmodule
+^^^^^^^^^ EndModuleKeyword
+
+
+
+class C;
+^^^^^ ClassKeyword
+      ^ Identifier
+       ^ Semicolon
+
+    int i;
+    ^^^ IntKeyword
+        ^ Identifier
+         ^ Semicolon
+
+    static int j;
+    ^^^^^^ StaticKeyword
+           ^^^ IntKeyword
+               ^ Identifier
+                ^ Semicolon
+
+    extern function int foo(int bar, int baz = 1);
+    ^^^^^^ ExternKeyword
+           ^^^^^^^^ FunctionKeyword
+                    ^^^ IntKeyword
+                        ^^^ Identifier
+                           ^ OpenParenthesis
+                            ^^^ IntKeyword
+                                ^^^ Identifier
+                                   ^ Comma
+                                     ^^^ IntKeyword
+                                         ^^^ Identifier
+                                             ^ Equals
+                                               ^ IntegerLiteral
+                                                ^ CloseParenthesis
+                                                 ^ Semicolon
+
+endclass
+^^^^^^^^ EndClassKeyword
+
+
+
+class D;
+^^^^^ ClassKeyword
+      ^ Identifier
+       ^ Semicolon
+
+    extern static function real foo;
+    ^^^^^^ ExternKeyword
+           ^^^^^^ StaticKeyword
+                  ^^^^^^^^ FunctionKeyword
+                           ^^^^ RealKeyword
+                                ^^^ Identifier
+                                   ^ Semicolon
+
+endclass
+^^^^^^^^ EndClassKeyword
+
+
+
+localparam int k = 5;
+^^^^^^^^^^ LocalParamKeyword
+           ^^^ IntKeyword
+               ^ Identifier
+                 ^ Equals
+                   ^ IntegerLiteral
+                    ^ Semicolon
+
+
+
+function int C::foo(int bar, int baz = 1);
+^^^^^^^^ FunctionKeyword
+         ^^^ IntKeyword
+             ^ Identifier
+              ^^ DoubleColon
+                ^^^ Identifier
+                   ^ OpenParenthesis
+                    ^^^ IntKeyword
+                        ^^^ Identifier
+                           ^ Comma
+                             ^^^ IntKeyword
+                                 ^^^ Identifier
+                                     ^ Equals
+                                       ^ IntegerLiteral
+                                        ^ CloseParenthesis
+                                         ^ Semicolon
+
+    i = j + k + bar + baz;
+    ^ Identifier
+      ^ Equals
+        ^ Identifier
+          ^ Plus
+            ^ Identifier
+              ^ Plus
+                ^^^ Identifier
+                    ^ Plus
+                      ^^^ Identifier
+                         ^ Semicolon
+
+endfunction
+^^^^^^^^^^^ EndFunctionKeyword
+
+
+
+function real D::foo;
+^^^^^^^^ FunctionKeyword
+         ^^^^ RealKeyword
+              ^ Identifier
+               ^^ DoubleColon
+                 ^^^ Identifier
+                    ^ Semicolon
+
+endfunction
+^^^^^^^^^^^ EndFunctionKeyword
+
+
+
+class G #(type T);
+^^^^^ ClassKeyword
+      ^ Identifier
+        ^ Hash
+         ^ OpenParenthesis
+          ^^^^ TypeKeyword
+               ^ Identifier
+                ^ CloseParenthesis
+                 ^ Semicolon
+
+    extern function T foo;
+    ^^^^^^ ExternKeyword
+           ^^^^^^^^ FunctionKeyword
+                    ^ Identifier
+                      ^^^ Identifier
+                         ^ Semicolon
+
+endclass
+^^^^^^^^ EndClassKeyword
+
+
+
+function G::T G::foo;
+^^^^^^^^ FunctionKeyword
+         ^ Identifier
+          ^^ DoubleColon
+            ^ Identifier
+              ^ Identifier
+               ^^ DoubleColon
+                 ^^^ Identifier
+                    ^ Semicolon
+
+    return 0;
+    ^^^^^^ ReturnKeyword
+           ^ IntegerLiteral
+            ^ Semicolon
+
+endfunction
+^^^^^^^^^^^ EndFunctionKeyword
+
+
+
+class H #(int p);
+^^^^^ ClassKeyword
+      ^ Identifier
+        ^ Hash
+         ^ OpenParenthesis
+          ^^^ IntKeyword
+              ^ Identifier
+               ^ CloseParenthesis
+                ^ Semicolon
+
+    extern function int foo;
+    ^^^^^^ ExternKeyword
+           ^^^^^^^^ FunctionKeyword
+                    ^^^ IntKeyword
+                        ^^^ Identifier
+                           ^ Semicolon
+
+endclass
+^^^^^^^^ EndClassKeyword
+
+
+
+function int H::foo;
+^^^^^^^^ FunctionKeyword
+         ^^^ IntKeyword
+             ^ Identifier
+              ^^ DoubleColon
+                ^^^ Identifier
+                   ^ Semicolon
+
+endfunction
+^^^^^^^^^^^ EndFunctionKeyword
+
+
+
+module m7;
+^^^^^^ ModuleKeyword
+       ^^ Identifier
+         ^ Semicolon
+
+    G #(real) g1;
+    ^ Identifier
+      ^ Hash
+       ^ OpenParenthesis
+        ^^^^ RealKeyword
+            ^ CloseParenthesis
+              ^^ Identifier
+                ^ Semicolon
+
+    G #(int) g2;
+    ^ Identifier
+      ^ Hash
+       ^ OpenParenthesis
+        ^^^ IntKeyword
+           ^ CloseParenthesis
+             ^^ Identifier
+               ^ Semicolon
+
+
+
+    int i = g2.foo();
+    ^^^ IntKeyword
+        ^ Identifier
+          ^ Equals
+            ^^ Identifier
+              ^ Dot
+               ^^^ Identifier
+                  ^ OpenParenthesis
+                   ^ CloseParenthesis
+                    ^ Semicolon
+
+    real r = D::foo();
+    ^^^^ RealKeyword
+         ^ Identifier
+           ^ Equals
+             ^ Identifier
+              ^^ DoubleColon
+                ^^^ Identifier
+                   ^ OpenParenthesis
+                    ^ CloseParenthesis
+                     ^ Semicolon
+
+endmodule
+^^^^^^^^^ EndModuleKeyword
+
+
+
+class A;
+^^^^^ ClassKeyword
+      ^ Identifier
+       ^ Semicolon
+
+    integer i = 1;
+    ^^^^^^^ IntegerKeyword
+            ^ Identifier
+              ^ Equals
+                ^ IntegerLiteral
+                 ^ Semicolon
+
+    integer j = 2;
+    ^^^^^^^ IntegerKeyword
+            ^ Identifier
+              ^ Equals
+                ^ IntegerLiteral
+                 ^ Semicolon
+
+    function integer f();
+    ^^^^^^^^ FunctionKeyword
+             ^^^^^^^ IntegerKeyword
+                     ^ Identifier
+                      ^ OpenParenthesis
+                       ^ CloseParenthesis
+                        ^ Semicolon
+
+        f = i;
+        ^ Identifier
+          ^ Equals
+            ^ Identifier
+             ^ Semicolon
+
+    endfunction
+    ^^^^^^^^^^^ EndFunctionKeyword
+
+endclass
+^^^^^^^^ EndClassKeyword
+
+
+
+class B extends A;
+^^^^^ ClassKeyword
+      ^ Identifier
+        ^^^^^^^ ExtendsKeyword
+                ^ Identifier
+                 ^ Semicolon
+
+    integer i = 2;
+    ^^^^^^^ IntegerKeyword
+            ^ Identifier
+              ^ Equals
+                ^ IntegerLiteral
+                 ^ Semicolon
+
+    function void f();
+    ^^^^^^^^ FunctionKeyword
+             ^^^^ VoidKeyword
+                  ^ Identifier
+                   ^ OpenParenthesis
+                    ^ CloseParenthesis
+                     ^ Semicolon
+
+        i = j;
+        ^ Identifier
+          ^ Equals
+            ^ Identifier
+             ^ Semicolon
+
+        super.i = super.j;
+        ^^^^^ SuperKeyword
+             ^ Dot
+              ^ Identifier
+                ^ Equals
+                  ^^^^^ SuperKeyword
+                       ^ Dot
+                        ^ Identifier
+                         ^ Semicolon
+
+        j = super.f();
+        ^ Identifier
+          ^ Equals
+            ^^^^^ SuperKeyword
+                 ^ Dot
+                  ^ Identifier
+                   ^ OpenParenthesis
+                    ^ CloseParenthesis
+                     ^ Semicolon
+
+        j = this.super.f();
+        ^ Identifier
+          ^ Equals
+            ^^^^ ThisKeyword
+                ^ Dot
+                 ^^^^^ SuperKeyword
+                      ^ Dot
+                       ^ Identifier
+                        ^ OpenParenthesis
+                         ^ CloseParenthesis
+                          ^ Semicolon
+
+    endfunction
+    ^^^^^^^^^^^ EndFunctionKeyword
+
+endclass
+^^^^^^^^ EndClassKeyword
+
+
+
+class C2 extends B;
+^^^^^ ClassKeyword
+      ^^ Identifier
+         ^^^^^^^ ExtendsKeyword
+                 ^ Identifier
+                  ^ Semicolon
+
+    function void g();
+    ^^^^^^^^ FunctionKeyword
+             ^^^^ VoidKeyword
+                  ^ Identifier
+                   ^ OpenParenthesis
+                    ^ CloseParenthesis
+                     ^ Semicolon
+
+        f();
+        ^ Identifier
+         ^ OpenParenthesis
+          ^ CloseParenthesis
+           ^ Semicolon
+
+        i = j + C::j + A::f();
+        ^ Identifier
+          ^ Equals
+            ^ Identifier
+              ^ Plus
+                ^ Identifier
+                 ^^ DoubleColon
+                   ^ Identifier
+                     ^ Plus
+                       ^ Identifier
+                        ^^ DoubleColon
+                          ^ Identifier
+                           ^ OpenParenthesis
+                            ^ CloseParenthesis
+                             ^ Semicolon
+
+    endfunction
+    ^^^^^^^^^^^ EndFunctionKeyword
+
+
+
+    rand bit [63:0] value;
+    ^^^^ RandKeyword
+         ^^^ BitKeyword
+             ^ OpenBracket
+              ^^ IntegerLiteral
+                ^ Colon
+                 ^ IntegerLiteral
+                  ^ CloseBracket
+                    ^^^^^ Identifier
+                         ^ Semicolon
+
+    rand logic q;
+    ^^^^ RandKeyword
+         ^^^^^ LogicKeyword
+               ^ Identifier
+                ^ Semicolon
+
+    constraint value_c {
+    ^^^^^^^^^^ ConstraintKeyword
+               ^^^^^^^ Identifier
+                       ^ OpenBrace
+
+        value[63] dist {0 :/ 70, 1 :/ 30};
+        ^^^^^ Identifier
+             ^ OpenBracket
+              ^^ IntegerLiteral
+                ^ CloseBracket
+                  ^^^^ DistKeyword
+                       ^ OpenBrace
+                        ^ IntegerLiteral
+                          ^^ ColonSlash
+                             ^^ IntegerLiteral
+                               ^ Comma
+                                 ^ IntegerLiteral
+                                   ^^ ColonSlash
+                                      ^^ IntegerLiteral
+                                        ^ CloseBrace
+                                         ^ Semicolon
+
+        value[0] == 1'b0;
+        ^^^^^ Identifier
+             ^ OpenBracket
+              ^ IntegerLiteral
+               ^ CloseBracket
+                 ^^ DoubleEquals
+                    ^ IntegerLiteral
+                     ^^ IntegerBase
+                       ^ IntegerLiteral
+                        ^ Semicolon
+
+        value[15:8] inside {
+        ^^^^^ Identifier
+             ^ OpenBracket
+              ^^ IntegerLiteral
+                ^ Colon
+                 ^ IntegerLiteral
+                  ^ CloseBracket
+                    ^^^^^^ InsideKeyword
+                           ^ OpenBrace
+
+            8'h0,
+            ^ IntegerLiteral
+             ^^ IntegerBase
+               ^ IntegerLiteral
+                ^ Comma
+
+            8'hF
+            ^ IntegerLiteral
+             ^^ IntegerBase
+               ^ IntegerLiteral
+
+        };
+        ^ CloseBrace
+         ^ Semicolon
+
+        solve value before q;
+        ^^^^^ SolveKeyword
+              ^^^^^ Identifier
+                    ^^^^^^ BeforeKeyword
+                           ^ Identifier
+                            ^ Semicolon
+
+        soft value[3:1] > 1;
+        ^^^^ SoftKeyword
+             ^^^^^ Identifier
+                  ^ OpenBracket
+                   ^ IntegerLiteral
+                    ^ Colon
+                     ^ IntegerLiteral
+                      ^ CloseBracket
+                        ^ GreaterThan
+                          ^ IntegerLiteral
+                           ^ Semicolon
+
+        q -> { value[4] == 0; }
+        ^ Identifier
+          ^^ MinusArrow
+             ^ OpenBrace
+               ^^^^^ Identifier
+                    ^ OpenBracket
+                     ^ IntegerLiteral
+                      ^ CloseBracket
+                        ^^ DoubleEquals
+                           ^ IntegerLiteral
+                            ^ Semicolon
+                              ^ CloseBrace
+
+        if (q) { foreach (value[b]) { value[b] == 0; } } else { disable soft value; }
+        ^^ IfKeyword
+           ^ OpenParenthesis
+            ^ Identifier
+             ^ CloseParenthesis
+               ^ OpenBrace
+                 ^^^^^^^ ForeachKeyword
+                         ^ OpenParenthesis
+                          ^^^^^ Identifier
+                               ^ OpenBracket
+                                ^ Identifier
+                                 ^ CloseBracket
+                                  ^ CloseParenthesis
+                                    ^ OpenBrace
+                                      ^^^^^ Identifier
+                                           ^ OpenBracket
+                                            ^ Identifier
+                                             ^ CloseBracket
+                                               ^^ DoubleEquals
+                                                  ^ IntegerLiteral
+                                                   ^ Semicolon
+                                                     ^ CloseBrace
+                                                       ^ CloseBrace
+                                                         ^^^^ ElseKeyword
+                                                              ^ OpenBrace
+                                                                ^^^^^^^ DisableKeyword
+                                                                        ^^^^ SoftKeyword
+                                                                             ^^^^^ Identifier
+                                                                                  ^ Semicolon
+                                                                                    ^ CloseBrace
+
+    }
+    ^ CloseBrace
+
+endclass
+^^^^^^^^ EndClassKeyword
+
+
+
+module m6;
+^^^^^^ ModuleKeyword
+       ^^ Identifier
+         ^ Semicolon
+
+    A a = new;
+    ^ Identifier
+      ^ Identifier
+        ^ Equals
+          ^^^ NewKeyword
+             ^ Semicolon
+
+    A b1 = B::new;
+    ^ Identifier
+      ^^ Identifier
+         ^ Equals
+           ^ Identifier
+            ^^ DoubleColon
+              ^^^ NewKeyword
+                 ^ Semicolon
+
+    B b2 = new;
+    ^ Identifier
+      ^^ Identifier
+         ^ Equals
+           ^^^ NewKeyword
+              ^ Semicolon
+
+    C2 c = new;
+    ^^ Identifier
+       ^ Identifier
+         ^ Equals
+           ^^^ NewKeyword
+              ^ Semicolon
+
+    int depth;
+    ^^^ IntKeyword
+        ^^^^^ Identifier
+             ^ Semicolon
+
+    integer i = b1.f();
+    ^^^^^^^ IntegerKeyword
+            ^ Identifier
+              ^ Equals
+                ^^ Identifier
+                  ^ Dot
+                   ^ Identifier
+                    ^ OpenParenthesis
+                     ^ CloseParenthesis
+                      ^ Semicolon
+
+    initial begin
+    ^^^^^^^ InitialKeyword
+            ^^^^^ BeginKeyword
+
+        b2.f();
+        ^^ Identifier
+          ^ Dot
+           ^ Identifier
+            ^ OpenParenthesis
+             ^ CloseParenthesis
+              ^ Semicolon
+
+        a = b2;
+        ^ Identifier
+          ^ Equals
+            ^^ Identifier
+              ^ Semicolon
+
+        c.i = c.j;
+        ^ Identifier
+         ^ Dot
+          ^ Identifier
+            ^ Equals
+              ^ Identifier
+               ^ Dot
+                ^ Identifier
+                 ^ Semicolon
+
+
+
+        randsequence(main)
+        ^^^^^^^^^^^^ RandSequenceKeyword
+                    ^ OpenParenthesis
+                     ^^^^ Identifier
+                         ^ CloseParenthesis
+
+            main : first second;
+            ^^^^ Identifier
+                 ^ Colon
+                   ^^^^^ Identifier
+                         ^^^^^^ Identifier
+                               ^ Semicolon
+
+            first : add | dec := (1 + 1);
+            ^^^^^ Identifier
+                  ^ Colon
+                    ^^^ Identifier
+                        ^ Or
+                          ^^^ Identifier
+                              ^^ ColonEquals
+                                 ^ OpenParenthesis
+                                  ^ IntegerLiteral
+                                    ^ Plus
+                                      ^ IntegerLiteral
+                                       ^ CloseParenthesis
+                                        ^ Semicolon
+
+            second : repeat($urandom_range(2, 6)) first;
+            ^^^^^^ Identifier
+                   ^ Colon
+                     ^^^^^^ RepeatKeyword
+                           ^ OpenParenthesis
+                            ^^^^^^^^^^^^^^ SystemIdentifier
+                                          ^ OpenParenthesis
+                                           ^ IntegerLiteral
+                                            ^ Comma
+                                              ^ IntegerLiteral
+                                               ^ CloseParenthesis
+                                                ^ CloseParenthesis
+                                                  ^^^^^ Identifier
+                                                       ^ Semicolon
+
+            add : if (depth < 2) first else second;
+            ^^^ Identifier
+                ^ Colon
+                  ^^ IfKeyword
+                     ^ OpenParenthesis
+                      ^^^^^ Identifier
+                            ^ LessThan
+                              ^ IntegerLiteral
+                               ^ CloseParenthesis
+                                 ^^^^^ Identifier
+                                       ^^^^ ElseKeyword
+                                            ^^^^^^ Identifier
+                                                  ^ Semicolon
+
+            dec : case (depth & 7)
+            ^^^ Identifier
+                ^ Colon
+                  ^^^^ CaseKeyword
+                       ^ OpenParenthesis
+                        ^^^^^ Identifier
+                              ^ And
+                                ^ IntegerLiteral
+                                 ^ CloseParenthesis
+
+                0 : add;
+                ^ IntegerLiteral
+                  ^ Colon
+                    ^^^ Identifier
+                       ^ Semicolon
+
+                1, 2 : dec;
+                ^ IntegerLiteral
+                 ^ Comma
+                   ^ IntegerLiteral
+                     ^ Colon
+                       ^^^ Identifier
+                          ^ Semicolon
+
+                default : first;
+                ^^^^^^^ DefaultKeyword
+                        ^ Colon
+                          ^^^^^ Identifier
+                               ^ Semicolon
+
+            endcase;
+            ^^^^^^^ EndCaseKeyword
+                   ^ Semicolon
+
+            third : rand join first second;
+            ^^^^^ Identifier
+                  ^ Colon
+                    ^^^^ RandKeyword
+                         ^^^^ JoinKeyword
+                              ^^^^^ Identifier
+                                    ^^^^^^ Identifier
+                                          ^ Semicolon
+
+            fourth(string s = "done") : { if (depth) break; };
+            ^^^^^^ Identifier
+                  ^ OpenParenthesis
+                   ^^^^^^ StringKeyword
+                          ^ Identifier
+                            ^ Equals
+                              ^^^^^^ StringLiteral
+                                    ^ CloseParenthesis
+                                      ^ Colon
+                                        ^ OpenBrace
+                                          ^^ IfKeyword
+                                             ^ OpenParenthesis
+                                              ^^^^^ Identifier
+                                                   ^ CloseParenthesis
+                                                     ^^^^^ BreakKeyword
+                                                          ^ Semicolon
+                                                            ^ CloseBrace
+                                                             ^ Semicolon
+
+        endsequence
+        ^^^^^^^^^^^ EndSequenceKeyword
+
+    end
+    ^^^ EndKeyword
+
+endmodule
+^^^^^^^^^ EndModuleKeyword
+
+
+
+class C3;
+^^^^^ ClassKeyword
+      ^^ Identifier
+        ^ Semicolon
+
+    enum {red, green, blue} color;
+    ^^^^ EnumKeyword
+         ^ OpenBrace
+          ^^^ Identifier
+             ^ Comma
+               ^^^^^ Identifier
+                    ^ Comma
+                      ^^^^ Identifier
+                          ^ CloseBrace
+                            ^^^^^ Identifier
+                                 ^ Semicolon
+
+    bit [3:0] pixel_adr, pixel_offset, pixel_hue;
+    ^^^ BitKeyword
+        ^ OpenBracket
+         ^ IntegerLiteral
+          ^ Colon
+           ^ IntegerLiteral
+            ^ CloseBracket
+              ^^^^^^^^^ Identifier
+                       ^ Comma
+                         ^^^^^^^^^^^^ Identifier
+                                     ^ Comma
+                                       ^^^^^^^^^ Identifier
+                                                ^ Semicolon
+
+    logic clk, x, y, c;
+    ^^^^^ LogicKeyword
+          ^^^ Identifier
+             ^ Comma
+               ^ Identifier
+                ^ Comma
+                  ^ Identifier
+                   ^ Comma
+                     ^ Identifier
+                      ^ Semicolon
+
+
+
+    covergroup g2 (string instComment) @(posedge clk);
+    ^^^^^^^^^^ CoverGroupKeyword
+               ^^ Identifier
+                  ^ OpenParenthesis
+                   ^^^^^^ StringKeyword
+                          ^^^^^^^^^^^ Identifier
+                                     ^ CloseParenthesis
+                                       ^ At
+                                        ^ OpenParenthesis
+                                         ^^^^^^^ PosEdgeKeyword
+                                                 ^^^ Identifier
+                                                    ^ CloseParenthesis
+                                                     ^ Semicolon
+
+        Offset: coverpoint pixel_offset;
+        ^^^^^^ Identifier
+              ^ Colon
+                ^^^^^^^^^^ CoverPointKeyword
+                           ^^^^^^^^^^^^ Identifier
+                                       ^ Semicolon
+
+        Hue: coverpoint pixel_hue;
+        ^^^ Identifier
+           ^ Colon
+             ^^^^^^^^^^ CoverPointKeyword
+                        ^^^^^^^^^ Identifier
+                                 ^ Semicolon
+
+        AxC: cross color, pixel_adr;
+        ^^^ Identifier
+           ^ Colon
+             ^^^^^ CrossKeyword
+                   ^^^^^ Identifier
+                        ^ Comma
+                          ^^^^^^^^^ Identifier
+                                   ^ Semicolon
+
+        all: cross color, Hue, Offset;
+        ^^^ Identifier
+           ^ Colon
+             ^^^^^ CrossKeyword
+                   ^^^^^ Identifier
+                        ^ Comma
+                          ^^^ Identifier
+                             ^ Comma
+                               ^^^^^^ Identifier
+                                     ^ Semicolon
+
+
+
+        option.comment = instComment;
+        ^^^^^^ Identifier
+              ^ Dot
+               ^^^^^^^ Identifier
+                       ^ Equals
+                         ^^^^^^^^^^^ Identifier
+                                    ^ Semicolon
+
+
+
+        e: coverpoint x iff (clk) {
+        ^ Identifier
+         ^ Colon
+           ^^^^^^^^^^ CoverPointKeyword
+                      ^ Identifier
+                        ^^^ IffKeyword
+                            ^ OpenParenthesis
+                             ^^^ Identifier
+                                ^ CloseParenthesis
+                                  ^ OpenBrace
+
+            option.weight = 2;
+            ^^^^^^ Identifier
+                  ^ Dot
+                   ^^^^^^ Identifier
+                          ^ Equals
+                            ^ IntegerLiteral
+                             ^ Semicolon
+
+            wildcard bins a = { [0:63],65 };
+            ^^^^^^^^ WildcardKeyword
+                     ^^^^ BinsKeyword
+                          ^ Identifier
+                            ^ Equals
+                              ^ OpenBrace
+                                ^ OpenBracket
+                                 ^ IntegerLiteral
+                                  ^ Colon
+                                   ^^ IntegerLiteral
+                                     ^ CloseBracket
+                                      ^ Comma
+                                       ^^ IntegerLiteral
+                                          ^ CloseBrace
+                                           ^ Semicolon
+
+            bins b[] = { [127:150],[148:191] }; // note overlapping values
+            ^^^^ BinsKeyword
+                 ^ Identifier
+                  ^ OpenBracket
+                   ^ CloseBracket
+                     ^ Equals
+                       ^ OpenBrace
+                         ^ OpenBracket
+                          ^^^ IntegerLiteral
+                             ^ Colon
+                              ^^^ IntegerLiteral
+                                 ^ CloseBracket
+                                  ^ Comma
+                                   ^ OpenBracket
+                                    ^^^ IntegerLiteral
+                                       ^ Colon
+                                        ^^^ IntegerLiteral
+                                           ^ CloseBracket
+                                             ^ CloseBrace
+                                              ^ Semicolon
+
+            bins c[] = { 200,201,202 };
+            ^^^^ BinsKeyword
+                 ^ Identifier
+                  ^ OpenBracket
+                   ^ CloseBracket
+                     ^ Equals
+                       ^ OpenBrace
+                         ^^^ IntegerLiteral
+                            ^ Comma
+                             ^^^ IntegerLiteral
+                                ^ Comma
+                                 ^^^ IntegerLiteral
+                                     ^ CloseBrace
+                                      ^ Semicolon
+
+            bins d = { [1000:$] };
+            ^^^^ BinsKeyword
+                 ^ Identifier
+                   ^ Equals
+                     ^ OpenBrace
+                       ^ OpenBracket
+                        ^^^^ IntegerLiteral
+                            ^ Colon
+                             ^ Dollar
+                              ^ CloseBracket
+                                ^ CloseBrace
+                                 ^ Semicolon
+
+            bins others[] = default;
+            ^^^^ BinsKeyword
+                 ^^^^^^ Identifier
+                       ^ OpenBracket
+                        ^ CloseBracket
+                          ^ Equals
+                            ^^^^^^^ DefaultKeyword
+                                   ^ Semicolon
+
+
+
+            bins sa = (4 => 5 => 6), ([7:9],10 => 11,12);
+            ^^^^ BinsKeyword
+                 ^^ Identifier
+                    ^ Equals
+                      ^ OpenParenthesis
+                       ^ IntegerLiteral
+                         ^^ EqualsArrow
+                            ^ IntegerLiteral
+                              ^^ EqualsArrow
+                                 ^ IntegerLiteral
+                                  ^ CloseParenthesis
+                                   ^ Comma
+                                     ^ OpenParenthesis
+                                      ^ OpenBracket
+                                       ^ IntegerLiteral
+                                        ^ Colon
+                                         ^ IntegerLiteral
+                                          ^ CloseBracket
+                                           ^ Comma
+                                            ^^ IntegerLiteral
+                                               ^^ EqualsArrow
+                                                  ^^ IntegerLiteral
+                                                    ^ Comma
+                                                     ^^ IntegerLiteral
+                                                       ^ CloseParenthesis
+                                                        ^ Semicolon
+
+            bins sb[] = (12 => 3 [* 1]);
+            ^^^^ BinsKeyword
+                 ^^ Identifier
+                   ^ OpenBracket
+                    ^ CloseBracket
+                      ^ Equals
+                        ^ OpenParenthesis
+                         ^^ IntegerLiteral
+                            ^^ EqualsArrow
+                               ^ IntegerLiteral
+                                 ^ OpenBracket
+                                  ^ Star
+                                    ^ IntegerLiteral
+                                     ^ CloseBracket
+                                      ^ CloseParenthesis
+                                       ^ Semicolon
+
+            bins sc = (12 => 3 [-> 1]);
+            ^^^^ BinsKeyword
+                 ^^ Identifier
+                    ^ Equals
+                      ^ OpenParenthesis
+                       ^^ IntegerLiteral
+                          ^^ EqualsArrow
+                             ^ IntegerLiteral
+                               ^ OpenBracket
+                                ^^ MinusArrow
+                                   ^ IntegerLiteral
+                                    ^ CloseBracket
+                                     ^ CloseParenthesis
+                                      ^ Semicolon
+
+            bins sd = (12 => 3 [= 1:2]);
+            ^^^^ BinsKeyword
+                 ^^ Identifier
+                    ^ Equals
+                      ^ OpenParenthesis
+                       ^^ IntegerLiteral
+                          ^^ EqualsArrow
+                             ^ IntegerLiteral
+                               ^ OpenBracket
+                                ^ Equals
+                                  ^ IntegerLiteral
+                                   ^ Colon
+                                    ^ IntegerLiteral
+                                     ^ CloseBracket
+                                      ^ CloseParenthesis
+                                       ^ Semicolon
+
+        }
+        ^ CloseBrace
+
+        cross e, y {
+        ^^^^^ CrossKeyword
+              ^ Identifier
+               ^ Comma
+                 ^ Identifier
+                   ^ OpenBrace
+
+            option.weight = c;
+            ^^^^^^ Identifier
+                  ^ Dot
+                   ^^^^^^ Identifier
+                          ^ Equals
+                            ^ Identifier
+                             ^ Semicolon
+
+            bins one = '{ '{1,2}, '{3,4}, '{5,6} };
+            ^^^^ BinsKeyword
+                 ^^^ Identifier
+                     ^ Equals
+                       ^^ ApostropheOpenBrace
+                          ^^ ApostropheOpenBrace
+                            ^ IntegerLiteral
+                             ^ Comma
+                              ^ IntegerLiteral
+                               ^ CloseBrace
+                                ^ Comma
+                                  ^^ ApostropheOpenBrace
+                                    ^ IntegerLiteral
+                                     ^ Comma
+                                      ^ IntegerLiteral
+                                       ^ CloseBrace
+                                        ^ Comma
+                                          ^^ ApostropheOpenBrace
+                                            ^ IntegerLiteral
+                                             ^ Comma
+                                              ^ IntegerLiteral
+                                               ^ CloseBrace
+                                                 ^ CloseBrace
+                                                  ^ Semicolon
+
+            ignore_bins others = (!binsof(e.a) || !binsof(y) intersect {1}) with (e > 10);
+            ^^^^^^^^^^^ IgnoreBinsKeyword
+                        ^^^^^^ Identifier
+                               ^ Equals
+                                 ^ OpenParenthesis
+                                  ^ Exclamation
+                                   ^^^^^^ BinsOfKeyword
+                                         ^ OpenParenthesis
+                                          ^ Identifier
+                                           ^ Dot
+                                            ^ Identifier
+                                             ^ CloseParenthesis
+                                               ^^ DoubleOr
+                                                  ^ Exclamation
+                                                   ^^^^^^ BinsOfKeyword
+                                                         ^ OpenParenthesis
+                                                          ^ Identifier
+                                                           ^ CloseParenthesis
+                                                             ^^^^^^^^^ IntersectKeyword
+                                                                       ^ OpenBrace
+                                                                        ^ IntegerLiteral
+                                                                         ^ CloseBrace
+                                                                          ^ CloseParenthesis
+                                                                            ^^^^ WithKeyword
+                                                                                 ^ OpenParenthesis
+                                                                                  ^ Identifier
+                                                                                    ^ GreaterThan
+                                                                                      ^^ IntegerLiteral
+                                                                                        ^ CloseParenthesis
+                                                                                         ^ Semicolon
+
+        }
+        ^ CloseBrace
+
+        b: cross y, x;
+        ^ Identifier
+         ^ Colon
+           ^^^^^ CrossKeyword
+                 ^ Identifier
+                  ^ Comma
+                    ^ Identifier
+                     ^ Semicolon
+
+    endgroup
+    ^^^^^^^^ EndGroupKeyword
+
+endclass
+^^^^^^^^ EndClassKeyword
+
+
+
+module m9;
+^^^^^^ ModuleKeyword
+       ^^ Identifier
+         ^ Semicolon
+
+    logic [3:0] a = {4 {1'b1}};
+    ^^^^^ LogicKeyword
+          ^ OpenBracket
+           ^ IntegerLiteral
+            ^ Colon
+             ^ IntegerLiteral
+              ^ CloseBracket
+                ^ Identifier
+                  ^ Equals
+                    ^ OpenBrace
+                     ^ IntegerLiteral
+                       ^ OpenBrace
+                        ^ IntegerLiteral
+                         ^^ IntegerBase
+                           ^ IntegerLiteral
+                            ^ CloseBrace
+                             ^ CloseBrace
+                              ^ Semicolon
+
+endmodule
+^^^^^^^^^ EndModuleKeyword
+
+
+
+module m10;
+^^^^^^ ModuleKeyword
+       ^^^ Identifier
+          ^ Semicolon
+
+    byte stream[$];
+    ^^^^ ByteKeyword
+         ^^^^^^ Identifier
+               ^ OpenBracket
+                ^ Dollar
+                 ^ CloseBracket
+                  ^ Semicolon
+
+    class Packet;
+    ^^^^^ ClassKeyword
+          ^^^^^^ Identifier
+                ^ Semicolon
+
+        rand int header;
+        ^^^^ RandKeyword
+             ^^^ IntKeyword
+                 ^^^^^^ Identifier
+                       ^ Semicolon
+
+        rand int len;
+        ^^^^ RandKeyword
+             ^^^ IntKeyword
+                 ^^^ Identifier
+                    ^ Semicolon
+
+        rand byte payload[];
+        ^^^^ RandKeyword
+             ^^^^ ByteKeyword
+                  ^^^^^^^ Identifier
+                         ^ OpenBracket
+                          ^ CloseBracket
+                           ^ Semicolon
+
+        int crc;
+        ^^^ IntKeyword
+            ^^^ Identifier
+               ^ Semicolon
+
+        constraint G { len > 1; payload.size == len ; }
+        ^^^^^^^^^^ ConstraintKeyword
+                   ^ Identifier
+                     ^ OpenBrace
+                       ^^^ Identifier
+                           ^ GreaterThan
+                             ^ IntegerLiteral
+                              ^ Semicolon
+                                ^^^^^^^ Identifier
+                                       ^ Dot
+                                        ^^^^ Identifier
+                                             ^^ DoubleEquals
+                                                ^^^ Identifier
+                                                    ^ Semicolon
+                                                      ^ CloseBrace
+
+        function void post_randomize; crc = payload.sum; endfunction
+        ^^^^^^^^ FunctionKeyword
+                 ^^^^ VoidKeyword
+                      ^^^^^^^^^^^^^^ Identifier
+                                    ^ Semicolon
+                                      ^^^ Identifier
+                                          ^ Equals
+                                            ^^^^^^^ Identifier
+                                                   ^ Dot
+                                                    ^^^ Identifier
+                                                       ^ Semicolon
+                                                         ^^^^^^^^^^^ EndFunctionKeyword
+
+    endclass
+    ^^^^^^^^ EndClassKeyword
+
+
+
+    initial begin
+    ^^^^^^^ InitialKeyword
+            ^^^^^ BeginKeyword
+
+        byte q[$];
+        ^^^^ ByteKeyword
+             ^ Identifier
+              ^ OpenBracket
+               ^ Dollar
+                ^ CloseBracket
+                 ^ Semicolon
+
+        automatic Packet p = new;
+        ^^^^^^^^^ AutomaticKeyword
+                  ^^^^^^ Identifier
+                         ^ Identifier
+                           ^ Equals
+                             ^^^ NewKeyword
+                                ^ Semicolon
+
+        {<< byte{ p.header, p.len, p.payload with [0 +: p.len], p.crc }} = stream;
+        ^ OpenBrace
+         ^^ LeftShift
+            ^^^^ ByteKeyword
+                ^ OpenBrace
+                  ^ Identifier
+                   ^ Dot
+                    ^^^^^^ Identifier
+                          ^ Comma
+                            ^ Identifier
+                             ^ Dot
+                              ^^^ Identifier
+                                 ^ Comma
+                                   ^ Identifier
+                                    ^ Dot
+                                     ^^^^^^^ Identifier
+                                             ^^^^ WithKeyword
+                                                  ^ OpenBracket
+                                                   ^ IntegerLiteral
+                                                     ^^ PlusColon
+                                                        ^ Identifier
+                                                         ^ Dot
+                                                          ^^^ Identifier
+                                                             ^ CloseBracket
+                                                              ^ Comma
+                                                                ^ Identifier
+                                                                 ^ Dot
+                                                                  ^^^ Identifier
+                                                                      ^ CloseBrace
+                                                                       ^ CloseBrace
+                                                                         ^ Equals
+                                                                           ^^^^^^ Identifier
+                                                                                 ^ Semicolon
+
+        stream = stream[ $bits(p) / 8 : $ ];
+        ^^^^^^ Identifier
+               ^ Equals
+                 ^^^^^^ Identifier
+                       ^ OpenBracket
+                         ^^^^^ SystemIdentifier
+                              ^ OpenParenthesis
+                               ^ Identifier
+                                ^ CloseParenthesis
+                                  ^ Slash
+                                    ^ IntegerLiteral
+                                      ^ Colon
+                                        ^ Dollar
+                                          ^ CloseBracket
+                                           ^ Semicolon
+
+    end
+    ^^^ EndKeyword
+
+endmodule
+^^^^^^^^^ EndModuleKeyword

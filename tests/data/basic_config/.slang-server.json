@@ -1,0 +1,11 @@
+{
+  "flags": "-Isome/include/path",
+  "includeGlobs": [
+    "fpga/.../*.sv",
+    "fpga/.../*.v",
+    "fpga/.../*.svh",
+    "tests/.../*.sv",
+    "tests/.../*.svh",
+    "tests/.../*.v"
+  ]
+}

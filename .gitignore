@@ -1,0 +1,31 @@
+# Python ignores.
+.pytest_cache/
+.venv/
+venv/
+.cache/
+.DS_Store
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+_version.py
+__init__.pyi
+
+# C and CMake ignores.
+build/
+install/
+compile_commands.json
+CMakeSettings.json
+*egg-info/
+cmake-build-*/
+prefix/
+CMakeLists.txt.user
+CMakeUserPresets.json
+.ccls
+
+.idea/
+.vs/
+*.code-workspace
+
+# Claude and Slang
+*.local.json

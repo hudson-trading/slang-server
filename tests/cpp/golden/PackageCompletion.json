@@ -1,0 +1,116 @@
+[
+  [
+    {
+      "label": "PKG_PARAM",
+      "labelDetails": {
+        "detail": " int"
+      },
+      "kind": "TypeParameter",
+      "documentation": {
+        "kind": "markdown",
+        "value": "````systemverilog\nparameter int PKG_PARAM = 10\n````"
+      },
+      "filterText": "PKG_PARAM"
+    },
+    {
+      "label": "my_struct_t",
+      "labelDetails": {
+        "detail": " UnpackedStructType"
+      },
+      "kind": "Struct",
+      "documentation": {
+        "kind": "markdown",
+        "value": "````systemverilog\ntypedef struct {\n    int field1;\n    logic field2;\n} my_struct_t;\n````"
+      },
+      "filterText": "my_struct_t"
+    },
+    {
+      "label": "VALUE_A",
+      "labelDetails": {
+        "detail": " EnumValue"
+      },
+      "kind": "EnumMember",
+      "filterText": "VALUE_A"
+    },
+    {
+      "label": "VALUE_B",
+      "labelDetails": {
+        "detail": " EnumValue"
+      },
+      "kind": "EnumMember",
+      "filterText": "VALUE_B"
+    },
+    {
+      "label": "my_enum_t",
+      "labelDetails": {
+        "detail": " EnumType"
+      },
+      "kind": "Enum",
+      "documentation": {
+        "kind": "markdown",
+        "value": "````systemverilog\ntypedef enum {\n    VALUE_A,\n    VALUE_B\n} my_enum_t;\n````"
+      },
+      "filterText": "my_enum_t"
+    },
+    {
+      "label": "get_value",
+      "labelDetails": {
+        "detail": " function"
+      },
+      "kind": "Function",
+      "documentation": {
+        "kind": "markdown",
+        "value": "````systemverilog\nfunction int get_value();\n    return 42;\nendfunction\n````"
+      },
+      "filterText": "get_value"
+    },
+    {
+      "label": "global_var",
+      "labelDetails": {
+        "detail": " int"
+      },
+      "kind": "Variable",
+      "documentation": {
+        "kind": "markdown",
+        "value": "````systemverilog\nint global_var = 5;\n````"
+      },
+      "filterText": "global_var"
+    },
+    {
+      "label": "port_signal",
+      "labelDetails": {
+        "detail": " logic [7:0]"
+      },
+      "kind": "Variable",
+      "documentation": {
+        "kind": "markdown",
+        "value": "````systemverilog\nlogic [7:0] port_signal;\n````"
+      },
+      "filterText": "port_signal"
+    },
+    {
+      "label": "i",
+      "labelDetails": {
+        "detail": " "
+      },
+      "kind": "Property",
+      "documentation": {
+        "kind": "markdown",
+        "value": "````systemverilog\ni\n````"
+      },
+      "filterText": "i"
+    },
+    {
+      "label": "gen_block",
+      "labelDetails": {
+        "detail": " "
+      },
+      "kind": "Snippet",
+      "documentation": {
+        "kind": "markdown",
+        "value": "````systemverilog\nfor (i = 0; i < 4; i++) begin : gen_block\n    logic [7:0] gen_var;\nend\n````"
+      },
+      "filterText": "gen_block"
+    }
+  ]
+]

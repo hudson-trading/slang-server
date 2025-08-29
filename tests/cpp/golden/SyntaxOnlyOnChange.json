@@ -1,0 +1,66 @@
+[
+  {
+    "afterChange": [
+      {
+        "range": {
+          "start": {
+            "line": 3,
+            "character": 12
+          },
+          "end": {
+            "line": 3,
+            "character": 18
+          }
+        },
+        "severity": "Error",
+        "message": "use of undeclared identifier 'blargh'"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 4,
+            "character": 15
+          },
+          "end": {
+            "line": 4,
+            "character": 16
+          }
+        },
+        "severity": "Error",
+        "message": "expected ';'"
+      }
+    ]
+  },
+  {
+    "afterSave": [
+      {
+        "range": {
+          "start": {
+            "line": 3,
+            "character": 12
+          },
+          "end": {
+            "line": 3,
+            "character": 18
+          }
+        },
+        "severity": "Error",
+        "message": "use of undeclared identifier 'blargh'"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 4,
+            "character": 15
+          },
+          "end": {
+            "line": 4,
+            "character": 16
+          }
+        },
+        "severity": "Error",
+        "message": "expected ';'"
+      }
+    ]
+  }
+]

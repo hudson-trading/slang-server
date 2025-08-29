@@ -1,0 +1,205 @@
+
+// Comprehensive macro test file covering various macro scenarios
+
+// Based on test cases from tests/unittests/parsing/DiagnosticTests.cpp
+
+
+
+// Basic macro definitions
+
+`define SIMPLE_MACRO 42
+
+`define FUNC_MACRO(x) (x + 1)
+
+`define TWO_ARG_MACRO(a, b) (a + b)
+
+
+
+// Nested macro definitions
+
+`define FOO(blah) blah
+
+`define BAR(blah) `FOO(blah)
+
+`define BAZ(xy) xy
+
+
+
+// More complex nested macros
+
+`define COMPLEX_FOO(blah, flurb) blah+`BAZ(flurb)
+
+`define COMPLEX_BAR(blah, flurb) `COMPLEX_FOO(blah, flurb)
+
+
+
+// Macros that create syntax issues
+
+`define INCOMPLETE_PAREN (i
+
+`define CLOSING_PAREN 1)
+
+`define COMBINED_MACRO `INCOMPLETE_PAREN + `CLOSING_PAREN ()
+
+
+
+// Macro with concatenation and pass-through
+
+`define PASS(asdf, barr) asdf barr
+
+`define PASS_SINGLE(asdf) asdf
+
+
+
+`define DECLARE_INT(name, val) localparam int name = val;
+
+
+
+`define INFO(msg) $display("Info: %s", msg);
+
+
+
+// Line directive testing
+
+// TODO: fix the test handling of this, although this is typically for generated code
+
+// `line 100 "macro_test.svh" 0
+
+
+
+module test;
+       ^^^^ Sym test : ModuleDeclaration
+
+
+
+    // Basic struct for testing member access
+
+    struct {
+
+        int i;
+
+        logic [7:0] data;
+
+    } test_struct;
+      ^^^^^^^^^^^ Sym test_struct : Declarator
+
+
+
+    // Variables for testing
+
+    int test_var;
+        ^^^^^^^^ Sym test_var : Declarator
+
+    logic [31:0] bus_signal;
+                 ^^^^^^^^^^ Sym bus_signal : Declarator
+
+
+
+    // Test simple macro usage
+
+    localparam int SIMPLE_VAL = `SIMPLE_MACRO;
+                   ^^^^^^^^^^ Sym SIMPLE_VAL : Declarator
+                                ^^^^^^^^^^^^^ Ref -> `// Comprehensive macro test file covering various macro scenarios\n\// Based on test cases from tests/unittests/parsing/DiagnosticTests.cpp\n\// Basic macro definitions\n\`define SIMPLE_MACRO 42`
+
+
+
+    // Test function macro
+
+    localparam int FUNC_VAL = `FUNC_MACRO(10);
+                   ^^^^^^^^ Sym FUNC_VAL : Declarator
+                              ^^^^^^^^^^^ Ref -> ``define FUNC_MACRO(x) (x + 1)`
+
+
+
+    // Test two argument macro
+
+    localparam int TWO_ARG_VAL = `TWO_ARG_MACRO(5, 7);
+                   ^^^^^^^^^^^ Sym TWO_ARG_VAL : Declarator
+                                 ^^^^^^^^^^^^^^ Ref -> ``define TWO_ARG_MACRO(a, b) (a + b)`
+
+
+
+    // Test definition behind macro
+
+    `DECLARE_INT(some_int, 1)
+    ^^^^^^^^^^^^ Ref -> ``define DECLARE_INT(name, val) localparam int name = val;`
+                 ^^^^^^^^ Ref -> `// Test definition behind macro\n\localparam int some_int = 1`\n\ Expanded from\n\ ``DECLARE_INT(some_int, 1)`
+
+    `DECLARE_INT(other_int, 2)
+    ^^^^^^^^^^^^ Ref -> ``define DECLARE_INT(name, val) localparam int name = val;`
+                 ^^^^^^^^^ Ref -> `localparam int other_int = 2`\n\ Expanded from\n\ ``DECLARE_INT(other_int, 2)`
+
+
+
+    `INFO(some_int + other_int)
+
+
+
+    localparam int x = some_int;
+                   ^ Sym x : Declarator
+                       ^^^^^^^^ Ref -> `// Test definition behind macro\n\localparam int some_int = 1`\n\ Expanded from\n\ ``DECLARE_INT(some_int, 1)`
+
+
+
+
+
+    // Test macro in generate blocks
+
+    genvar i;
+           ^ Sym i : IdentifierName
+
+    generate
+
+        for (i = 0; i < `SIMPLE_MACRO; i++) begin : gen_block
+                    ^ Ref -> `i`
+                        ^^^^^^^^^^^^^ Ref -> `// Comprehensive macro test file covering various macro scenarios\n\// Based on test cases from tests/unittests/parsing/DiagnosticTests.cpp\n\// Basic macro definitions\n\`define SIMPLE_MACRO 42`
+                                       ^ Ref -> `i`
+                                                    ^^^^^^^^^ Sym gen_block : LoopGenerate
+
+            logic [`FUNC_MACRO(7):0] gen_signal;
+                   ^^^^^^^^^^^ Ref -> ``define FUNC_MACRO(x) (x + 1)`
+                                     ^^^^^^^^^^ Sym gen_signal : Declarator
+
+        end
+
+    endgenerate
+
+
+
+    // Test macro in always blocks
+
+    always_comb begin
+
+        case (test_var)
+              ^^^^^^^^ Ref -> `// Variables for testing\n\int test_var;`
+
+            `SIMPLE_MACRO: bus_signal = `TWO_ARG_MACRO(1, 2);
+            ^^^^^^^^^^^^^ Ref -> `// Comprehensive macro test file covering various macro scenarios\n\// Based on test cases from tests/unittests/parsing/DiagnosticTests.cpp\n\// Basic macro definitions\n\`define SIMPLE_MACRO 42`
+                           ^^^^^^^^^^ Ref -> `logic [31:0] bus_signal;`
+                                        ^^^^^^^^^^^^^^ Ref -> ``define TWO_ARG_MACRO(a, b) (a + b)`
+
+            default: bus_signal = `FUNC_MACRO(0);
+                     ^^^^^^^^^^ Ref -> `logic [31:0] bus_signal;`
+                                  ^^^^^^^^^^^ Ref -> ``define FUNC_MACRO(x) (x + 1)`
+
+        endcase
+
+    end
+
+
+
+    // Test macro with system tasks
+
+    initial begin
+
+        $display("Testing macro: %d", `SIMPLE_MACRO);
+                                      ^^^^^^^^^^^^^ Ref -> `// Comprehensive macro test file covering various macro scenarios\n\// Based on test cases from tests/unittests/parsing/DiagnosticTests.cpp\n\// Basic macro definitions\n\`define SIMPLE_MACRO 42`
+
+        $display("Function macro result: %d", `FUNC_MACRO(25));
+                                              ^^^^^^^^^^^ Ref -> ``define FUNC_MACRO(x) (x + 1)`
+
+    end
+
+
+
+endmodule
