@@ -166,6 +166,7 @@ std::string svCodeBlockString(std::string_view code) {
     if (isSingleLine(res)) {
         squashSpaces(res);
     }
+    // We use quad backticks since in sv triple can be used for macro concatenations
     return fmt::format("````systemverilog\n{}\n````", res);
 }
 
@@ -195,6 +196,22 @@ std::string svCodeBlockString(const syntax::SyntaxNode& node) {
 lsp::MarkupContent svCodeBlock(const syntax::SyntaxNode& node) {
     return lsp::MarkupContent{.kind = lsp::MarkupKind::make<"markdown">(),
                               .value = svCodeBlockString(node)};
+}
+
+void ltrim(std::string& s) {
+    s.erase(s.begin(),
+            std::find_if(s.begin(), s.end(), [](unsigned char ch) { return !std::isspace(ch); }));
+}
+
+std::string toCamelCase(std::string_view str) {
+    if (str.empty()) {
+        return "";
+    }
+    std::string result;
+    result.reserve(str.size());
+    result.push_back(static_cast<char>(std::tolower(str[0])));
+    result.append(str.substr(1));
+    return result;
 }
 
 } // namespace server

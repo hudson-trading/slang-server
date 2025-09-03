@@ -31,4 +31,8 @@ std::string svCodeBlockString(const syntax::SyntaxNode& node);
 
 lsp::MarkupContent svCodeBlock(const syntax::SyntaxNode& node);
 
+void ltrim(std::string& s);
+
+std::string toCamelCase(std::string_view str);
+
 } // namespace server

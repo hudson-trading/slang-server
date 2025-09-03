@@ -123,20 +123,22 @@ endif()
 # Build the slang-server library
 add_library(
   slang_server_obj_lib OBJECT
-  src/Config.cpp
-  src/document/ShallowAnalysis.cpp
-  src/Indexer.cpp
-  src/Formatting.cpp
   src/ast/ServerCompilation.cpp
-  src/ServerDriver.cpp
+  src/document/ShallowAnalysis.cpp
   src/document/SlangDoc.cpp
-  src/SlangServer.cpp
-  src/ServerDiagClient.cpp
   src/document/SymbolIndexer.cpp
   src/document/SymbolTreeVisitor.cpp
   src/document/SyntaxIndexer.cpp
   src/completions/Completions.cpp
-  src/completions/CompletionDispatch.cpp)
+  src/completions/CompletionDispatch.cpp
+  src/util/Converters.cpp
+  src/util/Formatting.cpp
+  src/Config.cpp
+  src/Indexer.cpp
+  src/ServerDriver.cpp
+  src/SlangServer.cpp
+  src/ServerDiagClient.cpp
+)
 
 target_compile_options(slang_server_obj_lib PRIVATE -Wno-reorder-init-list)
 
