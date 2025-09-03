@@ -1,8 +1,8 @@
-# Contributing to slang
+# Contributing to Slang Server
 
 ## Getting started
 
-Make sure to read the [Developer Guide](https://sv-lang.com/developer-guide.html) first.
+See [CLAUDE.md](CLAUDE.md) for building/testing instructions, and [DEVELOPING.md](DEVELOPING.md) for debugging info.
 
 Before submitting a PR, consider opening a discussion first about the change you want to make. There's nothing more frustrating for you as well as for the project maintainers for someone to submit a huge diff and ultimately it be rejected due to heading in the wrong direction for the project's goals.
 
