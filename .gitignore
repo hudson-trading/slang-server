@@ -26,6 +26,7 @@ CMakeUserPresets.json
 .idea/
 .vs/
 *.code-workspace
+.vscode/launch.json
 
 # Claude and Slang
 *.local.json
