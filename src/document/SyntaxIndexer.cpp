@@ -8,7 +8,7 @@
 
 #include "document/SyntaxIndexer.h"
 
-#include "Logging.h"
+#include "util/Logging.h"
 
 #include "slang/parsing/Token.h"
 #include "slang/parsing/TokenKind.h"

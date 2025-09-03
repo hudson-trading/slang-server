@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: Hudson River Trading
 // SPDX-License-Identifier: MIT
 
-#include "Formatting.h"
+#include "util/Formatting.h"
 
-#include "Logging.h"
+#include "util/Logging.h"
 #include <sstream>
 
 #include "slang/syntax/AllSyntax.h"

@@ -10,10 +10,10 @@
 #include "SlangServer.h"
 
 #include "Config.h"
-#include "Logging.h"
 #include "completions/CompletionDispatch.h"
 #include "lsp/LspTypes.h"
 #include "lsp/URI.h"
+#include "util/Logging.h"
 #include <filesystem>
 #include <fmt/base.h>
 #include <memory>
@@ -411,7 +411,6 @@ rfl::Variant<std::vector<lsp::CompletionItem>, lsp::CompletionList, std::monosta
     auto maybeLoc = doc->getLocation(params.position);
 
     // TODO: be more precise with this, this is just a heuristic atm
-    INFO("Prev text: '{}'", prevText);
     bool isLhs = std::all_of(prevText.begin(), prevText.end() - 1, isspace);
     if (!maybeLoc) {
         WARN("No location found for position {},{}", params.position.line,

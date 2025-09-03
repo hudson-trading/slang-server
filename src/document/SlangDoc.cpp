@@ -8,9 +8,9 @@
 
 #include "document/SlangDoc.h"
 
-#include "Logging.h"
 #include "document/ShallowAnalysis.h"
 #include "lsp/URI.h"
+#include "util/Logging.h"
 #include <fmt/ranges.h>
 #include <stdexcept>
 

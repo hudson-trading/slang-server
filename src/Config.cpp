@@ -8,11 +8,11 @@
 
 #include "Config.h"
 
-#include "Logging.h"
 #include "SlangLspClient.h"
 #include "lsp/LspClient.h"
 #include "rfl/Result.hpp"
 #include "rfl/from_generic.hpp"
+#include "util/Logging.h"
 
 static int CONFIG_READ_FLAGS = YYJSON_READ_ALLOW_COMMENTS | YYJSON_READ_ALLOW_TRAILING_COMMAS;
 

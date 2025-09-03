@@ -8,8 +8,8 @@
 
 #include "Indexer.h"
 
-#include "Logging.h"
 #include "lsp/LspTypes.h"
+#include "util/Logging.h"
 #include <BS_thread_pool.hpp>
 #include <algorithm>
 #include <cctype>

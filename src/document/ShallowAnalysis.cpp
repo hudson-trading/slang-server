@@ -8,9 +8,9 @@
 
 #include "document/ShallowAnalysis.h"
 
-#include "Converters.h"
-#include "Formatting.h"
-#include "Logging.h"
+#include "util/Converters.h"
+#include "util/Formatting.h"
+#include "util/Logging.h"
 #include <memory>
 #include <string_view>
 

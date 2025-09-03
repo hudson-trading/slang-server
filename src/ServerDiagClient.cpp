@@ -8,11 +8,11 @@
 
 #include "ServerDiagClient.h"
 
-#include "Converters.h"
-#include "Logging.h"
 #include "fmt/format.h"
 #include "lsp/LspTypes.h"
 #include "lsp/URI.h"
+#include "util/Converters.h"
+#include "util/Logging.h"
 #include <optional>
 #include <string_view>
 #include <sys/types.h>

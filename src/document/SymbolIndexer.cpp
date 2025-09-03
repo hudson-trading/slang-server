@@ -8,7 +8,7 @@
 
 #include "document/SymbolIndexer.h"
 
-#include "Logging.h"
+#include "util/Logging.h"
 
 #include "slang/ast/Scope.h"
 #include "slang/ast/Symbol.h"

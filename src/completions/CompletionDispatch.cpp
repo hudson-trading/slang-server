@@ -8,10 +8,10 @@
 
 #include "completions/CompletionDispatch.h"
 
-#include "Converters.h"
-#include "Logging.h"
 #include "completions/Completions.h"
 #include "lsp/LspTypes.h"
+#include "util/Converters.h"
+#include "util/Logging.h"
 #include <filesystem>
 
 #include "slang/ast/Compilation.h"
@@ -132,7 +132,7 @@ void CompletionDispatch::getTriggerCompletions(char triggerChar, char prevChar,
                 // Only show macros that are defined before the cursor
                 continue;
             }
-            results.push_back(completions::getMacroCompletion(*macro, m_sourceManager));
+            results.push_back(completions::getMacroCompletion(*macro));
         }
         // Add global macros
         for (auto& [name, _info] : m_indexer.macroToFiles.getAllEntries()) {

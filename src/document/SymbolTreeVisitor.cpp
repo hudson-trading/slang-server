@@ -8,8 +8,8 @@
 
 #include "document/SymbolTreeVisitor.h"
 
-#include "Converters.h"
 #include "lsp/LspTypes.h"
+#include "util/Converters.h"
 #include <memory>
 #include <optional>
 #include <string>

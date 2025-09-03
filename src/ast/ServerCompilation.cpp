@@ -8,9 +8,9 @@
 
 #include "ast/ServerCompilation.h"
 
-#include "Converters.h"
-#include "Logging.h"
 #include "ast/HierarchicalView.h"
+#include "util/Converters.h"
+#include "util/Logging.h"
 #include <memory>
 
 #include "slang/ast/Compilation.h"

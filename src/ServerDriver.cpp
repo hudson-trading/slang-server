@@ -9,11 +9,11 @@
 #include "ServerDriver.h"
 
 #include "Indexer.h"
-#include "Logging.h"
 #include "ServerDiagClient.h"
 #include "ast/ServerCompilation.h"
 #include "completions/CompletionDispatch.h"
 #include "document/SlangDoc.h"
+#include "util/Logging.h"
 #include <memory>
 #include <string_view>
 

@@ -135,6 +135,7 @@ add_library(
   src/document/SymbolIndexer.cpp
   src/document/SymbolTreeVisitor.cpp
   src/document/SyntaxIndexer.cpp
+  src/completions/Completions.cpp
   src/completions/CompletionDispatch.cpp)
 
 target_compile_options(slang_server_obj_lib PRIVATE -Wno-reorder-init-list)
