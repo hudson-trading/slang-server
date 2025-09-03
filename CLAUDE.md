@@ -1,6 +1,6 @@
-# CLAUDE.md
+# Slang Server Development Guide
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+The Slang Server is a SystemVerilog language server written in C++20, and heavily uses the Slang library for parsing and analysis, located at `external/slang`.
 
 ## Build Commands
 
@@ -12,59 +12,38 @@ cmake --build build/macos-claude -j8
 # Run tests
 ctest --test-dir build/macos-claude --output-on-failure
 
-# Python bindings build and test
-pip install . --no-build-isolation --config-settings build-dir=build/claude_python_build
-pytest
+# Server tests only- this is the primary testing
+cmake --build build/macos-claude -j8 --target server_unittests && build/bin/server_unittests
+# Add --update if updating the golden outputs which get stored in tests/cpp/golden
+
+# Server tests only- this is the primary testing
+cmake --build build/macos-claude -j8 --target slang_server
 ```
 
 ## Testing Framework
 
-- **Unit Tests**: Uses Catch2 framework, located in `tests/unittests/`
-- **Regression Tests**: Custom SystemVerilog test files in `tests/regression/`
+- **Unit Tests**: Uses Catch2 framework, located in `tests/cpp/`
 - **Test Command**: `ctest --test-dir build/macos-claude --output-on-failure`
-- **Python Tests**: `pytest` (for Python bindings)
 
 ## Architecture Overview
 
-The slang library is organized into several key subsystems:
+`src/SlangServer.cpp`: The single instance server class, that has methods that directly map to the language server routes and hardware language extensions. It holds the indexer, which gathers all of the symbols in the workspace on start up.
+`src/ServerDriver.cpp`: This is a wrapper around the slang driver, and is recreated every time flags need to be parsed. It manages the syntax trees and open documents
+`src/ast/ServerCompilation.cpp`: This is a wrapper around a slang Compilation, and it knows how to update the compilation when 
+`src/document/SlangDoc.cpp` This represents a file/SyntaxTree pair, and also manages analysis features for that document, like a token index and a shallow compilation.
+`src/document`: These files have features core LSP features for a document.
 
-1. **Text Processing** (`source/text/`): Source management, location tracking, globbing
-2. **Lexing & Parsing** (`source/parsing/`): Tokenization, preprocessor, parser
-3. **Syntax Tree** (`source/syntax/`): AST representation and manipulation
-4. **Semantic Analysis** (`source/ast/`): Type checking, symbol resolution, compilation
-5. **Diagnostics** (`source/diagnostics/`): Error reporting and formatting
-6. **Numeric** (`source/numeric/`): SystemVerilog numeric types and operations
-7. **Analysis** (`source/analysis/`): Data flow analysis, assertion analysis, driver tracking
-8. **Utilities** (`source/util/`): Memory management, containers, OS abstractions
 
-### Tools Included
-
-- **slang**: Main compiler driver (`tools/driver/`)
-- **slang-tidy**: Linting and style checking tool (`tools/tidy/`)
-- **slang-reflect**: Type reflection utility (`tools/reflect/`)
-- **slang-rewriter**: Code transformation tool (`tools/rewriter/`)
-- **slang-hier**: Hierarchy analysis tool (`tools/hier/`)
 
 ## Code Style and Standards
 
 - Follow existing C++ code style (enforced by pre-commit hooks)
 - Use modern C++20 features and idioms
 - Write unit tests for new functionality
-- Document public APIs with Doxygen comments
 - Maintain high performance and correctness standards
-- Python bindings should be updated when changing public APIs
 
 ## Development Workflow
 
 1. Build: `cmake -B build/macos-claude && cmake --build build/macos-claude -j8`
 2. Test: `ctest --test-dir build/macos-claude --output-on-failure`
 3. Format: Automatic via pre-commit hooks
-4. For Python changes: `pip install . --no-build-isolation --config-settings build-dir=build/claude_python_build && pytest`
-
-## Project Structure
-
-This is a SystemVerilog compiler and language services library that provides:
-- Complete SystemVerilog parsing, analysis, and elaboration
-- High-performance compilation with excellent error messages
-- Python bindings for integration into other tools
-- Various command-line tools for SystemVerilog development
