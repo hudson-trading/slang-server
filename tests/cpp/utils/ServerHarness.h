@@ -50,6 +50,10 @@ public:
     bool hasDefinition(const lsp::DefinitionParams& params);
 
     std::shared_ptr<server::SlangDoc> getDoc(const URI& uri);
+
+    // For access to isWcpVariable
+    // TODO -- remove once WCP varaiables and scopes are squashed
+    using SlangServer::m_driver;
 };
 
 enum DocState {

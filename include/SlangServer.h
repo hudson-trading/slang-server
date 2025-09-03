@@ -11,6 +11,8 @@
 #include "ServerDiagClient.h"
 #include "ServerDriver.h"
 #include "SlangLspClient.h"
+#include "SlangServerWcp.h"
+#include "WcpClient.h"
 #include "ast/HierarchicalView.h"
 #include "document/SlangDoc.h"
 #include "lsp/LspServer.h"
@@ -26,7 +28,7 @@
 #include "slang/driver/Driver.h"
 #include "slang/text/SourceManager.h"
 namespace server {
-class SlangServer : public lsp::LspServer<SlangServer> {
+class SlangServer : public lsp::LspServer<SlangServer>, public SlangServerWcp {
     /// The primary business logic for the server, in a type safe manner.
     /// To add an LSP method:
     /// - See routes here:
@@ -62,6 +64,9 @@ protected:
 
     /// Indexes the workspace for top symbols and macros
     Indexer m_indexer;
+
+    // The waveform viewer client
+    std::optional<wcp::WcpClient> m_wcpClient = std::nullopt;
 
 public:
     SlangServer(SlangLspClient& client);
@@ -172,5 +177,38 @@ public:
 
     /// Completions resolve (get docs and snippet string)
     lsp::CompletionItem getCompletionItemResolve(const lsp::CompletionItem&) override;
+
+    ////////////////////////////////////////////////
+    /// Cone tracing
+    ////////////////////////////////////////////////
+
+    std::optional<std::vector<lsp::CallHierarchyItem>> getDocPrepareCallHierarchy(
+        const lsp::CallHierarchyPrepareParams&) override;
+
+    std::optional<std::vector<lsp::CallHierarchyIncomingCall>> getCallHierarchyIncomingCalls(
+        const lsp::CallHierarchyIncomingCallsParams&) override;
+
+    std::optional<std::vector<lsp::CallHierarchyOutgoingCall>> getCallHierarchyOutgoingCalls(
+        const lsp::CallHierarchyOutgoingCallsParams&) override;
+
+    ////////////////////////////////////////////////
+    /// Wcp commands and related LSP methods
+    ////////////////////////////////////////////////
+
+    std::vector<std::string> getInstances(const lsp::TextDocumentPositionParams&);
+
+    std::monostate addToWaveform(const wcp::ScopeToWaveform&);
+
+    std::monostate openWaveform(const std::string&);
+
+    void pathToDeclaration(const std::string&) final;
+
+    void waveformLoaded(const std::string&) final;
+
+    std::vector<std::string> getDrivers(const std::string&) final;
+
+    std::vector<std::string> getLoads(const std::string&) final;
+
+    std::mutex& getMutex() final { return mutex; };
 };
 } // namespace server

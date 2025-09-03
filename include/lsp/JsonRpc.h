@@ -107,6 +107,7 @@ T readJson(std::string& line, std::string& content) {
             auto response = rfl::json::read<RpcResponse>(content);
             if (response) {
                 // NOCOMMIT -- actually handle responses instead of just throwing them on the floor
+                // e.g. ShowDocumentResult
                 continue;
             }
             std::cerr << "Error parsing JSON: " << content << std::endl;

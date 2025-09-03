@@ -138,6 +138,7 @@ add_library(
   src/ServerDriver.cpp
   src/SlangServer.cpp
   src/ServerDiagClient.cpp
+  src/WcpClient.cpp
 )
 
 target_compile_options(slang_server_obj_lib PRIVATE -Wno-reorder-init-list)

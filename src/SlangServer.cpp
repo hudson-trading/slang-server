@@ -10,6 +10,7 @@
 #include "SlangServer.h"
 
 #include "Config.h"
+#include "WcpClient.h"
 #include "completions/CompletionDispatch.h"
 #include "lsp/LspTypes.h"
 #include "lsp/URI.h"
@@ -27,12 +28,16 @@
 #include <vector>
 
 #include "slang/ast/Compilation.h"
+#include "slang/ast/Scope.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
 #include "slang/driver/Driver.h"
 #include "slang/text/SourceLocation.h"
 #include "slang/text/SourceManager.h"
 #include "slang/util/OS.h"
 #include "slang/util/TimeTrace.h"
+
+namespace fs = std::filesystem;
+
 namespace server {
 
 SlangServer::SlangServer(SlangLspClient& client) :
@@ -65,6 +70,11 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     registerDocCompletion();
     registerCompletionItemResolve();
 
+    // Cone tracing (drivers/loads)
+    registerDocPrepareCallHierarchy();
+    registerCallHierarchyIncomingCalls();
+    registerCallHierarchyOutgoingCalls();
+
     // Workspace Features
     registerWorkspaceExecuteCommand();
     registerWorkspaceSymbol();
@@ -77,6 +87,13 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     // Top level setting- these are internal commands, the main command should be in the client
     registerCommand<std::string, std::monostate, &SlangServer::setTopLevel>("slang.setTopLevel");
     registerCommand<std::string, std::monostate, &SlangServer::setBuildFile>("slang.setBuildFile");
+
+    // WCP Commands
+    registerCommand<lsp::TextDocumentPositionParams, std::vector<std::string>,
+                    &SlangServer::getInstances>("slang.getInstances");
+    registerCommand<wcp::ScopeToWaveform, std::monostate, &SlangServer::addToWaveform>(
+        "slang.addToWaveform");
+    registerCommand<std::string, std::monostate, &SlangServer::openWaveform>("slang.openWaveform");
 
     // Hierarchy View (sidebar)
     registerCommand<std::string, std::vector<hier::HierItem_t>, &SlangServer::getScope>(
@@ -148,6 +165,7 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
                         lsp::ExecuteCommandOptions{
                             .commands = getCommandList(),
                         },
+                    .callHierarchyProvider = true,
                 }};
 
     INFO("Initialize result: {} ", rfl::json::write(result));
@@ -252,6 +270,115 @@ std::vector<hier::HierItem_t> SlangServer::getScope(const std::string& hierPath)
         return {};
     }
     return m_driver->comp->getScope(hierPath);
+}
+
+std::vector<std::string> SlangServer::getInstances(const lsp::TextDocumentPositionParams& params) {
+    if (!m_driver->comp) {
+        ERROR("No compilation available, cannot get instances");
+        return {};
+    }
+    return m_driver->comp->getInstances(params);
+}
+
+std::monostate SlangServer::addToWaveform(const wcp::ScopeToWaveform& params) {
+    // TODO -- once WCP variables and scopes are squashed we won't actually need the compilation
+    // here
+    if (!m_driver->comp || !m_wcpClient.has_value() || !m_wcpClient->running()) {
+        ERROR("No compilation or WCP session available, cannot add items");
+        return std::monostate{};
+    }
+
+    if (m_driver->comp->isWcpVariable(params.path)) {
+        m_wcpClient->addVariable(params.path);
+    }
+    else {
+        m_wcpClient->addScope(params);
+    }
+
+    return std::monostate{};
+}
+
+std::monostate SlangServer::openWaveform(const std::string& path) {
+    auto wcpCommand = m_config.wcpCommand.value();
+    if (wcpCommand.empty()) {
+        wcpCommand = "surfer --wcp-initiate {}";
+    }
+    if (m_wcpClient.has_value() && m_wcpClient->running()) {
+        m_client.showInfo(fmt::format("Opening waveform from {} (reusing WCP)", path));
+    }
+    else {
+        m_client.showInfo(fmt::format("Opening waveform from {} (creating WCP)", path));
+        m_wcpClient.emplace(this, wcpCommand);
+    }
+    m_wcpClient->loadWaveform(path);
+
+    return std::monostate{};
+}
+
+void SlangServer::pathToDeclaration(const std::string& path) {
+    if (m_driver->comp) {
+        auto showDocParams = m_driver->comp->pathToDeclaration(path);
+        if (showDocParams) {
+            m_client.onShowDocument(*showDocParams);
+        }
+    }
+}
+
+void SlangServer::waveformLoaded(const std::string& path) {
+    if (m_config.buildPattern.value().has_value()) {
+        fs::path waveform{path};
+        std::string waveStem{waveform.stem().string()};
+        std::string buildFile{
+            fmt::vformat(*m_config.buildPattern.value(), fmt::make_format_args(waveStem))};
+        if (fs::exists(buildFile)) {
+            setBuildFile(buildFile);
+        }
+    }
+}
+
+std::optional<std::vector<lsp::CallHierarchyItem>> SlangServer::getDocPrepareCallHierarchy(
+    const lsp::CallHierarchyPrepareParams& params) {
+    if (!m_driver->comp) {
+        ERROR("No compilation available, cannot trace cones");
+        return std::nullopt;
+    }
+    return m_driver->comp->getDocPrepareCallHierarchy(params);
+}
+
+std::optional<std::vector<lsp::CallHierarchyIncomingCall>> SlangServer::
+    getCallHierarchyIncomingCalls(const lsp::CallHierarchyIncomingCallsParams& params) {
+    if (!m_driver->comp) {
+        ERROR("No compilation available, cannot trace cones");
+        return std::nullopt;
+    }
+    return m_driver->comp->getCallHierarchyCalls<lsp::CallHierarchyIncomingCallsParams,
+                                                 lsp::CallHierarchyIncomingCall>(params);
+}
+
+std::optional<std::vector<lsp::CallHierarchyOutgoingCall>> SlangServer::
+    getCallHierarchyOutgoingCalls(const lsp::CallHierarchyOutgoingCallsParams& params) {
+    if (!m_driver->comp) {
+        ERROR("No compilation available, cannot trace cones");
+        return std::nullopt;
+    }
+    return m_driver->comp->getCallHierarchyCalls<lsp::CallHierarchyOutgoingCallsParams,
+                                                 lsp::CallHierarchyOutgoingCall>(params);
+}
+
+std::vector<std::string> SlangServer::getDrivers(const std::string& path) {
+    if (!m_driver->comp) {
+        ERROR("No compilation available, cannot trace cones");
+        return {};
+    }
+    return m_driver->comp->getConePaths<true>(path);
+}
+
+std::vector<std::string> SlangServer::getLoads(const std::string& path) {
+    if (!m_driver->comp) {
+        ERROR("No compilation available, cannot trace cones");
+        return {};
+    }
+    return m_driver->comp->getConePaths<false>(path);
 }
 
 void SlangServer::loadConfig(const Config& config, bool forceIndexing) {
