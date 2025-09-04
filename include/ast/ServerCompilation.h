@@ -59,7 +59,7 @@ public:
         const lsp::CallHierarchyPrepareParams& params);
 
     /// Deduce WCP variable vs scope
-    // TODO -- squash WCP variables and scopes and remove this
+    // TODO -- remove once not needed for cone tracing
     bool isWcpVariable(const std::string& path);
 
     /// Get document and position params for a given RTL path

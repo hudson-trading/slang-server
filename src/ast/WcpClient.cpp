@@ -180,7 +180,7 @@ void waves::WcpClient::greet() {
 
         // Check capabilities
         const std::vector<std::string> requiredCommands = {
-            "add_variables", "add_scope", "get_item_list", "get_item_info", "focus_item", "load",
+            "add_items", "get_item_list", "get_item_info", "focus_item", "load",
         };
         for (const auto& requiredCommand : requiredCommands) {
             if (std::find(greeting->commands.begin(), greeting->commands.end(), requiredCommand) ==
@@ -280,20 +280,12 @@ void waves::WcpClient::onAddLoads(const wcp::AddLoads& addLoads) {
     }));
 }
 
-void waves::WcpClient::addScope(const waves::ScopeToWaveform& params) {
-    sendMessage(rfl::to_generic<rfl::UnderlyingEnums>(wcp::AddScope{
+void waves::WcpClient::addItem(const waves::ItemToWaveform& params) {
+    sendMessage(rfl::to_generic<rfl::UnderlyingEnums>(wcp::AddItems{
         .type = "command",
-        .command = "add_scope",
-        .scope = params.path,
+        .command = "add_items",
+        .items = {params.path},
         .recursive = params.recursive,
-    }));
-}
-
-void waves::WcpClient::addVariable(const std::string& path) {
-    sendMessage(rfl::to_generic<rfl::UnderlyingEnums>(wcp::AddVariables{
-        .type = "command",
-        .command = "add_variables",
-        .variables = {path},
     }));
 }
 
