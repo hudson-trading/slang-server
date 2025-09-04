@@ -33,7 +33,7 @@ typedef SSIZE_T ssize_t;
 
 namespace waves {
 
-struct ScopeToWaveform {
+struct ItemToWaveform {
     std::string path;
     bool recursive;
 };
@@ -150,8 +150,7 @@ public:
 
     bool running() { return m_running; }
 
-    void addVariable(const std::string&);
-    void addScope(const ScopeToWaveform&);
+    void addItem(const ItemToWaveform&);
     void loadWaveform(const std::string&);
 };
 
