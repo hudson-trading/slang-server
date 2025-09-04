@@ -10,7 +10,7 @@
 #include "SlangServer.h"
 
 #include "Config.h"
-#include "WcpClient.h"
+#include "ast/WcpClient.h"
 #include "completions/CompletionDispatch.h"
 #include "lsp/LspTypes.h"
 #include "lsp/URI.h"
@@ -91,7 +91,7 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     // WCP Commands
     registerCommand<lsp::TextDocumentPositionParams, std::vector<std::string>,
                     &SlangServer::getInstances>("slang.getInstances");
-    registerCommand<wcp::ScopeToWaveform, std::monostate, &SlangServer::addToWaveform>(
+    registerCommand<waves::ScopeToWaveform, std::monostate, &SlangServer::addToWaveform>(
         "slang.addToWaveform");
     registerCommand<std::string, std::monostate, &SlangServer::openWaveform>("slang.openWaveform");
 
@@ -280,7 +280,7 @@ std::vector<std::string> SlangServer::getInstances(const lsp::TextDocumentPositi
     return m_driver->comp->getInstances(params);
 }
 
-std::monostate SlangServer::addToWaveform(const wcp::ScopeToWaveform& params) {
+std::monostate SlangServer::addToWaveform(const waves::ScopeToWaveform& params) {
     // TODO -- once WCP variables and scopes are squashed we won't actually need the compilation
     // here
     if (!m_driver->comp || !m_wcpClient.has_value() || !m_wcpClient->running()) {
@@ -315,9 +315,9 @@ std::monostate SlangServer::openWaveform(const std::string& path) {
     return std::monostate{};
 }
 
-void SlangServer::pathToDeclaration(const std::string& path) {
+void SlangServer::gotoDeclaration(const std::string& path) {
     if (m_driver->comp) {
-        auto showDocParams = m_driver->comp->pathToDeclaration(path);
+        auto showDocParams = m_driver->comp->gotoDeclaration(path);
         if (showDocParams) {
             m_client.onShowDocument(*showDocParams);
         }

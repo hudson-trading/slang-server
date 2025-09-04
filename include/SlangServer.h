@@ -11,9 +11,9 @@
 #include "ServerDiagClient.h"
 #include "ServerDriver.h"
 #include "SlangLspClient.h"
-#include "SlangServerWcp.h"
-#include "WcpClient.h"
 #include "ast/HierarchicalView.h"
+#include "ast/SlangServerWcp.h"
+#include "ast/WcpClient.h"
 #include "document/SlangDoc.h"
 #include "lsp/LspServer.h"
 #include "lsp/LspTypes.h"
@@ -66,7 +66,7 @@ protected:
     Indexer m_indexer;
 
     // The waveform viewer client
-    std::optional<wcp::WcpClient> m_wcpClient = std::nullopt;
+    std::optional<waves::WcpClient> m_wcpClient = std::nullopt;
 
 public:
     SlangServer(SlangLspClient& client);
@@ -197,11 +197,11 @@ public:
 
     std::vector<std::string> getInstances(const lsp::TextDocumentPositionParams&);
 
-    std::monostate addToWaveform(const wcp::ScopeToWaveform&);
+    std::monostate addToWaveform(const waves::ScopeToWaveform&);
 
     std::monostate openWaveform(const std::string&);
 
-    void pathToDeclaration(const std::string&) final;
+    void gotoDeclaration(const std::string&) final;
 
     void waveformLoaded(const std::string&) final;
 

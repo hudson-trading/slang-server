@@ -16,6 +16,7 @@
 #include <vector>
 
 class DocumentHandle;
+class Cursor;
 
 struct ClientOwner {
     /// This needs to be made before passing to SlangServer
@@ -49,6 +50,28 @@ public:
     // Helper method for goto definition tests
     bool hasDefinition(const lsp::DefinitionParams& params);
 
+    // WCP helpers
+    void checkGetInstances(const Cursor& cursor, const std::set<std::string>& expected);
+    void checkGotoDeclaration(const std::string& path, const Cursor* expectedLocation = nullptr);
+
+    // Cone helpers
+    void checkPrepareCallHierarchy(const Cursor& cursor, const std::set<std::string>& expected);
+
+    struct ExpectedHierResult {
+        std::string name;
+        const Cursor* cursor;
+
+        auto operator<=>(const ExpectedHierResult& other) const {
+            if (auto cmp = name <=> other.name; cmp != 0)
+                return cmp;
+            return cursor <=> other.cursor;
+        }
+        bool operator==(const ExpectedHierResult& other) const = default;
+    };
+    void checkIncomingCalls(const std::string& path, const std::set<ExpectedHierResult>& expected);
+    void checkOutgoingCalls(const std::string& path, const std::set<ExpectedHierResult>& expected);
+
+
     std::shared_ptr<server::SlangDoc> getDoc(const URI& uri);
 
     // For access to isWcpVariable
@@ -62,7 +85,6 @@ enum DocState {
     Dirty, // Changes to be published
 };
 
-class Cursor;
 class CompletionHandle;
 
 // Perform client actions on a document, and inspect the server-side document
@@ -82,8 +104,8 @@ public:
     void append(std::string text);
     void erase(int start, int end);
 
-    Cursor before(std::string before);
-    Cursor after(std::string after);
+    Cursor before(std::string before, uint start_pos = 0);
+    Cursor after(std::string after, uint start_pos = 0);
     Cursor end();
     Cursor begin();
 
@@ -123,11 +145,12 @@ class Cursor {
 public:
     Cursor(DocumentHandle& doc, uint offset) : m_doc(doc), m_offset(offset) {}
     lsp::Position getPosition() const { return m_doc.getPosition(m_offset); }
+    URI getUri() const { return m_doc.m_uri; }
     Cursor& write(const std::string& text);
 
     std::vector<CompletionHandle> getCompletions(
         std::optional<std::string> triggerChar = std::nullopt);
-    
+
     // Get completions with automatic resolution of all items
     std::vector<lsp::CompletionItem> getResolvedCompletions(
         std::optional<std::string> triggerChar = std::nullopt);
@@ -136,8 +159,19 @@ public:
     bool hasDefinition();
     std::vector<lsp::LocationLink> getDefinitions();
 
+    // Chaining search methods
+    Cursor before(const std::string& before);
+    Cursor after(const std::string& after);
+
     DocumentHandle& m_doc;
     uint m_offset;
+
+    Cursor& operator--() {
+        --m_offset;
+        return *this;
+    }
+
+    friend std::ostream& operator<<(std::ostream&, const Cursor&);
 };
 
 class CompletionHandle {
@@ -158,4 +192,23 @@ public:
     }
 
     void insert() { m_cursor.write(m_item.insertText.value_or(m_item.label)); }
+};
+
+struct ExpectedStart {
+    std::string name;
+    std::string uri;
+    lsp::Position start;
+
+    auto operator<=>(const ExpectedStart& other) const {
+        if (auto cmp = name <=> other.name; cmp != 0)
+            return cmp;
+        if (auto cmp = uri <=> other.uri; cmp != 0)
+            return cmp;
+        if (auto cmp = start.line <=> other.start.line; cmp != 0)
+            return cmp;
+        return start.character <=> other.start.character;
+    }
+    bool operator==(const ExpectedStart& other) const = default;
+
+    friend std::ostream& operator<<(std::ostream&, const struct ExpectedStart&);
 };

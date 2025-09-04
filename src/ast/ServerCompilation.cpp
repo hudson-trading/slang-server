@@ -8,8 +8,8 @@
 
 #include "ast/ServerCompilation.h"
 
-#include "InstanceVisitor.h"
 #include "ast/HierarchicalView.h"
+#include "ast/InstanceVisitor.h"
 #include "util/Converters.h"
 #include "util/Logging.h"
 #include <memory>
@@ -42,7 +42,9 @@ void ServerCompilation::refresh() {
     // reset and rebuild indexed info
     auto& root = comp->getRoot();
     m_instances.reset(&root);
-    m_references.reset(&root);
+
+    // symbol references are not indexed until cone tracing is requested
+    m_references.reset();
 }
 
 std::vector<hier::InstanceSet> ServerCompilation::getScopesByModule() {
@@ -214,8 +216,7 @@ bool ServerCompilation::isWcpVariable(const std::string& path) {
     return false;
 }
 
-std::optional<lsp::ShowDocumentParams> ServerCompilation::pathToDeclaration(
-    const std::string& path) {
+std::optional<lsp::ShowDocumentParams> ServerCompilation::gotoDeclaration(const std::string& path) {
     // TODO -- structs / nested structs -- currently taken to variable instance, not
     // type definition -- do we want both?
     slang::ast::LookupResult result;

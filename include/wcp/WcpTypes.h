@@ -3,7 +3,7 @@
 /// @brief Waveform viewer Control Protocol
 /// see: https://gitlab.com/lklemmer/wcp-protocol/
 //
-// SPDX-FileCopyrightText: Michael Popoloski
+// SPDX-FileCopyrightText: Hudson River Trading
 // SPDX-License-Identifier: MIT
 //------------------------------------------------------------------------------
 

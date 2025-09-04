@@ -63,7 +63,7 @@ public:
     bool isWcpVariable(const std::string& path);
 
     /// Get document and position params for a given RTL path
-    std::optional<lsp::ShowDocumentParams> pathToDeclaration(const std::string& path);
+    std::optional<lsp::ShowDocumentParams> gotoDeclaration(const std::string& path);
 
     /// Populate incoming / outgoing (drivers / loads) call hierarchy LSP responses
     template<typename P, typename R>
@@ -122,7 +122,7 @@ private:
     InstanceIndexer m_instances;
 
     /// Index of value symbol -> uses (e.g. processes or continuous assignments)
-    ReferenceIndexer m_references;
+    std::optional<ReferenceIndexer> m_references = std::nullopt;
 
     /// Reference to the source manager for this compilation,
     /// owned by the driver
@@ -154,9 +154,14 @@ private:
                 fmt::format("Could not find path in compiled design: {}", path));
         }
 
-        auto it = m_references.symbolToUses.find(
+        if (!m_references) {
+            m_references.emplace();
+            m_references->reset(&comp->getRoot());
+        }
+
+        auto it = m_references->symbolToUses.find(
             ConeLeaf::concreteSymbol(result.found)->as_if<slang::ast::ValueSymbol>());
-        if (it == m_references.symbolToUses.end()) {
+        if (it == m_references->symbolToUses.end()) {
             throw std::runtime_error(fmt::format("Could not find reference to: {}", path));
         }
 

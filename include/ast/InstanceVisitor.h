@@ -2,7 +2,7 @@
 //! @file InstanceVisitor.h
 //! @brief Finds instances of variables, modules and interfaces
 //
-// SPDX-FileCopyrightText: Michael Popoloski
+// SPDX-FileCopyrightText: Hudson River Trading
 // SPDX-License-Identifier: MIT
 //------------------------------------------------------------------------------
 #pragma once

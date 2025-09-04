@@ -2,14 +2,13 @@
 /// @file WcpClient.h
 /// @brief Waveform viewer Control Protocol client
 //
-// SPDX-FileCopyrightText: Michael Popoloski
+// SPDX-FileCopyrightText: Hudson River Trading
 // SPDX-License-Identifier: MIT
 //------------------------------------------------------------------------------
 
-#include "WcpClient.h"
+#include "ast/WcpClient.h"
 
 #include "rfl/UnderlyingEnums.hpp"
-#include "rfl/json.hpp"
 #include "rfl/to_generic.hpp"
 #include "wcp/WcpTypes.h"
 #include <chrono>
@@ -20,7 +19,7 @@
 
 namespace fs = std::filesystem;
 
-void wcp::WcpClient::runViewer() {
+void waves::WcpClient::runViewer() {
     if (fork() == 0) {
         std::vector<char*> args;
         std::stringstream ss(std::vformat(m_command, std::make_format_args(m_port)));
@@ -46,7 +45,7 @@ void wcp::WcpClient::runViewer() {
     }
 }
 
-void wcp::WcpClient::initClient() {
+void waves::WcpClient::initClient() {
     // Create socket
     if ((m_serverFd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         std::cerr << "Problem creating WCP socket: " << strerror(errno) << std::endl;
@@ -75,7 +74,7 @@ void wcp::WcpClient::initClient() {
     m_port = ntohs(assignedAddr.sin_port);
 }
 
-void wcp::WcpClient::greet() {
+void waves::WcpClient::greet() {
     // Listen + accept connection
     if (listen(m_serverFd, 1) < 0) {
         std::cerr << "Problem listening to WCP port: " << strerror(errno) << std::endl;
@@ -144,60 +143,61 @@ void wcp::WcpClient::greet() {
     }
 }
 
-void wcp::WcpClient::runClient() {
+void waves::WcpClient::runClient() {
 
     // Handle events and responses
     while (m_running) {
         auto message = getMessage();
-        if (message) {
-            std::lock_guard<std::mutex> lock(m_lspServer->getMutex());
-            std::cerr << "WCP S2C MESSAGE: " << *message << std::endl;
-            auto s2cMessage = rfl::json::read<wcp::S2CMessage>(*message);
-            if (s2cMessage) {
-                rfl::visit(
-                    [&](auto&& msg) {
-                        using Type = std::decay_t<decltype(msg)>;
-                        if constexpr (std::is_same<Type, wcp::Response>()) {
-                        }
-                        else if constexpr (std::is_same<Type, wcp::Event>()) {
-                            auto s2cEvent = rfl::json::read<wcp::S2CEvent>(*message);
-                            if (s2cEvent) {
-                                rfl::visit(
-                                    [&](auto&& event) {
-                                        using Type = std::decay_t<decltype(event)>;
-                                        if constexpr (std::is_same<Type, wcp::WaveformsLoaded>()) {
-                                            onWaveformsLoaded(event);
-                                        }
-                                        else if constexpr (std::is_same<Type,
-                                                                        wcp::GotoDeclaration>()) {
-                                            onGotoDeclaration(event);
-                                        }
-                                        else if constexpr (std::is_same<Type, wcp::AddDrivers>()) {
-                                            onAddDrivers(event);
-                                        }
-                                        else if constexpr (std::is_same<Type, wcp::AddLoads>()) {
-                                            onAddLoads(event);
-                                        }
-                                    },
-                                    *s2cEvent);
-                            }
-                            else {
-                                std::cerr << "WCP S2C event decode error" << std::endl;
-                            }
-                        }
-                    },
-                    *s2cMessage);
-            }
-            else {
-                std::cerr << "WCP S2C decode error" << std::endl;
-            }
+        if (!message) {
+            continue;
         }
+
+        std::lock_guard<std::mutex> lock(m_lspServer->getMutex());
+        std::cerr << "WCP S2C MESSAGE: " << *message << std::endl;
+        auto s2cMessage = rfl::json::read<wcp::S2CMessage>(*message);
+        if (!s2cMessage) {
+            std::cerr << "WCP S2C decode error" << std::endl;
+            continue;
+        }
+
+        rfl::visit(
+            [&](auto&& msg) {
+                using Type = std::decay_t<decltype(msg)>;
+                if constexpr (std::is_same<Type, wcp::Response>()) {
+                }
+                else if constexpr (std::is_same<Type, wcp::Event>()) {
+                    auto s2cEvent = rfl::json::read<wcp::S2CEvent>(*message);
+                    if (s2cEvent) {
+                        rfl::visit(
+                            [&](auto&& event) {
+                                using Type = std::decay_t<decltype(event)>;
+                                if constexpr (std::is_same<Type, wcp::WaveformsLoaded>()) {
+                                    onWaveformsLoaded(event);
+                                }
+                                else if constexpr (std::is_same<Type, wcp::GotoDeclaration>()) {
+                                    onGotoDeclaration(event);
+                                }
+                                else if constexpr (std::is_same<Type, wcp::AddDrivers>()) {
+                                    onAddDrivers(event);
+                                }
+                                else if constexpr (std::is_same<Type, wcp::AddLoads>()) {
+                                    onAddLoads(event);
+                                }
+                            },
+                            *s2cEvent);
+                    }
+                    else {
+                        std::cerr << "WCP S2C event decode error" << std::endl;
+                    }
+                }
+            },
+            *s2cMessage);
     }
 
     stop();
 }
 
-void wcp::WcpClient::onWaveformsLoaded(const wcp::WaveformsLoaded& waveformsLoaded) {
+void waves::WcpClient::onWaveformsLoaded(const wcp::WaveformsLoaded& waveformsLoaded) {
     std::cerr << "WCP loaded waveform: " << waveformsLoaded.source << std::endl;
     try {
         m_lspServer->waveformLoaded(waveformsLoaded.source);
@@ -207,17 +207,17 @@ void wcp::WcpClient::onWaveformsLoaded(const wcp::WaveformsLoaded& waveformsLoad
     }
 }
 
-void wcp::WcpClient::onGotoDeclaration(const wcp::GotoDeclaration& gotoDeclaration) {
+void waves::WcpClient::onGotoDeclaration(const wcp::GotoDeclaration& gotoDeclaration) {
     std::cerr << "WCP goto declaration: " << gotoDeclaration.variable << std::endl;
     try {
-        m_lspServer->pathToDeclaration(gotoDeclaration.variable);
+        m_lspServer->gotoDeclaration(gotoDeclaration.variable);
     }
     catch (const std::exception& e) {
         std::cerr << "WCP (gotoDeclaration) Error: " << e.what() << '\n';
     }
 }
 
-void wcp::WcpClient::onAddDrivers(const wcp::AddDrivers& addDrivers) {
+void waves::WcpClient::onAddDrivers(const wcp::AddDrivers& addDrivers) {
     try {
         sendMessage(rfl::to_generic<rfl::UnderlyingEnums>(wcp::AddVariables{
             .type = "command",
@@ -230,7 +230,7 @@ void wcp::WcpClient::onAddDrivers(const wcp::AddDrivers& addDrivers) {
     }
 }
 
-void wcp::WcpClient::onAddLoads(const wcp::AddLoads& addLoads) {
+void waves::WcpClient::onAddLoads(const wcp::AddLoads& addLoads) {
     try {
         sendMessage(rfl::to_generic<rfl::UnderlyingEnums>(wcp::AddVariables{
             .type = "command",
@@ -243,7 +243,7 @@ void wcp::WcpClient::onAddLoads(const wcp::AddLoads& addLoads) {
     }
 }
 
-void wcp::WcpClient::addScope(const wcp::ScopeToWaveform& params) {
+void waves::WcpClient::addScope(const waves::ScopeToWaveform& params) {
     sendMessage(rfl::to_generic<rfl::UnderlyingEnums>(wcp::AddScope{
         .type = "command",
         .command = "add_scope",
@@ -252,7 +252,7 @@ void wcp::WcpClient::addScope(const wcp::ScopeToWaveform& params) {
     }));
 }
 
-void wcp::WcpClient::addVariable(const std::string& path) {
+void waves::WcpClient::addVariable(const std::string& path) {
     sendMessage(rfl::to_generic<rfl::UnderlyingEnums>(wcp::AddVariables{
         .type = "command",
         .command = "add_variables",
@@ -260,7 +260,7 @@ void wcp::WcpClient::addVariable(const std::string& path) {
     }));
 }
 
-void wcp::WcpClient::loadWaveform(const std::string& source) {
+void waves::WcpClient::loadWaveform(const std::string& source) {
     sendMessage(rfl::to_generic<rfl::UnderlyingEnums>(wcp::Load{
         .type = "command",
         .command = "load",

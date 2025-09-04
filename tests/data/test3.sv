@@ -3,7 +3,9 @@ module test;
     always_comb foo = bar;
 
     sub the_sub_1();
-    sub the_sub_2(); other_sub the_other_sub(); // avoid line changes
+    sub the_sub_2();
+
+    other_sub the_other_sub();
 endmodule
 
 module sub;

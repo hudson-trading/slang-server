@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Michael Popoloski
+// SPDX-FileCopyrightText: Hudson River Trading
 // SPDX-License-Identifier: MIT
 
 #include "lsp/LspTypes.h"
@@ -16,157 +16,113 @@ TEST_CASE("WCP Tests") {
     // This will actually load the compilation
     server.onInitialized(lsp::InitializedParams{});
 
-    auto uri = URI::fromFile(fs::absolute("test3.sv"));
+    const std::string file("test3.sv");
+    auto uri = URI::fromFile(fs::absolute(file));
+    auto doc = server.openFile(file);
 
-    auto getInstances = [&](uint line, uint character) {
-        auto result = server.getInstances(lsp::TextDocumentPositionParams{
-            .textDocument = {uri},
-            .position = lsp::Position{.line = line, .character = character}});
-        return result;
-    };
-
-    auto checkInstances = [](const std::vector<std::string>& items,
-                             const std::set<std::string>& expected) {
-        std::set<std::string> got;
-        for (const auto& item : items) {
-            got.insert(item);
-        }
-        CHECK(got == expected);
-    };
 
     SECTION("Instances No Results") {
-        auto result = getInstances(0, 0);
-        CHECK(result.size() == 0);
+        server.checkGetInstances(doc.before("module test"), {});
     }
 
     SECTION("Instances Declaration") {
-        auto result = getInstances(1, 10);
-        checkInstances(result, {{"test.foo"}});
+        server.checkGetInstances(doc.before("foo, bar;"), {"test.foo"});
     }
 
     SECTION("Instances Reference") {
-        auto result = getInstances(2, 16);
-        checkInstances(result, {{"test.foo"}});
+        server.checkGetInstances(doc.before("foo = bar;"), {"test.foo"});
     }
 
     SECTION("Instances Multiple") {
-        auto result = getInstances(10, 18);
-        checkInstances(result, {{"test.the_sub_1.baz"}, {"test.the_sub_2.baz"}});
+        server.checkGetInstances(--doc.after("always_comb baz"),
+                                 {{"test.the_sub_1.baz"}, {"test.the_sub_2.baz"}});
     }
 
     SECTION("Instances Interface Instance") {
-        auto result = getInstances(12, 9);
-        checkInstances(result, {{"test.the_sub_1.the_intf_1"}, {"test.the_sub_2.the_intf_1"}});
+        server.checkGetInstances(--doc.after("intf the_intf_1"),
+                                 {{"test.the_sub_1.the_intf_1"}, {"test.the_sub_2.the_intf_1"}});
     }
 
     SECTION("Instances Interface Reference") {
-        auto result = getInstances(56, 10);
-        checkInstances(result, {{"test.the_other_sub.the_sub_w_intf.intf_port"}});
+        server.checkGetInstances(--doc.after("intf2 intf_port"),
+                                 {"test.the_other_sub.the_sub_w_intf.intf_port"});
     }
 
     // TODO -- this works differently than member selects below, which way should this work?
     SECTION("Instances Interface Modport Reference Signal") {
-        auto result = getInstances(59, 17);
-        checkInstances(result, {{"test.the_other_sub.the_sub_w_intf.all_in_port.def"}});
+        server.checkGetInstances(doc.before("all_in_port.def);"),
+                                 {"test.the_other_sub.the_sub_w_intf.all_in_port.def"});
     }
 
     SECTION("Instances Interface Reference Signal") {
-        auto result = getInstances(60, 17);
-        checkInstances(result, {{"test.the_other_sub.the_sub_w_intf.intf_port.abc"}});
+        server.checkGetInstances(doc.before("intf_port.abc);"),
+                                 {"test.the_other_sub.the_sub_w_intf.intf_port.abc"});
     }
 
     SECTION("Instances Interface Modport Reference Signal Genscope") {
-        auto result = getInstances(63, 28);
-        checkInstances(result, {{"test.the_other_sub.the_sub_w_intf.all_in_port.abc"}});
+        server.checkGetInstances(doc.before("all_in_port.abc);"),
+                                 {"test.the_other_sub.the_sub_w_intf.all_in_port.abc"});
     }
 
     SECTION("Instances Interface Signal") {
-        auto result = getInstances(17, 10);
-        checkInstances(result, {
-                                   {"test.the_sub_1.the_intf_1.sig1"},
-                                   {"test.the_sub_1.the_intf_2.sig1"},
-                                   {"test.the_sub_2.the_intf_1.sig1"},
-                                   {"test.the_sub_2.the_intf_2.sig1"},
-                               });
+        server.checkGetInstances(doc.before("sig1;"), {
+                                                          {"test.the_sub_1.the_intf_1.sig1"},
+                                                          {"test.the_sub_1.the_intf_2.sig1"},
+                                                          {"test.the_sub_2.the_intf_1.sig1"},
+                                                          {"test.the_sub_2.the_intf_2.sig1"},
+                                                      });
     }
 
     SECTION("Instances Fields") {
-        auto result = getInstances(34, 27);
-        checkInstances(result, {{"test.the_other_sub.t1.t2.abc"}});
+        server.checkGetInstances(doc.before(".abc);"), {{"test.the_other_sub.t1.t2.abc"}});
     }
 
     SECTION("Instances Aggregate Field") {
-        auto result = getInstances(34, 24);
-        checkInstances(result, {{"test.the_other_sub.t1.t2"}});
+        server.checkGetInstances(doc.before("t2.abc);"), {{"test.the_other_sub.t1.t2"}});
     }
 
     SECTION("Instances Aggregate Var") {
-        auto result = getInstances(34, 21);
-        checkInstances(result, {{"test.the_other_sub.t1"}});
+        server.checkGetInstances(doc.before("t1.t2.abc);"), {{"test.the_other_sub.t1"}});
     }
 
     // TODO -- slice (elements and ranges) vs whole array
     SECTION("Instances Whole Array") {
-        auto result = getInstances(45, 21);
-        checkInstances(result, {{"test.the_other_sub.the_array"}});
+        server.checkGetInstances(doc.before("the_array[4]);"), {{"test.the_other_sub.the_array"}});
     }
 
     SECTION("Instances Enum Var") {
-        auto result = getInstances(42, 16);
-        checkInstances(result, {{"test.the_other_sub.the_enum"}});
+        server.checkGetInstances(doc.before("the_enum = BAR;"), {{"test.the_other_sub.the_enum"}});
     }
 
-    auto pathToDeclaration =
-        [&](const std::string& path) -> std::optional<lsp::ShowDocumentParams> {
-        server.pathToDeclaration(path);
-
-        if (server.client.m_showDocuments.empty()) {
-            return std::nullopt;
-        }
-
-        CHECK(server.client.m_showDocuments.size() == 1);
-
-        auto result = std::optional(server.client.m_showDocuments.front());
-        server.client.m_showDocuments.pop_front();
-
-        return result;
-    };
 
     SECTION("Goto Hit") {
-        auto result = *pathToDeclaration("test.the_sub_2.baz");
-        CHECK(result.uri == uri);
-        CHECK(*(result.selection) == lsp::Range{.start = {.line = 9, .character = 17},
-                                                .end = {.line = 9, .character = 20}});
+        auto cursor = doc.before("baz;");
+        server.checkGotoDeclaration("test.the_sub_2.baz", &cursor);
     }
 
     SECTION("Goto Miss") {
-        auto result = pathToDeclaration("blargh.ack");
-        CHECK(!result);
+        server.checkGotoDeclaration("blargh.ack");
     }
 
     SECTION("Goto Interface Signal") {
-        auto result = *pathToDeclaration("test.the_sub_2.the_intf_1.sig1");
-        CHECK(*(result.selection) == lsp::Range{.start = {.line = 17, .character = 10},
-                                                .end = {.line = 17, .character = 14}});
+        auto cursor = doc.before("sig1;");
+        server.checkGotoDeclaration("test.the_sub_2.the_intf_1.sig1", &cursor);
     }
 
     // TODO -- goto declaration vs definition
     SECTION("Goto Field") {
-        auto result = *pathToDeclaration("test.the_other_sub.t1.t2.def");
-        CHECK(*(result.selection) == lsp::Range{.start = {.line = 33, .character = 18},
-                                                .end = {.line = 33, .character = 20}});
+        auto cursor = doc.before("t1;");
+        server.checkGotoDeclaration("test.the_other_sub.t1.t2.def", &cursor);
     }
 
     SECTION("Goto Enum Var") {
-        auto result = *pathToDeclaration("test.the_other_sub.the_enum");
-        CHECK(*(result.selection) == lsp::Range{.start = {.line = 41, .character = 11},
-                                                .end = {.line = 41, .character = 19}});
+        auto cursor = doc.before("the_enum;");
+        server.checkGotoDeclaration("test.the_other_sub.the_enum", &cursor);
     }
 
     SECTION("Goto Array Slice") {
-        auto result = *pathToDeclaration("test.the_other_sub.the_array[4]");
-        CHECK(*(result.selection) == lsp::Range{.start = {.line = 44, .character = 17},
-                                                .end = {.line = 44, .character = 26}});
+        auto cursor = doc.before("the_array");
+        server.checkGotoDeclaration("test.the_other_sub.the_array[4]", &cursor);
     }
 
     SECTION("Is Var Var") {

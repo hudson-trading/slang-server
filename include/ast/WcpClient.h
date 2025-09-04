@@ -2,7 +2,7 @@
 /// @file WcpClient.h
 /// @brief Waveform viewer Control Protocol client
 //
-// SPDX-FileCopyrightText: Michael Popoloski
+// SPDX-FileCopyrightText: Hudson River Trading
 // SPDX-License-Identifier: MIT
 //------------------------------------------------------------------------------
 #pragma once
@@ -16,7 +16,7 @@
 #include <sys/socket.h>
 #include <thread>
 
-namespace wcp {
+namespace waves {
 
 struct ScopeToWaveform {
     std::string path;
@@ -140,4 +140,4 @@ public:
     void loadWaveform(const std::string&);
 };
 
-} // namespace wcp
+} // namespace waves

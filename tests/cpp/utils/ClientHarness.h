@@ -55,5 +55,6 @@ public:
 
     void onShowDocument(const lsp::ShowDocumentParams& params) final {
         m_showDocuments.push_back(params);
+        // TODO -- ServerHarness::openFile() once the client and server harnesses are merged
     }
 };

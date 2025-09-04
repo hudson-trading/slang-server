@@ -2,7 +2,7 @@
 //! @file ConeTracer.h
 //! @brief Cone tracer
 //
-// SPDX-FileCopyrightText: Michael Popoloski
+// SPDX-FileCopyrightText: Hudson River Trading
 // SPDX-License-Identifier: MIT
 //------------------------------------------------------------------------------
 #pragma once

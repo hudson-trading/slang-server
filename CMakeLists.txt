@@ -124,6 +124,7 @@ endif()
 add_library(
   slang_server_obj_lib OBJECT
   src/ast/ServerCompilation.cpp
+  src/ast/WcpClient.cpp
   src/document/ShallowAnalysis.cpp
   src/document/SlangDoc.cpp
   src/document/SymbolIndexer.cpp
@@ -138,7 +139,6 @@ add_library(
   src/ServerDriver.cpp
   src/SlangServer.cpp
   src/ServerDiagClient.cpp
-  src/WcpClient.cpp
 )
 
 target_compile_options(slang_server_obj_lib PRIVATE -Wno-reorder-init-list)

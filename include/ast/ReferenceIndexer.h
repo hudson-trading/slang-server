@@ -2,7 +2,7 @@
 //! @file ReferenceIndexer.h
 //! @brief Variable reference index
 //
-// SPDX-FileCopyrightText: Michael Popoloski
+// SPDX-FileCopyrightText: Hudson River Trading
 // SPDX-License-Identifier: MIT
 //------------------------------------------------------------------------------
 #pragma once
@@ -48,7 +48,7 @@ public:
     }
 
     template<typename T>
-    // NOCOMMIT -- port maps, other stuff?
+    // TODO -- port maps, other stuff?
         requires is_base_of_any<T, slang::ast::ContinuousAssignSymbol,
                                 slang::ast::ProceduralBlockSymbol>::value
     void handle(const T& symbol) {

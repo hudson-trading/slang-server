@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Michael Popoloski
+// SPDX-FileCopyrightText: Hudson River Trading
 // SPDX-License-Identifier: MIT
 
 #include "lsp/LspTypes.h"
@@ -31,167 +31,144 @@ TEST_CASE("Cone Tracing") {
     // This will actually load the compilation
     server.onInitialized(lsp::InitializedParams{});
 
-    auto uri = URI::fromFile(fs::absolute("test2.sv"));
-
-    auto prepare = [&](uint line, uint character) {
-        auto result = server.getDocPrepareCallHierarchy(lsp::CallHierarchyPrepareParams{
-            .textDocument = {uri},
-            .position = lsp::Position{.line = line, .character = character}});
-        return result;
-    };
-
-    auto checkPreparation = [](const std::vector<lsp::CallHierarchyItem>& items,
-                               const std::set<std::string>& expected) {
-        std::set<std::string> got;
-        for (const auto& item : items) {
-            got.insert(item.name);
-        }
-        CHECK(got == expected);
-    };
+    const std::string file("test2.sv");
+    auto uri = URI::fromFile(fs::absolute(file));
+    auto doc = server.openFile(file);
 
     // TODO -- prepare for interfaces -- list signals?
 
     SECTION("Prepare Multiple") {
-        auto result = *prepare(51, 8);
-        checkPreparation(result, {"test.the_sub_1.x", "test.the_sub_2.x"});
+        auto cursor = doc.before("x <= a + b;");
+        server.checkPrepareCallHierarchy(cursor, {"test.the_sub_1.x", "test.the_sub_2.x"});
     }
 
     SECTION("Prepare Empty") {
-        auto result = *prepare(0, 0);
-        CHECK(result.empty());
+        auto cursor = doc.begin();
+        server.checkPrepareCallHierarchy(cursor, {});
     }
 
     SECTION("Prepare Single") {
-        auto result = *prepare(16, 23);
-        checkPreparation(result, {"test.a"});
+        auto cursor = doc.before("a,");
+        server.checkPrepareCallHierarchy(cursor, {"test.a"});
     }
 
-    auto incoming = [&](const std::string& path) {
-        auto result = server.getCallHierarchyIncomingCalls(
-            lsp::CallHierarchyIncomingCallsParams{.item = {.name = path}});
-        return result;
-    };
-
-    auto checkIncoming = [&](const std::vector<lsp::CallHierarchyIncomingCall>& incomings,
-                             const std::set<HierResult>& expected) {
-        std::set<HierResult> got;
-        for (const auto& incoming : incomings) {
-            CHECK(incoming.from.uri == uri);
-            CHECK(incoming.fromRanges.size() == 1);
-            got.insert({.name = incoming.from.name,
-                        .line = incoming.fromRanges[0].start.line,
-                        .character = incoming.fromRanges[0].start.character});
-        }
-        CHECK(got == expected);
-    };
-
     SECTION("Incoming Multiple") {
-        auto result = *incoming("test.the_sub_2.x");
-        checkIncoming(result, {{.name = "test.the_sub_2.a", .line = 51, .character = 13},
-                               {.name = "test.the_sub_2.b", .line = 51, .character = 17}});
+        auto cursor_a = doc.before("a + b;");
+        auto cursor_b = doc.before("b;");
+        server.checkIncomingCalls("test.the_sub_2.x", {{"test.the_sub_2.a", &cursor_a},
+                                                       {"test.the_sub_2.b", &cursor_b}});
     }
 
     SECTION("Incoming Single") {
+        // Temporarily revert to test method
+        auto incoming = [&](const std::string& path) {
+            auto result = server.getCallHierarchyIncomingCalls(
+                lsp::CallHierarchyIncomingCallsParams{.item = {.name = path}});
+            return result;
+        };
+        auto checkIncoming = [&](const std::vector<lsp::CallHierarchyIncomingCall>& incomings,
+                                 const std::set<HierResult>& expected) {
+            std::set<HierResult> got;
+            for (const auto& incoming : incomings) {
+                CHECK(incoming.fromRanges.size() == 1);
+                got.insert({.name = incoming.from.name,
+                            .line = incoming.fromRanges[0].start.line,
+                            .character = incoming.fromRanges[0].start.character});
+            }
+            CHECK(got == expected);
+        };
         auto result = *incoming("test.the_sub_2.b");
         checkIncoming(result, {{.name = "test.x1", .line = 34, .character = 12}});
     }
 
     SECTION("Incoming Single2") {
-        auto result = *incoming("test.x1");
         // This points at the port declartion.  It would be more consistent to point at the
         // port map instead, but that location information doesn't appear to be attached to
         // PortSymbol
-        checkIncoming(result, {{.name = "test.the_sub_1.x", .line = 44, .character = 24}});
+        auto cursor = doc.after("module sub").after("output logic [31:0] ");
+        server.checkIncomingCalls("test.x1", {{"test.the_sub_1.x", &cursor}});
     }
 
     SECTION("Incoming Constant") {
-        auto result = *incoming("test.the_sub_2.the_sub_sub.result");
-        checkIncoming(result,
-                      {{.name = "test.the_sub_2.the_sub_sub.bar", .line = 76, .character = 22},
-                       {.name = "test.the_sub_2.the_sub_sub.foo", .line = 75, .character = 12}});
+        auto cursor_foo = doc.before("foo) begin");
+        auto cursor_bar = doc.before("bar;");
+        server.checkIncomingCalls("test.the_sub_2.the_sub_sub.result",
+                                  {{"test.the_sub_2.the_sub_sub.foo", &cursor_foo},
+                                   {"test.the_sub_2.the_sub_sub.bar", &cursor_bar}});
     }
 
     SECTION("Incoming Switched") {
-        auto result = *incoming("test.the_sub_2.the_sub_sub.switched_result");
-        checkIncoming(result,
-                      {{.name = "test.the_sub_2.the_sub_sub.bar", .line = 86, .character = 13},
-                       {.name = "test.the_sub_2.the_sub_sub.foo", .line = 87, .character = 36}});
+        auto cursor_bar = doc.before("bar)");
+        auto cursor_foo = doc.before("foo;");
+        server.checkIncomingCalls("test.the_sub_2.the_sub_sub.switched_result",
+                                  {{"test.the_sub_2.the_sub_sub.bar", &cursor_bar},
+                                   {"test.the_sub_2.the_sub_sub.foo", &cursor_foo}});
     }
 
     SECTION("Incoming Interface") {
-        auto result = *incoming("test.the_intfs[2].qux");
-        checkIncoming(result, {{.name = "test.the_intfs[1].qux", .line = 55, .character = 22},
-                               {.name = "test.the_sub_2.b", .line = 55, .character = 35}});
+        auto cursor_qux = doc.before("qux_in.qux + b;");
+        auto cursor_b = doc.after("qux_out.qux = ").before("b;");
+        server.checkIncomingCalls("test.the_intfs[2].qux", {{"test.the_intfs[1].qux", &cursor_qux},
+                                                            {"test.the_sub_2.b", &cursor_b}});
     }
 
     SECTION("Incoming Interface Reference") {
-        auto result = *incoming("test.the_sub_1.qux_out.qux");
-        checkIncoming(result, {{.name = "test.the_intfs[0].qux", .line = 55, .character = 22},
-                               {.name = "test.the_sub_1.b", .line = 55, .character = 35}});
+        auto cursor_qux = doc.before("qux_in.qux + b;");
+        auto cursor_b = doc.after("qux_out.qux = ").before("b;");
+        server.checkIncomingCalls("test.the_sub_1.qux_out.qux",
+                                  {{"test.the_intfs[0].qux", &cursor_qux},
+                                   {"test.the_sub_1.b", &cursor_b}});
     }
 
-    auto outgoing = [&](const std::string& path) {
-        auto result = server.getCallHierarchyOutgoingCalls(
-            lsp::CallHierarchyOutgoingCallsParams{.item = {.name = path}});
-        return result;
-    };
-
-    auto checkOutgoing = [&](const std::vector<lsp::CallHierarchyOutgoingCall>& outgoings,
-                             const std::set<HierResult>& expected) {
-        std::set<HierResult> got;
-        for (const auto& outgoing : outgoings) {
-            CHECK(outgoing.to.uri == uri);
-            CHECK(outgoing.fromRanges.size() == 1);
-            got.insert({.name = outgoing.to.name,
-                        .line = outgoing.fromRanges[0].start.line,
-                        .character = outgoing.fromRanges[0].start.character});
-        }
-        CHECK(got == expected);
-    };
-
     SECTION("Outgoing Multiple") {
-        auto result = *outgoing("test.a");
-        checkOutgoing(result, {{.name = "test.the_sub_2.a", .line = 42, .character = 23},
-                               {.name = "test.the_sub_1.a", .line = 42, .character = 23}});
+        auto cursor = doc.after("module sub(").before("a,");
+        server.checkOutgoingCalls("test.a",
+                                  {{"test.the_sub_2.a", &cursor}, {"test.the_sub_1.a", &cursor}});
     }
 
     SECTION("Outgoing Up Down") {
-        auto result = *outgoing("test.the_sub_2.a");
-        checkOutgoing(result,
-                      {{.name = "test.the_sub_2.x", .line = 51, .character = 8},
-                       {.name = "test.the_sub_2.the_sub_sub.foo", .line = 66, .character = 16}});
+        auto cursor_x = doc.before("x <= a + b;");
+        auto cursor_foo = doc.before("foo,");
+        server.checkOutgoingCalls("test.the_sub_2.a",
+                                  {{"test.the_sub_2.x", &cursor_x},
+                                   {"test.the_sub_2.the_sub_sub.foo", &cursor_foo}});
     }
 
     SECTION("Outgoing Single") {
-        auto result = *outgoing("test.the_sub_2.x");
-        checkOutgoing(result, {{.name = "test.x", .line = 35, .character = 12}});
+        auto cursor = doc.before("x),");
+        server.checkOutgoingCalls("test.the_sub_2.x", {{"test.x", &cursor}});
     }
 
     SECTION("Outgoing Conditional") {
-        auto result = *outgoing("test.the_sub_1.the_sub_sub.foo");
-        checkOutgoing(
-            result,
-            {{.name = "test.the_sub_1.the_sub_sub.result", .line = 76, .character = 12},
-             {.name = "test.the_sub_1.the_sub_sub.result", .line = 78, .character = 12},
-             {.name = "test.the_sub_1.the_sub_sub.switched_result", .line = 87, .character = 18}});
+        auto cursor_result1 = doc.before("result <= bar;");
+        auto cursor_result2 = doc.before("result <= '1;");
+        auto cursor_switched = doc.before("switched_result = foo;");
+        server.checkOutgoingCalls("test.the_sub_1.the_sub_sub.foo",
+                                  {{"test.the_sub_1.the_sub_sub.result", &cursor_result1},
+                                   {"test.the_sub_1.the_sub_sub.result", &cursor_result2},
+                                   {"test.the_sub_1.the_sub_sub.switched_result",
+                                    &cursor_switched}});
     }
 
     SECTION("Outgoing Switched") {
-        auto result = *outgoing("test.the_sub_2.the_sub_sub.bar");
-        checkOutgoing(
-            result,
-            {{.name = "test.the_sub_2.the_sub_sub.result", .line = 76, .character = 12},
-             {.name = "test.the_sub_2.the_sub_sub.switched_result", .line = 87, .character = 18},
-             {.name = "test.the_sub_2.the_sub_sub.switched_result", .line = 88, .character = 18}});
+        auto cursor_result = doc.before("result <= bar;");
+        auto cursor_switched1 = doc.before("switched_result = foo;");
+        auto cursor_switched2 = doc.before("switched_result = 1'b0;");
+        server.checkOutgoingCalls(
+            "test.the_sub_2.the_sub_sub.bar",
+            {{"test.the_sub_2.the_sub_sub.result", &cursor_result},
+             {"test.the_sub_2.the_sub_sub.switched_result", &cursor_switched1},
+             {"test.the_sub_2.the_sub_sub.switched_result", &cursor_switched2}});
     }
 
     SECTION("Outgoing Interface") {
-        auto result = *outgoing("test.the_intfs[1].quz");
-        checkOutgoing(result, {{.name = "test.the_intfs[0].quz", .line = 56, .character = 8}});
+        auto cursor = doc.before("qux_in.quz = qux_out.quz;");
+        server.checkOutgoingCalls("test.the_intfs[1].quz", {{"test.the_intfs[0].quz", &cursor}});
     }
 
     SECTION("Outgoing Interface Reference") {
-        auto result = *outgoing("test.the_sub_1.qux_out.qux");
-        checkOutgoing(result, {{.name = "test.the_intfs[2].qux", .line = 55, .character = 8}});
+        auto cursor = doc.before("qux_out.qux = qux_in.qux + b;");
+        server.checkOutgoingCalls("test.the_sub_1.qux_out.qux",
+                                  {{"test.the_intfs[2].qux", &cursor}});
     }
 }

@@ -28,8 +28,6 @@ public:
         underlying_ = protocol + "://" + path;
     }
 
-    URI(const std::string_view _str) : URI(std::string(_str)) {}
-
     ~URI() = default;
 
     // Equality operator (needed for unordered_map)
