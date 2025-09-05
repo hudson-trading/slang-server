@@ -42,13 +42,18 @@ void ServerCompilation::refresh() {
 
 std::vector<hier::InstanceSet> ServerCompilation::getScopesByModule() {
     std::vector<hier::InstanceSet> result;
-    for (auto& it : m_instances.syntaxToInstance) {
+    for (auto& it : m_instances.moduleToInstances) {
         if (it.second.size() == 0) {
             continue;
         }
 
         std::optional<hier::QualifiedInstance> instance;
         if (it.second.size() == 1) {
+            if (instance->instPath.starts_with("$unit")) {
+                // don't return $unit instances, these are invalid and should probably be fixed in
+                // slang, it's returned sometimes by a non-unit symbol
+                continue;
+            }
             instance.emplace(hier::toQualifiedInstance(*it.second[0], m_sourceManager));
         }
         auto& definition = it.second[0]->getDefinition();
@@ -64,8 +69,8 @@ std::vector<hier::InstanceSet> ServerCompilation::getScopesByModule() {
 
 std::vector<hier::QualifiedInstance> ServerCompilation::getInstancesOfModule(
     const std::string& moduleName) {
-    auto it = m_instances.syntaxToInstance.find(moduleName);
-    if (it == m_instances.syntaxToInstance.end()) {
+    auto it = m_instances.moduleToInstances.find(moduleName);
+    if (it == m_instances.moduleToInstances.end()) {
         return {};
     }
     std::vector<hier::QualifiedInstance> result;
@@ -92,7 +97,8 @@ std::vector<hier::HierItem_t> ServerCompilation::getScope(const std::string& hie
 
     const slang::ast::Scope* scope = nullptr;
     {
-        auto sym = root.lookupName(hierPath);
+        auto sym = root.lookupName(hierPath, ast::LookupLocation::max,
+                                   ast::LookupFlags::AllowUnnamedGenerate);
         if (sym) {
             switch (sym->kind) {
                 case slang::ast::SymbolKind::Instance:

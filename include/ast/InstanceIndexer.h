@@ -10,22 +10,23 @@
 
 #include "slang/ast/ASTVisitor.h"
 #include "slang/ast/Symbol.h"
+#include "slang/ast/symbols/CompilationUnitSymbols.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
 
 struct InstanceIndexer : public slang::ast::ASTVisitor<InstanceIndexer, false, false> {
 public:
-    std::map<std::string, std::vector<const slang::ast::InstanceSymbol*>> syntaxToInstance;
+    std::map<std::string, std::vector<const slang::ast::InstanceSymbol*>> moduleToInstances;
     void handle(const slang::ast::InstanceSymbol& symbol) {
-        syntaxToInstance[std::string{symbol.getDefinition().name}].push_back(&symbol);
+        moduleToInstances[std::string{symbol.getDefinition().name}].push_back(&symbol);
         visitDefault(symbol.body);
     }
 
     void reset(const slang::ast::Symbol* root) {
-        syntaxToInstance.clear();
+        moduleToInstances.clear();
         root->visit(*this);
     }
 
-    void clear() { syntaxToInstance.clear(); }
+    void clear() { moduleToInstances.clear(); }
 
-    bool empty() const { return syntaxToInstance.empty(); }
+    bool empty() const { return moduleToInstances.empty(); }
 };

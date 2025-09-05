@@ -111,6 +111,9 @@ public:
     // Returns the instances of a module
     std::vector<hier::QualifiedInstance> getInstancesOfModule(const std::string moduleName);
 
+    // Returns the files that contain a specific module, used for terminal links
+    std::vector<std::string> getFilesContainingModule(const std::string moduleName);
+
     // Return the item at this path
     std::vector<hier::HierItem_t> getScope(const std::string& hierPath);
 

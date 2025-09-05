@@ -28,7 +28,7 @@ The `unittests` target is also buildable and runnable, to ensure any temporary u
 
 ## Vscode Testing
 
-Install the Slang Extension on either the [Vscode Marketplace](TODO) or [OpenVSX]
+Install the Slang Extension on either the [Vscode Marketplace](TODO) or [OpenVSX](TODO)
 
 Add this to `.vscode/settings.json` to use slang-server
 ```json
@@ -87,4 +87,4 @@ RR: Run with `--rr`, then run `rr replay`
 
 ## Neovim Testing
 
-(WIP)
+(TODO)

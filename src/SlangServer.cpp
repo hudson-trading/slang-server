@@ -14,10 +14,12 @@
 #include "lsp/LspTypes.h"
 #include "lsp/URI.h"
 #include "util/Logging.h"
+#include <algorithm>
 #include <filesystem>
 #include <fmt/base.h>
 #include <memory>
 #include <optional>
+#include <ranges>
 #include <rfl/Variant.hpp>
 #include <string>
 #include <string_view>
@@ -79,6 +81,10 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     // Hierarchy View (sidebar)
     registerCommand<std::string, std::vector<hier::HierItem_t>, &SlangServer::getScope>(
         "slang.getScope");
+
+    // Terminal Links
+    registerCommand<std::string, std::vector<std::string>, &SlangServer::getFilesContainingModule>(
+        "slang.getFilesContainingModule");
 
     // Instances View
     registerCommand<std::monostate, std::vector<hier::InstanceSet>,
@@ -230,6 +236,14 @@ std::vector<hier::QualifiedInstance> SlangServer::getInstancesOfModule(
         m_client.showError(fmt::format("Module {} not found", moduleName));
     }
     return result;
+}
+
+std::vector<std::string> SlangServer::getFilesContainingModule(const std::string moduleName) {
+    // lookup in index
+    auto paths = m_indexer.getRelevantFilesForName(moduleName);
+    auto transformed = paths | std::ranges::views::transform(
+                                   [](const auto& path) { return path.string(); });
+    return std::vector<std::string>(transformed.begin(), transformed.end());
 }
 
 std::vector<hier::HierItem_t> SlangServer::getScope(const std::string& hierPath) {
