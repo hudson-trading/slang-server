@@ -12,6 +12,7 @@
 #include "util/Formatting.h"
 #include "util/Logging.h"
 #include <exception>
+#include <fmt/format.h>
 #include <rfl/Result.hpp>
 
 #include "slang/ast/Lookup.h"
@@ -126,14 +127,14 @@ public:
 
     void handle(const slang::syntax::DeclaratorSyntax& param) {
         names.push_back(param.name.valueText());
-        defaults.push_back(param.toString());
+        defaults.push_back(param.initializer ? param.initializer->expr->toString() : "");
         ltrim(defaults.back());
         maxLen = std::max(maxLen, param.name.valueText().length());
     }
 
     void handle(const slang::syntax::TypeAssignmentSyntax& param) {
         names.push_back(param.name.valueText());
-        defaults.push_back(param.toString());
+        defaults.push_back(param.assignment ? param.assignment->type->toString() : "");
         ltrim(defaults.back());
         maxLen = std::max(maxLen, param.name.valueText().length());
     }
@@ -166,7 +167,13 @@ void resolveModule(const slang::syntax::ModuleHeaderSyntax& header, lsp::Complet
         auto name = std::string{names[i]};
         auto nameFmt = name + std::string(maxLen - name.length(), ' ');
         output.appendText("\t." + nameFmt + "(");
-        output.appendPlaceholder(defaults[i]);
+        if (defaults[i].empty()) {
+            output.appendPlaceholder(name);
+        }
+        else {
+            // TODO: ideally we could append hover info, don't think that's supported
+            output.appendPlaceholder(fmt::format("{} /* default {} */", name, defaults[i]));
+        }
         output.appendText(")");
         if (i < names.size() - 1) {
             output.appendText(",\n");
@@ -182,7 +189,6 @@ void resolveModule(const slang::syntax::ModuleHeaderSyntax& header, lsp::Complet
     // get ports
     maxLen = 0;
     names.clear();
-    defaults.clear();
     if (header.ports) {
         PortVisitor visitor;
         header.ports->visit(visitor);

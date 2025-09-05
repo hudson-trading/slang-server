@@ -36,7 +36,7 @@
           "value": "````systemverilog\nmodule Dut  #(\n    parameter int a = 0,\n    parameter int b = 1\n) (\n    input logic foo\n);\n````"
         },
         "filterText": "Dut",
-        "insertText": "Dut #(\n    .a(${1:a = 0}),\n    .b(${2:b = 1})\n ) ${3:dut} (\n    .foo(${4:foo})\n);",
+        "insertText": "Dut #(\n    .a(${1:a /* default 0 */}),\n    .b(${2:b /* default 1 */})\n ) ${3:dut} (\n    .foo(${4:foo})\n);",
         "insertTextFormat": "Snippet"
       },
       {

@@ -62,8 +62,8 @@ TEST_CASE("ModuleCompletion") {
     comp.resolve();
     std::cout << *comp.m_item.insertText << std::endl;
     CHECK(comp.m_item.insertText == R"(Dut #(
-    .a(${1:a = 0}),
-    .b(${2:b = 1})
+    .a(${1:a /* default 0 */}),
+    .b(${2:b /* default 1 */})
  ) ${3:dut} (
     .foo(${4:foo})
 );)");
