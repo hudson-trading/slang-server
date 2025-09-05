@@ -120,6 +120,82 @@ TEST_CASE("PackageCompletion") {
     golden.record(completionItems);
 }
 
+TEST_CASE("WildcardImportCompletion") {
+    ServerHarness server("repo1");
+    JsonGoldenTest golden;
+
+    auto doc = server.openFile("wildcard_test.sv", R"(
+    package math_pkg;
+        parameter int PI_VALUE = 314;
+        parameter int E_VALUE = 271;
+        
+        typedef struct {
+            real x;
+            real y;
+        } point_t;
+        
+        typedef enum {
+            ADD,
+            SUBTRACT,
+            MULTIPLY
+        } operation_t;
+        
+        function real calculate(real a, real b, operation_t op);
+            case (op)
+                ADD: return a + b;
+                SUBTRACT: return a - b;
+                MULTIPLY: return a * b;
+                default: return 0.0;
+            endcase
+        endfunction
+        
+        task print_result(real value);
+            $display("Result: %f", value);
+        endtask
+    endpackage
+
+    package utils_pkg;
+        parameter int MAX_SIZE = 1024;
+        
+        typedef logic [7:0] byte_t;
+        
+        function int find_max(int array[], int size);
+            int max_val = array[0];
+            for (int i = 1; i < size; i++) begin
+                if (array[i] > max_val)
+                    max_val = array[i];
+            end
+            return max_val;
+        endfunction
+    endpackage
+
+    module test_wildcard_imports;
+        import math_pkg::*;
+        import utils_pkg::*;
+        
+        initial begin
+            point_t my_point;
+            operation_t op = ADD;
+            byte_t data = 8'hFF;
+            
+            // Test completions with wildcard imports
+            real result = calculate(PI_VALUE, E_VALUE, op);
+            print_result(x, );
+            int max_val = find_max();
+            
+            // Test lhs completion with wildcard imports
+        end
+    endmodule
+    )");
+
+    // Test completions after wildcard imports
+    auto afterPrintResult = doc.after("print_result(x, ").getResolvedCompletions();
+    auto lhsCompletion = doc.before("// Test lhs completion").getResolvedCompletions();
+
+    golden.record("after_print_result", afterPrintResult);
+    golden.record("lhs_completion", lhsCompletion);
+}
+
 TEST_CASE("ModuleMemberCompletion") {
     ServerHarness server("repo1");
     JsonGoldenTest golden;

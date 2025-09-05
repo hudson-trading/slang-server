@@ -1,0 +1,78 @@
+[
+  {
+    "after_print_result": [
+      {
+        "label": "my_point",
+        "labelDetails": {
+          "detail": " point_t"
+        },
+        "kind": "Variable",
+        "filterText": "my_point"
+      },
+      {
+        "label": "op",
+        "labelDetails": {
+          "detail": " operation_t"
+        },
+        "kind": "Variable",
+        "filterText": "op"
+      },
+      {
+        "label": "data",
+        "labelDetails": {
+          "detail": " byte_t"
+        },
+        "kind": "Variable",
+        "filterText": "data"
+      },
+      {
+        "label": "result",
+        "labelDetails": {
+          "detail": " real"
+        },
+        "kind": "Variable",
+        "filterText": "result"
+      },
+      {
+        "label": "max_val",
+        "labelDetails": {
+          "detail": " int"
+        },
+        "kind": "Variable",
+        "filterText": "max_val"
+      }
+    ]
+  },
+  {
+    "lhs_completion": [
+      {
+        "label": "Dut",
+        "labelDetails": {
+          "detail": " Module"
+        },
+        "kind": "Module",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nmodule Dut  #(\n    parameter int a = 0,\n    parameter int b = 1\n) (\n    input logic foo\n);\n````"
+        },
+        "filterText": "Dut",
+        "insertText": "Dut #(\n    .a(${1:a /* default 0 */}),\n    .b(${2:b /* default 1 */})\n ) ${3:dut} (\n    .foo(${4:foo})\n);",
+        "insertTextFormat": "Snippet"
+      },
+      {
+        "label": "tb",
+        "labelDetails": {
+          "detail": " Module"
+        },
+        "kind": "Module",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nmodule tb;\n````"
+        },
+        "filterText": "tb",
+        "insertText": "tb #(\n) ${1:tb} (\n);",
+        "insertTextFormat": "Snippet"
+      }
+    ]
+  }
+]
