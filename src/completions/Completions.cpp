@@ -470,6 +470,15 @@ void getMemberCompletions(std::vector<lsp::CompletionItem>& results, const slang
             }
         }
 
+        // Add wildcard imports
+        if (auto importData = currentScope->getWildcardImportData()) {
+            for (auto import : importData->wildcardImports) {
+                auto package = import->getPackage();
+                INFO("Adding wildcard imports from package {}", package->name);
+                getMemberCompletions(results, package, isLhs);
+            }
+        }
+
         // Check if this scope belongs to a module instance - if so, stop here
         auto& parentSymbol = currentScope->asSymbol();
         if (parentSymbol.kind == slang::ast::SymbolKind::InstanceBody ||

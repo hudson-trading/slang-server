@@ -40,11 +40,191 @@
         },
         "kind": "Variable",
         "filterText": "max_val"
+      },
+      {
+        "label": "PI_VALUE",
+        "labelDetails": {
+          "detail": " int"
+        },
+        "kind": "TypeParameter",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nparameter int PI_VALUE = 314\n````"
+        },
+        "filterText": "PI_VALUE"
+      },
+      {
+        "label": "E_VALUE",
+        "labelDetails": {
+          "detail": " int"
+        },
+        "kind": "TypeParameter",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nparameter int E_VALUE = 271\n````"
+        },
+        "filterText": "E_VALUE"
+      },
+      {
+        "label": "point_t",
+        "labelDetails": {
+          "detail": " UnpackedStructType"
+        },
+        "kind": "Struct",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\ntypedef struct {\n    real x;\n    real y;\n} point_t;\n````"
+        },
+        "filterText": "point_t"
+      },
+      {
+        "label": "ADD",
+        "labelDetails": {
+          "detail": " EnumValue"
+        },
+        "kind": "EnumMember",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\ntypedef enum {\n    ADD,\n    SUBTRACT,\n    MULTIPLY\n} operation_t;\n````"
+        },
+        "filterText": "ADD"
+      },
+      {
+        "label": "SUBTRACT",
+        "labelDetails": {
+          "detail": " EnumValue"
+        },
+        "kind": "EnumMember",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\ntypedef enum {\n    ADD,\n    SUBTRACT,\n    MULTIPLY\n} operation_t;\n````"
+        },
+        "filterText": "SUBTRACT"
+      },
+      {
+        "label": "MULTIPLY",
+        "labelDetails": {
+          "detail": " EnumValue"
+        },
+        "kind": "EnumMember",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\ntypedef enum {\n    ADD,\n    SUBTRACT,\n    MULTIPLY\n} operation_t;\n````"
+        },
+        "filterText": "MULTIPLY"
+      },
+      {
+        "label": "operation_t",
+        "labelDetails": {
+          "detail": " EnumType"
+        },
+        "kind": "Enum",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\ntypedef enum {\n    ADD,\n    SUBTRACT,\n    MULTIPLY\n} operation_t;\n````"
+        },
+        "filterText": "operation_t"
+      },
+      {
+        "label": "calculate",
+        "labelDetails": {
+          "detail": " function"
+        },
+        "kind": "Function",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nfunction real calculate(real a, real b, operation_t op);\n    case (op)\n        ADD: return a + b;\n        SUBTRACT: return a - b;\n        MULTIPLY: return a * b;\n        default: return 0.0;\n    endcase\nendfunction\n````"
+        },
+        "filterText": "calculate"
+      },
+      {
+        "label": "print_result",
+        "labelDetails": {
+          "detail": " task"
+        },
+        "kind": "Function",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\ntask print_result(real value);\n    $display(\"Result: %f\", value);\nendtask\n````"
+        },
+        "filterText": "print_result"
+      },
+      {
+        "label": "MAX_SIZE",
+        "labelDetails": {
+          "detail": " int"
+        },
+        "kind": "TypeParameter",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nparameter int MAX_SIZE = 1024\n````"
+        },
+        "filterText": "MAX_SIZE"
+      },
+      {
+        "label": "byte_t",
+        "labelDetails": {
+          "detail": " PackedArrayType"
+        },
+        "kind": "Struct",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\ntypedef logic [7:0] byte_t;\n````"
+        },
+        "filterText": "byte_t"
+      },
+      {
+        "label": "find_max",
+        "labelDetails": {
+          "detail": " function"
+        },
+        "kind": "Function",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nfunction int find_max(int array[], int size);\n    int max_val = array[0];\n    for (int i = 1; i < size; i++) begin\n        if (array[i] > max_val)\n            max_val = array[i];\n    end\n    return max_val;\nendfunction\n````"
+        },
+        "filterText": "find_max"
       }
     ]
   },
   {
     "lhs_completion": [
+      {
+        "label": "point_t",
+        "labelDetails": {
+          "detail": " UnpackedStructType"
+        },
+        "kind": "Struct",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\ntypedef struct {\n    real x;\n    real y;\n} point_t;\n````"
+        },
+        "filterText": "point_t"
+      },
+      {
+        "label": "operation_t",
+        "labelDetails": {
+          "detail": " EnumType"
+        },
+        "kind": "Enum",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\ntypedef enum {\n    ADD,\n    SUBTRACT,\n    MULTIPLY\n} operation_t;\n````"
+        },
+        "filterText": "operation_t"
+      },
+      {
+        "label": "byte_t",
+        "labelDetails": {
+          "detail": " PackedArrayType"
+        },
+        "kind": "Struct",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\ntypedef logic [7:0] byte_t;\n````"
+        },
+        "filterText": "byte_t"
+      },
       {
         "label": "Dut",
         "labelDetails": {
