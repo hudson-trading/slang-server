@@ -132,6 +132,7 @@ macromodule m3;
 
     I d(.a(), .b());
     ^ Ref -> `interface I(.*);`
+      ^ Sym d : HierarchicalInstance
          ^ Ref -> `input a`
                ^ Ref -> `output b`
 
@@ -152,6 +153,7 @@ macromodule m3;
              ^^^ Ref -> `typedef p::y_t y_t;`
 
     ) m (, b, c, d, );
+      ^ Sym m : HierarchicalInstance
            ^ Ref -> `wire b;`
               ^ Ref -> `logic c;`
                  ^ Ref -> `I d(.a(), .b());`
@@ -178,6 +180,7 @@ macromodule m3;
              ^^ Ref -> `typedef p::y2 y2;`
 
     ) m2_inst (
+      ^^^^^^^ Sym m2_inst : HierarchicalInstance
 
         .a({1, 2}),
          ^ Ref -> `input int a[]`
@@ -690,6 +693,7 @@ endprimitive
 (* attr = 3.14 *) bind m3.m m1 #(1) bound('x, , , );
                           ^ Ref -> `m2 #(\n\    .x_t(y_t)\n\) m (, b, c, d, );`
                             ^^ Ref -> `module automatic m1 import p::*; #(int i = 1)\n\    (a, b, , .c({a, b[0]}));`
+                                    ^^^^^ Sym bound : HierarchicalInstance
 
 
 
@@ -842,18 +846,22 @@ module m4;
 
     Iface i1();
     ^^^^^ Ref -> `interface Iface;`
+          ^^ Sym i1 : HierarchicalInstance
 
     n n1(i1);
     ^ Ref -> `module n(Iface.m a);`
+      ^^ Sym n1 : HierarchicalInstance
          ^^ Ref -> `Iface i1();`
 
 
 
     Iface i2();
     ^^^^^ Ref -> `interface Iface;`
+          ^^ Sym i2 : HierarchicalInstance
 
     n n2(i2.m);
     ^ Ref -> `module n(Iface.m a);`
+      ^^ Sym n2 : HierarchicalInstance
          ^^ Ref -> `Iface i2();`
             ^ Ref -> `modport m(export foo, function void bar(int, logic), task baz, export func);`
 

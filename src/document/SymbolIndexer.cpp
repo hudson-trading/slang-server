@@ -107,6 +107,7 @@ void SymbolIndexer::handle(const slang::ast::InstanceSymbol& sym) {
     switch (sym.getSyntax()->kind) {
         case slang::syntax::SyntaxKind::HierarchicalInstance: {
             auto& instSyntax = sym.getSyntax()->as<slang::syntax::HierarchicalInstanceSyntax>();
+            symdex[&instSyntax.decl->name] = &sym;
 
             // Mark ports
             for (auto port : instSyntax.connections) {
