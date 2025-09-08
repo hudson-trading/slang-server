@@ -140,8 +140,6 @@ add_library(
   src/ServerDiagClient.cpp
 )
 
-target_compile_options(slang_server_obj_lib PRIVATE -Wno-reorder-init-list)
-
 target_include_directories(slang_server_obj_lib PUBLIC include)
 target_include_directories(slang_server_obj_lib PRIVATE external/reflect-cpp/include)
 
