@@ -272,6 +272,18 @@ std::vector<hier::HierItem_t> SlangServer::getScope(const std::string& hierPath)
     return m_driver->comp->getScope(hierPath);
 }
 
+// TODO -- Underlying ServerCompilation implementation is slow for larger designs -- fix
+// Currently InstanceVisitor walks the entire design searching for symbols which match
+// the provided location.  Instead we should use the ShallowAnalysis to find all the
+// containing module instances.  This assumes that hierarchical references don't leave
+// a given module.  We should make sure slang can warn for this so that people can lint
+// their designs accordingly, fail gracefully when this happens and if really needed
+// provided a slower / more thorough fallback when this rule is violated (last part is debatable).
+// We won't be able to fully depend on the ShallowAnalysis to give us all instances because
+// it won't actually know things such as how generate loops were evaluated.  Either we can
+// crawl the AST limited just to the modules in question or we can attempt to use the
+// provided hierarchical path to deduce where such points may be and then use the remainder
+// of the provided path.
 std::vector<std::string> SlangServer::getInstances(const lsp::TextDocumentPositionParams& params) {
     if (!m_driver->comp) {
         ERROR("No compilation available, cannot get instances");
