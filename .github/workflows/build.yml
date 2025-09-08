@@ -1,0 +1,71 @@
+name: CI Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - preset: clang-sanitize
+            os: ubuntu-latest
+          - preset: gcc-release
+            os: ubuntu-24.04-arm
+          - preset: gcc-11-release
+            os: ubuntu-latest
+          - preset: gcc-debug-shared
+            os: ubuntu-latest
+          - preset: gcc-debug-noexcept
+            os: ubuntu-latest
+          - preset: macos-release
+            os: macos-latest
+          - preset: win64-release
+            os: windows-latest
+          - preset: win64-debug-shared
+            os: windows-latest
+          - preset: win64-debug-noexcept
+            os: windows-latest
+          - preset: wasi-sdk
+            os: ubuntu-latest
+          - preset: wasi-sdk-pthread
+            os: ubuntu-latest
+
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Install dependencies
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+        sudo add-apt-repository "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-20 main"
+        sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+        sudo apt-get update
+        sudo apt-get install -y g++-14 g++-11 clang-20 clang-tidy-20
+    - uses: ilammy/msvc-dev-cmd@v1
+      if: matrix.os == 'windows-latest'
+    - uses: maxim-lobanov/setup-xcode@v1
+      if: matrix.os == 'macos-latest'
+      with:
+        xcode-version: 'latest'
+    - uses: konsumer/install-wasi-sdk@v1
+      if: ${{ startsWith(matrix.preset, 'wasi-') }}
+    - uses: bytecodealliance/actions/wasmtime/setup@v1
+      if: ${{ startsWith(matrix.preset, 'wasi-') }}
+    - name: Configure
+      run: cmake --preset ${{ matrix.preset }} -DSLANG_CI_BUILD=ON -DSLANG_INCLUDE_UVM_TEST=ON
+      if: ${{ !startsWith(matrix.preset, 'wasi-') }}
+    - name: Configure
+      run: cmake -B build/${{ matrix.preset }} -DCMAKE_TOOLCHAIN_FILE=${WASI_SDK_PATH}/share/cmake/${{ matrix.preset }}.cmake -DSLANG_USE_THREADS=${{ contains(matrix.preset, 'pthread') && 'ON' || 'OFF' }} -DSLANG_CI_BUILD=ON -DSLANG_INCLUDE_UVM_TEST=ON
+      if: ${{ startsWith(matrix.preset, 'wasi-') }}
+    - name: Build
+      run: cmake --build build/${{ matrix.preset }} -j8
+    - name: Run tests
+      run: ctest --test-dir build/${{ matrix.preset }} --output-on-failure --no-tests=error -j8
