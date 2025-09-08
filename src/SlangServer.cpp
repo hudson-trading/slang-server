@@ -24,7 +24,6 @@
 #include <rfl/Variant.hpp>
 #include <string>
 #include <string_view>
-#include <unistd.h>
 #include <variant>
 #include <vector>
 
@@ -83,7 +82,7 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     // LSP Lifecycle
     registerInitialized();
 
-    INFO("Server started with pid: {}", getpid());
+    INFO("Server started with pid: {}", OS::getpid());
 
     // Top level setting- these are internal commands, the main command should be in the client
     registerCommand<std::string, std::monostate, &SlangServer::setTopLevel>("slang.setTopLevel");
