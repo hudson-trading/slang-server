@@ -117,7 +117,7 @@ add_subdirectory(external/reflect-cpp)
 
 # Suppress warnings in reflect-cpp library
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-  target_compile_options(reflectcpp PRIVATE -Wno-missing-designated-field-initializers -Wno-unused-parameter)
+  target_compile_options(reflectcpp PRIVATE -Wno-missing-designated-field-initializers -Wno-missing-field-initializers -Wno-unused-parameter)
 endif()
 
 # Build the slang-server library

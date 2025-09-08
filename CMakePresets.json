@@ -199,18 +199,6 @@
       }
     },
     {
-      "name": "gcc-11-release",
-      "displayName": "GCC Release",
-      "inherits": [
-        "linux-base",
-        "gcc-flags"
-      ],
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_CXX_COMPILER": "g++-11"
-      }
-    },
-    {
       "name": "gcc-coverage",
       "displayName": "GCC Coverage",
       "inherits": [
