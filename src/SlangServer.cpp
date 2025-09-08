@@ -23,6 +23,7 @@
 #include <rfl/Variant.hpp>
 #include <string>
 #include <string_view>
+#include <unistd.h>
 #include <variant>
 #include <vector>
 
