@@ -9,12 +9,16 @@
 
 #include "SlangServerWcp.h"
 #include "wcp/WcpTypes.h"
-#include <arpa/inet.h>
 #include <atomic>
 #include <mutex>
-#include <netinet/in.h>
-#include <sys/socket.h>
 #include <thread>
+
+#ifndef _WIN32
+#    include <arpa/inet.h>
+#    include <netinet/in.h>
+#    include <sys/socket.h>
+#    include <unistd.h>
+#endif
 
 namespace waves {
 
@@ -51,9 +55,11 @@ private:
     std::string m_command;
 
     void stop() {
+#ifndef _WIN32
         close(m_clientFd);
         close(m_serverFd);
         m_running = false;
+#endif
     }
 
     template<typename T>
@@ -65,6 +71,7 @@ private:
     }
 
     void sendBuffer(const char* buff, size_t len) {
+#ifndef _WIN32
         size_t sentLen = 0;
         while (sentLen < len) {
             ssize_t sent = send(m_clientFd, buff + sentLen, len - sentLen, 0);
@@ -76,9 +83,11 @@ private:
                 sentLen += sent;
             }
         }
+#endif
     }
 
     std::optional<std::string> getMessage() {
+#ifndef _WIN32
         struct timeval tv = {.tv_sec = 0, .tv_usec = 100000};
         fd_set clientFdSet;
         FD_ZERO(&clientFdSet);
@@ -112,6 +121,7 @@ private:
                 }
             }
         }
+#endif
 
         return std::nullopt;
     }

@@ -311,6 +311,10 @@ std::monostate SlangServer::addToWaveform(const waves::ScopeToWaveform& params) 
 }
 
 std::monostate SlangServer::openWaveform(const std::string& path) {
+#ifdef _WIN32
+    ERROR("WCP on Windows still needs to be implemented");
+    return std::monostate{};
+#else
     auto wcpCommand = m_config.wcpCommand.value();
     if (wcpCommand.empty()) {
         wcpCommand = "surfer --wcp-initiate {}";
@@ -325,6 +329,7 @@ std::monostate SlangServer::openWaveform(const std::string& path) {
     m_wcpClient->loadWaveform(path);
 
     return std::monostate{};
+#endif
 }
 
 void SlangServer::gotoDeclaration(const std::string& path) {

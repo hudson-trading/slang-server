@@ -15,11 +15,18 @@
 #include <csignal>
 #include <cstdlib>
 #include <format>
-#include <sys/prctl.h>
+#include <sstream>
+
+#ifndef _WIN32
+#    include <sys/prctl.h>
+#    include <sys/wait.h>
+#    include <unistd.h>
+#endif
 
 namespace fs = std::filesystem;
 
 void waves::WcpClient::runViewer() {
+#ifndef _WIN32
     if (fork() == 0) {
         std::vector<char*> args;
         std::stringstream ss(std::vformat(m_command, std::make_format_args(m_port)));
@@ -43,9 +50,11 @@ void waves::WcpClient::runViewer() {
         int rc = execv(args[0], args.data());
         std::cerr << "Problem launching waveform viewer: " << strerror(errno) << std::endl;
     }
+#endif
 }
 
 void waves::WcpClient::initClient() {
+#ifndef _WIN32
     // Create socket
     if ((m_serverFd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         std::cerr << "Problem creating WCP socket: " << strerror(errno) << std::endl;
@@ -72,9 +81,11 @@ void waves::WcpClient::initClient() {
         return;
     }
     m_port = ntohs(assignedAddr.sin_port);
+#endif
 }
 
 void waves::WcpClient::greet() {
+#ifndef _WIN32
     // Listen + accept connection
     if (listen(m_serverFd, 1) < 0) {
         std::cerr << "Problem listening to WCP port: " << strerror(errno) << std::endl;
@@ -141,6 +152,7 @@ void waves::WcpClient::greet() {
         std::cerr << "Problem decoding WCP greeting" << std::endl;
         stop();
     }
+#endif
 }
 
 void waves::WcpClient::runClient() {

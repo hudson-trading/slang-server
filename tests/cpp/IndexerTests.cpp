@@ -7,7 +7,6 @@
 #include "lsp/LspTypes.h"
 #include <cstdio>
 #include <filesystem>
-#include <unistd.h>
 
 #include "slang/driver/SourceLoader.h"
 #include "slang/text/SourceManager.h"

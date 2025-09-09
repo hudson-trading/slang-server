@@ -8,7 +8,6 @@
 #define CATCH_CONFIG_RUNNER
 #include "ServerHarness.h"
 #include <fstream>
-#include <unistd.h>
 
 DocumentHandle ServerHarness::openFile(std::string fileName) {
     auto root = m_workspaceFolder ? (m_workspaceFolder->uri.getPath()) : findSlangRoot();
