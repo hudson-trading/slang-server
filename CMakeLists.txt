@@ -55,6 +55,9 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Include GNUInstallDirs for standard installation directories
 include(GNUInstallDirs)
 
+# Include FetchContent for external dependencies
+include(FetchContent)
+
 # Set saner / consistent build directories on all platforms
 foreach(
   var
@@ -100,16 +103,42 @@ endif()
 
 # Add the slang library as a subdirectory
 # Set slang options for server usage
-set(SLANG_INCLUDE_TOOLS ON CACHE BOOL "Don't build slang tools" FORCE)
+set(SLANG_INCLUDE_TOOLS OFF CACHE BOOL "Don't build slang tools" FORCE)
 set(SLANG_INCLUDE_DOCS OFF CACHE BOOL "Don't build slang docs" FORCE)
 set(SLANG_INCLUDE_PYLIB OFF CACHE BOOL "Don't build slang Python bindings" FORCE)
 set(SLANG_INCLUDE_INSTALL OFF CACHE BOOL "Don't install slang separately" FORCE)
 
-# Enable slang tests only if we need them for Catch2
-if(SLANG_SERVER_INCLUDE_TESTS)
-  set(SLANG_INCLUDE_TESTS ON CACHE BOOL "Enable slang tests to get Catch2" FORCE)
+# Disable slang tests to avoid ctest pollution, but keep Catch2 available
+set(SLANG_INCLUDE_TESTS OFF CACHE BOOL "Don't build slang tests" FORCE)
+
+# Set up Catch2 for testing
+set(find_pkg_args "")
+
+if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.24.0")
+  set(find_pkg_args "FIND_PACKAGE_ARGS" "${catch2_min_version}")
+endif()
+
+FetchContent_Declare(
+  Catch2
+  GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+  GIT_TAG v3.10.0
+  GIT_SHALLOW ON
+  ${find_pkg_args})
+FetchContent_MakeAvailable(Catch2)
+
+if(NOT TARGET Catch2::Catch2)
+  message(
+    FATAL_ERROR
+      "Could not find Catch2 package, min version: ${catch2_min_version}")
+endif()
+
+if(Catch2_FOUND)
+  get_target_property(Catch2_INCLUDE_DIR Catch2::Catch2
+                      INTERFACE_INCLUDE_DIRECTORIES)
+  message(STATUS "Found system Catch2 version: ${Catch2_VERSION}")
+  message(STATUS "Using system Catch2 include: ${Catch2_INCLUDE_DIR}")
 else()
-  set(SLANG_INCLUDE_TESTS OFF CACHE BOOL "Don't build slang tests" FORCE)
+  message(STATUS "Using remote Catch2 library")
 endif()
 
 add_subdirectory(external/slang)
