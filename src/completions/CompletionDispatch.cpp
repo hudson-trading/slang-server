@@ -43,7 +43,7 @@ void CompletionDispatch::getInvokedCompletions(std::vector<lsp::CompletionItem>&
     if (scope) {
         m_lastScope = scope->asSymbol().getHierarchicalPath();
         m_lastDoc = doc;
-        completions::getMemberCompletions(results, scope, isLhs);
+        completions::getMemberCompletions(results, scope, isLhs, scope);
     }
 
     if (isLhs) {
@@ -123,7 +123,8 @@ void CompletionDispatch::getTriggerCompletions(char triggerChar, char prevChar,
             ERROR("No package found for {}", packageName);
             return;
         }
-        completions::getMemberCompletions(results, pkg, false);
+        auto originalScope = doc->getScopeAt(loc);
+        completions::getMemberCompletions(results, pkg, false, originalScope);
     }
     else if (triggerChar == '`') {
         // Add local macros
