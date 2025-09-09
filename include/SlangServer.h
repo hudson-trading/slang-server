@@ -12,6 +12,8 @@
 #include "ServerDriver.h"
 #include "SlangLspClient.h"
 #include "ast/HierarchicalView.h"
+#include "ast/SlangServerWcp.h"
+#include "ast/WcpClient.h"
 #include "document/SlangDoc.h"
 #include "lsp/LspServer.h"
 #include "lsp/LspTypes.h"
@@ -26,7 +28,7 @@
 #include "slang/driver/Driver.h"
 #include "slang/text/SourceManager.h"
 namespace server {
-class SlangServer : public lsp::LspServer<SlangServer> {
+class SlangServer : public lsp::LspServer<SlangServer>, public SlangServerWcp {
     /// The primary business logic for the server, in a type safe manner.
     /// To add an LSP method:
     /// - See routes here:
@@ -62,6 +64,9 @@ protected:
 
     /// Indexes the workspace for top symbols and macros
     Indexer m_indexer;
+
+    // The waveform viewer client
+    std::optional<waves::WcpClient> m_wcpClient = std::nullopt;
 
 public:
     SlangServer(SlangLspClient& client);
@@ -172,5 +177,46 @@ public:
 
     /// Completions resolve (get docs and snippet string)
     lsp::CompletionItem getCompletionItemResolve(const lsp::CompletionItem&) override;
+
+    ////////////////////////////////////////////////
+    /// Cone tracing
+    ////////////////////////////////////////////////
+
+    std::optional<std::vector<lsp::CallHierarchyItem>> getDocPrepareCallHierarchy(
+        const lsp::CallHierarchyPrepareParams&) override;
+
+    std::optional<std::vector<lsp::CallHierarchyIncomingCall>> getCallHierarchyIncomingCalls(
+        const lsp::CallHierarchyIncomingCallsParams&) override;
+
+    std::optional<std::vector<lsp::CallHierarchyOutgoingCall>> getCallHierarchyOutgoingCalls(
+        const lsp::CallHierarchyOutgoingCallsParams&) override;
+
+    ////////////////////////////////////////////////
+    /// Wcp commands and related LSP methods
+    ////////////////////////////////////////////////
+
+    /// Get a list of RTL paths of instances given a text document position
+    std::vector<std::string> getInstances(const lsp::TextDocumentPositionParams&);
+
+    /// Add the given variable or scope to the waveform via WCP
+    std::monostate addToWaveform(const waves::ScopeToWaveform&);
+
+    /// Open a given waveform file and establish a WCP connection
+    std::monostate openWaveform(const std::string&);
+
+    /// Given an RTL path, send the client to the declaration
+    void onGotoDeclaration(const std::string&) final;
+
+    /// Do housekeeping (e.g. compile) once a waveform is loaded (file name is given as a parameter)
+    void onWaveformLoaded(const std::string&) final;
+
+    /// Get a list of RTL paths of the drivers of a given RTL path
+    std::vector<std::string> getDrivers(const std::string&) final;
+
+    /// Get a list of RTL paths of the loads of a given RTL path
+    std::vector<std::string> getLoads(const std::string&) final;
+
+    /// Get the mutex to prevent collisions between LSP and WCP message handling
+    std::mutex& getMutex() final { return mutex; };
 };
 } // namespace server

@@ -188,7 +188,7 @@ public:
     };
 
     // TODO -- generate this, also actually handle responses from the client -- maybe async / await
-    void onShowDocument(const ShowDocumentParams& params) {
+    virtual void onShowDocument(const ShowDocumentParams& params) {
         sendRequest("window/showDocument", rfl::to_generic<rfl::UnderlyingEnums>(params));
     };
 };
