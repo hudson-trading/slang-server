@@ -15,11 +15,57 @@
 #include <csignal>
 #include <cstdlib>
 #include <format>
-#include <sys/prctl.h>
+#include <sstream>
+
+#ifdef _WIN32
+#    include <process.h>
+#    include <windows.h>
+#else
+#    include <sys/prctl.h>
+#    include <sys/wait.h>
+#    include <unistd.h>
+#endif
 
 namespace fs = std::filesystem;
 
 void waves::WcpClient::runViewer() {
+#ifdef _WIN32
+    std::string cmdLine = std::vformat(m_command, std::make_format_args(m_port));
+
+    auto stdoutLog = fs::temp_directory_path();
+    stdoutLog /= "slang-server.wcp.stdout";
+    auto stderrLog = fs::temp_directory_path();
+    stderrLog /= "slang-server.wcp.stderr";
+
+    SECURITY_ATTRIBUTES saAttr;
+    saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
+    saAttr.bInheritHandle = TRUE;
+    saAttr.lpSecurityDescriptor = NULL;
+
+    HANDLE hStdout = CreateFileA(stdoutLog.string().c_str(), GENERIC_WRITE, 0, &saAttr,
+                                 CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    HANDLE hStderr = CreateFileA(stderrLog.string().c_str(), GENERIC_WRITE, 0, &saAttr,
+                                 CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+
+    STARTUPINFOA si;
+    PROCESS_INFORMATION pi;
+    ZeroMemory(&si, sizeof(si));
+    si.cb = sizeof(si);
+    si.hStdOutput = hStdout;
+    si.hStdError = hStderr;
+    si.dwFlags |= STARTF_USESTDHANDLES;
+    ZeroMemory(&pi, sizeof(pi));
+
+    if (!CreateProcessA(NULL, const_cast<char*>(cmdLine.c_str()), NULL, NULL, TRUE, 0, NULL, NULL,
+                        &si, &pi)) {
+        std::cerr << "Problem launching waveform viewer: " << GetLastError() << std::endl;
+    }
+
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+    CloseHandle(hStdout);
+    CloseHandle(hStderr);
+#else
     if (fork() == 0) {
         std::vector<char*> args;
         std::stringstream ss(std::vformat(m_command, std::make_format_args(m_port)));
@@ -47,6 +93,7 @@ void waves::WcpClient::runViewer() {
         execv(args[0], args.data());
         std::cerr << "Problem launching waveform viewer: " << strerror(errno) << std::endl;
     }
+#endif
 }
 
 void waves::WcpClient::initClient() {

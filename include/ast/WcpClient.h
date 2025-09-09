@@ -9,12 +9,23 @@
 
 #include "SlangServerWcp.h"
 #include "wcp/WcpTypes.h"
-#include <arpa/inet.h>
 #include <atomic>
 #include <mutex>
-#include <netinet/in.h>
-#include <sys/socket.h>
 #include <thread>
+
+#ifdef _WIN32
+#    include <winsock2.h>
+#    include <ws2tcpip.h>
+#    pragma comment(lib, "ws2_32.lib")
+typedef int socklen_t;
+#    define close closesocket
+#    define MSG_DONTWAIT 0
+#else
+#    include <arpa/inet.h>
+#    include <netinet/in.h>
+#    include <sys/socket.h>
+#    include <unistd.h>
+#endif
 
 namespace waves {
 
