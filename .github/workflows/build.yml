@@ -17,15 +17,11 @@ jobs:
             os: ubuntu-latest
           - preset: gcc-release
             os: ubuntu-24.04-arm
-          - preset: gcc-debug-shared
-            os: ubuntu-latest
           - preset: gcc-debug-noexcept
             os: ubuntu-latest
           - preset: macos-release
             os: macos-latest
           - preset: win64-release
-            os: windows-latest
-          - preset: win64-debug-shared
             os: windows-latest
           - preset: win64-debug-noexcept
             os: windows-latest
