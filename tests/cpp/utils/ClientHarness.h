@@ -50,4 +50,11 @@ public:
         // pop front
         errors.erase(errors.begin());
     }
+
+    std::deque<lsp::ShowDocumentParams> m_showDocuments;
+
+    void onShowDocument(const lsp::ShowDocumentParams& params) final {
+        m_showDocuments.push_back(params);
+        // TODO -- ServerHarness::openFile() once the client and server harnesses are merged
+    }
 };
