@@ -474,8 +474,10 @@ void getMemberCompletions(std::vector<lsp::CompletionItem>& results, const slang
         if (auto importData = currentScope->getWildcardImportData()) {
             for (auto import : importData->wildcardImports) {
                 auto package = import->getPackage();
-                INFO("Adding wildcard imports from package {}", package->name);
-                getMemberCompletions(results, package, isLhs);
+                if (package != nullptr) {
+                    INFO("Adding wildcard imports from package {}", package->name);
+                    getMemberCompletions(results, package, isLhs);
+                }
             }
         }
 
