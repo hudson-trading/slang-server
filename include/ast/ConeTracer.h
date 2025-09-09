@@ -169,16 +169,20 @@ public:
         for (auto const connection : symbol.getPortConnections()) {
             // TODO -- interfaces, etc.
             const auto port = connection->port.as_if<slang::ast::PortSymbol>();
+            const auto expr = connection->getExpression();
+            if (!expr) {
+                continue;
+            }
             if (port) {
                 if (port->direction == slang::ast::ArgumentDirection::In &&
                     port->internalSymbol == root) {
                     isDriven = true;
-                    connection->getExpression()->visit(*this);
+                    expr->visit(*this);
                     isDriven = false;
                 }
                 else if (port->direction == slang::ast::ArgumentDirection::Out) {
                     portSymbol = port;
-                    connection->getExpression()->visit(*this);
+                    expr->visit(*this);
                     portSymbol = nullptr;
                 }
             }
