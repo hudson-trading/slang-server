@@ -124,6 +124,7 @@ endif()
 add_library(
   slang_server_obj_lib OBJECT
   src/ast/ServerCompilation.cpp
+  src/ast/WcpClient.cpp
   src/document/ShallowAnalysis.cpp
   src/document/SlangDoc.cpp
   src/document/SymbolIndexer.cpp
