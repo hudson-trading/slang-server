@@ -23,7 +23,8 @@ public:
     rfl::Description<"Thread count to use for parsing", int> parsingThreads = 8;
     rfl::Description<"Build file to use", std::optional<std::string>> build;
     rfl::Description<"Build file pattern, ex builds/{}.f", std::optional<std::string>> buildPattern;
-    rfl::Description<"Waveform viewer command ({} will be replaced with the WCP port)", std::string>
+    rfl::Description<"Waveform viewer command ({} will be replaced with the WCP port)",
+                     std::optional<std::string>>
         wcpCommand;
 
     static Config fromFiles(std::vector<std::string> confPaths, SlangLspClient& m_client);

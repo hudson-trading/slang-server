@@ -1,0 +1,35 @@
+name: Deploy PR Preview to gh-pages
+
+on:
+  pull_request:
+    branches: 
+      - main
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yaml'
+  workflow_dispatch:
+
+jobs:
+  deploy-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+
+      - run: pip install mkdocs mkdocs-material
+      - run: mkdocs build --strict
+      - name: Deploy to gh-pages preview directory
+        # This step is much more complex than a simple push
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
+          force_orphan: true
+          # This is the key part - we're deploying to a unique subdirectory
+          publish_branch: gh-pages
+          destination: previews/pr-${{ github.event.number }}

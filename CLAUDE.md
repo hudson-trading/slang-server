@@ -34,6 +34,9 @@ cmake --build build/claude -j8 --target slang_server
 `src/document`: These files have features core LSP features for a document.
 
 
+## Python environment
+
+We use `uv` for managing the python venv and requirements
 
 ## Code Style and Standards
 

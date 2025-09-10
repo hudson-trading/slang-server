@@ -1,0 +1,130 @@
+# yaml-language-server: $schema=https://squidfunk.github.io/mkdocs-material/schema.json
+
+site_name: "slang-server"
+strict: false
+site_url: https://hudson-trading.github.io/slang-server/
+site_author: Hudson River Trading
+site_description: >-
+  A Language Server for SystemVerilog
+
+site_dir: site
+
+theme:
+  name: "material"
+  palette:
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-5
+        name: "Switch to light mode"
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: hrt
+      accent: hrt
+      toggle:
+        icon: material/brightness-2
+        name: "Switch to dark mode"
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: hrt
+      accent: hrt
+      toggle:
+        icon: material/brightness-6
+        name: "Switch to system preference"
+  font:
+    text: Roboto
+    code: Roboto Mono
+  features:
+    - content.tabs.link
+    - content.code.annotate
+    - content.code.copy
+    - announce.dismiss
+    - navigation.tabs
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.instant.preview
+    - navigation.instant.progress
+    - navigation.path
+    - navigation.top
+    - navigation.tracking
+    - search.suggest
+    - toc.follow
+  # logo: assets/images/rfl-favicon.png
+  # favicon: assets/images/rfl-favicon-square.png
+
+repo_name: hudson-trading/slang-server
+repo_url: https://github.com/hudson-trading/slang-server
+edit_uri: edit/main/docs/
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/hudson-trading/slang-server
+    - icon: fontawesome/brands/youtube
+      link: https://www.youtube.com/@Hudson-River-Trading
+    - icon: fontawesome/brands/linkedin
+      link: https://www.linkedin.com/company/hudson-river-trading/
+
+validation:
+  omitted_files: warn
+  links:
+    absolute_links: relative_to_docs
+    anchors: warn
+    unrecognized_links: warn
+
+extra_css:
+  - assets/stylesheets/tweaks.css
+
+exclude_docs: |
+
+nav:
+  - welcome.md
+  - Getting Started:
+    - start/installing.md
+    - start/config.md
+  - Core Language Features: 
+    - features/features.md
+    - Planned Features: features/planned.md
+    - Hover Examples: features/hovers.md
+    - Completion Examples: features/completions.md
+  - HDL Features:
+    - hdl/hdl.md
+  - Design Choices:
+    - design/indexing.md
+    - design/shallow.md
+
+
+markdown_extensions:
+  - tables
+  - def_list
+  - toc:
+      permalink: true
+      title: Page contents
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      pygments_lang_class: true
+  - pymdownx.extra
+  - pymdownx.tabbed:
+      alternate_style: true
+
+watch:
+  - docs
+
+plugins:
+  - search
+  - meta
+  - htmlproofer:
+      enabled: !ENV [ENABLED_HTMLPROOFER, False]
+      raise_error_after_finish: True
+      raise_error_excludes:
+        403: ['*']
+        502: ['*']
+        504: ['*']
+        429: ['*']
+
+      ignore_urls:
+        - localhost:8080/*
+        - mailto:*
+        - 'data:image/*'
+        - '#*'
