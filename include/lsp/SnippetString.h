@@ -195,7 +195,7 @@ private:
         if (number.has_value()) {
             // If a specific number is provided, use it, but also make sure our
             // auto-increment counter is at least one greater for the next call.
-            _tabstop = std::max(_tabstop, number.value() + 1);
+            _tabstop = (std::max)(_tabstop, number.value() + 1);
             return number.value();
         }
         return _tabstop++;
