@@ -197,7 +197,7 @@ void DocumentHandle::insert(lsp::uint offset, std::string text) {
     state = DocState::Dirty;
 }
 
-Cursor DocumentHandle::before(std::string before, uint start_pos) {
+Cursor DocumentHandle::before(std::string before, lsp::uint start_pos) {
     auto idx = m_text.find(before, start_pos);
     if (idx == std::string::npos) {
         throw std::runtime_error(fmt::format("String '{}' not found in document", before));
@@ -205,7 +205,7 @@ Cursor DocumentHandle::before(std::string before, uint start_pos) {
     return Cursor(*this, idx);
 }
 
-Cursor DocumentHandle::after(std::string after, uint start_pos) {
+Cursor DocumentHandle::after(std::string after, lsp::uint start_pos) {
     auto idx = m_text.find(after, start_pos);
     if (idx == std::string::npos) {
         throw std::runtime_error(fmt::format("String '{}' not found in document", after));
