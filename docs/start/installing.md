@@ -17,7 +17,7 @@ cmake --build build -j$(nproc)
 
 ### Pre-built binaries
 
-In the future we plan to have pre-built binaries released for common platforms. We also plan to have the editor clients auto-install these, similar to what clangd and others do.
+In the future there will be pre-built binaries released for common platforms. It's also planned to have the editor clients auto-install these, similar to what clangd and others do.
 
 ### Neovim
 
