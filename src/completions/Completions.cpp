@@ -243,7 +243,8 @@ void resolveModule(const slang::syntax::SyntaxTree& tree, std::string_view modul
     }
 }
 
-lsp::CompletionItem getMemberCompletion(const slang::ast::Symbol& symbol) {
+lsp::CompletionItem getMemberCompletion(const slang::ast::Symbol& symbol,
+                                        const slang::ast::Scope* currentScope) {
 
     auto completionKind = [&symbol]() -> lsp::CompletionItemKind {
         switch (symbol.kind) {
@@ -339,9 +340,20 @@ lsp::CompletionItem getMemberCompletion(const slang::ast::Symbol& symbol) {
     ltrim(detailStr);
     squashSpaces(detailStr);
 
+    // Check if symbol is from a different scope and add hierarchical path
+    std::optional<std::string> descriptionStr;
+    if (currentScope == nullptr ||
+        (symbol.getParentScope() && symbol.getParentScope() != currentScope)) {
+        auto hierPath = symbol.getParentScope()->asSymbol().getHierarchicalPath();
+        if (!hierPath.empty()) {
+            descriptionStr = hierPath;
+        }
+    }
+
     return lsp::CompletionItem{
         .label = std::string{symbol.name},
-        .labelDetails = lsp::CompletionItemLabelDetails{.detail = " " + detailStr},
+        .labelDetails = lsp::CompletionItemLabelDetails{.detail = " " + detailStr,
+                                                        .description = descriptionStr},
         .kind = completionKind,
         .documentation = std::nullopt, // Will be populated during resolve
         .filterText = std::string{symbol.name},
@@ -409,7 +421,7 @@ void resolveMemberCompletion(const slang::ast::Scope& scope, lsp::CompletionItem
 
 /// Get completions for members in a scope, recursing up until hitting a module instance
 void getMemberCompletions(std::vector<lsp::CompletionItem>& results, const slang::ast::Scope* scope,
-                          bool isLhs) {
+                          bool isLhs, const slang::ast::Scope* originalScope) {
 
     if (!scope) {
         return;
@@ -442,16 +454,16 @@ void getMemberCompletions(std::vector<lsp::CompletionItem>& results, const slang
             // unwrap enum values, explicit imports
             if (slang::ast::TransparentMemberSymbol::isKind(member.kind)) {
                 auto& wrapped = member.as<slang::ast::TransparentMemberSymbol>().wrapped;
-                results.push_back(completions::getMemberCompletion(wrapped));
+                results.push_back(completions::getMemberCompletion(wrapped, originalScope));
             }
             else if (slang::ast::ExplicitImportSymbol::isKind(member.kind)) {
                 auto importSym = member.as<slang::ast::ExplicitImportSymbol>().importedSymbol();
                 if (importSym) {
-                    results.push_back(completions::getMemberCompletion(*importSym));
+                    results.push_back(completions::getMemberCompletion(*importSym, originalScope));
                 }
             }
             else {
-                results.push_back(completions::getMemberCompletion(member));
+                results.push_back(completions::getMemberCompletion(member, originalScope));
             }
         }
 
@@ -461,7 +473,7 @@ void getMemberCompletions(std::vector<lsp::CompletionItem>& results, const slang
                 auto package = import->getPackage();
                 if (package != nullptr) {
                     INFO("Adding wildcard imports from package {}", package->name);
-                    getMemberCompletions(results, package, isLhs);
+                    getMemberCompletions(results, package, isLhs, originalScope);
                 }
             }
         }

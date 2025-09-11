@@ -44,7 +44,8 @@
       {
         "label": "PI_VALUE",
         "labelDetails": {
-          "detail": " int"
+          "detail": " int",
+          "description": "math_pkg"
         },
         "kind": "TypeParameter",
         "documentation": {
@@ -56,7 +57,8 @@
       {
         "label": "E_VALUE",
         "labelDetails": {
-          "detail": " int"
+          "detail": " int",
+          "description": "math_pkg"
         },
         "kind": "TypeParameter",
         "documentation": {
@@ -68,7 +70,8 @@
       {
         "label": "point_t",
         "labelDetails": {
-          "detail": " UnpackedStructType"
+          "detail": " UnpackedStructType",
+          "description": "math_pkg"
         },
         "kind": "Struct",
         "documentation": {
@@ -80,7 +83,8 @@
       {
         "label": "ADD",
         "labelDetails": {
-          "detail": " EnumValue"
+          "detail": " EnumValue",
+          "description": "math_pkg::operation_t"
         },
         "kind": "EnumMember",
         "documentation": {
@@ -92,7 +96,8 @@
       {
         "label": "SUBTRACT",
         "labelDetails": {
-          "detail": " EnumValue"
+          "detail": " EnumValue",
+          "description": "math_pkg::operation_t"
         },
         "kind": "EnumMember",
         "documentation": {
@@ -104,7 +109,8 @@
       {
         "label": "MULTIPLY",
         "labelDetails": {
-          "detail": " EnumValue"
+          "detail": " EnumValue",
+          "description": "math_pkg::operation_t"
         },
         "kind": "EnumMember",
         "documentation": {
@@ -116,7 +122,8 @@
       {
         "label": "operation_t",
         "labelDetails": {
-          "detail": " EnumType"
+          "detail": " EnumType",
+          "description": "math_pkg"
         },
         "kind": "Enum",
         "documentation": {
@@ -128,7 +135,8 @@
       {
         "label": "calculate",
         "labelDetails": {
-          "detail": " function"
+          "detail": " function",
+          "description": "math_pkg"
         },
         "kind": "Function",
         "documentation": {
@@ -140,7 +148,8 @@
       {
         "label": "print_result",
         "labelDetails": {
-          "detail": " task"
+          "detail": " task",
+          "description": "math_pkg"
         },
         "kind": "Function",
         "documentation": {
@@ -152,7 +161,8 @@
       {
         "label": "MAX_SIZE",
         "labelDetails": {
-          "detail": " int"
+          "detail": " int",
+          "description": "utils_pkg"
         },
         "kind": "TypeParameter",
         "documentation": {
@@ -164,7 +174,8 @@
       {
         "label": "byte_t",
         "labelDetails": {
-          "detail": " PackedArrayType"
+          "detail": " PackedArrayType",
+          "description": "utils_pkg"
         },
         "kind": "Struct",
         "documentation": {
@@ -176,7 +187,8 @@
       {
         "label": "find_max",
         "labelDetails": {
-          "detail": " function"
+          "detail": " function",
+          "description": "utils_pkg"
         },
         "kind": "Function",
         "documentation": {
@@ -192,7 +204,8 @@
       {
         "label": "point_t",
         "labelDetails": {
-          "detail": " UnpackedStructType"
+          "detail": " UnpackedStructType",
+          "description": "math_pkg"
         },
         "kind": "Struct",
         "documentation": {
@@ -204,7 +217,8 @@
       {
         "label": "operation_t",
         "labelDetails": {
-          "detail": " EnumType"
+          "detail": " EnumType",
+          "description": "math_pkg"
         },
         "kind": "Enum",
         "documentation": {
@@ -216,7 +230,8 @@
       {
         "label": "byte_t",
         "labelDetails": {
-          "detail": " PackedArrayType"
+          "detail": " PackedArrayType",
+          "description": "utils_pkg"
         },
         "kind": "Struct",
         "documentation": {

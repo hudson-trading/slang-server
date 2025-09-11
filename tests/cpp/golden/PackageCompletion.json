@@ -3,7 +3,8 @@
     {
       "label": "PKG_PARAM",
       "labelDetails": {
-        "detail": " int"
+        "detail": " int",
+        "description": "test_pkg"
       },
       "kind": "TypeParameter",
       "documentation": {
@@ -15,7 +16,8 @@
     {
       "label": "my_struct_t",
       "labelDetails": {
-        "detail": " UnpackedStructType"
+        "detail": " UnpackedStructType",
+        "description": "test_pkg"
       },
       "kind": "Struct",
       "documentation": {
@@ -27,7 +29,8 @@
     {
       "label": "VALUE_A",
       "labelDetails": {
-        "detail": " EnumValue"
+        "detail": " EnumValue",
+        "description": "test_pkg::my_enum_t"
       },
       "kind": "EnumMember",
       "documentation": {
@@ -39,7 +42,8 @@
     {
       "label": "VALUE_B",
       "labelDetails": {
-        "detail": " EnumValue"
+        "detail": " EnumValue",
+        "description": "test_pkg::my_enum_t"
       },
       "kind": "EnumMember",
       "documentation": {
@@ -51,7 +55,8 @@
     {
       "label": "my_enum_t",
       "labelDetails": {
-        "detail": " EnumType"
+        "detail": " EnumType",
+        "description": "test_pkg"
       },
       "kind": "Enum",
       "documentation": {
@@ -63,7 +68,8 @@
     {
       "label": "get_value",
       "labelDetails": {
-        "detail": " function"
+        "detail": " function",
+        "description": "test_pkg"
       },
       "kind": "Function",
       "documentation": {
@@ -75,7 +81,8 @@
     {
       "label": "global_var",
       "labelDetails": {
-        "detail": " int"
+        "detail": " int",
+        "description": "test_pkg"
       },
       "kind": "Variable",
       "documentation": {
@@ -87,7 +94,8 @@
     {
       "label": "port_signal",
       "labelDetails": {
-        "detail": " logic [7:0]"
+        "detail": " logic [7:0]",
+        "description": "test_pkg"
       },
       "kind": "Variable",
       "documentation": {
@@ -99,7 +107,8 @@
     {
       "label": "i",
       "labelDetails": {
-        "detail": " "
+        "detail": " ",
+        "description": "test_pkg"
       },
       "kind": "Property",
       "documentation": {
@@ -111,7 +120,8 @@
     {
       "label": "gen_block",
       "labelDetails": {
-        "detail": " "
+        "detail": " ",
+        "description": "test_pkg"
       },
       "kind": "Snippet",
       "documentation": {

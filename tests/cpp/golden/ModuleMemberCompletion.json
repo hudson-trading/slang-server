@@ -156,7 +156,8 @@
       {
         "label": "IDLE",
         "labelDetails": {
-          "detail": " EnumValue"
+          "detail": " EnumValue",
+          "description": "test_module.state_t"
         },
         "kind": "EnumMember",
         "documentation": {
@@ -168,7 +169,8 @@
       {
         "label": "ACTIVE",
         "labelDetails": {
-          "detail": " EnumValue"
+          "detail": " EnumValue",
+          "description": "test_module.state_t"
         },
         "kind": "EnumMember",
         "documentation": {
@@ -180,7 +182,8 @@
       {
         "label": "WAIT",
         "labelDetails": {
-          "detail": " EnumValue"
+          "detail": " EnumValue",
+          "description": "test_module.state_t"
         },
         "kind": "EnumMember",
         "documentation": {
