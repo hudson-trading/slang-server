@@ -84,3 +84,8 @@
 .md-source__repository {
   color: #FF8200;
 }
+
+.md-typeset .grid.cards > :is(ul, ol) > li {
+  border: none;
+  box-shadow: none;
+}

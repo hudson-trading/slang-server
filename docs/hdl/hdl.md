@@ -18,28 +18,46 @@ A build pattern can be set to glob for .f files, e.g. `**/*.f`. Then you can run
 
 ### Setting a top level
 
-![SetTopLevel](SetTopLevel.png){ align=right width=60% } The 'chip' icon at the top right of a file will scan the current file for valid top levels, and find all necessary files for a compilation.
+<div class="grid cards" markdown>
+
+
+-   The 'chip' icon at the top right of a file will scan the current file for valid top levels, and find all necessary files for a compilation.
+
+-   ![SetTopLevel](SetTopLevel.png)
+</div>
 
 ## Hierarchy View
 
-![HierarchyView](HierarchyView.png){ align=right width=60% } The Hierarchy View shows the elaborated tree, with declared types and resolved values to the right of the identifier.
+<div class="grid cards" markdown>
 
-### Hierarchy Buttons (left to right)
-- Clear Top Level
-- Set Build File
-- Toggle data- wires, registers, etc.
-- Toggle objects defined behind macro usages.
-- Toggle paramters- params, localparams, etc.
-- Collapse all
 
-Buttons exist on each object to copy its hierarchical path.
-An extra button exists on modules to go to the module definition, rather than the instantiation of that module.
+-   The Hierarchy View shows the elaborated tree, with declared types and resolved values to the right of the identifier.
 
-Clicking a symbol in the hierarchy view or modules view will open the instance in the file, as well as in the other view.
+    ### Hierarchy Buttons (left to right)
+    - Clear Top Level
+    - Set Build File
+    - Toggle data- wires, registers, etc.
+    - Toggle objects defined behind macro usages.
+    - Toggle paramters- params, localparams, etc.
+    - Collapse all
+
+    Buttons exist on each object to copy its hierarchical path.
+    An extra button exists on modules to go to the module definition, rather than the instantiation of that module.
+
+    Clicking a symbol in the hierarchy view or modules view will open the instance in the file, as well as in the other view.
+
+-   ![HierarchyView](HierarchyView.png)
+</div>
 
 ## Modules View
 
-![ModulesView](ModulesView.png){ align=right width=60% } The modules view shows the instances indexed by module, sorted by the number of instances with higher level objects closer to the top.
+<div class="grid cards" markdown>
+
+
+-   The modules view shows the instances indexed by module, sorted by the number of instances with higher level objects closer to the top.
+
+-   ![ModulesView](ModulesView.png)
+</div>
 
 ## Setting a scope 
 
@@ -58,13 +76,19 @@ This allows for drivers/loads tracing over the call hierarchy lsp route, since i
 
 ## Waveform Integration (experimental)
 
-![WCP](wcp.gif){ align=right width=60% } This is currently only setup between Neovim and Surfer, through the WCP (waveform control protocol), which runs on JSON-RPC over TCP.
+<div class="grid cards" markdown>
 
-### Editor Features
-- open waveform file
-- open signal in wave viewer
-- open module in wave viewer
 
-### Wave Viewer Features
-- open signal in hierarchy view / editor
-- open driver/loads for signal
+-   This is currently only setup between Neovim and Surfer, through the WCP (waveform control protocol), which runs on JSON-RPC over TCP.
+
+    ### Editor Features
+    - open waveform file
+    - open signal in wave viewer
+    - open module in wave viewer
+
+    ### Wave Viewer Features
+    - open signal in hierarchy view / editor
+    - open driver/loads for signal
+
+-   ![WCP](wcp.gif)
+</div>
