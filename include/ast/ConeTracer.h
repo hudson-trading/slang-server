@@ -27,8 +27,8 @@
 
 class ConeLeaf {
 public:
-    template<typename T>
-    ConeLeaf(T&& value) : variant(std::forward<T>(value)) {}
+    ConeLeaf(const slang::ast::PortSymbol* port) : variant(port) {}
+    ConeLeaf(const slang::ast::ValueExpressionBase* expr) : variant(expr) {}
 
     std::string getHierarchicalPath() const {
         const slang::ast::Symbol* symbol = nullptr;
