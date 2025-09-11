@@ -52,8 +52,8 @@ lsp::Range toRange(const SourceLocation& loc, const SourceManager& sourceManager
                    const size_t length) {
 
     auto character = sourceManager.getColumnNumber(loc);
-    lsp::Position start{.line = static_cast<uint>(sourceManager.getLineNumber(loc) - 1),
-                        .character = static_cast<uint>(character > 0 ? character - 1 : 0)};
+    lsp::Position start{.line = static_cast<lsp::uint>(sourceManager.getLineNumber(loc) - 1),
+                        .character = static_cast<lsp::uint>(character > 0 ? character - 1 : 0)};
     lsp::Position end{start};
     end.character += length;
     return lsp::Range{.start = start, .end = end};
