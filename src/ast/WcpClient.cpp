@@ -21,9 +21,11 @@
 #    include <process.h>
 #    include <windows.h>
 #else
-#    include <sys/prctl.h>
 #    include <sys/wait.h>
 #    include <unistd.h>
+#    ifdef __linux__
+#        include <sys/prctl.h>
+#    endif
 #endif
 
 namespace fs = std::filesystem;
