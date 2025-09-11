@@ -23,9 +23,6 @@
 #else
 #    include <sys/wait.h>
 #    include <unistd.h>
-#    ifdef __linux__
-#        include <sys/prctl.h>
-#    endif
 #endif
 
 namespace fs = std::filesystem;
