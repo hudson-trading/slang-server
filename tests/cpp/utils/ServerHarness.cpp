@@ -8,7 +8,6 @@
 #define CATCH_CONFIG_RUNNER
 #include "ServerHarness.h"
 #include <fstream>
-#include <unistd.h>
 
 DocumentHandle ServerHarness::openFile(std::string fileName) {
     auto root = m_workspaceFolder ? (m_workspaceFolder->uri.getPath()) : findSlangRoot();
@@ -74,7 +73,7 @@ std::shared_ptr<server::SlangDoc> ServerHarness::getDoc(const URI& uri) {
 // ------------------- DocumentHandle -------------------
 
 DocumentHandle::DocumentHandle(ServerHarness& server, URI uri, std::string text) :
-    m_server(server), m_uri(uri), m_text(std::move(text)) {
+    m_text(std::move(text)), m_uri(uri), m_server(server) {
     doc = m_server.getDoc(m_uri);
 }
 
@@ -82,7 +81,7 @@ std::string DocumentHandle::getText() const {
     return m_text;
 }
 
-void DocumentHandle::insert(uint offset, std::string text) {
+void DocumentHandle::insert(lsp::uint offset, std::string text) {
     CHECK(state != DocState::Closed);
 
     m_text.insert(offset, text);
@@ -169,9 +168,9 @@ void DocumentHandle::open() {
     state = DocState::Open;
 }
 
-lsp::Position DocumentHandle::getPosition(uint offset) {
-    uint line = 0, col = 0;
-    for (uint i = 0; i < offset; i++) {
+lsp::Position DocumentHandle::getPosition(lsp::uint offset) {
+    lsp::uint line = 0, col = 0;
+    for (lsp::uint i = 0; i < offset; i++) {
         if (m_text[i] == '\n') {
             line++;
             col = 0;
@@ -230,16 +229,17 @@ std::vector<CompletionHandle> Cursor::getCompletions(std::optional<std::string> 
     }
 }
 
-std::vector<lsp::CompletionItem> Cursor::getResolvedCompletions(std::optional<std::string> triggerChar) {
+std::vector<lsp::CompletionItem> Cursor::getResolvedCompletions(
+    std::optional<std::string> triggerChar) {
     auto completions = getCompletions(triggerChar);
     std::vector<lsp::CompletionItem> resolvedItems;
     resolvedItems.reserve(completions.size());
-    
+
     for (auto& completion : completions) {
         completion.resolve();
         resolvedItems.push_back(completion.m_item);
     }
-    
+
     return resolvedItems;
 }
 
@@ -287,20 +287,20 @@ std::vector<lsp::LocationLink> Cursor::getDefinitions() {
     return {};
 }
 
-std::optional<slang::SourceLocation> DocumentHandle::getLocation(uint offset) {
+std::optional<slang::SourceLocation> DocumentHandle::getLocation(lsp::uint offset) {
     return doc->getSourceManager().getSourceLocation(doc->getBuffer(), offset);
 }
 
-std::optional<lsp::Position> DocumentHandle::getLspLocation(uint offset) {
+std::optional<lsp::Position> DocumentHandle::getLspLocation(lsp::uint offset) {
     auto loc = getLocation(offset);
     if (!loc)
         return std::nullopt;
     auto line = m_server.sourceManager().getLineNumber(*loc);
     auto col = m_server.sourceManager().getColumnNumber(*loc);
-    return lsp::Position{static_cast<uint>(line - 1), static_cast<uint>(col - 1)};
+    return lsp::Position{static_cast<lsp::uint>(line - 1), static_cast<lsp::uint>(col - 1)};
 }
 
-std::optional<server::DefinitionInfo> DocumentHandle::getDefinitionInfoAt(uint offset) {
+std::optional<server::DefinitionInfo> DocumentHandle::getDefinitionInfoAt(lsp::uint offset) {
     auto loc = getLspLocation(offset);
     if (!loc) {
         return std::nullopt;

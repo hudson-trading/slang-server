@@ -52,8 +52,59 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+if(CMAKE_SYSTEM_NAME MATCHES "Windows")
+  add_compile_definitions(WIN32 _WINDOWS NTDDI_VERSION=0x06010000
+                          _WIN32_WINNT=0x0601)
+  add_compile_definitions(_SCL_SECURE_NO_WARNINGS _CRT_SECURE_NO_WARNINGS)
+  add_compile_definitions(_CRT_SECURE_NO_DEPRECATE _CRT_NONSTDC_NO_WARNINGS)
+endif()
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+  add_compile_options(/utf-8 /bigobj /permissive-)
+endif()
+
+if(CMAKE_SYSTEM_NAME MATCHES "WASI")
+  add_compile_options(-fexceptions)
+  # Disable pedantic warnings for WASI since they're not as useful in this context
+  add_compile_options(-Wno-pedantic -Wno-sign-compare -Wno-reorder-ctor -Wno-unused-but-set-variable)
+
+  add_compile_definitions(_WASI_EMULATED_SIGNAL)
+  add_link_options(-lwasi-emulated-signal)
+  set(CATCH_CONFIG_NO_POSIX_SIGNALS ON)
+
+  # https://github.com/fmtlib/fmt/issues/4496#issuecomment-3094630184
+  add_compile_definitions(FMT_USE_FCNTL=0)
+  
+  # Disable boost threading features for WASI
+  add_compile_definitions(BOOST_DISABLE_THREADS)
+
+  # to make stack overflows crash instead of silently corrupt memory
+  add_link_options(-Wl,--stack-first -Wl,-z,stack-size=1048576)
+
+  # required for growable memory in multithreaded builds
+  add_link_options(-Wl,--max-memory=4294967296)
+
+  # to have CTest invoke a Wasm engine when running tests
+  set(mappings --dir=/ --dir=${CMAKE_CURRENT_SOURCE_DIR}/tests::tests)
+  set(CMAKE_TEST_LAUNCHER
+      wasmtime run -S threads ${mappings}
+      CACHE STRING "")
+endif()
+
+# Add compiler flags to catch cross-platform issues early
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  add_compile_options(-Wall -Wextra -Wno-missing-declarations -Wno-missing-field-initializers)
+  # Warn about potential portability issues
+  # add_compile_options(-Wconversion)
+  # Warn about missing includes that might work on some platforms but not others
+  add_compile_options(-Wmissing-include-dirs)
+endif()
+
 # Include GNUInstallDirs for standard installation directories
 include(GNUInstallDirs)
+
+# Include FetchContent for external dependencies
+include(FetchContent)
 
 # Set saner / consistent build directories on all platforms
 foreach(
@@ -84,32 +135,46 @@ foreach(
   endif()
 endforeach()
 
-# Defaults for a bunch of Windows-specific junk. These are required by all
-# targets to build and run correctly and don't affect ABI so shouldn't need
-# target_ specific commands.
-if(CMAKE_SYSTEM_NAME MATCHES "Windows")
-  add_compile_definitions(WIN32 _WINDOWS NTDDI_VERSION=0x06010000
-                          _WIN32_WINNT=0x0601)
-  add_compile_definitions(_SCL_SECURE_NO_WARNINGS _CRT_SECURE_NO_WARNINGS)
-  add_compile_definitions(_CRT_SECURE_NO_DEPRECATE _CRT_NONSTDC_NO_WARNINGS)
-endif()
-
-if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-  add_compile_options(/utf-8 /bigobj /permissive-)
-endif()
 
 # Add the slang library as a subdirectory
 # Set slang options for server usage
-set(SLANG_INCLUDE_TOOLS ON CACHE BOOL "Don't build slang tools" FORCE)
+set(SLANG_INCLUDE_TOOLS OFF CACHE BOOL "Don't build slang tools" FORCE)
 set(SLANG_INCLUDE_DOCS OFF CACHE BOOL "Don't build slang docs" FORCE)
 set(SLANG_INCLUDE_PYLIB OFF CACHE BOOL "Don't build slang Python bindings" FORCE)
 set(SLANG_INCLUDE_INSTALL OFF CACHE BOOL "Don't install slang separately" FORCE)
 
-# Enable slang tests only if we need them for Catch2
-if(SLANG_SERVER_INCLUDE_TESTS)
-  set(SLANG_INCLUDE_TESTS ON CACHE BOOL "Enable slang tests to get Catch2" FORCE)
+# Disable slang tests to avoid ctest pollution, but keep Catch2 available
+set(SLANG_INCLUDE_TESTS OFF CACHE BOOL "Don't build slang tests" FORCE)
+
+# Set up Catch2 for testing
+set(find_pkg_args "")
+
+if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.24.0")
+  set(find_pkg_args "FIND_PACKAGE_ARGS" "${catch2_min_version}")
+endif()
+
+FetchContent_Declare(
+  Catch2
+  GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+  GIT_TAG v3.10.0
+  GIT_SHALLOW ON
+  ${find_pkg_args})
+FetchContent_MakeAvailable(Catch2)
+
+
+if(NOT TARGET Catch2::Catch2)
+  message(
+    FATAL_ERROR
+      "Could not find Catch2 package, min version: ${catch2_min_version}")
+endif()
+
+if(Catch2_FOUND)
+  get_target_property(Catch2_INCLUDE_DIR Catch2::Catch2
+                      INTERFACE_INCLUDE_DIRECTORIES)
+  message(STATUS "Found system Catch2 version: ${Catch2_VERSION}")
+  message(STATUS "Using system Catch2 include: ${Catch2_INCLUDE_DIR}")
 else()
-  set(SLANG_INCLUDE_TESTS OFF CACHE BOOL "Don't build slang tests" FORCE)
+  message(STATUS "Using remote Catch2 library")
 endif()
 
 add_subdirectory(external/slang)
@@ -117,7 +182,7 @@ add_subdirectory(external/reflect-cpp)
 
 # Suppress warnings in reflect-cpp library
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-  target_compile_options(reflectcpp PRIVATE -Wno-missing-designated-field-initializers -Wno-unused-parameter)
+  target_compile_options(reflectcpp PRIVATE -Wno-missing-field-initializers -Wno-unused-parameter -fexceptions)
 endif()
 
 # Build the slang-server library
@@ -140,16 +205,19 @@ add_library(
   src/ServerDiagClient.cpp
 )
 
-target_compile_options(slang_server_obj_lib PRIVATE -Wno-reorder-init-list)
-
 target_include_directories(slang_server_obj_lib PUBLIC include)
-target_include_directories(slang_server_obj_lib PRIVATE external/reflect-cpp/include)
+target_include_directories(slang_server_obj_lib SYSTEM PRIVATE external/reflect-cpp/include)
 
 target_precompile_headers(
   slang_server_obj_lib PRIVATE
   "${PROJECT_SOURCE_DIR}/include/lsp/LspTypes.h")
 
 target_link_libraries(slang_server_obj_lib PUBLIC slang::slang)
+
+# Apply pedantic warnings only to slang-server code, not external libraries
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  target_compile_options(slang_server_obj_lib PRIVATE -Wpedantic -Wunused-variable -Wpessimizing-move -Wunused-but-set-variable -Wno-nonnull -Werror)
+endif()
 
 # Build the slang-server executable
 add_executable(slang_server src/server_main.cpp)
@@ -176,5 +244,7 @@ endif()
 
 if(SLANG_SERVER_INCLUDE_TESTS)
   enable_testing()
+  # Define SLANG_SERVER_TESTS for the library when building tests
+  target_compile_definitions(slang_server_obj_lib PRIVATE SLANG_SERVER_TESTS)
   add_subdirectory(tests/cpp)
 endif()

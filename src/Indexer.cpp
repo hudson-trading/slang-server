@@ -64,7 +64,6 @@ void getDataFromTree(const slang::syntax::SyntaxTree* tree, auto& destSymbols, a
 
     // Handle module/interface declarations
     for (auto& [n, _] : meta.nodeMeta) {
-        lsp::SymbolKind kind;
         auto module = n->as_if<slang::syntax::ModuleDeclarationSyntax>();
 
         std::string_view name = module ? module->header->name.valueText() : std::string_view();
@@ -147,8 +146,6 @@ std::vector<Indexer::IndexedPath> indexPaths(const std::vector<fs::path>& paths,
     std::vector<Indexer::IndexedPath> loadResults;
     loadResults.resize(paths.size());
     {
-        slang::TimeTraceScope _timeScope("syntaxTreeCreation",
-                                         [&] { return fmt::format("numPaths: {}", paths.size()); });
         // Thread the syntax tree creation portion
         if (numThreads != 1) {
             BS::thread_pool threadPool(numThreads);
@@ -295,9 +292,8 @@ void Indexer::noteDocSaved(const URI& uri) {
 
             switch (updateType) {
                 case Indexer::IndexDataUpdateType::Added:
-                    symbolToFiles.addEntry(std::move(name),
-                                           std::move(IndexMapEntry::fromSymbolData(
-                                               kind, container, lsp::LocationUriOnly{uri})));
+                    symbolToFiles.addEntry(name, IndexMapEntry::fromSymbolData(
+                                                     kind, container, lsp::LocationUriOnly{uri}));
                     break;
                 case Indexer::IndexDataUpdateType::Removed:
                     symbolToFiles.removeEntry(name, uri);
@@ -309,8 +305,7 @@ void Indexer::noteDocSaved(const URI& uri) {
         auto& [name, updateType] = singleUpdate;
         switch (updateType) {
             case Indexer::IndexDataUpdateType::Added:
-                macroToFiles.addEntry(std::move(name),
-                                      std::move(IndexMapEntry::fromMacroData(uri)));
+                macroToFiles.addEntry(name, IndexMapEntry::fromMacroData(uri));
                 break;
             case Indexer::IndexDataUpdateType::Removed:
                 macroToFiles.removeEntry(name, uri);
@@ -333,10 +328,10 @@ void Indexer::indexTree(const slang::syntax::SyntaxTree& tree) {
 
 void Indexer::indexPath(Indexer::IndexedPath& indexedFile) {
     for (auto& [symbol, kind, container] : indexedFile.relevantSymbols) {
-        symbolToFiles.addEntry(std::move(symbol),
-                               std::move(IndexMapEntry::fromSymbolData(
-                                   kind, container,
-                                   lsp::LocationUriOnly{URI::fromFile(indexedFile.path)})));
+        symbolToFiles.addEntry(
+            std::move(symbol),
+            IndexMapEntry::fromSymbolData(kind, container,
+                                          lsp::LocationUriOnly{URI::fromFile(indexedFile.path)}));
     }
     for (auto& macro : indexedFile.relevantMacros) {
         macroToFiles.addEntry(std::move(macro),
@@ -435,36 +430,42 @@ std::vector<fs::path> Indexer::getFilesForMacro(std::string_view name) const {
 
 void Indexer::startIndexing(const std::vector<std::string>& globs,
                             const std::vector<std::string>& excludeDirs, uint32_t numThreads) {
-    slang::TimeTraceScope timeScope("indexIncludeGlobs", "");
+
     resetIndexingComplete();
 
     std::vector<fs::path> pathsToIndex;
-    for (const auto& pattern : globs) {
-        slang::SmallVector<fs::path> out;
-        std::error_code ec;
-        svGlob({}, pattern, slang::GlobMode::Files, out, true, ec);
+    {
+        ScopedTimer t_glob("Globbing Index Paths");
+        for (const auto& pattern : globs) {
+            slang::SmallVector<fs::path> out;
+            std::error_code ec;
+            svGlob({}, pattern, slang::GlobMode::Files, out, true, ec);
 
-        if (ec) {
-            std::cerr << "Error indexing: " << ec.message() << ", path: " << pattern << "\n";
-            // TODO: decide the proper error handling here
-            continue;
-        }
-
-        for (const auto& path : out) {
-            if (isExcluded(path, excludeDirs)) {
+            if (ec) {
+                std::cerr << "Error indexing: " << ec.message() << ", path: " << pattern << "\n";
+                // TODO: decide the proper error handling here
                 continue;
             }
-            pathsToIndex.push_back(path);
+
+            for (const auto& path : out) {
+                if (isExcluded(path.string(), excludeDirs)) {
+                    continue;
+                }
+                pathsToIndex.push_back(path);
+            }
         }
     }
 
     std::cerr << "Indexing " << pathsToIndex.size() << " total files\n";
 
-    addDocuments(pathsToIndex, numThreads);
+    {
+        ScopedTimer t_index("indexing");
+        addDocuments(pathsToIndex, numThreads);
+    }
 
-    std::cerr << "Indexing complete. Total symbols: " << symbolToFiles.getAllEntries().size()
-              << " Total Macros: " << macroToFiles.getAllEntries().size()
-              << " Approximate size: " << sizeInBytes() << " B\n";
+    INFO("Indexing complete. Total symbols: {}", symbolToFiles.getAllEntries().size());
+    INFO("Total Macros: {}", macroToFiles.getAllEntries().size());
+    INFO("Approximate size: {} Bytes", sizeInBytes());
 
     notifyIndexingComplete();
 }

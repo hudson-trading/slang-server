@@ -14,8 +14,9 @@ namespace server {
 using namespace slang;
 
 void stripBlankLines(std::string& s) {
-    auto firstTok = std::find_if(s.begin(), s.end(),
-                                 [](unsigned char ch) { return !isWhitespace(ch); });
+    auto firstTok = std::find_if(s.begin(), s.end(), [](unsigned char ch) {
+        return !isWhitespace(static_cast<char>(ch));
+    });
     // now get newline before that, if any
     auto lineStart = std::find_if(std::reverse_iterator(firstTok), s.rend(),
                                   [](unsigned char ch) { return ch == '\n'; });

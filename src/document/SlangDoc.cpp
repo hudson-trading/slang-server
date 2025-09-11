@@ -26,19 +26,19 @@ namespace server {
 using namespace slang;
 SlangDoc::SlangDoc(URI uri, SourceManager& sourceManager, Bag options,
                    std::shared_ptr<syntax::SyntaxTree> tree) :
-    m_uri(uri), m_sourceManager(sourceManager), m_options(std::move(options)), m_tree(tree) {
+    m_sourceManager(sourceManager), m_options(std::move(options)), m_uri(uri), m_tree(tree) {
     SLANG_ASSERT(tree->getSourceBufferIds().size() == 1);
     m_buffer = tree->getSourceBufferIds()[0];
 }
 
 SlangDoc::SlangDoc(URI uri, SourceManager& sourceManager, Bag options, std::string_view text) :
-    m_uri(uri), m_sourceManager(sourceManager), m_options(std::move(options)) {
+    m_sourceManager(sourceManager), m_options(std::move(options)), m_uri(uri) {
     auto buf = sourceManager.assignText<true>(m_uri.getPath(), text);
     m_buffer = buf.id;
 }
 
 SlangDoc::SlangDoc(URI uri, SourceManager& sourceManager, Bag options, BufferID buffer) :
-    m_uri(uri), m_sourceManager(sourceManager), m_options(std::move(options)), m_buffer(buffer) {
+    m_sourceManager(sourceManager), m_options(std::move(options)), m_uri(uri), m_buffer(buffer) {
 }
 
 std::shared_ptr<SlangDoc> SlangDoc::fromTree(std::shared_ptr<syntax::SyntaxTree> tree,
@@ -140,14 +140,11 @@ void SlangDoc::onChange(const std::vector<lsp::TextDocumentContentChangeEvent>& 
         SourceManager::computeLineOffsets(textView, lineOffsets);
         auto& change = rfl::get<lsp::TextDocumentContentChangePartial>(change_);
 
-        size_t curOffset = 0;
-
         auto& start = change.range.start;
         auto& end = change.range.end;
         if (start.line >= lineOffsets.size() || end.line >= lineOffsets.size()) {
-            throw std::out_of_range("Range out of bounds" + std::to_string(start.line) + "," +
-                                    std::to_string(end.line) + "/" +
-                                    std::to_string(lineOffsets.size()));
+            ERROR("Range out of bounds: {},{} / {}", start.line, end.line, lineOffsets.size());
+            return;
         }
         auto startOffset = lineOffsets[start.line] + start.character;
         auto endOffset = lineOffsets[end.line] + end.character;

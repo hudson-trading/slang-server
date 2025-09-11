@@ -160,7 +160,7 @@ protected:
         std::lock_guard<std::mutex> lock(mutex);
         auto result = processMessage(req);
         std::visit(
-            [this, req](auto&& value) {
+            [req](auto&& value) {
                 using T = std::decay_t<decltype(value)>;
                 if constexpr (std::is_same_v<T, rfl::Generic>) {
                     sendMessage(RpcResponse{

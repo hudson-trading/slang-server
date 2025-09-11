@@ -159,6 +159,10 @@
           "detail": " EnumValue"
         },
         "kind": "EnumMember",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\ntypedef enum logic [1:0] {\n    IDLE = 2'b00,\n    ACTIVE = 2'b01,\n    WAIT = 2'b10\n} state_t;\n````"
+        },
         "filterText": "IDLE"
       },
       {
@@ -167,6 +171,10 @@
           "detail": " EnumValue"
         },
         "kind": "EnumMember",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\ntypedef enum logic [1:0] {\n    IDLE = 2'b00,\n    ACTIVE = 2'b01,\n    WAIT = 2'b10\n} state_t;\n````"
+        },
         "filterText": "ACTIVE"
       },
       {
@@ -175,6 +183,10 @@
           "detail": " EnumValue"
         },
         "kind": "EnumMember",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\ntypedef enum logic [1:0] {\n    IDLE = 2'b00,\n    ACTIVE = 2'b01,\n    WAIT = 2'b10\n} state_t;\n````"
+        },
         "filterText": "WAIT"
       },
       {

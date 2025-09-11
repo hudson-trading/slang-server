@@ -74,7 +74,7 @@ public:
     std::string getText() const;
 
     // onChange functions
-    void insert(uint offset, std::string text);
+    void insert(lsp::uint offset, std::string text);
     void append(std::string text);
     void erase(int start, int end);
 
@@ -91,39 +91,39 @@ public:
 
     /// @brief Get the line at a given line number
     /// @param line The line number (0-based / Slang lines)
-    std::string_view getLine(uint line) {
+    std::string_view getLine(lsp::uint line) {
         return m_server.sourceManager().getLine(doc->getBuffer(), line);
     }
 
-    lsp::Position getPosition(uint offset);
+    lsp::Position getPosition(lsp::uint offset);
     std::vector<lsp::DocumentSymbol> getSymbolTree();
     std::vector<lsp::Diagnostic> getDiagnostics();
 
     /// @brief Get the source location for an offset
     /// @param offset The byte offset in the document
     /// @return Optional source location
-    std::optional<slang::SourceLocation> getLocation(uint offset);
+    std::optional<slang::SourceLocation> getLocation(lsp::uint offset);
 
     /// @brief Get the LSP position for an offset
-    std::optional<lsp::Position> getLspLocation(uint offset);
+    std::optional<lsp::Position> getLspLocation(lsp::uint offset);
 
-    std::optional<server::DefinitionInfo> getDefinitionInfoAt(uint offset);
+    std::optional<server::DefinitionInfo> getDefinitionInfoAt(lsp::uint offset);
 
     std::string m_text;
     URI m_uri;
     ServerHarness& m_server;
-    uint m_version = 0;
+    lsp::uint m_version = 0;
 };
 
 class Cursor {
 public:
-    Cursor(DocumentHandle& doc, uint offset) : m_doc(doc), m_offset(offset) {}
+    Cursor(DocumentHandle& doc, lsp::uint offset) : m_doc(doc), m_offset(offset) {}
     lsp::Position getPosition() const { return m_doc.getPosition(m_offset); }
     Cursor& write(const std::string& text);
 
     std::vector<CompletionHandle> getCompletions(
         std::optional<std::string> triggerChar = std::nullopt);
-    
+
     // Get completions with automatic resolution of all items
     std::vector<lsp::CompletionItem> getResolvedCompletions(
         std::optional<std::string> triggerChar = std::nullopt);
@@ -133,8 +133,22 @@ public:
     std::vector<lsp::LocationLink> getDefinitions();
 
     DocumentHandle& m_doc;
-    uint m_offset;
+    lsp::uint m_offset;
 };
+
+static std::string resolveTabsToSpaces(std::string_view snippet, int tabSize = 4) {
+    std::string result;
+    result.reserve(snippet.length());
+    for (char c : snippet) {
+        if (c == '\t') {
+            result.append(tabSize, ' ');
+        }
+        else {
+            result += c;
+        }
+    }
+    return result;
+}
 
 class CompletionHandle {
     // Handle that's returned from getCompletions(). Completions are returned in a list with

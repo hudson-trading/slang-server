@@ -9,6 +9,7 @@
 #pragma once
 #include "JsonTypes.h"
 #include "URI.h"
+#include <cstdint>
 #include <optional>
 #include <rfl/json.hpp>
 #include <variant>
@@ -87,6 +88,8 @@ using GlobPattern = rfl::Variant<Pattern, RelativePattern>;
 /// that denotes `\r|\n` or `\n|` where `|` represents the character offset.
 ///
 /// @since 3.17.0 - support for negotiated position encoding.
+
+using uint = uint32_t;
 struct Position {
     /// Line position in a document (zero-based).
     uint line;

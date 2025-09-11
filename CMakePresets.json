@@ -69,27 +69,6 @@
       }
     },
     {
-      "name": "win64-debug-shared",
-      "displayName": "Win64 Debug Shared",
-      "inherits": [
-        "win64-debug"
-      ],
-      "cacheVariables": {
-        "BUILD_SHARED_LIBS": "ON",
-        "SLANG_USE_MIMALLOC": "OFF"
-      }
-    },
-    {
-      "name": "win64-debug-noexcept",
-      "displayName": "Win64 Debug No Exceptions",
-      "inherits": [
-        "win64-debug"
-      ],
-      "cacheVariables": {
-        "CMAKE_CXX_FLAGS": "/nologo /MP /GR- /volatile:iso /Zc:inline /Zc:preprocessor /Zc:__cplusplus /Zc:externConstexpr /Zc:throwingNew /D_HAS_EXCEPTIONS=0"
-      }
-    },
-    {
       "name": "gcc-flags",
       "hidden": true,
       "cacheVariables": {
@@ -160,33 +139,6 @@
       }
     },
     {
-      "name": "gcc-debug-shared",
-      "displayName": "GCC Debug Shared",
-      "inherits": [
-        "linux-base",
-        "gcc-flags"
-      ],
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_CXX_COMPILER": "g++-14",
-        "BUILD_SHARED_LIBS": "ON",
-        "SLANG_USE_CPPTRACE": "ON"
-      }
-    },
-    {
-      "name": "gcc-debug-noexcept",
-      "displayName": "GCC Debug No Exceptions",
-      "inherits": [
-        "linux-base",
-        "gcc-flags"
-      ],
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_CXX_FLAGS": "-fno-exceptions -fno-rtti",
-        "CMAKE_CXX_COMPILER": "g++-14"
-      }
-    },
-    {
       "name": "gcc-release",
       "displayName": "GCC Release",
       "inherits": [
@@ -196,18 +148,6 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_CXX_COMPILER": "g++-14"
-      }
-    },
-    {
-      "name": "gcc-11-release",
-      "displayName": "GCC Release",
-      "inherits": [
-        "linux-base",
-        "gcc-flags"
-      ],
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_CXX_COMPILER": "g++-11"
       }
     },
     {

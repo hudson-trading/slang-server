@@ -349,30 +349,18 @@ lsp::CompletionItem getMemberCompletion(const slang::ast::Symbol& symbol) {
 }
 
 void resolveMemberCompletion(const slang::ast::Scope& scope, lsp::CompletionItem& item) {
-
-    // auto& memberData = memberDataResult.value();
-    ast::LookupResult result;
-    ast::ASTContext context(scope, ast::LookupLocation::max);
     bitmask<ast::LookupFlags> flags;
     if (item.kind == lsp::CompletionItemKind::Struct) {
         flags |= ast::LookupFlags::Type | ast::LookupFlags::TypeReference;
     }
-    try {
-        ast::Lookup::name(scope.getCompilation().parseName(item.label), context, flags, result);
-        SLANG_ASSERT(result.selectors.empty());
-    }
-    catch (const std::exception& e) {
-        // This lookup method fails on enums sometimes, needs to be fixed in slang
-        ERROR("Lookup error for completion {}: {}", item.label, e.what());
-        return;
-    }
+    auto sym = ast::Lookup::unqualified(scope, item.label, flags);
 
-    if (!result.found) {
+    if (!sym) {
         ERROR("No symbol found for completion {}", item.label);
         return;
     }
 
-    auto& symbol = *result.found;
+    auto& symbol = *sym;
 
     const syntax::SyntaxNode* symSyntax = nullptr;
     std::string docStr;
@@ -387,9 +375,6 @@ void resolveMemberCompletion(const slang::ast::Scope& scope, lsp::CompletionItem
         }
     }
     else if (symbol.kind == slang::ast::SymbolKind::TypeAlias) {
-        auto& typeAlias = symbol.as<slang::ast::TypeAliasType>();
-        auto& unwrapped = typeAlias.getCanonicalType();
-        // docStr = symbol.getSyntax() ? symbol.getSyntax()->toString() : "";
         symSyntax = symbol.getSyntax();
     }
     else if (slang::ast::ValueSymbol::isKind(symbol.kind) ||
@@ -474,8 +459,10 @@ void getMemberCompletions(std::vector<lsp::CompletionItem>& results, const slang
         if (auto importData = currentScope->getWildcardImportData()) {
             for (auto import : importData->wildcardImports) {
                 auto package = import->getPackage();
-                INFO("Adding wildcard imports from package {}", package->name);
-                getMemberCompletions(results, package, isLhs);
+                if (package != nullptr) {
+                    INFO("Adding wildcard imports from package {}", package->name);
+                    getMemberCompletions(results, package, isLhs);
+                }
             }
         }
 

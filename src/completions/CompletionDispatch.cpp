@@ -162,13 +162,13 @@ void CompletionDispatch::resolveModuleCompletion(lsp::CompletionItem& item,
     }
     auto& file = modulePath.value();
 
-    auto maybeTree = slang::syntax::SyntaxTree::fromFile(std::string{file}, m_sourceManager,
+    auto maybeTree = slang::syntax::SyntaxTree::fromFile(file.string(), m_sourceManager,
                                                          m_options);
     if (!maybeTree) {
         WARN("Failed to load syntax tree for module {} from {}", name, file.string());
         return;
     }
-    const auto& tree = maybeTree.value();
+    auto tree = maybeTree.value();
     completions::resolveModule(*tree, name, item, excludeName);
 }
 
@@ -181,13 +181,13 @@ void CompletionDispatch::resolveMacroCompletion(lsp::CompletionItem& item) {
         return;
     }
 
-    auto maybeTree = slang::syntax::SyntaxTree::fromFile(std::string{path[0]}, m_sourceManager,
+    auto maybeTree = slang::syntax::SyntaxTree::fromFile(path[0].string(), m_sourceManager,
                                                          m_options);
 
     if (!maybeTree) {
         return;
     }
-    const auto& tree = maybeTree.value();
+    auto tree = maybeTree.value();
     for (auto macro : tree->getDefinedMacros()) {
         if (macro->name.valueText() == item.label.substr(1)) {
             completions::resolveMacro(*macro, item);

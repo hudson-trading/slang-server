@@ -11,11 +11,11 @@ add_executable(
 
 target_link_libraries(server_unittests PRIVATE slang_server_obj_lib)
 
-target_include_directories(server_unittests PRIVATE ${PROJECT_SOURCE_DIR}/external/reflect-cpp/include)
+target_include_directories(server_unittests SYSTEM PRIVATE ${PROJECT_SOURCE_DIR}/external/reflect-cpp/include)
 target_link_libraries(server_unittests PRIVATE reflectcpp)
 
 target_link_libraries(server_unittests PRIVATE slang::slang Catch2::Catch2)
-target_compile_definitions(server_unittests PRIVATE UNITTESTS)
+target_compile_definitions(server_unittests PRIVATE UNITTESTS SLANG_SERVER_TESTS)
 target_include_directories(server_unittests PRIVATE ${PROJECT_SOURCE_DIR}/external/slang/tests/unittests)
 
 add_test(NAME server_unittests COMMAND server_unittests)

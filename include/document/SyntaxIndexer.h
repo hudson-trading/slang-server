@@ -40,7 +40,7 @@ public:
 
     void visit(const slang::syntax::SyntaxNode& node);
 
-    const int tokenIndexBefore(slang::SourceLocation loc) const;
+    int tokenIndexBefore(slang::SourceLocation loc) const;
 
     bool editorContains(slang::SourceRange range, slang::SourceLocation loc) const;
 

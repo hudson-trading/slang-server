@@ -39,8 +39,8 @@ std::optional<const parsing::Token> findNameToken(const syntax::SyntaxNode* node
 
 lsp::Position toPosition(const SourceLocation& loc, const SourceManager& sourceManager) {
     auto character = sourceManager.getColumnNumber(loc);
-    return lsp::Position{.line = static_cast<uint>(sourceManager.getLineNumber(loc) - 1),
-                         .character = static_cast<uint>(character > 0 ? character - 1 : 0)};
+    return lsp::Position{.line = static_cast<lsp::uint>(sourceManager.getLineNumber(loc) - 1),
+                         .character = static_cast<lsp::uint>(character > 0 ? character - 1 : 0)};
 }
 
 lsp::Range toRange(const SourceRange& range, const SourceManager& sourceManager) {

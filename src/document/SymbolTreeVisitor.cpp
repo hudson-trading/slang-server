@@ -144,7 +144,9 @@ void SymbolTreeVisitor::handle(const GenerateBlockSyntax& node) {
         ok = extract_range(node.begin, symbol, "<anonymous block>");
     }
 
-    handle_recursive(node, symbol);
+    if (ok) {
+        handle_recursive(node, symbol);
+    }
 }
 
 // Handle module and external module declarations

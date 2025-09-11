@@ -201,17 +201,3 @@ private:
         return _tabstop++;
     }
 };
-
-static std::string resolveTabsToSpaces(std::string_view snippet, int tabSize = 4) {
-    std::string result;
-    result.reserve(snippet.length());
-    for (char c : snippet) {
-        if (c == '\t') {
-            result.append(tabSize, ' ');
-        }
-        else {
-            result += c;
-        }
-    }
-    return result;
-}

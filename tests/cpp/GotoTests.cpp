@@ -32,11 +32,11 @@ public:
 
         SourceLocation prevLoc;
 
-        uint colNum = 0;
+        lsp::uint colNum = 0;
 
         auto data = doc->getText();
 
-        for (uint offset = 0; offset < data.size() - 1; offset++) {
+        for (lsp::uint offset = 0; offset < data.size() - 1; offset++) {
             auto locOpt = hdl.getLocation(offset);
             auto loc = *locOpt;
             auto line = sm.getLineNumber(loc);
@@ -79,8 +79,9 @@ protected:
     std::optional<ElementT> prevElement = std::nullopt;
 
     // These methods should be overridden by derived classes
-    virtual std::optional<ElementT> getElementAt(DocumentHandle* hdl, uint offset) = 0;
-    virtual void processElementTransition(DocumentHandle* hdl, SourceManager& sm, uint offset) = 0;
+    virtual std::optional<ElementT> getElementAt(DocumentHandle* hdl, lsp::uint offset) = 0;
+    virtual void processElementTransition(DocumentHandle* hdl, SourceManager& sm,
+                                          lsp::uint offset) = 0;
 };
 
 class SyntaxScanner : public DocumentScanner<parsing::Token> {
@@ -88,7 +89,7 @@ public:
     SyntaxScanner() : DocumentScanner<parsing::Token>() {}
 
 protected:
-    std::optional<parsing::Token> getElementAt(DocumentHandle* hdl, uint offset) override {
+    std::optional<parsing::Token> getElementAt(DocumentHandle* hdl, lsp::uint offset) override {
         auto doc = hdl->doc;
         auto tok = doc->getTokenAt(slang::SourceLocation(doc->getBuffer(), offset));
         if (!tok) {
@@ -97,7 +98,7 @@ protected:
         return *tok;
     }
 
-    void processElementTransition(DocumentHandle* _hdl, SourceManager&, uint) override {
+    void processElementTransition(DocumentHandle*, SourceManager&, lsp::uint) override {
         test.record(fmt::format(" {}\n", toString(prevElement->kind)));
     }
 };
@@ -107,11 +108,12 @@ public:
     SymbolRefScanner() : DocumentScanner<server::DefinitionInfo>() {}
 
 protected:
-    std::optional<server::DefinitionInfo> getElementAt(DocumentHandle* hdl, uint offset) override {
+    std::optional<server::DefinitionInfo> getElementAt(DocumentHandle* hdl,
+                                                       lsp::uint offset) override {
         return hdl->getDefinitionInfoAt(offset);
     }
 
-    void processElementTransition(DocumentHandle* hdl, SourceManager& sm, uint offset) override {
+    void processElementTransition(DocumentHandle* hdl, SourceManager&, lsp::uint offset) override {
         // Get the current syntax node at the symbol's location
         auto doc = hdl->doc;
         auto tok = doc->getWordTokenAt(slang::SourceLocation(doc->getBuffer(), offset));

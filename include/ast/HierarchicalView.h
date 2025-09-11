@@ -158,13 +158,8 @@ static Instance toInstance(const slang::ast::InstanceSymbol& inst, const SourceM
     };
 }
 
-static Instance toInstance(const slang::ast::InstanceSymbol& inst, const SourceManager& sm,
-                           bool filled = false) {
-    return toInstance(inst, sm, std::string(inst.name), filled);
-}
-
-static QualifiedInstance toQualifiedInstance(const slang::ast::InstanceSymbol& inst,
-                                             const SourceManager& sm) {
+[[maybe_unused]] static QualifiedInstance toQualifiedInstance(
+    const slang::ast::InstanceSymbol& inst, const SourceManager& sm) {
     auto hierPath = inst.getHierarchicalPath();
     return QualifiedInstance{
         .instPath = hierPath,
@@ -185,8 +180,9 @@ static void handleInstance(std::vector<HierItem_t>& result, const slang::ast::In
     handleInstance(result, inst, sm, std::string(inst.name), filled);
 }
 
-static void handlePackage(std::vector<HierItem_t>& result, const slang::ast::PackageSymbol& pkg,
-                          const SourceManager& sm) {
+[[maybe_unused]] static void handlePackage(std::vector<HierItem_t>& result,
+                                           const slang::ast::PackageSymbol& pkg,
+                                           const SourceManager& sm) {
 
     auto syntax = pkg.getSyntax();
     if (syntax == nullptr) {

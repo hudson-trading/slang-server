@@ -34,12 +34,17 @@ int main(int argc, char** argv) {
     }
 
     if (configSchema == true) {
-        const std::string schema = rfl::json::to_schema<Config, rfl::DefaultIfMissing>(
-            rfl::json::pretty);
-        OS::print(schema);
+        try {
+            const std::string schema = rfl::json::to_schema<Config, rfl::DefaultIfMissing>(
+                rfl::json::pretty);
+            OS::print(schema);
+        }
+        catch (const std::exception& e) {
+            OS::print(fmt::format("Error generating config schema: {}\n", e.what()));
+            return 1;
+        }
         return 0;
     }
-
     SlangLspClient client;
     SlangServer server(client);
     server.run();

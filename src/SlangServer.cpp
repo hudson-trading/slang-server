@@ -36,10 +36,10 @@
 namespace server {
 
 SlangServer::SlangServer(SlangLspClient& client) :
-    m_client(client), m_config(Config()),
-    guard(OS::captureOutput([this](std::string_view text, bool isStdout) {
+    m_client(client), guard(OS::captureOutput([this](std::string_view text, bool isStdout) {
         driverPrintCb(text, isStdout);
-    })) // This routes messages from the slang driver to lsp notifications
+    })),
+    m_config(Config()) // This routes messages from the slang driver to lsp notifications
 {
 
     /// Keep this short to get server started quickly
@@ -72,7 +72,7 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     // LSP Lifecycle
     registerInitialized();
 
-    INFO("Server started with pid: {}", getpid());
+    INFO("Server started with pid: {}", OS::getpid());
 
     // Top level setting- these are internal commands, the main command should be in the client
     registerCommand<std::string, std::monostate, &SlangServer::setTopLevel>("slang.setTopLevel");
@@ -294,15 +294,19 @@ void SlangServer::loadConfig() {
     // - home dir
     // - workspace local conf (untracked)
     if (m_workspaceFolder) {
-        std::string workspacePath(m_workspaceFolder.value().uri.getPath());
-        confPaths.push_back(workspacePath + "/.slang-server.json");
+        auto fsPath = std::filesystem::path(m_workspaceFolder.value().uri.getPath());
+        confPaths.push_back((fsPath / ".slang" / "server.json").string());
     }
-    if (getenv("HOME") && !getenv("SLANG_SERVER_TESTS")) {
-        confPaths.push_back(std::string(getenv("HOME")) + "/.config/slang-server/config.json");
+#ifndef SLANG_SERVER_TESTS
+    if (getenv("HOME")) {
+        fs::path homePath = getenv("HOME");
+        confPaths.push_back((homePath / ".slang" / "server.json").string());
     }
+#endif
     if (m_workspaceFolder) {
-        std::string workspacePath(m_workspaceFolder.value().uri.getPath());
-        confPaths.push_back(workspacePath + "/.slang-server.local.json");
+        // std::string workspacePath(m_workspaceFolder.value().uri.getPath());
+        auto fsPath = std::filesystem::path(m_workspaceFolder.value().uri.getPath());
+        confPaths.push_back((fsPath / ".slang" / "local" / "server.json").string());
     }
 
     loadConfig(Config::fromFiles(confPaths, m_client), true);
@@ -360,7 +364,7 @@ std::monostate SlangServer::onShutdown(const std::nullopt_t&) {
 void SlangServer::onDocDidOpen(const lsp::DidOpenTextDocumentParams& params) {
     m_indexer.waitForIndexingCompletion();
     /// @brief Cache syntax tree of the document
-    auto& doc = m_driver->openDocument(params.textDocument.uri, params.textDocument.text);
+    m_driver->openDocument(params.textDocument.uri, params.textDocument.text);
 }
 
 void SlangServer::onDocDidChange(const lsp::DidChangeTextDocumentParams& params) {

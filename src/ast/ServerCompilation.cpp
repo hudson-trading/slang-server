@@ -29,11 +29,11 @@ void ServerCompilation::refresh() {
     // Create a new compilation
 
     // The main compilation is allowed to refer to old buffers
-    m_sourceManager.clearOldBuffers();
     comp = std::make_unique<slang::ast::Compilation>(m_options);
     for (auto& doc : m_documents) {
         comp->addSyntaxTree(doc->getSyntaxTree());
     }
+    m_sourceManager.clearOldBuffers();
 
     // reset and rebuild indexed info
     auto& root = comp->getRoot();

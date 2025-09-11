@@ -28,7 +28,7 @@ class GoldenTestBase {
 public:
     GoldenTestBase(std::string ext) : m_updateGolden(g_updateGoldenFlag) {
 
-        m_goldenFilePath = findSlangRoot() / "tests/cpp/golden" /
+        m_goldenFilePath = findSlangRoot() / "tests" / "cpp" / "golden" /
                            (Catch::getCurrentContext().getResultCapture()->getCurrentTestName() +
                             ext);
 
@@ -115,7 +115,6 @@ public:
 };
 
 class JsonGoldenTest : public GoldenTestBase {
-    bool isFirst = true;
 
 public:
     std::vector<rfl::Generic> m_entries;

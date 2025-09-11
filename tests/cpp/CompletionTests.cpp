@@ -47,11 +47,18 @@ TEST_CASE("ModuleCompletion") {
     endmodule
     )");
 
-    auto doc2 = server.openFile("test2.sv", R"()");
-    CHECK(doc2.begin().getCompletions().size() == 2);
+    auto doc2 = server.openFile("test2.sv", R"(
+        module test2;
+        //inmodule
+        
+        endmodule
+    )");
+
+    auto cursor = doc2.before("//inmodule");
+    CHECK(cursor.getCompletions().size() == 2);
     // Check that the module is indexed after saving
     doc.save();
-    auto comps = doc2.begin().getCompletions();
+    auto comps = cursor.getCompletions();
     CHECK(comps.size() == 3);
 
     auto it = std::find_if(comps.begin(), comps.end(),
@@ -60,7 +67,6 @@ TEST_CASE("ModuleCompletion") {
     REQUIRE(it != comps.end());
     auto comp = *it;
     comp.resolve();
-    std::cout << *comp.m_item.insertText << std::endl;
     CHECK(comp.m_item.insertText == R"(Dut #(
     .a(${1:a /* default 0 */}),
     .b(${2:b /* default 1 */})

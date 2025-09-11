@@ -26,7 +26,7 @@ namespace server {
 const slang::parsing::Token* findName(std::string_view name,
                                       const slang::syntax::SyntaxNode& node) {
     // Look through tokens first
-    for (int childInd = 0; childInd < node.getChildCount(); childInd++) {
+    for (size_t childInd = 0; childInd < node.getChildCount(); childInd++) {
         auto child = const_cast<slang::syntax::SyntaxNode&>(node).childTokenPtr(childInd);
         if (child && child->kind == slang::parsing::TokenKind::Identifier) {
             if (child->valueText() == name) {
@@ -35,7 +35,7 @@ const slang::parsing::Token* findName(std::string_view name,
         }
     }
     // Look through syntax nodes
-    for (int childInd = 0; childInd < node.getChildCount(); childInd++) {
+    for (size_t childInd = 0; childInd < node.getChildCount(); childInd++) {
         auto child = node.childNode(childInd);
         if (child) {
             auto nameTok = findName(name, *child);

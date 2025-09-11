@@ -26,8 +26,9 @@ using namespace slang;
 ShallowAnalysis::ShallowAnalysis(const SourceManager& sourceManager, slang::BufferID buffer,
                                  std::shared_ptr<SyntaxTree> tree, slang::Bag options,
                                  const std::vector<std::shared_ptr<SyntaxTree>>& dependentTrees) :
-    m_sourceManager(sourceManager), m_buffer(buffer), m_tree(tree), m_symbolIndexer(buffer),
-    m_dependentTrees(dependentTrees), m_symbolTreeVisitor(m_sourceManager), m_syntaxes(*tree) {
+    m_sourceManager(sourceManager), m_buffer(buffer), m_tree(tree),
+    m_dependentTrees(dependentTrees), m_symbolTreeVisitor(m_sourceManager), m_symbolIndexer(buffer),
+    m_syntaxes(*tree) {
 
     if (!m_tree) {
         ERROR("DocumentAnalysis initialized with null syntax tree");
@@ -417,7 +418,7 @@ std::vector<lsp::DocumentLink> ShallowAnalysis::getDocLinks() const {
 }
 
 std::optional<lsp::Hover> ShallowAnalysis::getDocHover(const lsp::Position& position,
-                                                       bool noDebug) {
+                                                       [[maybe_unused]] bool noDebug) {
     auto loc = m_sourceManager.getSourceLocation(m_buffer, position.line, position.character);
     if (!loc) {
         return std::nullopt;
@@ -483,20 +484,13 @@ std::string ShallowAnalysis::getDebugHover(const parsing::Token& tok) const {
             break;
         }
 
-        try {
-            value += fmt::format("*{}* ", toString(nodePtr->kind));
-            auto range = nodePtr->sourceRange();
-            std::string svText = "No Source";
-            if (range != SourceRange::NoLocation) {
-                svText = nodePtr->toString();
-            }
-            value += fmt::format("`{}`  \n ",
-                                 svText.substr(0, svText.size() > 20 ? 20 : svText.size()));
+        value += fmt::format("*{}* ", toString(nodePtr->kind));
+        auto range = nodePtr->sourceRange();
+        std::string svText = "No Source";
+        if (range != SourceRange::NoLocation) {
+            svText = nodePtr->toString();
         }
-        catch (std::logic_error& e) {
-            value += fmt::format("Error: {}  \n ", e.what());
-            break;
-        }
+        value += fmt::format("`{}`  \n ", svText.substr(0, std::min((size_t)20, svText.size())));
 
         auto sym = m_symbolIndexer.getSymbol(nodePtr);
 

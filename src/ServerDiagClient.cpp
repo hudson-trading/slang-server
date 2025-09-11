@@ -99,7 +99,6 @@ void ServerDiagClient::report(const slang::ReportedDiagnostic& diag) {
         else {
             // collapse ranges into one, if they're all in the same buffer
             SourceRange totalRange = ranges[0];
-            bool sameBuffer = true;
             for (auto& range : ranges.subspan(1)) {
                 if (range.start().buffer() != totalRange.start().buffer()) {
                     ERROR("Diagnostic has ranges in multiple buffers: {}", message);

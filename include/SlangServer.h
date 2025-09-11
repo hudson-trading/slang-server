@@ -71,7 +71,7 @@ public:
     /// Load the configuration file from a cascading set of json config files:
     /// ~/.slang/server.json
     /// ./slang/server.json
-    /// ./slang/server.local.json
+    /// ./slang/local/server.json
     void loadConfig();
 
     /// Load the configuration from a given config object, reindex if needed or forced

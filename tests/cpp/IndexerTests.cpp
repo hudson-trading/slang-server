@@ -5,45 +5,58 @@
 #include "Indexer.h"
 #include "catch2/catch_test_macros.hpp"
 #include "lsp/LspTypes.h"
+#include <atomic>
 #include <cstdio>
 #include <filesystem>
-#include <unistd.h>
+#include <fstream>
+#include <string>
 
 #include "slang/driver/SourceLoader.h"
 #include "slang/text/SourceManager.h"
 
 class TestIndexer {
     struct FileHandle {
-        explicit FileHandle() : fd(mkstemp(fileName)), path(std::filesystem::current_path()) {
-            REQUIRE(fd >= 0);
+        explicit FileHandle() {
+            static std::atomic<int> counter{0};
+            fileName = "slang_test_" + std::to_string(counter++) + ".tmp";
+            // Use canonical temp directory to handle macOS symlinks consistently
+            auto canonicalTempDir = std::filesystem::canonical(
+                std::filesystem::temp_directory_path());
+            filePath = canonicalTempDir / fileName;
         }
-        ~FileHandle() {
-            unlink(fileName);
-            close(fd);
-        }
+
+        ~FileHandle() { std::filesystem::remove(filePath); }
 
         std::string name() const { return fileName; }
 
         void writeContent(std::string content) {
-            REQUIRE(fd >= 0);
-            write(fd, content.c_str(), content.size());
+            std::ofstream file(filePath);
+            REQUIRE(file.is_open());
+            file << content;
+            file.close();
         }
 
         std::string getContent() const {
-            REQUIRE(fd >= 0);
-            char buffer[1024];
-            lseek(fd, 0, SEEK_SET);
-            auto bytesRead = read(fd, buffer, sizeof(buffer));
-            return std::string(buffer, bytesRead) + '\0';
+            std::ifstream file(filePath);
+            REQUIRE(file.is_open());
+            return std::string((std::istreambuf_iterator<char>(file)),
+                               std::istreambuf_iterator<char>());
         }
 
-        std::string fullPath() const { return path / fileName; }
+        std::string fullPath() const {
+            // Use canonical path to resolve symlinks consistently on macOS
+            try {
+                return std::filesystem::canonical(filePath).string();
+            }
+            catch (const std::filesystem::filesystem_error&) {
+                // Fallback to the original path if canonical fails
+                return filePath.string();
+            }
+        }
 
     private:
-        // template string is pretty specific, don't change it unless you consult mkstemp spec
-        char fileName[12] = "_testXXXXXX";
-        int fd;
-        const std::filesystem::path path;
+        std::string fileName;
+        std::filesystem::path filePath;
     };
 
 public:
@@ -156,7 +169,9 @@ endclass
     std::string f2Path = addFile(file2Content).fullPath();
     std::string f3Path = addFile(file3Content).fullPath();
 
-    indexer.startIndexing({"_test*"}, {});
+    // Use the canonical temp directory path with the test file pattern to handle macOS symlinks
+    auto tempDir = std::filesystem::canonical(std::filesystem::temp_directory_path()).string();
+    indexer.startIndexing({tempDir + "/slang_test*"}, {});
 
     using GoldenMap = Indexer::IndexMap;
     const auto checkIndexedMap = [](const Indexer::IndexMap& map, const GoldenMap& goldenMap) {
@@ -175,35 +190,35 @@ endclass
 
     SECTION("Macros") {
         GoldenMap expectedMap;
-        expectedMap.emplace(
-            "REQUIRED", std::move(Indexer::IndexMapEntry::fromMacroData(URI::fromFile(f3Path))));
+        expectedMap.emplace("REQUIRED",
+                            Indexer::IndexMapEntry::fromMacroData(URI::fromFile(f3Path)));
 
         checkIndexedMap(indexer.macroMap().getAllEntries(), expectedMap);
     }
 
     SECTION("Symbols") {
         GoldenMap expectedMap;
-        expectedMap.emplace("driver", std::move(Indexer::IndexMapEntry::fromSymbolData(
+        expectedMap.emplace("driver", Indexer::IndexMapEntry::fromSymbolData(
                                           lsp::SymbolKind::Module, "wire_module",
-                                          lsp::LocationUriOnly{URI::fromFile(f2Path)})));
-        expectedMap.emplace("C", std::move(Indexer::IndexMapEntry::fromSymbolData(
+                                          lsp::LocationUriOnly{URI::fromFile(f2Path)}));
+        expectedMap.emplace("C", Indexer::IndexMapEntry::fromSymbolData(
                                      lsp::SymbolKind::Class, "",
-                                     lsp::LocationUriOnly{URI::fromFile(f2Path)})));
-        expectedMap.emplace("Iface", std::move(Indexer::IndexMapEntry::fromSymbolData(
+                                     lsp::LocationUriOnly{URI::fromFile(f2Path)}));
+        expectedMap.emplace("Iface", Indexer::IndexMapEntry::fromSymbolData(
                                          lsp::SymbolKind::Interface, "",
-                                         lsp::LocationUriOnly{URI::fromFile(f1Path)})));
-        expectedMap.emplace("m1", std::move(Indexer::IndexMapEntry::fromSymbolData(
+                                         lsp::LocationUriOnly{URI::fromFile(f1Path)}));
+        expectedMap.emplace("m1", Indexer::IndexMapEntry::fromSymbolData(
                                       lsp::SymbolKind::Module, "",
-                                      lsp::LocationUriOnly{URI::fromFile(f1Path)})));
-        expectedMap.emplace("m4", std::move(Indexer::IndexMapEntry::fromSymbolData(
+                                      lsp::LocationUriOnly{URI::fromFile(f1Path)}));
+        expectedMap.emplace("m4", Indexer::IndexMapEntry::fromSymbolData(
                                       lsp::SymbolKind::Module, "",
-                                      lsp::LocationUriOnly{URI::fromFile(f1Path)})));
-        expectedMap.emplace("n", std::move(Indexer::IndexMapEntry::fromSymbolData(
+                                      lsp::LocationUriOnly{URI::fromFile(f1Path)}));
+        expectedMap.emplace("n", Indexer::IndexMapEntry::fromSymbolData(
                                      lsp::SymbolKind::Module, "",
-                                     lsp::LocationUriOnly{URI::fromFile(f1Path)})));
-        expectedMap.emplace("wire_module", std::move(Indexer::IndexMapEntry::fromSymbolData(
+                                     lsp::LocationUriOnly{URI::fromFile(f1Path)}));
+        expectedMap.emplace("wire_module", Indexer::IndexMapEntry::fromSymbolData(
                                                lsp::SymbolKind::Module, "",
-                                               lsp::LocationUriOnly{URI::fromFile(f2Path)})));
+                                               lsp::LocationUriOnly{URI::fromFile(f2Path)}));
         checkIndexedMap(indexer.symbolMap().getAllEntries(), expectedMap);
     }
 }

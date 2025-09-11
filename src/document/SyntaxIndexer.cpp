@@ -62,7 +62,7 @@ void SyntaxIndexer::visit(const slang::syntax::SyntaxNode& node) {
     }
 }
 
-const int SyntaxIndexer::tokenIndexBefore(slang::SourceLocation loc) const {
+int SyntaxIndexer::tokenIndexBefore(slang::SourceLocation loc) const {
     if (loc.buffer() != m_buffer) {
         return -1;
     }
@@ -78,10 +78,10 @@ const int SyntaxIndexer::tokenIndexBefore(slang::SourceLocation loc) const {
     }
     // don't need to check high, since we only return low
 
-    uint low = 0;
-    uint high = collected.size();
+    size_t low = 0;
+    size_t high = collected.size();
     while (low + 1 < high) {
-        uint mid = low + (high - low) / 2;
+        size_t mid = low + (high - low) / 2;
         auto node = collected[mid];
         auto range = node->range();
         if (range.start() <= loc) {

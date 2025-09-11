@@ -28,8 +28,9 @@ namespace server {
 
 ServerDriver::ServerDriver(Indexer& indexer, SlangLspClient& client, std::string_view flags,
                            std::vector<std::string> buildfiles) :
-    indexer(indexer), client(client), sm(driver.sourceManager), diagEngine(driver.diagEngine),
-    diagClient(std::make_shared<ServerDiagClient>(sm, client)), completions(indexer, sm, options) {
+    sm(driver.sourceManager), diagEngine(driver.diagEngine), client(client),
+    diagClient(std::make_shared<ServerDiagClient>(sm, client)), completions(indexer, sm, options),
+    indexer(indexer) {
     // Create and configure the driver with our source manager and diagnostic engine
     // SourceManager must not be moved, since diagEngine, syntax trees hold references to it
     driver.addStandardArgs();
@@ -126,7 +127,7 @@ std::unique_ptr<ServerDriver> ServerDriver::create(Indexer& indexer, SlangLspCli
             auto newDocit = newDriver->docs.find(uri);
             if (newDocit == newDriver->docs.end()) {
                 // Open the document in the new driver using the text from the old document
-                auto& doc = newDriver->openDocument(uri, docIt->second->getText());
+                newDriver->openDocument(uri, docIt->second->getText());
                 // Trigger diagnostics for the newly opened document
             }
             else {
@@ -154,7 +155,8 @@ void ServerDriver::onDocDidChange(const lsp::DidChangeTextDocumentParams& params
     std::string_view path = params.textDocument.uri.getPath();
     auto doc = getDocument(params.textDocument.uri);
     if (!doc) {
-        throw std::runtime_error(fmt::format("Document {} not found", path));
+        ERROR("Document {} not found", path);
+        return;
     }
 
     doc->onChange(params.contentChanges);
