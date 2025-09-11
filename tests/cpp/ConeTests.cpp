@@ -10,8 +10,8 @@ namespace fs = std::filesystem;
 
 struct HierResult {
     std::string name;
-    uint line;
-    uint character;
+    lsp::uint line;
+    lsp::uint character;
 
     auto operator<=>(const HierResult&) const = default;
 
