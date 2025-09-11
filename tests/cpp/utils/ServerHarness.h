@@ -103,8 +103,8 @@ public:
     void append(std::string text);
     void erase(int start, int end);
 
-    Cursor before(std::string before, uint start_pos = 0);
-    Cursor after(std::string after, uint start_pos = 0);
+    Cursor before(std::string before, lsp::uint start_pos = 0);
+    Cursor after(std::string after, lsp::uint start_pos = 0);
     Cursor end();
     Cursor begin();
 
