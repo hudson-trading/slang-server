@@ -4,196 +4,193 @@ import { TreeItemButton, ViewComponent } from '../lib/libconfig'
 import * as slang from '../SlangInterface'
 
 export class InstanceViewItem {
-    data: slang.QualifiedInstance
-    parent: ModuleItem
+  data: slang.QualifiedInstance
+  parent: ModuleItem
 
-    constructor(parent: ModuleItem, inst: slang.QualifiedInstance) {
-        this.parent = parent
-        this.data = inst
-    }
-    getParent(): ModuleItem {
-        return this.parent
-    }
+  constructor(parent: ModuleItem, inst: slang.QualifiedInstance) {
+    this.parent = parent
+    this.data = inst
+  }
+  getParent(): ModuleItem {
+    return this.parent
+  }
 
-    getTreeItem(): vscode.TreeItem {
-        const item = new vscode.TreeItem(this.data.instPath, vscode.TreeItemCollapsibleState.None)
-        item.iconPath = new vscode.ThemeIcon('chip')
-        item.contextValue = 'Instance'
-        return item
-    }
+  getTreeItem(): vscode.TreeItem {
+    const item = new vscode.TreeItem(this.data.instPath, vscode.TreeItemCollapsibleState.None)
+    item.iconPath = new vscode.ThemeIcon('chip')
+    item.contextValue = 'Instance'
+    return item
+  }
 
-    resolveTreeItem(item: vscode.TreeItem, _token: vscode.CancellationToken): vscode.TreeItem {
-        item.tooltip = this.data.instPath
-        item.command = {
-            title: 'Open Instance',
-            command: 'slang.project.setInstance',
-            arguments: [
-                this.data.instPath,
-                { revealInstance: false, revealFile: true, revealHierarchy: true },
-            ],
-        }
-        return item
+  resolveTreeItem(item: vscode.TreeItem, _token: vscode.CancellationToken): vscode.TreeItem {
+    item.tooltip = this.data.instPath
+    item.command = {
+      title: 'Open Instance',
+      command: 'slang.project.setInstance',
+      arguments: [
+        this.data.instPath,
+        { revealInstance: false, revealFile: true, revealHierarchy: true },
+      ],
     }
+    return item
+  }
 
-    getChildren(): [] {
-        return []
-    }
+  getChildren(): [] {
+    return []
+  }
 }
 
 export class ModuleItem {
-    data: slang.Module
-    instances: Map<string, InstanceViewItem> = new Map()
+  data: slang.Module
+  instances: Map<string, InstanceViewItem> = new Map()
 
-    constructor(data: slang.Module) {
-        this.data = data
-    }
+  constructor(data: slang.Module) {
+    this.data = data
+  }
 
-    getTreeItem(): vscode.TreeItem {
-        const item = new vscode.TreeItem(
-            this.data.declName + ` (${this.data.instCount})`,
-            vscode.TreeItemCollapsibleState.Collapsed
-        )
-        item.iconPath = new vscode.ThemeIcon('file')
-        if (this.data.inst) {
-            item.collapsibleState = vscode.TreeItemCollapsibleState.Expanded
-        }
-        return item
+  getTreeItem(): vscode.TreeItem {
+    const item = new vscode.TreeItem(
+      this.data.declName + ` (${this.data.instCount})`,
+      vscode.TreeItemCollapsibleState.Collapsed
+    )
+    item.iconPath = new vscode.ThemeIcon('file')
+    if (this.data.inst) {
+      item.collapsibleState = vscode.TreeItemCollapsibleState.Expanded
     }
+    return item
+  }
 
-    resolveTreeItem(item: vscode.TreeItem, _token: vscode.CancellationToken): vscode.TreeItem {
-        item.tooltip = this.data.declName
-        item.command = {
-            title: 'Open Module',
-            command: 'vscode.open',
-            arguments: [
-                vscode.Uri.parse(this.data.declLoc.uri),
-                { selection: this.data.declLoc.range },
-            ],
-        }
-        return item
+  resolveTreeItem(item: vscode.TreeItem, _token: vscode.CancellationToken): vscode.TreeItem {
+    item.tooltip = this.data.declName
+    item.command = {
+      title: 'Open Module',
+      command: 'vscode.open',
+      arguments: [vscode.Uri.parse(this.data.declLoc.uri), { selection: this.data.declLoc.range }],
     }
+    return item
+  }
 
-    async getChildren(): Promise<InstanceViewItem[]> {
-        return Array.from((await this.getInstances()).values())
-    }
+  async getChildren(): Promise<InstanceViewItem[]> {
+    return Array.from((await this.getInstances()).values())
+  }
 
-    async getInstances(): Promise<Map<string, InstanceViewItem>> {
-        if (this.instances.size === 0) {
-            const insts = await slang.getInstancesOfModule(this.data.declName)
-            this.instances = new Map()
-            for (const inst of insts) {
-                const item = new InstanceViewItem(this, inst)
-                this.instances.set(inst.instPath, item)
-            }
-        }
-        return this.instances
+  async getInstances(): Promise<Map<string, InstanceViewItem>> {
+    if (this.instances.size === 0) {
+      const insts = await slang.getInstancesOfModule(this.data.declName)
+      this.instances = new Map()
+      for (const inst of insts) {
+        const item = new InstanceViewItem(this, inst)
+        this.instances.set(inst.instPath, item)
+      }
     }
+    return this.instances
+  }
 }
 
 type InstanceTreeItem = InstanceViewItem | ModuleItem
 export class InstancesView
-    extends ViewComponent
-    implements vscode.TreeDataProvider<InstanceTreeItem>
+  extends ViewComponent
+  implements vscode.TreeDataProvider<InstanceTreeItem>
 {
-    copyHierarchyPath: TreeItemButton = new TreeItemButton(
-        {
-            title: 'Copy Path',
-            inlineContext: ['Instance'],
-            icon: {
-                light: './resources/light/files.svg',
-                dark: './resources/dark/files.svg',
-            },
-        },
-        async (item: InstanceViewItem) => {
-            vscode.env.clipboard.writeText(item.data.instPath)
+  copyHierarchyPath: TreeItemButton = new TreeItemButton(
+    {
+      title: 'Copy Path',
+      inlineContext: ['Instance'],
+      icon: {
+        light: './resources/light/files.svg',
+        dark: './resources/dark/files.svg',
+      },
+    },
+    async (item: InstanceViewItem) => {
+      vscode.env.clipboard.writeText(item.data.instPath)
+    }
+  )
+
+  modules: Map<string, ModuleItem> = new Map()
+  async updateModules() {
+    const modules = await slang.getScopesByModule()
+    this.modules = new Map()
+    for (const mod of modules) {
+      const item = new ModuleItem(mod)
+      this.modules.set(mod.declName, item)
+    }
+
+    this._onDidChangeTreeData.fire()
+  }
+
+  async clearModules() {
+    this.modules = new Map()
+    this._onDidChangeTreeData.fire()
+  }
+
+  revealPath(module: string, path: string) {
+    const moduleItem = this.modules.get(module)
+    if (moduleItem === undefined) {
+      return
+    }
+    const inst = moduleItem.instances.get(path)
+    if (inst) {
+      this.treeView?.reveal(inst, { select: true, focus: true, expand: true })
+    }
+  }
+  private _onDidChangeTreeData: vscode.EventEmitter<void> = new vscode.EventEmitter<void>()
+  readonly onDidChangeTreeData: vscode.Event<void> = this._onDidChangeTreeData.event
+  treeView: vscode.TreeView<InstanceTreeItem> | undefined
+
+  constructor() {
+    super({
+      name: 'Modules',
+    })
+  }
+
+  async activate(_context: vscode.ExtensionContext) {
+    this.treeView = vscode.window.createTreeView(this.configPath!, {
+      treeDataProvider: this,
+      showCollapseAll: true,
+      canSelectMany: false,
+      dragAndDropController: undefined,
+      manageCheckboxStateManually: false,
+    })
+    // If you actually register it, you don't get the collapsible state button :/
+    // context.subscriptions.push(vscode.window.registerTreeDataProvider(this.configPath!, this))
+  }
+
+  getTreeItem(element: InstanceTreeItem): vscode.TreeItem {
+    // check if element has gettreeitem
+    if (element instanceof ModuleItem) {
+      return element.getTreeItem()
+    }
+    if (element instanceof InstanceViewItem) {
+      return element.getTreeItem()
+    }
+
+    return new vscode.TreeItem('undefined')
+  }
+
+  async getChildren(element?: undefined | InstanceTreeItem): Promise<InstanceTreeItem[]> {
+    if (element === undefined) {
+      return Array.from(this.modules.values()).sort((a, b) => {
+        if (a.data.instCount === b.data.instCount && a.data.inst && b.data.inst) {
+          return a.data.inst.instPath < b.data.inst.instPath ? -1 : 1
         }
-    )
-
-    modules: Map<string, ModuleItem> = new Map()
-    async updateModules() {
-        const modules = await slang.getScopesByModule()
-        this.modules = new Map()
-        for (const mod of modules) {
-            const item = new ModuleItem(mod)
-            this.modules.set(mod.declName, item)
-        }
-
-        this._onDidChangeTreeData.fire()
+        return a.data.instCount > b.data.instCount ? 1 : -1
+      })
     }
+    return await element.getChildren()
+  }
 
-    async clearModules() {
-        this.modules = new Map()
-        this._onDidChangeTreeData.fire()
+  getParent(element: InstanceTreeItem): InstanceTreeItem | undefined {
+    if (element instanceof ModuleItem) {
+      return undefined
     }
+    return element.parent
+  }
 
-    revealPath(module: string, path: string) {
-        const moduleItem = this.modules.get(module)
-        if (moduleItem === undefined) {
-            return
-        }
-        const inst = moduleItem.instances.get(path)
-        if (inst) {
-            this.treeView?.reveal(inst, { select: true, focus: true, expand: true })
-        }
-    }
-    private _onDidChangeTreeData: vscode.EventEmitter<void> = new vscode.EventEmitter<void>()
-    readonly onDidChangeTreeData: vscode.Event<void> = this._onDidChangeTreeData.event
-    treeView: vscode.TreeView<InstanceTreeItem> | undefined
-
-    constructor() {
-        super({
-            name: 'Modules',
-        })
-    }
-
-    async activate(_context: vscode.ExtensionContext) {
-        this.treeView = vscode.window.createTreeView(this.configPath!, {
-            treeDataProvider: this,
-            showCollapseAll: true,
-            canSelectMany: false,
-            dragAndDropController: undefined,
-            manageCheckboxStateManually: false,
-        })
-        // If you actually register it, you don't get the collapsible state button :/
-        // context.subscriptions.push(vscode.window.registerTreeDataProvider(this.configPath!, this))
-    }
-
-    getTreeItem(element: InstanceTreeItem): vscode.TreeItem {
-        // check if element has gettreeitem
-        if (element instanceof ModuleItem) {
-            return element.getTreeItem()
-        }
-        if (element instanceof InstanceViewItem) {
-            return element.getTreeItem()
-        }
-
-        return new vscode.TreeItem('undefined')
-    }
-
-    async getChildren(element?: undefined | InstanceTreeItem): Promise<InstanceTreeItem[]> {
-        if (element === undefined) {
-            return Array.from(this.modules.values()).sort((a, b) => {
-                if (a.data.instCount === b.data.instCount && a.data.inst && b.data.inst) {
-                    return a.data.inst.instPath < b.data.inst.instPath ? -1 : 1
-                }
-                return a.data.instCount > b.data.instCount ? 1 : -1
-            })
-        }
-        return await element.getChildren()
-    }
-
-    getParent(element: InstanceTreeItem): InstanceTreeItem | undefined {
-        if (element instanceof ModuleItem) {
-            return undefined
-        }
-        return element.parent
-    }
-
-    async resolveTreeItem(
-        item: vscode.TreeItem,
-        element: InstanceTreeItem,
-        _token: vscode.CancellationToken
-    ): Promise<vscode.TreeItem> {
-        return element.resolveTreeItem(item, _token)
-    }
+  async resolveTreeItem(
+    item: vscode.TreeItem,
+    element: InstanceTreeItem,
+    _token: vscode.CancellationToken
+  ): Promise<vscode.TreeItem> {
+    return element.resolveTreeItem(item, _token)
+  }
 }
