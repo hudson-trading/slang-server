@@ -85,5 +85,6 @@ jobs:
       # Don't run tests on windows
       if: matrix.os != 'windows-latest'
     - name: Run Neovim plugin tests
-      working-directory: slang-server.nvim
       uses: nvim-neorocks/nvim-busted-action@v1
+      with:
+        before: cd slang-server.nvim
