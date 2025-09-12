@@ -5,8 +5,11 @@
   "tasks": [
     {
       "type": "shell",
-      "label": "build",
+      "label": "build slang-vscode",
       "command": "pnpm build",
+      "options": {
+        "cwd": "${workspaceFolder}/clients/vscode"
+      },
       "problemMatcher": [
         {
           "severity": "error",
@@ -48,7 +51,7 @@
     },
     {
       "label": "watch-tests",
-      "dependsOn": ["build", "__watch-tests"],
+      "dependsOn": ["build slang-vscode", "__watch-tests"],
       "problemMatcher": []
     }
   ]
