@@ -160,6 +160,53 @@ const ast::Symbol* ShallowAnalysis::handleInterfacePortHeader(const parsing::Tok
     return inst.body.lookupName(header.modport->member.valueText());
 }
 
+const ast::Scope* ShallowAnalysis::getScopeFromSym(const ast::Symbol* symbol) {
+    if (!symbol) {
+        return nullptr;
+    }
+
+    // If symbol is already a scope, like a hierarchical instance
+    if (symbol->isScope()) {
+        return &symbol->as<ast::Scope>();
+    }
+
+    // Handle type symbols for element selection
+    if (symbol->isType()) {
+        auto& type = symbol->as<ast::Type>().getCanonicalType();
+        if (type.kind == ast::SymbolKind::PackedStructType ||
+            type.kind == ast::SymbolKind::UnpackedStructType ||
+            type.kind == ast::SymbolKind::PackedUnionType ||
+            type.kind == ast::SymbolKind::UnpackedUnionType ||
+            type.kind == ast::SymbolKind::ClassType) {
+            return &type.as<ast::Scope>();
+        }
+    }
+
+    // If symbol is a variable/instance, get its type's scope
+    if (symbol->kind == ast::SymbolKind::Variable || symbol->kind == ast::SymbolKind::Parameter ||
+        symbol->kind == ast::SymbolKind::Instance) {
+        if (auto varSym = symbol->as_if<ast::ValueSymbol>()) {
+            auto& type = varSym->getType().getCanonicalType();
+            switch (type.kind) {
+                case ast::SymbolKind::PackedStructType:
+                case ast::SymbolKind::UnpackedStructType:
+                case ast::SymbolKind::PackedUnionType:
+                case ast::SymbolKind::UnpackedUnionType:
+                case ast::SymbolKind::ClassType:
+                case ast::SymbolKind::ClassProperty:
+                    return &type.as<ast::Scope>();
+                case ast::SymbolKind::CovergroupType:
+                    return &type.as<ast::CovergroupType>().getBody();
+                default:
+                    return nullptr;
+            }
+        }
+        return nullptr;
+    }
+
+    return nullptr;
+}
+
 /// @brief Visitor that finds and stores a specific token and its syntax node at an offset
 struct OffsetFinder {
     OffsetFinder(uint32_t targetOffset) : targetOffset(targetOffset) {}
@@ -247,7 +294,28 @@ const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declT
         ast::Lookup::name(*nameSyntax, context, ast::LookupFlags::None, result);
         if (result.found) {
             if (isOverSelector(declTok, result)) {
-                return nullptr;
+                const slang::ast::Symbol* cur = result.found;
+
+                for (auto& sel : result.selectors) {
+                    const ast::Scope* scope = getScopeFromSym(cur);
+                    if (!scope) {
+                        return nullptr;
+                    }
+                    if (auto member = std::get_if<ast::LookupResult::MemberSelector>(&sel)) {
+                        // Handle different symbol kinds similar to
+                        // MemberAccessExpression::fromSelector
+                        cur = scope->find(member->name);
+                    }
+                    else {
+                        cur = scope->getFirstMember();
+                    }
+                    if (!cur) {
+                        WARN("No members found in scope {}",
+                             scope->asSymbol().getHierarchicalPath());
+                        return nullptr;
+                    }
+                }
+                return cur;
             }
             return result.found;
         }
