@@ -61,7 +61,7 @@ All configuration options are optional and have sensible defaults.
 
 ### `buildPattern`
 **Type:** `string` (optional)  
-**Description:** Build file pattern where `{}` will be replaced with dynamic values  
+**Description:** Build file pattern used to find the a .f file given a the name of a waveform file. (e.g. /tmp/{}.fst with builds/{}.f looks for  build/foo.f to load the compilation)
 **Example:** `"builds/{}.f"`
 
 ### `wcpCommand`
