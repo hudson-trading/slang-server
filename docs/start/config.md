@@ -61,7 +61,7 @@ All configuration options are optional and have sensible defaults.
 
 ### `buildPattern`
 **Type:** `string` (optional)  
-**Description:** Build file pattern used to find the a .f file given a the name of a waveform file. (e.g. /tmp/{}.fst with builds/{}.f looks for  build/foo.f to load the compilation)
+**Description:** Build file pattern used to find the a .f file given a the name of a waveform file. (e.g. /tmp/{}.fst with builds/{}.f looks for  build/foo.f to load the compilation). This is also used to look for .f files in the vscode client when selecting a .f file.
 **Example:** `"builds/{}.f"`
 
 ### `wcpCommand`
