@@ -304,7 +304,7 @@ class InstanceLink extends vscode.TerminalLink {
     // If the path's top already matches the top, files will be empty
     files: string[] = []
     constructor(path: string, files: string[], startIndex: number, length: number) {
-        super(startIndex, length, 'Open in Hierarhcy View')
+        super(startIndex, length, 'Open in Hierarchy View')
         this.path = path
         this.files = files
     }
