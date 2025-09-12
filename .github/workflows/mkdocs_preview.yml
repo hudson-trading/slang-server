@@ -34,6 +34,5 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./site
           force_orphan: true
-          # This is the key part - we're deploying to a unique subdirectory
           publish_branch: gh-pages
-          destination: previews/pr-${{ github.event.number }}
+          destination_dir: previews/pr-${{ github.event.number }}
