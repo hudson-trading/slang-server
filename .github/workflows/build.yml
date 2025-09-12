@@ -49,6 +49,10 @@ jobs:
         repository: hudson-trading/slang-server.nvim
         ref: ci
         path: slang-server.nvim
+    - name: Run Neovim plugin tests
+      uses: nvim-neorocks/nvim-busted-action@v1
+      with:
+        before: cd slang-server.nvim; echo HERE; pwd; echo LS; ls
 # NOCOMMIT -- remove
     - name: Plugin debug
       run: |
@@ -84,7 +88,3 @@ jobs:
       run: ctest --test-dir build/${{ matrix.preset }} --output-on-failure --no-tests=error -j8
       # Don't run tests on windows
       if: matrix.os != 'windows-latest'
-    - name: Run Neovim plugin tests
-      uses: nvim-neorocks/nvim-busted-action@v1
-      with:
-        before: cd slang-server.nvim
