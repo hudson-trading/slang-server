@@ -39,6 +39,15 @@ Logs are in `Output > slang-server` in the terminal area
 
 To refresh the server, run the command "Verilog: Restart Language Server"
 
+## Vscode Client Testing
+Copy the launch template: 
+
+`cp .vscode/launch.template.jsonc .vscode/launch.json`
+
+Go to Debug > Run slang-vscode
+
+Point to your build of slang-server if needed.
+
 ## Vscode Debugging
 
 Configure your build with debug symbols: `cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCMAKE_BUILD_TYPE=Debug`

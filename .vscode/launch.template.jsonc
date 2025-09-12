@@ -42,5 +42,20 @@
                 }
             ],
         },
+        {
+            "version": "0.2.0",
+            "configurations": [
+                {
+                "name": "Run slang-vscode",
+                "type": "extensionHost",
+                "request": "launch",
+                "args": ["--disable-extensions", "--extensionDevelopmentPath=${workspaceFolder}"],
+                "outFiles": ["${workspaceFolder}/out/**"],
+                "cwd": "${workspaceFolder}",
+                "resolveSourceMapLocations": ["${workspaceFolder}/**", "!**/node_modules/**"],
+                "preLaunchTask": "build slang-vscode"
+                }
+            ]
+        },
     ],
 }

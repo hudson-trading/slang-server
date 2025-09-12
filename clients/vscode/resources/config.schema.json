@@ -1,0 +1,64 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$ref": "#/definitions/Config",
+    "definitions": {
+        "Config": {
+            "type": "object",
+            "properties": {
+                "flags": {
+                    "type": "string",
+                    "description": "Flags to pass to slang"
+                },
+                "indexGlobs": {
+                    "type": "array",
+                    "description": "Globs of what to index",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "excludeDirs": {
+                    "type": "array",
+                    "description": "Directories to exclude",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "indexingThreads": {
+                    "type": "integer",
+                    "description": "Thread count to use for indexing"
+                },
+                "parsingThreads": {
+                    "type": "integer",
+                    "description": "Thread count to use for parsing"
+                },
+                "build": {
+                    "description": "Build file to use",
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "buildPattern": {
+                    "description": "Build file pattern, ex builds/{}.f",
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "wcpCommand": {
+                    "type": "string",
+                    "description": "Waveform viewer command ({} will be replaced with the WCP port)"
+                }
+            },
+            "required": []
+        }
+    }
+}

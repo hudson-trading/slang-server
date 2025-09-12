@@ -1,0 +1,33 @@
+on:
+  workflow_dispatch:
+    inputs:
+      kind:
+        description: 'Update kind (major, minor, patch)'
+        default: 'patch'
+      prerelease:
+        description: 'Publish as pre-release'
+        type: boolean
+        default: false
+
+name: Publish extension to marketplace
+permissions:
+  contents: write
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: cd clients/vscode
+      - run: npm ci
+      - run: npm install -g @vscode/vsce
+      - run: git config --global user.email "${{ github.actor }}@users.noreply.github.com"
+      - run: git config --global user.name "${{ github.actor }}"
+      - name: Publish to Visual Studio Marketplace
+        run: vsce publish ${{ inputs.kind }} ${{ inputs.prerelease && '--pre-release' || '' }} --pat ${{ secrets.VS_MARKETPLACE_TOKEN }}
+      - run: npm install -g ovsx
+      - name: Publish to Open Vsix
+        run: npx ovsx publish ${{ inputs.prerelease && '--pre-release' || '' }} --pat ${{ secrets.OPEN_VSX_TOKEN }}
+      - run: git push
