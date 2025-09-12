@@ -17,21 +17,21 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
         with:
-          python-version: 3.12
-
-      - run: pip install mkdocs mkdocs-material
-      - run: mkdocs build --strict
-      - name: Deploy to gh-pages
+          version: "0.8.17"
+      - name: Set up Python
+        run: uv python install
+      - name: Install dependencies
+        run: uv sync --locked --all-extras --dev
+        
+      - name: Build docs
+        run: uv run mkdocs build --strict
+      - name: Deploy to gh-pages preview directory
+        # This step is much more complex than a simple push
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./site
-        
-        
-
-
-
+          publish_branch: gh-pages
