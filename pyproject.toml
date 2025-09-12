@@ -4,9 +4,9 @@ version = "0.1.0"
 authors = [
     { name="Hudson River Trading" },
 ]
-description = "A short description of your project."
+description = "Venv used for pygls testing and serving mkdocs"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = "==3.12.6"
 license = "MIT"
 
 # This project is only for testing, so these can be normal deps rather than dev deps

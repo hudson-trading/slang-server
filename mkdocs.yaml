@@ -77,7 +77,7 @@ extra_css:
 exclude_docs: |
 
 nav:
-  - welcome.md
+  - index.md
   - Getting Started:
     - start/installing.md
     - start/config.md
