@@ -89,3 +89,20 @@
   border: none;
   box-shadow: none;
 }
+
+/* Link styles for better visibility */
+[data-md-color-scheme="default"] .md-typeset a {
+  color: #1976d2;
+}
+
+[data-md-color-scheme="default"] .md-typeset a:hover {
+  color: #1565c0;
+}
+
+[data-md-color-scheme="slate"] .md-typeset a {
+  color: #64b5f6;
+}
+
+[data-md-color-scheme="slate"] .md-typeset a:hover {
+  color: #90caf9;
+}
