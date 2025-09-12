@@ -1,0 +1,55 @@
+// See https://go.microsoft.com/fwlink/?LinkId=733558
+// for the documentation about the tasks.json format
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "shell",
+      "label": "build",
+      "command": "pnpm build",
+      "problemMatcher": [
+        {
+          "severity": "error",
+          "applyTo": "closedDocuments",
+          "source": "esbuild",
+          "fileLocation": "relative",
+          "pattern": [
+            {
+              "regexp": "^[✘▲] \\[([A-Z]+)\\] (.+)",
+              "severity": 1,
+              "message": 2
+            },
+            {
+              "regexp": "^(?:\\t| {4})(?!\\s)([^:]+)(?::([0-9]+))?(?::([0-9]+))?:$",
+              "file": 1,
+              "line": 2,
+              "column": 3
+            }
+          ]
+        }
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "type": "shell",
+      "label": "__watch-tests",
+      "command": "pnpm watch-tests",
+      "problemMatcher": "$tsc-watch",
+      "isBackground": true,
+      "hide": true,
+      "presentation": {
+        "reveal": "never",
+        "group": "watchers"
+      },
+      "group": "build"
+    },
+    {
+      "label": "watch-tests",
+      "dependsOn": ["build", "__watch-tests"],
+      "problemMatcher": []
+    }
+  ]
+}
