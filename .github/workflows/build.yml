@@ -52,7 +52,7 @@ jobs:
     - name: Run Neovim plugin tests
       uses: nvim-neorocks/nvim-busted-action@v1
       with:
-        before: cd slang-server.nvim; echo HERE; pwd; echo LS; ls
+        before: cd slang-server.nvim; echo HERE; pwd; ln -s ../.luarocks .; echo LS; ls
 # NOCOMMIT -- remove
     - name: Plugin debug
       run: |
