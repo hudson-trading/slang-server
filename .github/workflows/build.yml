@@ -63,4 +63,10 @@ jobs:
     - name: Run tests
       run: ctest --test-dir build/${{ matrix.preset }} --output-on-failure --no-tests=error -j8
       # Don't run tests on windows
-      if: matrix.os != 'windows-latest' 
+      if: matrix.os != 'windows-latest'
+    - name: Run Neovim plugin tests
+      uses: actions/checkout@v4
+      with:
+        repository: hudson-trading/slang-server.nvim
+        ref: ci
+      uses: nvim-neorocks/nvim-busted-action@v1
