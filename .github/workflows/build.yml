@@ -64,3 +64,22 @@ jobs:
       run: ctest --test-dir build/${{ matrix.preset }} --output-on-failure --no-tests=error -j8
       # Don't run tests on windows
       if: matrix.os != 'windows-latest'
+    # Making the neovim plugin the top-level dir below this point for busted action
+    # Moving the old checkout is easier than doing some Windows-portable rm -rf thing
+    - name: Move build
+      run: |
+        echo ${{ runner.temp }}/slang-build/bin >> $GITHUB_PATH
+        mv ${{ github.workspace }}/build/${{ matrix.preset }} ${{ runner.temp }}/slang-build
+        mv ${{ github.workspace }}/clients/neovim ${{ runner.temp }}/neovim-plugin
+        mv ${{ github.workspace }} ${{ runner.temp }}/slang-server-checkout
+        mv ${{ runner.temp }}/neovim-plugin ${{ github.workspace }}
+      working-directory: ${{ runner.temp }}
+    - name: Debug
+      run: |
+        pwd
+        ls
+    - name: Run Neovim plugin tests
+      # This should work on Windows as well, but there's some linker error
+      # that I don't feel like debugging via GH
+      if: runner.os != 'Windows'
+      uses: nvim-neorocks/nvim-busted-action@v1
