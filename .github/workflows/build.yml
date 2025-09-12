@@ -4,8 +4,22 @@ on:
   workflow_dispatch:
   push:
     branches: [ main ]
+    paths-ignore:
+      - 'docs/**'
+      - 'clients/**'
+      - '*.md'
+      - 'mkdocs.yaml'
+      - 'pyproject.toml'
+      - 'uv.lock'
   pull_request:
     branches: [ main ]
+    paths-ignore:
+      - 'docs/**'
+      - 'clients/**'
+      - '*.md'
+      - 'mkdocs.yaml'
+      - 'pyproject.toml'
+      - 'uv.lock'
 
 jobs:
   build:
