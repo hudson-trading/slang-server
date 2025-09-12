@@ -21,7 +21,6 @@ using Params_t = std::optional<rfl::Generic>;
 
 struct RpcRequest {
     /// includes notifications
-    // NOCOMMIT -- really ^ ?
     std::string jsonrpc;
     ID_t id;
     std::string method;
@@ -74,7 +73,7 @@ inline void sendNotification(const std::string& method, const rfl::Generic& para
 inline void sendRequest(const std::string& method, const rfl::Generic& params) {
     sendMessage(RpcRequest{
         .jsonrpc = "2.0",
-        .id = 0, // NOCOMMIT -- probably do something here
+        .id = 0,
         .method = method,
         .params = params,
     });
@@ -106,7 +105,6 @@ T readJson(std::string& line, std::string& content) {
         if (!request) {
             auto response = rfl::json::read<RpcResponse>(content);
             if (response) {
-                // NOCOMMIT -- actually handle responses instead of just throwing them on the floor
                 continue;
             }
             std::cerr << "Error parsing JSON: " << content << std::endl;
