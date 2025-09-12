@@ -53,8 +53,15 @@ jobs:
     - name: Plugin debug
       run: |
         pwd
+        echo REPO
         ls
+        echo PLUGIN
         ls slang-server.nvim
+    - name: Plugin debug 2
+      working-directory: slang-server.nvim
+      run: |
+        pwd
+        ls
     - name: Install dependencies
       if: matrix.os == 'ubuntu-latest'
       run: |
