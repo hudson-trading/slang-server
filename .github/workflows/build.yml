@@ -42,6 +42,30 @@ jobs:
       with:
         submodules: true
         fetch-depth: 0
+# NOCOMMIT -- move below once working
+    - name: Checkout Neovim plugin
+      uses: actions/checkout@v4
+      with:
+        repository: hudson-trading/slang-server.nvim
+        ref: ci
+        path: slang-server.nvim
+    - name: Run Neovim plugin tests
+      uses: nvim-neorocks/nvim-busted-action@v1
+      with:
+        before: cd slang-server.nvim; echo HERE; pwd; ln -s ../.luarocks .; echo LS; ls
+# NOCOMMIT -- remove
+    - name: Plugin debug
+      run: |
+        pwd
+        echo REPO
+        ls
+        echo PLUGIN
+        ls slang-server.nvim
+    - name: Plugin debug 2
+      working-directory: slang-server.nvim
+      run: |
+        pwd
+        ls
     - name: Install dependencies
       if: matrix.os == 'ubuntu-latest'
       run: |
@@ -63,4 +87,4 @@ jobs:
     - name: Run tests
       run: ctest --test-dir build/${{ matrix.preset }} --output-on-failure --no-tests=error -j8
       # Don't run tests on windows
-      if: matrix.os != 'windows-latest' 
+      if: matrix.os != 'windows-latest'
