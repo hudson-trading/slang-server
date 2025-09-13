@@ -11,6 +11,7 @@
     "external/reflect-cpp": true,
     "clients/vscode/out": true, // set this to false to include "out" folder in search results
     "clients/vscode/dist": true, // set this to false to include "dist" folder in search results
+    "clients/vscode/node_modules/": true,
     "clients/vscode/package-lock.json": true
   },
   // Turn off tsc task auto detection since we have the necessary tasks as npm scripts

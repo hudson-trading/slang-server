@@ -8,8 +8,18 @@ import which from 'which'
 import { JSONSchemaType } from './jsonSchema'
 import { Logger, StubLogger, createLogger } from './logger'
 import { IConfigurationPropertySchema } from './vscodeConfigs'
+import fs = require('fs')
 
 const execFilePromise = promisify(child_process.execFile)
+
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.promises.access(filePath, fs.constants.F_OK)
+    return true
+  } catch {
+    return false
+  }
+}
 
 class ExtensionNode {
   nodeName: string | undefined
@@ -626,10 +636,18 @@ export class PathConfigObject extends ConfigObject<string> {
   async checkPathNotify(): Promise<boolean> {
     let toolpath = await this.getValueAsync()
     if (toolpath === '') {
-      vscode.window.showErrorMessage(
-        `"${this.getValue()}" not found. Configure abs path at ${
+      await vscode.window.showErrorMessage(
+        `"${toolpath}" not found. Configure abs path at ${
           this.configPath
         }, add to PATH, or disable in config.`
+      )
+      return false
+    }
+    // check if it exists
+    const exists = await fileExists(toolpath)
+    if (!exists) {
+      vscode.window.showErrorMessage(
+        `File "${this.configPath}: ${toolpath}" doesn't exist, please reconfigure`
       )
       return false
     }

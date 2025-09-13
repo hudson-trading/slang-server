@@ -118,6 +118,14 @@ export class SlangExtension extends ActivityBarComponent {
   async setupLanguageClient(): Promise<void> {
     this.logger.info('starting language server')
     const slangServerPath = await this.path.getValueAsync()
+    const ok = await this.path.checkPathNotify()
+    if (!ok) {
+      await vscode.window.showErrorMessage(
+        'Invalid path, please build slang server from source and configure slang.path in your vscode settings. See https://github.com/hudson-trading/slang-server for build instructions.'
+      )
+      return
+    }
+    // this.logger.info("using path " + slangServerPath)
     const serverOptions: ServerOptions = {
       run: { command: slangServerPath, args: this.args.getValue() },
       debug: { command: slangServerPath, args: this.debugArgs.getValue() },
