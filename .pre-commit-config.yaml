@@ -13,60 +13,62 @@
 # See https://github.com/pre-commit/pre-commit
 
 ci:
-  autoupdate_commit_msg: "chore: update pre-commit hooks"
-  autofix_commit_msg: "style: pre-commit fixes"
+  autoupdate_commit_msg: 'chore: update pre-commit hooks'
+  autofix_commit_msg: 'style: pre-commit fixes'
 
 exclude: grammar.md
 
 repos:
-# Standard hooks
-- repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v6.0.0
-  hooks:
-  - id: check-case-conflict
-  - id: check-merge-conflict
-  - id: check-yaml
-    args: [--allow-multiple-documents]
-  - id: debug-statements
-  - id: end-of-file-fixer
-  - id: fix-byte-order-marker
-  - id: mixed-line-ending
-    args: [--fix,lf]
-  - id: trailing-whitespace
+  # Standard hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: debug-statements
+      - id: end-of-file-fixer
+      - id: fix-byte-order-marker
+      - id: mixed-line-ending
+        args: [--fix, lf]
+      - id: trailing-whitespace
 
-# CMake formatting
-- repo: https://github.com/cheshirekow/cmake-format-precommit
-  rev: v0.6.13
-  hooks:
-  - id: cmake-format
-    additional_dependencies: [pyyaml]
-    types: [file]
-    files: (\.cmake|CMakeLists.txt)(.in)?$
+  # CMake formatting
+  - repo: https://github.com/cheshirekow/cmake-format-precommit
+    rev: v0.6.13
+    hooks:
+      - id: cmake-format
+        additional_dependencies: [pyyaml]
+        types: [file]
+        files: (\.cmake|CMakeLists.txt)(.in)?$
+        exclude: ^external/.*
 
-# clang-format for cpp
-- repo: https://github.com/pre-commit/mirrors-clang-format
-  rev: v20.1.8
-  hooks:
-  - id: clang-format
-    exclude: ^external/.*
+  # clang-format for cpp
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v20.1.8
+    hooks:
+      - id: clang-format
+        exclude: ^external/.*
 
-# Prettier for typescript, json, and yaml
-- repo: https://github.com/pre-commit/mirrors-prettier
-  rev: v4.0.0-alpha.8
-  hooks:
-  - id: prettier
-    files: ^.*\.(ts|js|json|yaml|md)$
+  # Prettier for typescript, json, and yaml
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v4.0.0-alpha.8
+    hooks:
+      - id: prettier
+        files: ^.*\.(ts)$
+        exclude: tests/cpp/golden/|^external/.*
 
-# Ruff for python
-repos:
-- repo: https://github.com/astral-sh/ruff-pre-commit
-  # Ruff version.
-  rev: v0.13.0
-  hooks:
-    # Run the linter.
-    - id: ruff-check
-      files: ^.*\.py$
-      args: [ --fix ]
-    # Run the formatter.
-    - id: ruff-format
-      files: ^.*\.py$
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Ruff version.
+    rev: v0.13.0
+    hooks:
+      # Run the linter.
+      - id: ruff-check
+        files: ^.*\.py$
+        args: [--fix]
+        exclude: ^external/.*
+      # Run the formatter.
+      - id: ruff-format
+        files: ^.*\.py$
+        exclude: ^external/.*

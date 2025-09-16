@@ -2,34 +2,34 @@
 
 - `slang.formatDirs`: array = []
 
-    Directories to format
+  Directories to format
 
 - `slang.svFormat.command`: string = ""
 
-    Formatter Command. The file contents will be sent to stdin, and formatted code should be sent back on stdout
+  Formatter Command. The file contents will be sent to stdin, and formatted code should be sent back on stdout
 
 - `slang.verilogFormat.command`: string = ""
 
-    Formatter Command. The file contents will be sent to stdin, and formatted code should be sent back on stdout
+  Formatter Command. The file contents will be sent to stdin, and formatted code should be sent back on stdout
 
 - `slang.rewriterPath`: string = ""
 
-    Path to the rewriter script (typically slang rewriter binary with --expand-macros flag)
+  Path to the rewriter script (typically slang rewriter binary with --expand-macros flag)
 
 - `slang.path`: path
 
-    Platform Defaults:
+  Platform Defaults:
 
-    linux: `slang-server`
+  linux: `slang-server`
 
-    mac: `slang-server`
+  mac: `slang-server`
 
-    windows: `slang-server.exe`
+  windows: `slang-server.exe`
 
 - `slang.args`: array = []
 
-    Arguments to pass to the slang-server
+  Arguments to pass to the slang-server
 
 - `slang.debugArgs`: array = []
 
-    Arguments to pass to slang-server when debugging
+  Arguments to pass to slang-server when debugging

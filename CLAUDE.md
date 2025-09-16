@@ -33,7 +33,6 @@ cmake --build build/claude -j8 --target slang_server
 `src/document/SlangDoc.cpp` This represents a file/SyntaxTree pair, and also manages analysis features for that document, like a token index and a shallow compilation.
 `src/document`: These files have features core LSP features for a document.
 
-
 ## Python environment
 
 We use `uv` for managing the python venv and requirements

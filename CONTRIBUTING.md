@@ -17,10 +17,11 @@ CI builds are run with high warnings levels. It's highly recommended that you ru
 ## Style and Coding Guidelines
 
 The project's coding standards are loosely based on the [LLVM Coding Standards](https://llvm.org/docs/CodingStandards.html) with some exceptions. A non-exhaustive list is as follows:
-* Column width is 100
-* Functions, parameters, and local variables are lowerCase named instead of UpperCase named.
-* Header ifdef guards are not used -- #pragma once is sufficient
-* Exceptions are permitted, though not necessarily encouraged
+
+- Column width is 100
+- Functions, parameters, and local variables are lowerCase named instead of UpperCase named.
+- Header ifdef guards are not used -- #pragma once is sufficient
+- Exceptions are permitted, though not necessarily encouraged
 
 In general the existing code is pretty consistent so please try to follow the patterns you see when making changes.
 

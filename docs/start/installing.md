@@ -21,7 +21,8 @@ In the future there will be pre-built binaries released for common platforms. It
 
 ### Neovim
 
-There are many ways to configure a language server in Neovim.  One can use the [nvim API](https://neovim.io/doc/user/lsp.html#vim.lsp.start()) directly.  Plugins like nvim-lspconfig and mason make managing language servers easier but slang-server has not yet been added to those projects.  If you happen to use lazy.nvim you can configure the language server by adding or ammending `~/.config/nvim/lua/plugins/lsp/nvim-lspconfig.lua` with this:
+There are many ways to configure a language server in Neovim. One can use the [nvim API](<https://neovim.io/doc/user/lsp.html#vim.lsp.start()>) directly. Plugins like nvim-lspconfig and mason make managing language servers easier but slang-server has not yet been added to those projects. If you happen to use lazy.nvim you can configure the language server by adding or ammending `~/.config/nvim/lua/plugins/lsp/nvim-lspconfig.lua` with this:
+
 ```lua
 return {
   "neovim/nvim-lspconfig",
@@ -61,13 +62,12 @@ return {
 }
 ```
 
-Neovim natively handles the LSP.  No additional plugin is required to use Slang Server for standard LSP actions (e.g. [Go to Definition](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_definition), however the [slang-server.nvim](https://github.com/hudson-trading/slang-server.nvim) plugin is provided to enable use of the features which extend the LSP (e.g. hierachical compilation).
+Neovim natively handles the LSP. No additional plugin is required to use Slang Server for standard LSP actions (e.g. [Go to Definition](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_definition), however the [slang-server.nvim](https://github.com/hudson-trading/slang-server.nvim) plugin is provided to enable use of the features which extend the LSP (e.g. hierachical compilation).
 
 ### Vscode
 
 Extension will be released soon
 
 <!-- Install the extension [here](https://marketplace.visualstudio.com/items?itemName=HudsonRiverTrading.slang-vscode), then set `slang.path` to your server binary -->
-
 
 <!-- See [Vscode Options](../clients/vscode/CONFIG.md) -->

@@ -5,7 +5,6 @@ hide:
   - feedback
 ---
 
-
 `slang-server` is a high-performance [Language Server Protocol (LSP)](https://microsoft.github.io/language-server-protocol/) implementation for SystemVerilog, built on top of the [Slang](https://github.com/MikePopoloski/slang) SystemVerilog frontend.
 
 ## Overview
