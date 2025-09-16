@@ -55,7 +55,7 @@ repos:
   rev: v4.0.0-alpha.8
   hooks:
   - id: prettier
-    files: ^clients/vscode/.*\.(ts|js|json|yaml|md)$
+    files: ^.*\.(ts|js|json|yaml|md)$
 
 # Ruff for python
 repos:
@@ -65,6 +65,8 @@ repos:
   hooks:
     # Run the linter.
     - id: ruff-check
+      files: ^.*\.py$
       args: [ --fix ]
     # Run the formatter.
     - id: ruff-format
+      files: ^.*\.py$
