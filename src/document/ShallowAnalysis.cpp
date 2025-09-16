@@ -160,6 +160,25 @@ const ast::Symbol* ShallowAnalysis::handleInterfacePortHeader(const parsing::Tok
     return inst.body.lookupName(header.modport->member.valueText());
 }
 
+const ast::Scope* ShallowAnalysis::getScopeFromSym(const ast::Symbol* symbol) {
+    if (!symbol) {
+        return nullptr;
+    }
+
+    if (symbol->isScope()) {
+        return &symbol->as<ast::Scope>();
+    }
+
+    if (ast::ValueSymbol::isKind(symbol->kind)) {
+        auto& type = symbol->as<ast::ValueSymbol>().getType().getCanonicalType();
+        if (type.isScope()) {
+            return &type.as<ast::Scope>();
+        }
+    }
+
+    return nullptr;
+}
+
 /// @brief Visitor that finds and stores a specific token and its syntax node at an offset
 struct OffsetFinder {
     OffsetFinder(uint32_t targetOffset) : targetOffset(targetOffset) {}
@@ -247,7 +266,28 @@ const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declT
         ast::Lookup::name(*nameSyntax, context, ast::LookupFlags::None, result);
         if (result.found) {
             if (isOverSelector(declTok, result)) {
-                return nullptr;
+                const slang::ast::Symbol* cur = result.found;
+
+                // Proper selector resolution is in
+                // Expression::bindLookupResult, however that modifies the compilation at the moment
+                for (auto& sel : result.selectors) {
+                    const ast::Scope* scope = getScopeFromSym(cur);
+                    if (!scope) {
+                        return nullptr;
+                    }
+                    if (auto member = std::get_if<ast::LookupResult::MemberSelector>(&sel)) {
+                        cur = scope->find(member->name);
+                    }
+                    else {
+                        cur = scope->getFirstMember();
+                    }
+                    if (!cur) {
+                        WARN("No members found in scope {}",
+                             scope->asSymbol().getHierarchicalPath());
+                        return nullptr;
+                    }
+                }
+                return cur;
             }
             return result.found;
         }
