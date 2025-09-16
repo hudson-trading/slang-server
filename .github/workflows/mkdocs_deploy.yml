@@ -2,7 +2,7 @@ name: Deploy MkDocs documentation
 
 on:
   push:
-    branches: 
+    branches:
       - main
     paths:
       - 'docs/**'
@@ -25,7 +25,7 @@ jobs:
         run: uv python install
       - name: Install dependencies
         run: uv sync --locked --all-extras --dev
-        
+
       - name: Build docs
         run: uv run mkdocs build --strict
       - name: Deploy to gh-pages preview directory

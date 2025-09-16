@@ -24,6 +24,6 @@ It's a common pattern to declare an input/output interface with a datatype, howe
 
 The slang `--single-unit` causes all parsed files to essentially be squashed together, which has the effect of syntax trees inheriting preprocessor macros and defines.
 
-This isn't great for a language server, and isn't supported at the moment, meaning repos that use this will see errors for undefined macros. 
+This isn't great for a language server, and isn't supported at the moment, meaning repos that use this will see errors for undefined macros.
 
 Support for this could be added by feeding the indexed macros to the preprocessor if it can't find the macro in its current working set.

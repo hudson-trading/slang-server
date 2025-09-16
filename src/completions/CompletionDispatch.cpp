@@ -163,8 +163,7 @@ void CompletionDispatch::resolveModuleCompletion(lsp::CompletionItem& item,
     }
     auto& file = modulePath.value();
 
-    auto maybeTree = slang::syntax::SyntaxTree::fromFile(file.string(), m_sourceManager,
-                                                         m_options);
+    auto maybeTree = slang::syntax::SyntaxTree::fromFile(file.string(), m_sourceManager, m_options);
     if (!maybeTree) {
         WARN("Failed to load syntax tree for module {} from {}", name, file.string());
         return;

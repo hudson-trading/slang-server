@@ -81,7 +81,7 @@ nav:
   - Getting Started:
     - start/installing.md
     - start/config.md
-  - Core Language Features: 
+  - Core Language Features:
     - features/features.md
     - Planned Features: features/planned.md
     - Hover Examples: features/hovers.md

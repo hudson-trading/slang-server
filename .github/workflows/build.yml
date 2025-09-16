@@ -63,4 +63,4 @@ jobs:
     - name: Run tests
       run: ctest --test-dir build/${{ matrix.preset }} --output-on-failure --no-tests=error -j8
       # Don't run tests on windows
-      if: matrix.os != 'windows-latest' 
+      if: matrix.os != 'windows-latest'

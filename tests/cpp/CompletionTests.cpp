@@ -50,7 +50,7 @@ TEST_CASE("ModuleCompletion") {
     auto doc2 = server.openFile("test2.sv", R"(
         module test2;
         //inmodule
-        
+
         endmodule
     )");
 
@@ -134,18 +134,18 @@ TEST_CASE("WildcardImportCompletion") {
     package math_pkg;
         parameter int PI_VALUE = 314;
         parameter int E_VALUE = 271;
-        
+
         typedef struct {
             real x;
             real y;
         } point_t;
-        
+
         typedef enum {
             ADD,
             SUBTRACT,
             MULTIPLY
         } operation_t;
-        
+
         function real calculate(real a, real b, operation_t op);
             case (op)
                 ADD: return a + b;
@@ -154,7 +154,7 @@ TEST_CASE("WildcardImportCompletion") {
                 default: return 0.0;
             endcase
         endfunction
-        
+
         task print_result(real value);
             $display("Result: %f", value);
         endtask
@@ -162,9 +162,9 @@ TEST_CASE("WildcardImportCompletion") {
 
     package utils_pkg;
         parameter int MAX_SIZE = 1024;
-        
+
         typedef logic [7:0] byte_t;
-        
+
         function int find_max(int array[], int size);
             int max_val = array[0];
             for (int i = 1; i < size; i++) begin
@@ -178,17 +178,17 @@ TEST_CASE("WildcardImportCompletion") {
     module test_wildcard_imports;
         import math_pkg::*;
         import utils_pkg::*;
-        
+
         initial begin
             point_t my_point;
             operation_t op = ADD;
             byte_t data = 8'hFF;
-            
+
             // Test completions with wildcard imports
             real result = calculate(PI_VALUE, E_VALUE, op);
             print_result(x, );
             int max_val = find_max();
-            
+
             // Test lhs completion with wildcard imports
         end
     endmodule
@@ -264,7 +264,7 @@ TEST_CASE("ModuleMemberCompletion") {
         initial begin
             // Test member completions in module scope
             internal_signal =
-            wide_signal = 
+            wide_signal =
         end
     endmodule
 

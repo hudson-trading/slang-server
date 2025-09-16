@@ -10,9 +10,8 @@ set(COVERAGE_GCOV_TOOL
 set(COVERAGE_TRACE_COMMAND
     lcov -c -q -o "${PROJECT_BINARY_DIR}/coverage.info" --gcov-tool
     ${COVERAGE_GCOV_TOOL} -d "${PROJECT_BINARY_DIR}" --include
-    "${PROJECT_SOURCE_DIR}/src/*" --include
-    "${PROJECT_SOURCE_DIR}/include/*" --config-file
-    "${PROJECT_SOURCE_DIR}/.lcovrc"
+    "${PROJECT_SOURCE_DIR}/src/*" --include "${PROJECT_SOURCE_DIR}/include/*"
+    --config-file "${PROJECT_SOURCE_DIR}/.lcovrc"
     CACHE STRING
           "; separated command to generate a trace for the 'coverage' target")
 

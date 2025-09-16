@@ -4,7 +4,7 @@ slang-server's indexing system provides fast symbol lookup and navigation across
 
 ## How it works
 
-The Indexer indexes based on these config options on startup: 
+The Indexer indexes based on these config options on startup:
 
   * `indexGlobs` (default: `"./.../*.sv*"`)
   * `excludeDirs` (default: `[]`)

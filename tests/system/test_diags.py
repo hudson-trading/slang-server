@@ -3,7 +3,6 @@ from __future__ import annotations
 import typing
 
 import pytest
-from lsprotocol import types
 
 if typing.TYPE_CHECKING:
     pass

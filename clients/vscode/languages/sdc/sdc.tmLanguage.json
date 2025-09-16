@@ -16,14 +16,26 @@
         "constants": "(?>true|false)",
         "math-functions": "(?>abs|acos|asin|atan2?+|bool|ceil|cosh?+|double|entier|exp|floor|fmod|hypot|int|isqrt|log(?>10)?+|max|min|pow|rand|round|sinh?+|sqrt|srand|tanh?+|wide)"
     },
-    "patterns": [{ "include": "#command-line" }],
+    "patterns": [
+        {
+            "include": "#command-line"
+        }
+    ],
     "repository": {
         "command-line": {
             "patterns": [
-                { "include": "#escape-newline" },
-                { "include": "#semicolon" },
-                { "include": "#comment" },
-                { "include": "#commands" }
+                {
+                    "include": "#escape-newline"
+                },
+                {
+                    "include": "#semicolon"
+                },
+                {
+                    "include": "#comment"
+                },
+                {
+                    "include": "#commands"
+                }
             ]
         },
         "semicolon": {
@@ -34,18 +46,34 @@
             "name": "comment.line.number-sign.sdc",
             "begin": "\\#",
             "beginCaptures": {
-                "0": { "name": "punctuation.definition.comment.sdc" }
+                "0": {
+                    "name": "punctuation.definition.comment.sdc"
+                }
             },
             "end": "\n",
-            "patterns": [{ "include": "#escape-newline" }]
+            "patterns": [
+                {
+                    "include": "#escape-newline"
+                }
+            ]
         },
         "commands": {
             "patterns": [
-                { "include": "#tcl-commands" },
-                { "include": "#special-commands" },
-                { "include": "#expression-commands" },
-                { "include": "#other-commands" },
-                { "include": "#invalid-commands" }
+                {
+                    "include": "#tcl-commands"
+                },
+                {
+                    "include": "#special-commands"
+                },
+                {
+                    "include": "#expression-commands"
+                },
+                {
+                    "include": "#other-commands"
+                },
+                {
+                    "include": "#invalid-commands"
+                }
             ]
         },
         "tcl-commands": {
@@ -53,130 +81,225 @@
                 {
                     "begin": "((?>\\:\\:++)?+proc)(?>\\s++((?>\\\\[^\n]|[^;\\]\\}\\s\\\\])++)|(?=[;\\]\\}\\s]|\\\\\n|$))",
                     "beginCaptures": {
-                        "1": { "name": "storage.type.function.sdc" },
-                        "2": { "name": "entity.name.function.sdc" }
+                        "1": {
+                            "name": "storage.type.function.sdc"
+                        },
+                        "2": {
+                            "name": "entity.name.function.sdc"
+                        }
                     },
                     "end": "(?=[;\\]\\}\n])",
                     "patterns": [
-                        { "include": "#escape-newline" },
-                        { "include": "#function-definition" }
+                        {
+                            "include": "#escape-newline"
+                        },
+                        {
+                            "include": "#function-definition"
+                        }
                     ]
                 },
                 {
                     "begin": "(?>\\:\\:++)?+foreach(?>_in_collection)?+(?=[;\\]\\}\\s]|\\\\\n|$)",
                     "beginCaptures": {
-                        "0": { "name": "keyword.control.sdc" }
+                        "0": {
+                            "name": "keyword.control.sdc"
+                        }
                     },
                     "end": "(?=[;\\]\\}\n])",
                     "patterns": [
-                        { "include": "#escape-newline" },
-                        { "include": "#function-definition" }
+                        {
+                            "include": "#escape-newline"
+                        },
+                        {
+                            "include": "#function-definition"
+                        }
                     ]
                 },
                 {
                     "begin": "(?>\\:\\:++)?+if(?=[;\\]\\}\\s]|\\\\\n|$)",
                     "beginCaptures": {
-                        "0": { "name": "keyword.control.sdc" }
+                        "0": {
+                            "name": "keyword.control.sdc"
+                        }
                     },
                     "end": "(?=[;\\]\\}\n])",
-                    "patterns": [{ "include": "#then-else" }, { "include": "#control-arguments" }]
+                    "patterns": [
+                        {
+                            "include": "#then-else"
+                        },
+                        {
+                            "include": "#control-arguments"
+                        }
+                    ]
                 },
                 {
                     "begin": "(?>\\:\\:++)?+(?>catch|for|switch|while)(?=[;\\]\\}\\s]|\\\\\n|$)",
                     "beginCaptures": {
-                        "0": { "name": "keyword.control.sdc" }
+                        "0": {
+                            "name": "keyword.control.sdc"
+                        }
                     },
                     "end": "(?=[;\\]\\}\n])",
-                    "patterns": [{ "include": "#control-arguments" }]
+                    "patterns": [
+                        {
+                            "include": "#control-arguments"
+                        }
+                    ]
                 },
                 {
                     "begin": "(?>\\:\\:++)?+(?>after|break|continue|error|exit|return|update|vwait)(?=[;\\]\\}\\s]|\\\\\n|$)",
                     "beginCaptures": {
-                        "0": { "name": "keyword.control.sdc" }
+                        "0": {
+                            "name": "keyword.control.sdc"
+                        }
                     },
                     "end": "(?=[;\\]\\}\n])",
-                    "patterns": [{ "include": "#normal-arguments" }]
+                    "patterns": [
+                        {
+                            "include": "#normal-arguments"
+                        }
+                    ]
                 },
                 {
                     "begin": "(?>\\:\\:++)?+(?>expr|time|uplevel)(?=[;\\]\\}\\s]|\\\\\n|$)",
                     "beginCaptures": {
-                        "0": { "name": "keyword.other.sdc" }
+                        "0": {
+                            "name": "keyword.other.sdc"
+                        }
                     },
                     "end": "(?=[;\\]\\}\n])",
-                    "patterns": [{ "include": "#control-arguments" }]
+                    "patterns": [
+                        {
+                            "include": "#control-arguments"
+                        }
+                    ]
                 },
                 {
                     "begin": "(?>\\:\\:++)?+(?>eval)(?=[;\\]\\}\\s]|\\\\\n|$)",
                     "beginCaptures": {
-                        "0": { "name": "keyword.other.sdc" }
+                        "0": {
+                            "name": "keyword.other.sdc"
+                        }
                     },
                     "end": "(?=[;\\]\\}\n])",
-                    "patterns": [{ "include": "#eval-arguments" }]
+                    "patterns": [
+                        {
+                            "include": "#eval-arguments"
+                        }
+                    ]
                 },
                 {
                     "begin": "((?>\\:\\:++)?+namespace)\\s++(eval)(?>\\s++((?>\\\\[^\n]|[^;\\]\\}\\s\\\\])++)|(?=[;\\]\\}\\s]|\\\\\n|$))",
                     "beginCaptures": {
-                        "1": { "name": "storage.type.namespace.sdc" },
-                        "2": { "name": "keyword.other.sdc" },
-                        "3": { "name": "entity.name.namespace.sdc" }
+                        "1": {
+                            "name": "storage.type.namespace.sdc"
+                        },
+                        "2": {
+                            "name": "keyword.other.sdc"
+                        },
+                        "3": {
+                            "name": "entity.name.namespace.sdc"
+                        }
                     },
                     "end": "(?=[;\\]\\}\n])",
-                    "patterns": [{ "include": "#eval-arguments" }]
+                    "patterns": [
+                        {
+                            "include": "#eval-arguments"
+                        }
+                    ]
                 },
                 {
                     "begin": "(?>\\:\\:++)?+(?>append|apply|array|auto_(?>execok|import|load|mkindex(?>_old)?+|qualify|reset)|bgerror|binary|cd|chan|clock|close|concat|dde|dict|encoding|eof|exec|fblocked|fconfigure|fcopy|file(?>event)?+|flush|format|gets|glob|global|history|incr|info|interp|join|lappend|lassign|lindex|linsert|list|llength|load|lrange|lrepeat|lreplace|lreverse|lsearch|lset|lsort|memory|namespace|open|package|parray|pid|pkg\\:\\:++create|pkg_mkIndex|puts|pwd|read|regexp|registry|regsub|rename|scan|seek|set|socket|source|split|string|subst|tcl_(?>endOfWord|findLibrary|startOfNextWord|startOfPreviousWord|wordBreakAfter|wordBreakBefore)|tell|trace|unknown|unload|unset|upvar|variable)(?=[;\\]\\}\\s]|\\\\\n|$)",
                     "beginCaptures": {
-                        "0": { "name": "keyword.other.sdc" }
+                        "0": {
+                            "name": "keyword.other.sdc"
+                        }
                     },
                     "end": "(?=[;\\]\\}\n])",
-                    "patterns": [{ "include": "#normal-arguments" }]
+                    "patterns": [
+                        {
+                            "include": "#normal-arguments"
+                        }
+                    ]
                 },
                 {
                     "begin": "(?>\\:\\:++)?+(?>http|msgcat|platform(?>\\:\\:++shell)?+|safe|tcltest|tcl\\:\\:++tm)(?>\\:\\:++[a-zA-Z]\\w*+)(?=[;\\]\\}\\s]|\\\\\n|$)",
                     "beginCaptures": {
-                        "0": { "name": "keyword.other.sdc" }
+                        "0": {
+                            "name": "keyword.other.sdc"
+                        }
                     },
                     "end": "(?=[;\\]\\}\n])",
-                    "patterns": [{ "include": "#normal-arguments" }]
+                    "patterns": [
+                        {
+                            "include": "#normal-arguments"
+                        }
+                    ]
                 }
             ]
         },
         "special-commands": {
             "begin": "(?=[\\$\\[\\{\"])",
             "end": "(?=[;\\]\\}\n])",
-            "patterns": [{ "include": "#normal-arguments" }]
+            "patterns": [
+                {
+                    "include": "#normal-arguments"
+                }
+            ]
         },
         "expression-commands": {
             "patterns": [
                 {
                     "begin": "(?=(?>abs|acos|asin|atan2?+|bool|ceil|cosh?+|double|entier|exp|floor|fmod|hypot|int|isqrt|log(?>10)?+|max|min|pow|rand|round|sinh?+|sqrt|srand|tanh?+|wide)?+\\()",
                     "end": "(?=[;\\]\\}\n])",
-                    "patterns": [{ "include": "#expression-arguments" }]
+                    "patterns": [
+                        {
+                            "include": "#expression-arguments"
+                        }
+                    ]
                 },
                 {
                     "begin": "(?=(?>\\d++\\.?+\\d*+|\\.\\d++)(?>fs|ps|ns|us|ms|MHz)?+(?>[\\+\\-\\*\\/\\%\\&\\|\\^\\~\\!\\=\\<\\>\\?\\:]|[;\\)\\]\\}\\s]|\\\\\n|$))",
                     "end": "(?=[;\\]\\}\n])",
-                    "patterns": [{ "include": "#expression-arguments" }]
+                    "patterns": [
+                        {
+                            "include": "#expression-arguments"
+                        }
+                    ]
                 },
                 {
                     "begin": "(?=[\\+\\-\\*\\/\\%\\&\\|\\^\\~\\!\\=\\<\\>\\?\\:]++(?![a-zA-Z_]))",
                     "end": "(?=[;\\]\\}\n])",
-                    "patterns": [{ "include": "#expression-arguments" }]
+                    "patterns": [
+                        {
+                            "include": "#expression-arguments"
+                        }
+                    ]
                 },
                 {
                     "begin": "(?=(?>true|false)(?>[;\\)\\]\\}\\s]|\\\\\n|$))",
                     "end": "(?=[;\\]\\}\n])",
-                    "patterns": [{ "include": "#expression-arguments" }]
+                    "patterns": [
+                        {
+                            "include": "#expression-arguments"
+                        }
+                    ]
                 }
             ]
         },
         "other-commands": {
             "begin": "(?>\\\\[^\n]|[^;\\]\\}\\s\\\\])++",
             "beginCaptures": {
-                "0": { "name": "entity.name.function.sdc" }
+                "0": {
+                    "name": "entity.name.function.sdc"
+                }
             },
             "end": "(?=[;\\]\\}\n])",
-            "patterns": [{ "include": "#normal-arguments" }]
+            "patterns": [
+                {
+                    "include": "#normal-arguments"
+                }
+            ]
         },
         "invalid-commands": {
             "name": "invalid.illegal.brackets.end.sdc",
@@ -185,54 +308,120 @@
         "function-definition": {
             "begin": "(?>(\\{)((?>\\\\.|[^\\{\\}])*+(?>\\{\\g<2>\\}?+\\g<2>)?+)(\\})?+|((?>\\\\[^\n]|[^;\\]\\}\\s\\\\])++))",
             "beginCaptures": {
-                "1": { "name": "punctuation.definition.parameters.begin.sdc" },
-                "2": { "name": "variable.parameter.sdc" },
-                "3": { "name": "punctuation.definition.parameters.end.sdc" },
-                "4": { "name": "variable.parameter.sdc" }
+                "1": {
+                    "name": "punctuation.definition.parameters.begin.sdc"
+                },
+                "2": {
+                    "name": "variable.parameter.sdc"
+                },
+                "3": {
+                    "name": "punctuation.definition.parameters.end.sdc"
+                },
+                "4": {
+                    "name": "variable.parameter.sdc"
+                }
             },
             "end": "(?=[;\\]\\}\n])",
-            "patterns": [{ "include": "#control-arguments" }]
+            "patterns": [
+                {
+                    "include": "#control-arguments"
+                }
+            ]
         },
         "common-arguments": {
             "patterns": [
-                { "include": "#escape-newline" },
-                { "include": "#brackets" },
-                { "include": "#quotes" },
-                { "include": "#expression" },
-                { "include": "#numeric" },
-                { "include": "#operators" },
-                { "include": "#constants" },
-                { "include": "#invalid-comment" },
-                { "include": "#other-argument" }
+                {
+                    "include": "#escape-newline"
+                },
+                {
+                    "include": "#brackets"
+                },
+                {
+                    "include": "#quotes"
+                },
+                {
+                    "include": "#expression"
+                },
+                {
+                    "include": "#numeric"
+                },
+                {
+                    "include": "#operators"
+                },
+                {
+                    "include": "#constants"
+                },
+                {
+                    "include": "#invalid-comment"
+                },
+                {
+                    "include": "#other-argument"
+                }
             ]
         },
         "expression-arguments": {
-            "patterns": [{ "include": "#braces" }, { "include": "#common-arguments" }]
+            "patterns": [
+                {
+                    "include": "#braces"
+                },
+                {
+                    "include": "#common-arguments"
+                }
+            ]
         },
         "normal-arguments": {
-            "patterns": [{ "include": "#command-option" }, { "include": "#expression-arguments" }]
+            "patterns": [
+                {
+                    "include": "#command-option"
+                },
+                {
+                    "include": "#expression-arguments"
+                }
+            ]
         },
         "control-arguments": {
             "patterns": [
-                { "include": "#control-braces" },
-                { "include": "#command-option" },
-                { "include": "#common-arguments" }
+                {
+                    "include": "#control-braces"
+                },
+                {
+                    "include": "#command-option"
+                },
+                {
+                    "include": "#common-arguments"
+                }
             ]
         },
         "eval-arguments": {
             "patterns": [
-                { "include": "#escape-newline" },
-                { "include": "#control-braces" },
-                { "include": "#commands" }
+                {
+                    "include": "#escape-newline"
+                },
+                {
+                    "include": "#control-braces"
+                },
+                {
+                    "include": "#commands"
+                }
             ]
         },
         "embedded-elemnts": {
             "patterns": [
-                { "include": "#escape-character" },
-                { "include": "#brackets" },
-                { "include": "#variable" },
-                { "include": "#embedded-numeric" },
-                { "include": "#embedded-operators" }
+                {
+                    "include": "#escape-character"
+                },
+                {
+                    "include": "#brackets"
+                },
+                {
+                    "include": "#variable"
+                },
+                {
+                    "include": "#embedded-numeric"
+                },
+                {
+                    "include": "#embedded-operators"
+                }
             ]
         },
         "braces": {
@@ -240,55 +429,96 @@
             "contentName": "string.quoted.raw.sdc",
             "begin": "\\{",
             "beginCaptures": {
-                "0": { "name": "punctuation.section.braces.begin.sdc" }
+                "0": {
+                    "name": "punctuation.section.braces.begin.sdc"
+                }
             },
             "end": "\\}",
             "endCaptures": {
-                "0": { "name": "punctuation.section.braces.end.sdc" }
+                "0": {
+                    "name": "punctuation.section.braces.end.sdc"
+                }
             },
             "patterns": [
-                { "include": "#escape-newline" },
-                { "include": "#escape-character" },
-                { "include": "#braces" },
-                { "include": "#embedded-numeric" },
-                { "include": "#embedded-operators" }
+                {
+                    "include": "#escape-newline"
+                },
+                {
+                    "include": "#escape-character"
+                },
+                {
+                    "include": "#braces"
+                },
+                {
+                    "include": "#embedded-numeric"
+                },
+                {
+                    "include": "#embedded-operators"
+                }
             ]
         },
         "control-braces": {
             "name": "meta.embedded.block.sdc",
             "begin": "\\{",
             "beginCaptures": {
-                "0": { "name": "punctuation.section.block.begin.sdc" }
+                "0": {
+                    "name": "punctuation.section.block.begin.sdc"
+                }
             },
             "end": "\\}",
             "endCaptures": {
-                "0": { "name": "punctuation.section.block.end.sdc" }
+                "0": {
+                    "name": "punctuation.section.block.end.sdc"
+                }
             },
-            "patterns": [{ "include": "#command-line" }]
+            "patterns": [
+                {
+                    "include": "#command-line"
+                }
+            ]
         },
         "brackets": {
             "name": "meta.embedded.brackets.sdc",
             "begin": "\\[",
             "beginCaptures": {
-                "0": { "name": "punctuation.section.brackets.begin.sdc" }
+                "0": {
+                    "name": "punctuation.section.brackets.begin.sdc"
+                }
             },
             "end": "\\]",
             "endCaptures": {
-                "0": { "name": "punctuation.section.brackets.end.sdc" }
+                "0": {
+                    "name": "punctuation.section.brackets.end.sdc"
+                }
             },
-            "patterns": [{ "include": "#command-line" }]
+            "patterns": [
+                {
+                    "include": "#command-line"
+                }
+            ]
         },
         "quotes": {
             "name": "string.quoted.double.sdc",
             "begin": "\"",
             "beginCaptures": {
-                "0": { "name": "punctuation.definition.string.begin.sdc" }
+                "0": {
+                    "name": "punctuation.definition.string.begin.sdc"
+                }
             },
             "end": "\"",
             "endCaptures": {
-                "0": { "name": "punctuation.definition.string.end.sdc" }
+                "0": {
+                    "name": "punctuation.definition.string.end.sdc"
+                }
             },
-            "patterns": [{ "include": "#escape-newline" }, { "include": "#embedded-elemnts" }]
+            "patterns": [
+                {
+                    "include": "#escape-newline"
+                },
+                {
+                    "include": "#embedded-elemnts"
+                }
+            ]
         },
         "variable": {
             "patterns": [
@@ -296,35 +526,53 @@
                     "name": "variable.other.sdc",
                     "begin": "(\\$)(?>[a-zA-Z0-9_]|\\:\\:++)*+(\\()",
                     "beginCaptures": {
-                        "1": { "name": "punctuation.definition.variable.sdc" },
-                        "2": { "name": "punctuation.definition.variable.parens.begin.sdc" }
+                        "1": {
+                            "name": "punctuation.definition.variable.sdc"
+                        },
+                        "2": {
+                            "name": "punctuation.definition.variable.parens.begin.sdc"
+                        }
                     },
                     "end": "\\)",
                     "endCaptures": {
-                        "0": { "name": "punctuation.definition.variable.parens.end.sdc" }
+                        "0": {
+                            "name": "punctuation.definition.variable.parens.end.sdc"
+                        }
                     },
                     "patterns": [
-                        { "include": "#escape-newline" },
-                        { "include": "#embedded-elemnts" }
+                        {
+                            "include": "#escape-newline"
+                        },
+                        {
+                            "include": "#embedded-elemnts"
+                        }
                     ]
                 },
                 {
                     "name": "variable.other.sdc",
                     "begin": "(\\$)(\\{)",
                     "beginCaptures": {
-                        "1": { "name": "punctuation.definition.variable.sdc" },
-                        "2": { "name": "punctuation.definition.variable.braces.begin.sdc" }
+                        "1": {
+                            "name": "punctuation.definition.variable.sdc"
+                        },
+                        "2": {
+                            "name": "punctuation.definition.variable.braces.begin.sdc"
+                        }
                     },
                     "end": "\\}",
                     "endCaptures": {
-                        "0": { "name": "punctuation.definition.variable.braces.end.sdc" }
+                        "0": {
+                            "name": "punctuation.definition.variable.braces.end.sdc"
+                        }
                     }
                 },
                 {
                     "name": "variable.other.sdc",
                     "match": "(\\$)(?>[a-zA-Z0-9_]|\\:\\:++)*+",
                     "captures": {
-                        "1": { "name": "punctuation.definition.variable.sdc" }
+                        "1": {
+                            "name": "punctuation.definition.variable.sdc"
+                        }
                     }
                 }
             ]
@@ -332,20 +580,34 @@
         "expression": {
             "begin": "((?>abs|acos|asin|atan2?+|bool|ceil|cosh?+|double|entier|exp|floor|fmod|hypot|int|isqrt|log(?>10)?+|max|min|pow|rand|round|sinh?+|sqrt|srand|tanh?+|wide))?+(\\()",
             "beginCaptures": {
-                "1": { "name": "support.function.sdc" },
-                "2": { "name": "punctuation.section.group.begin.sdc" }
+                "1": {
+                    "name": "support.function.sdc"
+                },
+                "2": {
+                    "name": "punctuation.section.group.begin.sdc"
+                }
             },
             "end": "\\)",
             "endCaptures": {
-                "0": { "name": "punctuation.section.group.end.sdc" }
+                "0": {
+                    "name": "punctuation.section.group.end.sdc"
+                }
             },
-            "patterns": [{ "include": "#expression-arguments" }]
+            "patterns": [
+                {
+                    "include": "#expression-arguments"
+                }
+            ]
         },
         "numeric": {
             "match": "((?>\\d++\\.?+\\d*+|\\.\\d++))((?>fs|ps|ns|us|ms|MHz))?+(?=[\\+\\-\\*\\/\\%\\&\\|\\^\\~\\!\\=\\<\\>\\?\\:]|[;\\)\\]\\}\\s]|\\\\\n|$)",
             "captures": {
-                "1": { "name": "constant.numeric.sdc" },
-                "2": { "name": "constant.other.sdc" }
+                "1": {
+                    "name": "constant.numeric.sdc"
+                },
+                "2": {
+                    "name": "constant.other.sdc"
+                }
             }
         },
         "operators": {
@@ -375,22 +637,38 @@
         "invalid-comment": {
             "begin": "\\#",
             "beginCaptures": {
-                "0": { "name": "invalid.illegal.number-sign.sdc" }
+                "0": {
+                    "name": "invalid.illegal.number-sign.sdc"
+                }
             },
             "end": "(?=[;\\)\\]\\}\\s]|\\\\\n|$)",
-            "patterns": [{ "include": "#embedded-elemnts" }]
+            "patterns": [
+                {
+                    "include": "#embedded-elemnts"
+                }
+            ]
         },
         "other-argument": {
             "begin": "(?=[^;\\)\\]\\}\\s])",
             "end": "(?=[;\\)\\]\\}\\s]|\\\\\n|$)",
-            "patterns": [{ "include": "#embedded-elemnts" }]
+            "patterns": [
+                {
+                    "include": "#embedded-elemnts"
+                }
+            ]
         },
         "embedded-numeric": {
             "match": "(?<=^|[\\(\\[\\{\\s])([\\+\\-])?+((?>\\d++\\.?+\\d*+|\\.\\d++))((?>fs|ps|ns|us|ms|MHz))?+(?=\\\\[\\)\\]\\}]|[;\\)\\]\\}\\s]|\\\\\n|$)",
             "captures": {
-                "1": { "name": "keyword.operator.sign.sdc" },
-                "2": { "name": "constant.numeric.sdc" },
-                "3": { "name": "constant.other.sdc" }
+                "1": {
+                    "name": "keyword.operator.sign.sdc"
+                },
+                "2": {
+                    "name": "constant.numeric.sdc"
+                },
+                "3": {
+                    "name": "constant.other.sdc"
+                }
             }
         },
         "embedded-operators": {

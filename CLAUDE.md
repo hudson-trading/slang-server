@@ -29,7 +29,7 @@ cmake --build build/claude -j8 --target slang_server
 
 `src/SlangServer.cpp`: The single instance server class, that has methods that directly map to the language server routes and hardware language extensions. It holds the indexer, which gathers all of the symbols in the workspace on start up.
 `src/ServerDriver.cpp`: This is a wrapper around the slang driver, and is recreated every time flags need to be parsed. It manages the syntax trees and open documents
-`src/ast/ServerCompilation.cpp`: This is a wrapper around a slang Compilation, and it knows how to update the compilation when 
+`src/ast/ServerCompilation.cpp`: This is a wrapper around a slang Compilation, and it knows how to update the compilation when
 `src/document/SlangDoc.cpp` This represents a file/SyntaxTree pair, and also manages analysis features for that document, like a token index and a shallow compilation.
 `src/document`: These files have features core LSP features for a document.
 
