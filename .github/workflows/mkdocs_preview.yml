@@ -2,7 +2,7 @@ name: Deploy PR Preview to gh-pages
 
 on:
   pull_request:
-    branches: 
+    branches:
       - main
     paths:
       - 'docs/**'
@@ -24,7 +24,7 @@ jobs:
         run: uv python install
       - name: Install dependencies
         run: uv sync --locked --all-extras --dev
-        
+
       - name: Build docs
         run: uv run mkdocs build --strict
       - name: Deploy to gh-pages preview directory
@@ -33,10 +33,9 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./site
-          force_orphan: true
           publish_branch: gh-pages
           destination_dir: previews/pr-${{ github.event.number }}
-      
+
       - name: Comment preview URL
         uses: actions/github-script@v7
         with:
