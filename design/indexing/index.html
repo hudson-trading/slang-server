@@ -12,11 +12,13 @@
         <meta name="author" content="Hudson River Trading">
       
       
-        <link rel="canonical" href="https://hudson-trading.github.io/slang-server/design/shallow/">
+        <link rel="canonical" href="https://hudson-trading.github.io/slang-server/design/indexing/">
       
       
-        <link rel="prev" href="../indexing/">
+        <link rel="prev" href="../../hdl/hdl/">
       
+      
+        <link rel="next" href="../shallow/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -24,7 +26,7 @@
     
     
       
-        <title>Shallow Compilation - slang-server</title>
+        <title>Workspace Indexing - slang-server</title>
       
     
     
@@ -78,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#shallow-compilation" class="md-skip">
+        <a href="#workspace-indexing" class="md-skip">
           Skip to content
         </a>
       
@@ -112,7 +114,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Shallow Compilation
+              Workspace Indexing
             
           </span>
         </div>
@@ -318,7 +320,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../indexing/" class="md-tabs__link">
+        <a href="./" class="md-tabs__link">
           
   
   
@@ -752,29 +754,6 @@
                 
   
   
-  
-  
-    <li class="md-nav__item">
-      <a href="../indexing/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Workspace Indexing
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
     
   
   
@@ -792,7 +771,7 @@
   
   
   <span class="md-ellipsis">
-    Shallow Compilation
+    Workspace Indexing
     
   </span>
   
@@ -805,7 +784,7 @@
   
   
   <span class="md-ellipsis">
-    Shallow Compilation
+    Workspace Indexing
     
   </span>
   
@@ -830,36 +809,9 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#limitations" class="md-nav__link">
+  <a href="#how-it-works" class="md-nav__link">
     <span class="md-ellipsis">
-      Limitations
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#allgeneratebranches" class="md-nav__link">
-    <span class="md-ellipsis">
-      AllGenerateBranches
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#interface-port-parameter-asserts" class="md-nav__link">
-    <span class="md-ellipsis">
-      Interface Port Parameter Asserts
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#single-unit" class="md-nav__link">
-    <span class="md-ellipsis">
-      Single Unit
+      How it works
     </span>
   </a>
   
@@ -869,6 +821,29 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shallow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Shallow Compilation
+    
+  </span>
+  
+
+      </a>
     </li>
   
 
@@ -910,36 +885,9 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#limitations" class="md-nav__link">
+  <a href="#how-it-works" class="md-nav__link">
     <span class="md-ellipsis">
-      Limitations
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#allgeneratebranches" class="md-nav__link">
-    <span class="md-ellipsis">
-      AllGenerateBranches
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#interface-port-parameter-asserts" class="md-nav__link">
-    <span class="md-ellipsis">
-      Interface Port Parameter Asserts
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#single-unit" class="md-nav__link">
-    <span class="md-ellipsis">
-      Single Unit
+      How it works
     </span>
   </a>
   
@@ -964,21 +912,17 @@
   
 
 
-<h1 id="shallow-compilation">Shallow Compilation<a class="headerlink" href="#shallow-compilation" title="Permanent link">&para;</a></h1>
-<p>In order to provide real time diagnostics and symbols, the server makes use of the concept of a shallow compilation, where directly referenced top level symbols in the current document are loaded for use in a slang compilation.</p>
-<p>In software languages this is typically standard- you can compile just one cpp file for example, and forward declare other symbols that you use.
-This isn't really a thing for HDLs, where a full design is almost always assumed. Parts of Slang can be tweaked to essentially get this functionality.</p>
-<h3 id="limitations">Limitations<a class="headerlink" href="#limitations" title="Permanent link">&para;</a></h3>
-<p>Hierarchicaly references can go down or up more than one layer, in which case some symbols may not load. It would be nice to continue adding the relevant syntax trees to get all symbols in the current document, rather than just loading directly referenced symbols. Upward references will always be a blind spot for the language server, and are generall not considered a good practice.</p>
-<h2 id="allgeneratebranches">AllGenerateBranches<a class="headerlink" href="#allgeneratebranches" title="Permanent link">&para;</a></h2>
-<p>This compilation flag is used in shallow compilations to get symbols and diagnostics on all generate branches. This process can definitely be improved; for example certain diags are marked as invalid for shallow compilation, and that's tricky since some may have been missed, and ideally the system would never go down the path where it's publishing those diags.</p>
-<p>A related issue is the case of ifdef branches. Making an AllIfdefBranches flag would certainly cause chaos, and perhaps the best way of dealing with this is to just do syntax lookups in the untaken branches to provide symbols.</p>
-<h2 id="interface-port-parameter-asserts">Interface Port Parameter Asserts<a class="headerlink" href="#interface-port-parameter-asserts" title="Permanent link">&para;</a></h2>
-<p>It's a common pattern to declare an input/output interface with a datatype, however SystemVerilog doesn't let you restrict the params of these interface ports, and people instead rely on asserts. Ideally slang could pick up on these asserts and fill in the correct dtype for these. Even more ideally, these constraints would be in the language itself. Either implementation would provide the user with more accurate info when doing hierarhical completions.</p>
-<h2 id="single-unit">Single Unit<a class="headerlink" href="#single-unit" title="Permanent link">&para;</a></h2>
-<p>The slang <code>--single-unit</code> causes all parsed files to essentially be squashed together, which has the effect of syntax trees inheriting preprocessor macros and defines.</p>
-<p>This isn't great for a language server, and isn't supported at the moment, meaning repos that use this will see errors for undefined macros.</p>
-<p>Support for this could be added by feeding the indexed macros to the preprocessor if it can't find the macro in its current working set.</p>
+<h1 id="workspace-indexing">Workspace Indexing<a class="headerlink" href="#workspace-indexing" title="Permanent link">&para;</a></h1>
+<p>slang-server's indexing system provides fast symbol lookup and navigation across large SystemVerilog codebases by building and maintaining an index of top level symbols.</p>
+<h2 id="how-it-works">How it works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
+<p>The Indexer indexes based on these config options on startup: </p>
+<ul>
+<li><code>indexGlobs</code> (default: <code>"./.../*.sv*"</code>)</li>
+<li><code>excludeDirs</code> (default: <code>[]</code>)</li>
+</ul>
+<p>It uses multithreading to rapidly index your repo. Crawling a file system actually often takes longer than parsing, so make sure these are as specific as possible.</p>
+<p>In each syntax tree parsed, it indexes the top level symbols like moduldes, packages, etc. If no top level symbols were found, it'll instead index the macros defined in that file.</p>
+<p>In the future, this will also index the referenced top level symbols to enable the go-to references feature.</p>
 
 
 
