@@ -1,4 +1,3 @@
-
 # Shallow Compilation
 
 In order to provide real time diagnostics and symbols, the server makes use of the concept of a shallow compilation, where directly referenced top level symbols in the current document are loaded for use in a slang compilation.

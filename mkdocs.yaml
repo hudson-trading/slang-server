@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://squidfunk.github.io/mkdocs-material/schema.json
 
-site_name: "slang-server"
+site_name: 'slang-server'
 strict: false
 site_url: https://hudson-trading.github.io/slang-server/
 site_author: Hudson River Trading
@@ -10,26 +10,26 @@ site_description: >-
 site_dir: site
 
 theme:
-  name: "material"
+  name: 'material'
   palette:
-    - media: "(prefers-color-scheme)"
+    - media: '(prefers-color-scheme)'
       toggle:
         icon: material/brightness-5
-        name: "Switch to light mode"
-    - media: "(prefers-color-scheme: light)"
+        name: 'Switch to light mode'
+    - media: '(prefers-color-scheme: light)'
       scheme: default
       primary: hrt
       accent: hrt
       toggle:
         icon: material/brightness-2
-        name: "Switch to dark mode"
-    - media: "(prefers-color-scheme: dark)"
+        name: 'Switch to dark mode'
+    - media: '(prefers-color-scheme: dark)'
       scheme: slate
       primary: hrt
       accent: hrt
       toggle:
         icon: material/brightness-6
-        name: "Switch to system preference"
+        name: 'Switch to system preference'
   font:
     text: Roboto
     code: Roboto Mono
@@ -79,19 +79,18 @@ exclude_docs: |
 nav:
   - index.md
   - Getting Started:
-    - start/installing.md
-    - start/config.md
+      - start/installing.md
+      - start/config.md
   - Core Language Features:
-    - features/features.md
-    - Planned Features: features/planned.md
-    - Hover Examples: features/hovers.md
-    - Completion Examples: features/completions.md
+      - features/features.md
+      - Planned Features: features/planned.md
+      - Hover Examples: features/hovers.md
+      - Completion Examples: features/completions.md
   - HDL Features:
-    - hdl/hdl.md
+      - hdl/hdl.md
   - Design Choices:
-    - design/indexing.md
-    - design/shallow.md
-
+      - design/indexing.md
+      - design/shallow.md
 
 markdown_extensions:
   - tables
@@ -115,7 +114,6 @@ plugins:
   - search
   - meta
   - htmlproofer:
-      enabled: !ENV [ENABLED_HTMLPROOFER, False]
       raise_error_after_finish: True
       raise_error_excludes:
         403: ['*']

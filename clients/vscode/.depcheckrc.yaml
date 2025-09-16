@@ -1,5 +1,5 @@
 ignores:
-    - vscode # Provided by the VSCode runtime
-    - markdownlint # Provides markdownlint/style/prettier
-    - \@trivago/prettier-plugin-sort-imports # Used in format:prettier-eslint
-    - prettier-plugin-organize-imports # Used in format:prettier
+  - vscode # Provided by the VSCode runtime
+  - markdownlint # Provides markdownlint/style/prettier
+  - \@trivago/prettier-plugin-sort-imports # Used in format:prettier-eslint
+  - prettier-plugin-organize-imports # Used in format:prettier
