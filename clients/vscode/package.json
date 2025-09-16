@@ -33,12 +33,6 @@
     "activationEvents": [
         "workspaceContains:**/*.{v,sv,vh,svh}"
     ],
-    "prettier": {
-        "trailingComma": "es5",
-        "singleQuote": true,
-        "printWidth": 100,
-        "semi": false
-    },
     "files": [
         "vscode-slang.vsix",
         "images/icon.png"

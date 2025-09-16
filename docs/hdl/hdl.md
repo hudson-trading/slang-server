@@ -59,7 +59,7 @@ A build pattern can be set to glob for .f files, e.g. `**/*.f`. Then you can run
 -   ![ModulesView](ModulesView.png)
 </div>
 
-## Setting a scope 
+## Setting a scope
 
 ### `Slang: Select Scope` Command
 

@@ -43,9 +43,30 @@ repos:
     types: [file]
     files: (\.cmake|CMakeLists.txt)(.in)?$
 
-# clang-format
+# clang-format for cpp
 - repo: https://github.com/pre-commit/mirrors-clang-format
   rev: v20.1.8
   hooks:
   - id: clang-format
     exclude: ^external/.*
+
+# Prettier for typescript, json, and yaml
+- repo: https://github.com/pre-commit/mirrors-prettier
+  rev: v4.0.0-alpha.8
+  hooks:
+  - id: prettier
+    files: ^.*\.(ts|js|json|yaml|md)$
+
+# Ruff for python
+repos:
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  # Ruff version.
+  rev: v0.13.0
+  hooks:
+    # Run the linter.
+    - id: ruff-check
+      files: ^.*\.py$
+      args: [ --fix ]
+    # Run the formatter.
+    - id: ruff-format
+      files: ^.*\.py$

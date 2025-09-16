@@ -6,8 +6,8 @@
 # slang-server cmake entry point
 cmake_minimum_required(VERSION 3.20...3.29)
 
-# Determine if slang-server is built as a subproject (using add_subdirectory) or if it
-# is the master project.
+# Determine if slang-server is built as a subproject (using add_subdirectory) or
+# if it is the master project.
 if(NOT DEFINED SLANG_SERVER_MASTER_PROJECT)
   set(SLANG_SERVER_MASTER_PROJECT OFF)
   if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
@@ -44,8 +44,10 @@ project(
   HOMEPAGE_URL https://github.com/hudson-trading/slang-server
   DESCRIPTION "SystemVerilog language server based on slang")
 
-option(SLANG_SERVER_INCLUDE_TESTS "Include test targets in the build" ${SLANG_SERVER_MASTER_PROJECT})
-option(SLANG_SERVER_INCLUDE_INSTALL "Include installation targets" ${SLANG_SERVER_MASTER_PROJECT})
+option(SLANG_SERVER_INCLUDE_TESTS "Include test targets in the build"
+       ${SLANG_SERVER_MASTER_PROJECT})
+option(SLANG_SERVER_INCLUDE_INSTALL "Include installation targets"
+       ${SLANG_SERVER_MASTER_PROJECT})
 
 # Always require C++20 or later, no extensions.
 set(CMAKE_CXX_STANDARD 20)
@@ -65,8 +67,10 @@ endif()
 
 if(CMAKE_SYSTEM_NAME MATCHES "WASI")
   add_compile_options(-fexceptions)
-  # Disable pedantic warnings for WASI since they're not as useful in this context
-  add_compile_options(-Wno-pedantic -Wno-sign-compare -Wno-reorder-ctor -Wno-unused-but-set-variable)
+  # Disable pedantic warnings for WASI since they're not as useful in this
+  # context
+  add_compile_options(-Wno-pedantic -Wno-sign-compare -Wno-reorder-ctor
+                      -Wno-unused-but-set-variable)
 
   add_compile_definitions(_WASI_EMULATED_SIGNAL)
   add_link_options(-lwasi-emulated-signal)
@@ -74,7 +78,7 @@ if(CMAKE_SYSTEM_NAME MATCHES "WASI")
 
   # https://github.com/fmtlib/fmt/issues/4496#issuecomment-3094630184
   add_compile_definitions(FMT_USE_FCNTL=0)
-  
+
   # Disable boost threading features for WASI
   add_compile_definitions(BOOST_DISABLE_THREADS)
 
@@ -93,9 +97,9 @@ endif()
 
 # Add compiler flags to catch cross-platform issues early
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-  add_compile_options(-Wall -Wextra -Wno-missing-declarations -Wno-missing-field-initializers)
-  # Warn about potential portability issues
-  # add_compile_options(-Wconversion)
+  add_compile_options(-Wall -Wextra -Wno-missing-declarations
+                      -Wno-missing-field-initializers)
+  # Warn about potential portability issues add_compile_options(-Wconversion)
   # Warn about missing includes that might work on some platforms but not others
   add_compile_options(-Wmissing-include-dirs)
 endif()
@@ -135,16 +139,24 @@ foreach(
   endif()
 endforeach()
 
-
-# Add the slang library as a subdirectory
-# Set slang options for server usage
-set(SLANG_INCLUDE_TOOLS OFF CACHE BOOL "Don't build slang tools" FORCE)
-set(SLANG_INCLUDE_DOCS OFF CACHE BOOL "Don't build slang docs" FORCE)
-set(SLANG_INCLUDE_PYLIB OFF CACHE BOOL "Don't build slang Python bindings" FORCE)
-set(SLANG_INCLUDE_INSTALL OFF CACHE BOOL "Don't install slang separately" FORCE)
+# Add the slang library as a subdirectory Set slang options for server usage
+set(SLANG_INCLUDE_TOOLS
+    OFF
+    CACHE BOOL "Don't build slang tools" FORCE)
+set(SLANG_INCLUDE_DOCS
+    OFF
+    CACHE BOOL "Don't build slang docs" FORCE)
+set(SLANG_INCLUDE_PYLIB
+    OFF
+    CACHE BOOL "Don't build slang Python bindings" FORCE)
+set(SLANG_INCLUDE_INSTALL
+    OFF
+    CACHE BOOL "Don't install slang separately" FORCE)
 
 # Disable slang tests to avoid ctest pollution, but keep Catch2 available
-set(SLANG_INCLUDE_TESTS OFF CACHE BOOL "Don't build slang tests" FORCE)
+set(SLANG_INCLUDE_TESTS
+    OFF
+    CACHE BOOL "Don't build slang tests" FORCE)
 
 # Set up Catch2 for testing
 set(find_pkg_args "")
@@ -160,7 +172,6 @@ FetchContent_Declare(
   GIT_SHALLOW ON
   ${find_pkg_args})
 FetchContent_MakeAvailable(Catch2)
-
 
 if(NOT TARGET Catch2::Catch2)
   message(
@@ -182,7 +193,8 @@ add_subdirectory(external/reflect-cpp)
 
 # Suppress warnings in reflect-cpp library
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-  target_compile_options(reflectcpp PRIVATE -Wno-missing-field-initializers -Wno-unused-parameter -fexceptions)
+  target_compile_options(reflectcpp PRIVATE -Wno-missing-field-initializers
+                                            -Wno-unused-parameter -fexceptions)
 endif()
 
 # Build the slang-server library
@@ -202,21 +214,23 @@ add_library(
   src/Indexer.cpp
   src/ServerDriver.cpp
   src/SlangServer.cpp
-  src/ServerDiagClient.cpp
-)
+  src/ServerDiagClient.cpp)
 
 target_include_directories(slang_server_obj_lib PUBLIC include)
-target_include_directories(slang_server_obj_lib SYSTEM PRIVATE external/reflect-cpp/include)
+target_include_directories(slang_server_obj_lib SYSTEM
+                           PRIVATE external/reflect-cpp/include)
 
-target_precompile_headers(
-  slang_server_obj_lib PRIVATE
-  "${PROJECT_SOURCE_DIR}/include/lsp/LspTypes.h")
+target_precompile_headers(slang_server_obj_lib PRIVATE
+                          "${PROJECT_SOURCE_DIR}/include/lsp/LspTypes.h")
 
 target_link_libraries(slang_server_obj_lib PUBLIC slang::slang)
 
 # Apply pedantic warnings only to slang-server code, not external libraries
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-  target_compile_options(slang_server_obj_lib PRIVATE -Wpedantic -Wunused-variable -Wpessimizing-move -Wunused-but-set-variable -Wno-nonnull -Werror)
+  target_compile_options(
+    slang_server_obj_lib
+    PRIVATE -Wpedantic -Wunused-variable -Wpessimizing-move
+            -Wunused-but-set-variable -Wno-nonnull -Werror)
 endif()
 
 # Build the slang-server executable
@@ -234,7 +248,8 @@ endif()
 if(CMAKE_SYSTEM_NAME MATCHES "Windows")
   # Check if the manifest file exists
   if(EXISTS ${PROJECT_SOURCE_DIR}/scripts/win32.manifest)
-    target_sources(slang_server PRIVATE ${PROJECT_SOURCE_DIR}/scripts/win32.manifest)
+    target_sources(slang_server
+                   PRIVATE ${PROJECT_SOURCE_DIR}/scripts/win32.manifest)
   endif()
 endif()
 

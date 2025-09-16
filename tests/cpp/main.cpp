@@ -27,7 +27,6 @@ int main(int argc, char** argv) {
     slang::OS::setupConsole();
     slang::syntax::SyntaxTree::getDefaultSourceManager().setDisableProximatePaths(true);
 
-
     // We create a Catch2 session
     Catch::Session session;
 

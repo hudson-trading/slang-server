@@ -11,7 +11,7 @@ export CX=clang-20
 export CC=clang-20
 ```
 
-Run `cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=1  -DCMAKE_BUILD_TYPE=DEBUG` to configure cmake. 
+Run `cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=1  -DCMAKE_BUILD_TYPE=DEBUG` to configure cmake.
 - CMAKE_EXPORT_COMPILE_COMMANDS is to generate compile_commands.json for clangd to pick up.
 - CMAKE_BUILD_TYPE=DEBUG is to build with debug symbols
 
@@ -40,7 +40,7 @@ Logs are in `Output > slang-server` in the terminal area
 To refresh the server, run the command "Verilog: Restart Language Server"
 
 ## Vscode Client Testing
-Copy the launch template: 
+Copy the launch template:
 
 `cp .vscode/launch.template.jsonc .vscode/launch.json`
 

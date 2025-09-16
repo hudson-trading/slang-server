@@ -1,4 +1,4 @@
-// Move this to launch.json. 
+// Move this to launch.json.
 // The reason this isn't in git as launch.json is that sourceFileMap must be in this config and not a user config.
 {
     "version": "0.2.0",

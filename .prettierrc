@@ -1,0 +1,15 @@
+{
+    "trailingComma": "es5",
+    "singleQuote": true,
+    "printWidth": 100,
+    "semi": false,
+    "tabWidth": 4,
+    "overrides": [
+        {
+            "files": ["**/*.ts"],
+            "options": {
+                "tabWidth": 2
+            }
+        }
+    ]
+}
