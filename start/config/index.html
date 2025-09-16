@@ -1123,23 +1123,19 @@
 <p><strong>Type:</strong> <code>array of strings</code>
 <strong>Default:</strong> <code>["./.../*.sv*"]</code>
 <strong>Description:</strong> SV Globs of what to index. Supports recursive patterns with <code>...</code> \
-<strong>Example:</strong>
+<strong>Example:</strong></p>
 <div class="language-json highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;indexGlobs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="s2">&quot;./src/.../*.sv&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="s2">&quot;./tb/.../*.sv&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="s2">&quot;./include/.../*.svh&quot;</span>
-<span class="w">  </span><span class="p">]</span>
+<span class="w">  </span><span class="nt">&quot;indexGlobs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;./src/.../*.sv&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;./tb/.../*.sv&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;./include/.../*.svh&quot;</span><span class="p">]</span>
 <span class="p">}</span>
-</code></pre></div></p>
+</code></pre></div>
 <h3 id="excludedirs"><code>excludeDirs</code><a class="headerlink" href="#excludedirs" title="Permanent link">&para;</a></h3>
 <p><strong>Type:</strong> <code>array of strings</code>
 <strong>Description:</strong> Directories to exclude from indexing
-<strong>Example:</strong>
+<strong>Example:</strong></p>
 <div class="language-json highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;excludeDirs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;build&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;temp&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;old_code&quot;</span><span class="p">]</span>
 <span class="p">}</span>
-</code></pre></div></p>
+</code></pre></div>
 <h3 id="indexingthreads"><code>indexingThreads</code><a class="headerlink" href="#indexingthreads" title="Permanent link">&para;</a></h3>
 <p><strong>Type:</strong> <code>integer</code>
 <strong>Default:</strong> <code>0</code> (auto-detect)
@@ -1154,7 +1150,7 @@
 <strong>Example:</strong> <code>"./build/compile.f"</code></p>
 <h3 id="buildpattern"><code>buildPattern</code><a class="headerlink" href="#buildpattern" title="Permanent link">&para;</a></h3>
 <p><strong>Type:</strong> <code>string</code> (optional)
-<strong>Description:</strong> Build file pattern used to find the a .f file given a the name of a waveform file. (e.g. /tmp/{}.fst with builds/{}.f looks for  build/foo.f to load the compilation). This is also used to look for .f files in the vscode client when selecting a .f file.
+<strong>Description:</strong> Build file pattern used to find the a .f file given a the name of a waveform file. (e.g. /tmp/{}.fst with builds/{}.f looks for build/foo.f to load the compilation). This is also used to look for .f files in the vscode client when selecting a .f file.
 <strong>Example:</strong> <code>"builds/{}.f"</code></p>
 <h3 id="wcpcommand"><code>wcpCommand</code><a class="headerlink" href="#wcpcommand" title="Permanent link">&para;</a></h3>
 <p><strong>Type:</strong> <code>string</code>
@@ -1163,10 +1159,7 @@
 <h2 id="example-configuration">Example Configuration<a class="headerlink" href="#example-configuration" title="Permanent link">&para;</a></h2>
 <div class="language-json highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;flags&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;-f tools/slang/slang-server.f&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;indexGlobs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="s2">&quot;./src/**/*.sv&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="s2">&quot;./tb/**/*.sv&quot;</span>
-<span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;indexGlobs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;./src/**/*.sv&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;./tb/**/*.sv&quot;</span><span class="p">],</span>
 <span class="w">  </span><span class="nt">&quot;excludeDirs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;build&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;obj_dir&quot;</span><span class="p">],</span>
 <span class="w">  </span><span class="nt">&quot;indexingThreads&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;parsingThreads&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">8</span><span class="p">,</span>

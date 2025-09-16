@@ -779,21 +779,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Hierarchy View">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#hierarchy-buttons-left-to-right" class="md-nav__link">
-    <span class="md-ellipsis">
-      Hierarchy Buttons (left to right)
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -853,30 +838,6 @@
       Waveform Integration (experimental)
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Waveform Integration (experimental)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#editor-features" class="md-nav__link">
-    <span class="md-ellipsis">
-      Editor Features
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#wave-viewer-features" class="md-nav__link">
-    <span class="md-ellipsis">
-      Wave Viewer Features
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -1060,21 +1021,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Hierarchy View">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#hierarchy-buttons-left-to-right" class="md-nav__link">
-    <span class="md-ellipsis">
-      Hierarchy Buttons (left to right)
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -1135,30 +1081,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Waveform Integration (experimental)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#editor-features" class="md-nav__link">
-    <span class="md-ellipsis">
-      Editor Features
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#wave-viewer-features" class="md-nav__link">
-    <span class="md-ellipsis">
-      Wave Viewer Features
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
     </ul>
@@ -1201,24 +1123,20 @@
 <h2 id="hierarchy-view">Hierarchy View<a class="headerlink" href="#hierarchy-view" title="Permanent link">&para;</a></h2>
 <div class="grid cards">
 <ul>
-<li>
-<p>The Hierarchy View shows the elaborated tree, with declared types and resolved values to the right of the identifier.</p>
-<h3 id="hierarchy-buttons-left-to-right">Hierarchy Buttons (left to right)<a class="headerlink" href="#hierarchy-buttons-left-to-right" title="Permanent link">&para;</a></h3>
-<ul>
-<li>Clear Top Level</li>
-<li>Set Build File</li>
-<li>Toggle data- wires, registers, etc.</li>
-<li>Toggle objects defined behind macro usages.</li>
-<li>Toggle paramters- params, localparams, etc.</li>
-<li>Collapse all</li>
+<li>The Hierarchy View shows the elaborated tree, with declared types and resolved values to the right of the identifier.</li>
 </ul>
+<p>### Hierarchy Buttons (left to right)
+  - Clear Top Level
+  - Set Build File
+  - Toggle data- wires, registers, etc.
+  - Toggle objects defined behind macro usages.
+  - Toggle paramters- params, localparams, etc.
+  - Collapse all</p>
 <p>Buttons exist on each object to copy its hierarchical path.
-An extra button exists on modules to go to the module definition, rather than the instantiation of that module.</p>
+  An extra button exists on modules to go to the module definition, rather than the instantiation of that module.</p>
 <p>Clicking a symbol in the hierarchy view or modules view will open the instance in the file, as well as in the other view.</p>
-</li>
-<li>
-<p><img alt="HierarchyView" src="../HierarchyView.png" /></p>
-</li>
+<ul>
+<li><img alt="HierarchyView" src="../HierarchyView.png" /></li>
 </ul>
 </div>
 <h2 id="modules-view">Modules View<a class="headerlink" href="#modules-view" title="Permanent link">&para;</a></h2>
@@ -1242,23 +1160,17 @@ An extra button exists on modules to go to the module definition, rather than th
 <h2 id="waveform-integration-experimental">Waveform Integration (experimental)<a class="headerlink" href="#waveform-integration-experimental" title="Permanent link">&para;</a></h2>
 <div class="grid cards">
 <ul>
-<li>
-<p>This is currently only setup between Neovim and Surfer, through the WCP (waveform control protocol), which runs on JSON-RPC over TCP.</p>
-<h3 id="editor-features">Editor Features<a class="headerlink" href="#editor-features" title="Permanent link">&para;</a></h3>
-<ul>
-<li>open waveform file</li>
-<li>open signal in wave viewer</li>
-<li>open module in wave viewer</li>
+<li>This is currently only setup between Neovim and Surfer, through the WCP (waveform control protocol), which runs on JSON-RPC over TCP.</li>
 </ul>
-<h3 id="wave-viewer-features">Wave Viewer Features<a class="headerlink" href="#wave-viewer-features" title="Permanent link">&para;</a></h3>
+<p>### Editor Features
+  - open waveform file
+  - open signal in wave viewer
+  - open module in wave viewer</p>
+<p>### Wave Viewer Features
+  - open signal in hierarchy view / editor
+  - open driver/loads for signal</p>
 <ul>
-<li>open signal in hierarchy view / editor</li>
-<li>open driver/loads for signal</li>
-</ul>
-</li>
-<li>
-<p><img alt="WCP" src="../wcp.gif" /></p>
-</li>
+<li><img alt="WCP" src="../wcp.gif" /></li>
 </ul>
 </div>
 

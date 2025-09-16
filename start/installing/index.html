@@ -982,7 +982,7 @@ cmake<span class="w"> </span>--build<span class="w"> </span>build<span class="w"
 <h3 id="pre-built-binaries">Pre-built binaries<a class="headerlink" href="#pre-built-binaries" title="Permanent link">&para;</a></h3>
 <p>In the future there will be pre-built binaries released for common platforms. It's also planned to have the editor clients auto-install these, similar to what clangd and others do.</p>
 <h3 id="neovim">Neovim<a class="headerlink" href="#neovim" title="Permanent link">&para;</a></h3>
-<p>There are many ways to configure a language server in Neovim.  One can use the <a href="https://neovim.io/doc/user/lsp.html#vim.lsp.start()">nvim API</a> directly.  Plugins like nvim-lspconfig and mason make managing language servers easier but slang-server has not yet been added to those projects.  If you happen to use lazy.nvim you can configure the language server by adding or ammending <code>~/.config/nvim/lua/plugins/lsp/nvim-lspconfig.lua</code> with this:
+<p>There are many ways to configure a language server in Neovim. One can use the <a href="https://neovim.io/doc/user/lsp.html#vim.lsp.start()">nvim API</a> directly. Plugins like nvim-lspconfig and mason make managing language servers easier but slang-server has not yet been added to those projects. If you happen to use lazy.nvim you can configure the language server by adding or ammending <code>~/.config/nvim/lua/plugins/lsp/nvim-lspconfig.lua</code> with this:</p>
 <div class="language-lua highlight"><pre><span></span><code><span class="kr">return</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="s2">&quot;neovim/nvim-lspconfig&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nv">opts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
@@ -1019,8 +1019,8 @@ cmake<span class="w"> </span>--build<span class="w"> </span>build<span class="w"
 <span class="w">    </span><span class="p">},</span>
 <span class="w">  </span><span class="p">},</span>
 <span class="p">}</span>
-</code></pre></div></p>
-<p>Neovim natively handles the LSP.  No additional plugin is required to use Slang Server for standard LSP actions (e.g. <a href="https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_definition">Go to Definition</a>, however the <a href="https://github.com/hudson-trading/slang-server.nvim">slang-server.nvim</a> plugin is provided to enable use of the features which extend the LSP (e.g. hierachical compilation).</p>
+</code></pre></div>
+<p>Neovim natively handles the LSP. No additional plugin is required to use Slang Server for standard LSP actions (e.g. <a href="https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_definition">Go to Definition</a>, however the <a href="https://github.com/hudson-trading/slang-server.nvim">slang-server.nvim</a> plugin is provided to enable use of the features which extend the LSP (e.g. hierachical compilation).</p>
 <h3 id="vscode">Vscode<a class="headerlink" href="#vscode" title="Permanent link">&para;</a></h3>
 <p>Extension will be released soon</p>
 <!-- Install the extension [here](https://marketplace.visualstudio.com/items?itemName=HudsonRiverTrading.slang-vscode), then set `slang.path` to your server binary -->
