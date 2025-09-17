@@ -40,6 +40,34 @@
         "insertTextFormat": "Snippet"
       },
       {
+        "label": "base_pkg",
+        "labelDetails": {
+          "detail": " Package"
+        },
+        "kind": "Module",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\npackage base_pkg;\n````"
+        },
+        "filterText": "base_pkg",
+        "insertText": "base_pkg",
+        "insertTextFormat": "PlainText"
+      },
+      {
+        "label": "cycle_test_module",
+        "labelDetails": {
+          "detail": " Module"
+        },
+        "kind": "Module",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nmodule cycle_test_module;\n````"
+        },
+        "filterText": "cycle_test_module",
+        "insertText": "cycle_test_module #(\n) ${1:cycle_test_module} (\n);",
+        "insertTextFormat": "Snippet"
+      },
+      {
         "label": "tb",
         "labelDetails": {
           "detail": " Module"
@@ -52,6 +80,20 @@
         "filterText": "tb",
         "insertText": "tb #(\n) ${1:tb} (\n);",
         "insertTextFormat": "Snippet"
+      },
+      {
+        "label": "util_pkg",
+        "labelDetails": {
+          "detail": " Package"
+        },
+        "kind": "Module",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\npackage util_pkg;\n````"
+        },
+        "filterText": "util_pkg",
+        "insertText": "util_pkg",
+        "insertTextFormat": "PlainText"
       }
     ]
   },

@@ -15,6 +15,7 @@
 #include "document/SlangDoc.h"
 #include "util/Logging.h"
 #include <memory>
+#include <queue>
 #include <string_view>
 
 #include "slang/ast/Compilation.h"
@@ -175,30 +176,57 @@ void ServerDriver::closeDocument(const URI& uri) {
 std::vector<std::shared_ptr<SlangDoc>> ServerDriver::getDependentDocs(
     std::shared_ptr<SyntaxTree> tree) {
     std::vector<std::shared_ptr<SlangDoc>> result;
-
-    auto& meta = tree->getMetadata();
+    std::queue<std::shared_ptr<SyntaxTree>> treesToProcess;
     flat_hash_set<std::string_view> knownNames;
-    meta.visitDeclaredSymbols([&](std::string_view name) { knownNames.emplace(name); });
+    flat_hash_set<std::string> processedFiles;
 
-    meta.visitReferencedSymbols([&](std::string_view name) {
-        if (knownNames.find(name) != knownNames.end())
-            return; // already added
+    treesToProcess.push(tree);
 
-        // Don't try multiple times
-        knownNames.emplace(name);
-        auto paths = indexer.getRelevantFilesForName(name);
-        if (!paths.empty()) {
-            auto newdoc = getDocument(URI::fromFile(paths[0].string()));
-            if (newdoc) {
-                result.push_back(newdoc);
-                docs[newdoc->getURI()] = newdoc;
+    while (!treesToProcess.empty()) {
+        auto currentTree = treesToProcess.front();
+        treesToProcess.pop();
+
+        auto& meta = currentTree->getMetadata();
+
+        // Collect declared symbols from current tree
+        meta.visitDeclaredSymbols([&](std::string_view name) { knownNames.emplace(name); });
+
+        meta.visitReferencedSymbols([&](std::string_view name) {
+            if (knownNames.find(name) != knownNames.end())
+                return; // already added
+
+            // Don't try multiple times
+            knownNames.emplace(name);
+            auto paths = indexer.getRelevantFilesForName(name);
+            if (!paths.empty()) {
+                auto filePath = paths[0].string();
+
+                // Check if we've already processed this file to avoid cycles
+                if (processedFiles.find(filePath) != processedFiles.end())
+                    return;
+
+                processedFiles.insert(filePath);
+
+                auto newdoc = getDocument(URI::fromFile(filePath));
+                if (newdoc) {
+                    result.push_back(newdoc);
+                    docs[newdoc->getURI()] = newdoc;
+
+                    // Only add packages to the queue for recursive processing
+                    for (auto& [n, _] : newdoc->getSyntaxTree()->getMetadata().nodeMeta) {
+                        auto decl = &n->as<syntax::ModuleDeclarationSyntax>();
+                        if (decl->kind == syntax::SyntaxKind::PackageDeclaration) {
+                            treesToProcess.push(newdoc->getSyntaxTree());
+                            break;
+                        }
+                    }
+                }
+                else {
+                    ERROR("No doc found for {}", filePath);
+                }
             }
-            else {
-                ERROR("No doc gotten for {}", paths[0].string());
-            }
-        }
-        // Unknown module diag will be sent; don't need to do anything here
-    });
+        });
+    }
 
     return result;
 }

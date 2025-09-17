@@ -1,0 +1,85 @@
+
+// Main test file that only imports base_pkg, but util_pkg should be loaded via dependencies
+
+import base_pkg::*;
+       ^^^^^^^^ Ref -> `package base_pkg;`
+
+
+
+module cycle_test_module;
+       ^^^^^^^^^^^^^^^^^ Sym cycle_test_module : ModuleDeclaration
+
+
+
+    // Use types from base_pkg (which exports util_pkg types)
+
+    base_pkg::config_t system_config;
+    ^^^^^^^^ Ref -> `package base_pkg;`
+              ^^^^^^^^ Ref -> `typedef struct packed {\n\    logic [7:0] version;\n\    logic [15:0] features;\n\    data_width_t max_width;\n\} config_t;`
+                       ^^^^^^^^^^^^^ Sym system_config : Declarator
+
+    base_pkg::result_t operation_result;  // This should resolve via export
+    ^^^^^^^^ Ref -> `package base_pkg;`
+              ^^^^^^^^ Ref -> `typedef enum logic [1:0] {\n\    SUCCESS = 2'b00,\n\    FAILURE = 2'b01,\n\    PENDING = 2'b10,\n\    ERROR_CODE = 2'b11\n\} result_t;`
+                       ^^^^^^^^^^^^^^^^ Sym operation_result : Declarator
+
+    base_pkg::data_width_t bus_width;
+    ^^^^^^^^ Ref -> `package base_pkg;`
+              ^^^^^^^^^^^^ Ref -> `typedef logic [31:0] data_width_t;`
+                           ^^^^^^^^^ Sym bus_width : Declarator
+
+
+
+    initial begin
+
+        // Initialize using exported functions (should work via exports)
+
+        system_config = base_pkg::create_config(32);
+        ^^^^^^^^^^^^^ Ref -> `// Use types from base_pkg (which exports util_pkg types)\n\base_pkg::config_t system_config;`
+                        ^^^^^^^^ Ref -> `package base_pkg;`
+                                  ^^^^^^^^^^^^^ Ref -> `function automatic base_pkg::config_t create_config(input base_pkg::data_width_t width);\n\    base_pkg::config_t cfg = base_pkg::get_default_config();\n\    cfg.max_width = width;\n\    return cfg;\n\endfunction`
+
+        bus_width = system_config.max_width;
+        ^^^^^^^^^ Ref -> `// This should resolve via export\n\  base_pkg::data_width_t bus_width;`
+                    ^^^^^^^^^^^^^ Ref -> `// Use types from base_pkg (which exports util_pkg types)\n\base_pkg::config_t system_config;`
+                                  ^^^^^^^^^ Ref -> `data_width_t max_width;`
+
+
+
+        // Test function calls (base_pkg should have access to util_pkg functions)
+
+        operation_result = base_pkg::validate_config(system_config);
+        ^^^^^^^^^^^^^^^^ Ref -> `base_pkg::result_t operation_result;`
+                           ^^^^^^^^ Ref -> `package base_pkg;`
+                                     ^^^^^^^^^^^^^^^ Ref -> `function automatic util_pkg::result_t validate_config(input config_t cfg);\n\    if (cfg.max_width > 0)\n\        return util_pkg::SUCCESS;\n\    else\n\        return util_pkg::FAILURE;\n\endfunction`
+                                                     ^^^^^^^^^^^^^ Ref -> `// Use types from base_pkg (which exports util_pkg types)\n\base_pkg::config_t system_config;`
+
+
+
+        // Test exported enum values (accessed via base_pkg exports)
+
+        if (operation_result == base_pkg::SUCCESS) begin
+            ^^^^^^^^^^^^^^^^ Ref -> `base_pkg::result_t operation_result;`
+                                ^^^^^^^^ Ref -> `package base_pkg;`
+                                          ^^^^^^^ Ref -> `enum logic [1:0] {\n\       SUCCESS = 2'b00,\n\       FAILURE = 2'b01,\n\       PENDING = 2'b10,\n\       ERROR_CODE = 2'b11\n\   }`
+
+            $display("Configuration valid");
+
+        end else if (operation_result == base_pkg::ERROR_CODE) begin
+                     ^^^^^^^^^^^^^^^^ Ref -> `base_pkg::result_t operation_result;`
+                                         ^^^^^^^^ Ref -> `package base_pkg;`
+                                                   ^^^^^^^^^^ Ref -> `enum logic [1:0] {\n\       SUCCESS = 2'b00,\n\       FAILURE = 2'b01,\n\       PENDING = 2'b10,\n\       ERROR_CODE = 2'b11\n\   }`
+
+            $display("Configuration error");
+
+        end
+
+
+
+        $finish;
+
+    end
+
+
+
+endmodule

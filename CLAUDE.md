@@ -16,7 +16,7 @@ ctest --test-dir build/claude --output-on-failure
 cmake --build build/claude -j8 --target server_unittests && build/bin/server_unittests
 # Add --update if updating the golden outputs which get stored in tests/cpp/golden
 
-# Server tests only- this is the primary testing
+# Build the server binary- this is used for pygls pytests and by clients (editors)
 cmake --build build/claude -j8 --target slang_server
 ```
 
