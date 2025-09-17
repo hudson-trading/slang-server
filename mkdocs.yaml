@@ -84,8 +84,8 @@ nav:
   - Core Language Features:
       - features/features.md
       - Planned Features: features/planned.md
-      - Hover Examples: features/hovers.md
-      - Completion Examples: features/completions.md
+      # - Hover Examples: features/hovers.md
+      # - Completion Examples: features/completions.md
   - HDL Features:
       - hdl/hdl.md
   - Design Choices:
