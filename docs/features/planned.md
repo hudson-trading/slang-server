@@ -2,7 +2,11 @@
 
 ### Goto references
 
-This will start out with top level symbols like macros, modules, packages, and interfaces, then work it's way into scope members
+This feature will likely be implemented in this order:
+
+ - top level symbols like macros, modules, packages, and interfaces
+ - scope members
+ - struct members
 
 ### Semantic Token Highlighting
 
@@ -22,8 +26,8 @@ For classes/functions it will distinguish betweeen instance variables, function 
 
 **Wildcard Ports** - Show which signals are passed through
 
-**Wildcard Imports** - Show which symbols are imported
+**Wildcard Imports** - Show which symbols are used from the import
 
 ### Formatter
 
-This one is pretty self explanatory.
+This one is pretty self explanatory, but it will live in the slang repo and also be shipped as a standalone binary. In order to make formatting nice for the language server, basic formatting functions already exist in this repo. This includes things like squashing white spaces to condense hovers/completion types, and left aligning blocks of text for hovers and completion docs.

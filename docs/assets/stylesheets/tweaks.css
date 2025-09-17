@@ -120,3 +120,29 @@
   color: var(--md-default-fg-color--contrast);
   font-weight: 600;
 }
+
+/* Two-column grid layout */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+.grid-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.grid-item img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Make responsive on smaller screens */
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
