@@ -196,3 +196,135 @@ module NoDefaults #(
     end
 
 endmodule
+
+module StructAssignmentTest (
+    input logic clk,
+    input logic rst
+);
+
+    // Struct definitions for testing
+    typedef struct packed {
+        logic [7:0] addr;
+        logic [15:0] data;
+        logic valid;
+    } simple_struct_t;
+
+    typedef struct packed {
+        simple_struct_t inner;
+        logic [3:0] tag;
+        logic enable;
+    } nested_struct_t;
+
+    // Variables for testing
+    simple_struct_t single_struct;
+    simple_struct_t struct_array[4];
+    nested_struct_t nested_struct;
+    nested_struct_t nested_array[2];
+    test_pkg::packet_t pkg_struct;
+    test_pkg::packet_t pkg_array[3];
+
+    logic [1:0] index;
+    logic [7:0] addr_val;
+    logic [15:0] data_val;
+
+    always_ff @(posedge clk) begin
+        if (rst) begin
+            // Basic struct member assignment
+            single_struct.addr <= 8'h00;
+            single_struct.data <= 16'h0000;
+            single_struct.valid <= 1'b0;
+
+            // Array index struct member assignment
+            struct_array[0].addr <= 8'hAA;
+            struct_array[1].data <= 16'hBBBB;
+            struct_array[2].valid <= 1'b1;
+
+            // Variable index struct member assignment
+            struct_array[index].addr <= 8'hCC;
+            struct_array[index].data <= data_val;
+
+            // Nested struct member assignment
+            nested_struct.inner.addr <= 8'hDD;
+            nested_struct.inner.data <= 16'hEEEE;
+            nested_struct.inner.valid <= 1'b0;
+            nested_struct.tag <= 4'h5;
+            nested_struct.enable <= 1'b1;
+
+            // Nested struct array assignment
+            nested_array[0].inner.addr <= 8'hFF;
+            nested_array[1].inner.data <= 16'h1234;
+            nested_array[index].tag <= 4'h7;
+
+            // Package struct member assignment
+            pkg_struct.id <= 32'h123;
+            pkg_struct.data <= 16'h5678;
+
+            // Package struct array assignment
+            pkg_array[0].id <= 32'h456;
+            pkg_array[1].data <= 16'h9ABC;
+            pkg_array[index].id <= {24'h0, addr_val};
+
+            index <= 2'b00;
+            addr_val <= 8'h11;
+            data_val <= 16'h2222;
+        end else begin
+            // Runtime assignments with expressions
+            single_struct.addr <= addr_val + 8'h10;
+            single_struct.data <= data_val << 1;
+            single_struct.valid <= ~single_struct.valid;
+
+            // Complex array indexing with struct members
+            struct_array[index + 1].addr <= single_struct.addr;
+            struct_array[addr_val[1:0]].data <= nested_struct.inner.data;
+
+            // Chained struct member assignments
+            nested_struct.inner.addr <= struct_array[0].addr;
+            nested_struct.inner.data <= pkg_struct.data;
+            nested_struct.inner.valid <= pkg_array[index].id[0];
+
+            // Multi-dimensional style access
+            nested_array[index].inner.addr <= struct_array[addr_val[1:0]].addr;
+            nested_array[~index].inner.data <= pkg_array[index + 1].data;
+
+            // Expression-based assignments
+            pkg_struct.id <= {16'h0, addr_val, data_val[7:0]};
+            pkg_array[index].data <= single_struct.data ^ nested_struct.inner.data;
+
+            // Increment index for next cycle
+            index <= index + 1;
+            addr_val <= addr_val + 8'h01;
+            data_val <= data_val + 16'h0011;
+        end
+    end
+
+    // Combinational assignments
+    always_comb begin
+        // Direct member assignments in combinational logic
+        if (single_struct.valid) begin
+            nested_struct.tag = struct_array[0].addr[3:0];
+            nested_struct.enable = |pkg_struct.id;
+        end else begin
+            nested_struct.tag = 4'h0;
+            nested_struct.enable = 1'b0;
+        end
+    end
+
+    // Initial block assignments
+    initial begin
+        single_struct.addr = 8'h77;
+        single_struct.data = 16'h8888;
+        single_struct.valid = 1'b1;
+
+        struct_array[3].addr = 8'h99;
+        struct_array[3].data = 16'hAAAA;
+        struct_array[3].valid = 1'b0;
+
+        nested_array[1].inner.addr = 8'hBB;
+        nested_array[1].inner.data = 16'hCCCC;
+        nested_array[1].tag = 4'hD;
+
+        pkg_array[2].id = 32'hDEAD;
+        pkg_array[2].data = 16'hBEEF;
+    end
+
+endmodule

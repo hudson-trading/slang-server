@@ -1216,6 +1216,7 @@ module m7;
     int i = g2.foo();
         ^ Sym i : Declarator
             ^^ Ref -> `G #(int) g2;`
+               ^^^ Ref -> `function G::T G::foo;\n\    return 0;\n\endfunction`
 
     real r = D::foo();
          ^ Sym r : Declarator
@@ -1374,11 +1375,13 @@ module m6;
     integer i = b1.f();
             ^ Sym i : Declarator
                 ^^ Ref -> `A b1 = B::new;`
+                   ^ Ref -> `function integer f();\n\    f = i;\n\endfunction`
 
     initial begin
 
         b2.f();
         ^^ Ref -> `B b2 = new;`
+           ^ Ref -> `function void f();\n\    i = j;\n\    super.i = super.j;\n\    j = super.f();\n\    j = this.super.f();\n\endfunction`
 
         a = b2;
         ^ Ref -> `A a = new;`
@@ -1386,7 +1389,9 @@ module m6;
 
         c.i = c.j;
         ^ Ref -> `C2 c = new;`
+          ^ Ref -> `integer i = 2;`
               ^ Ref -> `C2 c = new;`
+                ^ Ref -> `integer j = 2;`
 
 
 
@@ -1529,6 +1534,7 @@ class C3;
             ignore_bins others = (!binsof(e.a) || !binsof(y) intersect {1}) with (e > 10);
                         ^^^^^^ Sym others : BinsSelection
                                           ^ Ref -> `e: coverpoint x iff (clk) {\n\    option.weight = 2;\n\    wildcard bins a = { [0:63],65 };\n\    bins b[] = { [127:150],[148:191] }; // note overlapping values\n\    bins c[] = { 200,201,202 };\n\    bins d = { [1000:$] };\n\    bins others[] = default;\n\    bins sa = (4 => 5 => 6), ([7:9],10 => 11,12);\n\    bins sb[] = (12 => 3 [* 1]);\n\    bins sc = (12 => 3 [-> 1]);\n\    bins sd = (12 => 3 [= 1:2]);\n\}`
+                                            ^ Ref -> `wildcard bins a = { [0:63],65 };`
                                                                                   ^ Ref -> `e: coverpoint x iff (clk) {\n\    option.weight = 2;\n\    wildcard bins a = { [0:63],65 };\n\    bins b[] = { [127:150],[148:191] }; // note overlapping values\n\    bins c[] = { 200,201,202 };\n\    bins d = { [1000:$] };\n\    bins others[] = default;\n\    bins sa = (4 => 5 => 6), ([7:9],10 => 11,12);\n\    bins sb[] = (12 => 3 [* 1]);\n\    bins sc = (12 => 3 [-> 1]);\n\    bins sd = (12 => 3 [= 1:2]);\n\}`
 
         }
@@ -1599,10 +1605,15 @@ module m10;
 
         {<< byte{ p.header, p.len, p.payload with [0 +: p.len], p.crc }} = stream;
                   ^ Ref -> `automatic Packet p = new;`
+                    ^^^^^^ Ref -> `int header;`
                             ^ Ref -> `automatic Packet p = new;`
+                              ^^^ Ref -> `int len;`
                                    ^ Ref -> `automatic Packet p = new;`
+                                     ^^^^^^^ Ref -> `byte payload[];`
                                                         ^ Ref -> `automatic Packet p = new;`
+                                                          ^^^ Ref -> `int len;`
                                                                 ^ Ref -> `automatic Packet p = new;`
+                                                                  ^^^ Ref -> `int crc;`
                                                                            ^^^^^^ Ref -> `byte stream[$];`
 
         stream = stream[ $bits(p) / 8 : $ ];
