@@ -1,8 +1,10 @@
 on:
   push:
     branches: [main]
+    paths: [clients/vscode/**]
   pull_request:
     branches: [main]
+    paths: [clients/vscode/**]
 
 jobs:
   test:

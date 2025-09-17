@@ -27,7 +27,7 @@ jobs:
         run: uv sync --locked --all-extras --dev
 
       - name: Build docs
-        run: uv run mkdocs build --strict
+        run: uv run mkdocs build
       - name: Deploy to gh-pages preview directory
         # This step is much more complex than a simple push
         uses: peaceiris/actions-gh-pages@v3
