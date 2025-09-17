@@ -4,8 +4,8 @@ slang-server provides comprehensive Language Server Protocol (LSP) support for S
 
 ### Symbol-Specific Feature Support
 
-| Symbol Type          | GoTo              | Hover | Completion | Notes                                       |
-| -------------------- | ----------------- | ----- | ---------- | ------------------------------------------- | ------------------------- | -------------- | -------------------------- | --- |
+| Symbol Type          | GoTo | Hover | Completion | Notes                                       |
+| -------------------- | ---- | ----- | ---------- | ------------------------------------------- |
 | **Modules**          | ✅                | ✅    | ✅         |                                             |
 | **Interfaces**       | ✅                | ✅    | ✅         |                                             |
 | **Classes**          | 🟡                | 🟡    | 🟡         |                                             |

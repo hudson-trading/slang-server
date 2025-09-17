@@ -7,12 +7,12 @@
 git clone https://github.com/hudson-trading/slang-server.git
 cd slang-server
 
-# Pull dependencies
+# Pull dependencies (slang and reflect-cpp)
 git submodule update --init --recursive
 
 # Build with cmake using a C++20 compliant compiler
 cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j$(nproc)
+cmake --build build -j
 ```
 
 ### Pre-built binaries
