@@ -12,7 +12,7 @@ import fs = require('fs')
 
 const execFilePromise = promisify(child_process.execFile)
 
-async function fileExists(filePath: string): Promise<boolean> {
+export async function fileExists(filePath: string): Promise<boolean> {
   try {
     await fs.promises.access(filePath, fs.constants.F_OK)
     return true

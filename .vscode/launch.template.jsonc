@@ -4,7 +4,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Attach to Running slang-server",
+            "name": "Attach to running slang-server",
             "type": "cppdbg",
             "request": "attach",
             "program": "${workspaceFolder}/build/bin/slang-server",
@@ -24,7 +24,7 @@
             ],
         },
         {
-            "name": "Debug with gdb",
+            "name": "Debug tests with gdb",
             "request": "launch",
             "type": "cppdbg",
             "program": "${workspaceFolder}/build/bin/server_unittests",
@@ -46,10 +46,10 @@
             "name": "Run slang-vscode",
             "type": "extensionHost",
             "request": "launch",
-            "args": ["--disable-extensions", "--extensionDevelopmentPath=${workspaceFolder}"],
-            "outFiles": ["${workspaceFolder}/out/**"],
-            "cwd": "${workspaceFolder}",
-            "resolveSourceMapLocations": ["${workspaceFolder}/**", "!**/node_modules/**"],
+            "args": ["--disable-extensions", "--extensionDevelopmentPath=${workspaceFolder}/clients/vscode/"],
+            "outFiles": ["${workspaceFolder}/clients/vscode/out/**"],
+            "cwd": "${workspaceFolder}/clients/vscode",
+            "resolveSourceMapLocations": ["${workspaceFolder}/clients/vscode/**", "!**/node_modules/**"],
             "preLaunchTask": "build slang-vscode"
         }
     ],

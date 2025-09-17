@@ -13,6 +13,7 @@ import {
   CommandNode,
   ConfigObject,
   EditorButton,
+  fileExists,
   PathConfigObject,
   ViewContainerSpec,
 } from './lib/libconfig'
@@ -50,7 +51,7 @@ export class SlangExtension extends ActivityBarComponent {
   rewriterPath: ConfigObject<string> = new ConfigObject({
     default: '',
     description:
-      'Path to the rewriter script (typically slang rewriter binary with --expand-macros flag)',
+      'Rewriter command for macro expansion; e.g. `path/to/slang_rewriter --expand-macros`. This will shortly be part of the language server, and will not have to be set separately.',
   })
 
   rewrite: EditorButton = new EditorButton(
@@ -118,10 +119,17 @@ export class SlangExtension extends ActivityBarComponent {
   async setupLanguageClient(): Promise<void> {
     this.logger.info('starting language server')
     const slangServerPath = await this.path.getValueAsync()
-    const ok = await this.path.checkPathNotify()
-    if (!ok) {
+    if (slangServerPath === '') {
       await vscode.window.showErrorMessage(
-        'Invalid path, please build slang server from source and configure slang.path in your vscode settings. See https://github.com/hudson-trading/slang-server for build instructions.'
+        `"slang.path not configured. Configure the abs path at slang.path, add to PATH, or disable in config.`
+      )
+      return
+    }
+    // check if it exists
+    const exists = await fileExists(slangServerPath)
+    if (!exists) {
+      vscode.window.showErrorMessage(
+        `File "${slangServerPath}" set for slang.path doesn't exist, please reconfigure`
       )
       return
     }

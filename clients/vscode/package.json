@@ -11,10 +11,10 @@
     "fpga",
     "slang"
   ],
-  "homepage": "https://github.com/hudson-trading/slang-server",
+  "homepage": "https://hudson-trading.github.io/slang-server",
   "repository": {
     "type": "git",
-    "url": "https://github.com/hudson-trading/slang-server.git"
+    "url": "https://github.com/hudson-trading/slang-server"
   },
   "bugs": {
     "url": "https://github.com/hudson-trading/slang-server/issues"
@@ -313,18 +313,18 @@
           }
         },
         "slang.svFormat.command": {
-          "description": "Formatter Command. The file contents will be sent to stdin, and formatted code should be sent back on stdout",
+          "description": "Formatter Command. The file contents will be sent to stdin, and formatted code should be sent back on stdout. E.g. `path/to/verible-format --indentation_spaces=4 -",
           "default": "",
           "type": "string"
         },
         "slang.verilogFormat.command": {
-          "description": "Formatter Command. The file contents will be sent to stdin, and formatted code should be sent back on stdout",
+          "description": "Formatter Command. The file contents will be sent to stdin, and formatted code should be sent back on stdout. E.g. `path/to/verible-format --indentation_spaces=4 -",
           "default": "",
           "type": "string"
         },
         "slang.rewriterPath": {
           "default": "",
-          "description": "Path to the rewriter script (typically slang rewriter binary with --expand-macros flag)",
+          "description": "Rewriter command for macro expansion; e.g. `path/to/slang_rewriter --expand-macros`. This will shortly be part of the language server, and will not have to be set separately.",
           "type": "string"
         },
         "slang.path": {
@@ -334,7 +334,7 @@
         },
         "slang.args": {
           "default": [],
-          "description": "Arguments to pass to the slang-server",
+          "description": "Arguments to pass to the slang-server. These are different from slang flags; for those open `.slang/server.json`",
           "type": "array",
           "items": {
             "type": "string"

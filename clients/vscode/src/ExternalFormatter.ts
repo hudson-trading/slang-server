@@ -11,7 +11,7 @@ export class ExternalFormatter
 {
   command: ConfigObject<string> = new ConfigObject({
     description:
-      'Formatter Command. The file contents will be sent to stdin, and formatted code should be sent back on stdout',
+      'Formatter Command. The file contents will be sent to stdin, and formatted code should be sent back on stdout. E.g. `path/to/verible-format --indentation_spaces=4 -',
     default: '',
     type: 'string',
   })
