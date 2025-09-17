@@ -124,7 +124,7 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
                                 std::vector<std::string>{
                                     "`", // macros
                                     "#", // hierarchial inst- modules and interfaces
-                                    // ".", // params, ports, hierarchical references
+                                    ".", // hierarchical references. TODO: params, ports
                                     "(", // function calls
                                     ":", // pkg scope (::), wire width
                                     "[", // wire width, array indexing

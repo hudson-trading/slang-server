@@ -1,0 +1,188 @@
+[
+  {
+    "my_struct.": [
+      {
+        "label": "addr",
+        "labelDetails": {
+          "detail": " logic[7:0]",
+          "description": "$unit"
+        },
+        "kind": "Property",
+        "filterText": "addr"
+      },
+      {
+        "label": "data",
+        "labelDetails": {
+          "detail": " logic[31:0]",
+          "description": "$unit"
+        },
+        "kind": "Property",
+        "filterText": "data"
+      },
+      {
+        "label": "valid",
+        "labelDetails": {
+          "detail": " logic",
+          "description": "$unit"
+        },
+        "kind": "Property",
+        "filterText": "valid"
+      }
+    ]
+  },
+  {
+    "complex_struct.": [
+      {
+        "label": "inner",
+        "labelDetails": {
+          "detail": " simple_struct_t",
+          "description": "$unit"
+        },
+        "kind": "Property",
+        "filterText": "inner"
+      },
+      {
+        "label": "tag",
+        "labelDetails": {
+          "detail": " logic[15:0]",
+          "description": "$unit"
+        },
+        "kind": "Property",
+        "filterText": "tag"
+      },
+      {
+        "label": "ready",
+        "labelDetails": {
+          "detail": " logic",
+          "description": "$unit"
+        },
+        "kind": "Property",
+        "filterText": "ready"
+      }
+    ]
+  },
+  {
+    "very_complex_struct.": [
+      {
+        "label": "level1",
+        "labelDetails": {
+          "detail": " nested_struct_t",
+          "description": "$unit"
+        },
+        "kind": "Property",
+        "filterText": "level1"
+      },
+      {
+        "label": "id",
+        "labelDetails": {
+          "detail": " logic[3:0]",
+          "description": "$unit"
+        },
+        "kind": "Property",
+        "filterText": "id"
+      },
+      {
+        "label": "enable",
+        "labelDetails": {
+          "detail": " logic",
+          "description": "$unit"
+        },
+        "kind": "Property",
+        "filterText": "enable"
+      }
+    ]
+  },
+  {
+    "complex_struct.inner.": [
+      {
+        "label": "addr",
+        "labelDetails": {
+          "detail": " logic[7:0]",
+          "description": "$unit"
+        },
+        "kind": "Property",
+        "filterText": "addr"
+      },
+      {
+        "label": "data",
+        "labelDetails": {
+          "detail": " logic[31:0]",
+          "description": "$unit"
+        },
+        "kind": "Property",
+        "filterText": "data"
+      },
+      {
+        "label": "valid",
+        "labelDetails": {
+          "detail": " logic",
+          "description": "$unit"
+        },
+        "kind": "Property",
+        "filterText": "valid"
+      }
+    ]
+  },
+  {
+    "very_complex_struct.level1.": [
+      {
+        "label": "inner",
+        "labelDetails": {
+          "detail": " simple_struct_t",
+          "description": "$unit"
+        },
+        "kind": "Property",
+        "filterText": "inner"
+      },
+      {
+        "label": "tag",
+        "labelDetails": {
+          "detail": " logic[15:0]",
+          "description": "$unit"
+        },
+        "kind": "Property",
+        "filterText": "tag"
+      },
+      {
+        "label": "ready",
+        "labelDetails": {
+          "detail": " logic",
+          "description": "$unit"
+        },
+        "kind": "Property",
+        "filterText": "ready"
+      }
+    ]
+  },
+  {
+    "very_complex_struct.level1.inner.": [
+      {
+        "label": "addr",
+        "labelDetails": {
+          "detail": " logic[7:0]",
+          "description": "$unit"
+        },
+        "kind": "Property",
+        "filterText": "addr"
+      },
+      {
+        "label": "data",
+        "labelDetails": {
+          "detail": " logic[31:0]",
+          "description": "$unit"
+        },
+        "kind": "Property",
+        "filterText": "data"
+      },
+      {
+        "label": "valid",
+        "labelDetails": {
+          "detail": " logic",
+          "description": "$unit"
+        },
+        "kind": "Property",
+        "filterText": "valid"
+      }
+    ]
+  }
+]

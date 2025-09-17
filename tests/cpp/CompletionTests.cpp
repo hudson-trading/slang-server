@@ -300,3 +300,111 @@ TEST_CASE("ModuleMemberCompletion") {
     CHECK(rhs.size() == rhsRst.size());
     CHECK(rhs.size() == rhsEnable.size());
 }
+
+TEST_CASE("HierarchicalInstanceCompletion") {
+    ServerHarness server("repo1");
+    JsonGoldenTest golden;
+
+    auto doc = server.openFile("hierarchical_test.sv", R"(
+    module sub_module (
+        input logic clk,
+        input logic rst,
+        output logic [7:0] data_out,
+        output logic valid
+    );
+        logic internal_state;
+
+        always_ff @(posedge clk) begin
+            if (rst) begin
+                data_out <= 8'h0;
+                valid <= 1'b0;
+                internal_state <= 1'b0;
+            end else begin
+                data_out <= data_out + 1;
+                valid <= ~valid;
+                internal_state <= ~internal_state;
+            end
+        end
+    endmodule
+
+    module parent_module;
+        logic clk, rst;
+        logic [7:0] data;
+        logic valid;
+
+        sub_module inst (
+            .clk(clk),
+            .rst(rst),
+            .data_out(data),
+            .valid(valid)
+        );
+
+        initial begin
+            // Test hierarchical instance completions
+            inst.
+        end
+    endmodule
+    )");
+
+    // Test completions after "inst."
+    auto instCompletions = doc.after("inst.").getResolvedCompletions(".");
+    golden.record("instance_completions", instCompletions);
+}
+
+TEST_CASE("HierarchicalStructCompletion") {
+    ServerHarness server("repo1");
+    JsonGoldenTest golden;
+
+    auto doc = server.openFile("struct_hierarchical_test.sv", R"(
+    typedef struct {
+        logic [7:0] addr;
+        logic [31:0] data;
+        logic valid;
+    } simple_struct_t;
+
+    typedef struct {
+        simple_struct_t inner;
+        logic [15:0] tag;
+        logic ready;
+    } nested_struct_t;
+
+    typedef struct {
+        nested_struct_t level1;
+        logic [3:0] id;
+        logic enable;
+    } deep_nested_struct_t;
+
+    module struct_test_module;
+        simple_struct_t my_struct;
+        nested_struct_t complex_struct;
+        deep_nested_struct_t very_complex_struct;
+
+        initial begin
+            my_struct.;
+
+            complex_struct.;
+
+            very_complex_struct.;
+
+            complex_struct.inner.;
+
+            very_complex_struct.level1.;
+
+            very_complex_struct.level1.inner.;
+        end
+    endmodule
+    )");
+
+    auto testCompletion = [&](std::string s) {
+        auto completions = doc.after(s).getResolvedCompletions(".");
+        CHECK(!completions.empty());
+        golden.record(s, completions);
+    };
+
+    testCompletion("my_struct.");
+    testCompletion("complex_struct.");
+    testCompletion("very_complex_struct.");
+    testCompletion("complex_struct.inner.");
+    testCompletion("very_complex_struct.level1.");
+    testCompletion("very_complex_struct.level1.inner.");
+}

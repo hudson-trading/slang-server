@@ -116,6 +116,11 @@ public:
 
     friend class DocumentHandle;
 
+    /// @brief Gets the appropriate scope from a symbol for member access traversal
+    /// @param symbol The symbol to get the scope from
+    /// @return Pointer to the scope, or nullptr if the symbol doesn't have an accessible scope
+    static const slang::ast::Scope* getScopeFromSym(const slang::ast::Symbol* symbol);
+
 private:
     /// Reference to the source manager
     const SourceManager& m_sourceManager;
@@ -181,11 +186,6 @@ private:
     const slang::ast::Symbol* handleInterfacePortHeader(const slang::parsing::Token* node,
                                                         const slang::syntax::SyntaxNode* syntax,
                                                         const slang::ast::Scope* scope) const;
-
-    /// @brief Gets the appropriate scope from a symbol for member access traversal
-    /// @param symbol The symbol to get the scope from
-    /// @return Pointer to the scope, or nullptr if the symbol doesn't have an accessible scope
-    static const slang::ast::Scope* getScopeFromSym(const slang::ast::Symbol* symbol);
 
     /// @brief Finds the name syntax node associated with a given syntax node
     /// @param node The syntax node to search from

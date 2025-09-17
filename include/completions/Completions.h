@@ -42,6 +42,8 @@ void resolveModule(const slang::syntax::SyntaxTree& tree, std::string_view modul
 // Members
 //------------------------------------------------------------------------------
 
+lsp::CompletionItemKind getCompletionKind(const slang::ast::Symbol& symbol);
+
 /// Get single completion for a symbol
 lsp::CompletionItem getMemberCompletion(const slang::ast::Symbol& symbol,
                                         const slang::ast::Scope* currentScope);
@@ -52,5 +54,9 @@ void getMemberCompletions(std::vector<lsp::CompletionItem>& results, const slang
 
 /// Resolve additional information for a member completion
 void resolveMemberCompletion(const slang::ast::Scope& scope, lsp::CompletionItem& item);
+
+/// Hierarchical completion (struct member, instance member, etc)
+lsp::CompletionItem getHierarchicalCompletion(const slang::ast::Symbol& parentSymbol,
+                                              const slang::ast::Symbol& symbol);
 
 } // namespace server::completions

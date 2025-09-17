@@ -1,0 +1,86 @@
+[
+  {
+    "instance_completions": [
+      {
+        "label": "clk",
+        "labelDetails": {
+          "detail": " input logic"
+        },
+        "kind": "Interface",
+        "filterText": "clk"
+      },
+      {
+        "label": "clk",
+        "labelDetails": {
+          "detail": " logic"
+        },
+        "kind": "Variable",
+        "filterText": "clk"
+      },
+      {
+        "label": "rst",
+        "labelDetails": {
+          "detail": " input logic"
+        },
+        "kind": "Interface",
+        "filterText": "rst"
+      },
+      {
+        "label": "rst",
+        "labelDetails": {
+          "detail": " logic"
+        },
+        "kind": "Variable",
+        "filterText": "rst"
+      },
+      {
+        "label": "data_out",
+        "labelDetails": {
+          "detail": " output logic[7:0]"
+        },
+        "kind": "Interface",
+        "filterText": "data_out"
+      },
+      {
+        "label": "data_out",
+        "labelDetails": {
+          "detail": " logic [7:0]"
+        },
+        "kind": "Variable",
+        "filterText": "data_out"
+      },
+      {
+        "label": "valid",
+        "labelDetails": {
+          "detail": " output logic"
+        },
+        "kind": "Interface",
+        "filterText": "valid"
+      },
+      {
+        "label": "valid",
+        "labelDetails": {
+          "detail": " logic"
+        },
+        "kind": "Variable",
+        "filterText": "valid"
+      },
+      {
+        "label": "internal_state",
+        "labelDetails": {
+          "detail": " logic"
+        },
+        "kind": "Variable",
+        "filterText": "internal_state"
+      },
+      {
+        "label": "",
+        "labelDetails": {
+          "detail": " "
+        },
+        "kind": "Property",
+        "filterText": ""
+      }
+    ]
+  }
+]
