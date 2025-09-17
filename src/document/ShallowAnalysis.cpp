@@ -16,11 +16,15 @@
 
 #include "slang/ast/ASTContext.h"
 #include "slang/ast/Compilation.h"
+#include "slang/ast/symbols/ValueSymbol.h"
+#include "slang/ast/types/AllTypes.h"
+#include "slang/ast/types/Type.h"
 #include "slang/driver/Driver.h"
 #include "slang/parsing/Token.h"
 #include "slang/syntax/SyntaxKind.h"
 #include "slang/syntax/SyntaxTree.h"
 #include "slang/text/SourceLocation.h"
+#include "slang/util/Util.h"
 namespace server {
 using namespace slang;
 ShallowAnalysis::ShallowAnalysis(const SourceManager& sourceManager, slang::BufferID buffer,
@@ -169,7 +173,13 @@ const ast::Scope* ShallowAnalysis::getScopeFromSym(const ast::Symbol* symbol) {
         return &symbol->as<ast::Scope>();
     }
 
-    if (ast::ValueSymbol::isKind(symbol->kind)) {
+    if (symbol->isType()) {
+        auto& type = symbol->as<ast::Type>().getCanonicalType();
+        if (type.isScope()) {
+            return &type.as<ast::Scope>();
+        }
+    }
+    else if (ast::ValueSymbol::isKind(symbol->kind)) {
         auto& type = symbol->as<ast::ValueSymbol>().getType().getCanonicalType();
         if (type.isScope()) {
             return &type.as<ast::Scope>();
@@ -271,15 +281,30 @@ const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declT
                 // Proper selector resolution is in
                 // Expression::bindLookupResult, however that modifies the compilation at the moment
                 for (auto& sel : result.selectors) {
-                    const ast::Scope* scope = getScopeFromSym(cur);
-                    if (!scope) {
-                        return nullptr;
-                    }
                     if (auto member = std::get_if<ast::LookupResult::MemberSelector>(&sel)) {
+                        const ast::Scope* scope = getScopeFromSym(cur);
+                        if (!scope) {
+                            INFO("No scope found for sym {} : {}", cur->getHierarchicalPath(),
+                                 toString(cur->kind));
+                            return nullptr;
+                        }
                         cur = scope->find(member->name);
                     }
                     else {
-                        cur = scope->getFirstMember();
+                        const ast::Type* type = nullptr;
+                        if (cur->isType()) {
+                            type = &cur->as<ast::Type>();
+                        }
+                        else if (cur->isValue()) {
+                            type = &cur->as<ast::ValueSymbol>().getType();
+                        }
+
+                        if (type->isArray()) {
+                            cur = type->getArrayElementType();
+                        }
+                        else {
+                            return nullptr;
+                        }
                     }
                     if (!cur) {
                         WARN("No members found in scope {}",
