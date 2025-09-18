@@ -77,9 +77,9 @@ jobs:
       if: runner.os == 'Windows'
       run: |
         uv venv
-        .venv/bin/activate
+        .venv\Scripts\activate
         uv sync
-        pytest tests/system/ --binary build/${{ matrix.preset }}/bin/slang-server
+        pytest tests\system\ --binary build\${{ matrix.preset }}\bin\slang-server
     # Making the neovim plugin the top-level dir below this point for busted action
     # Moving the old checkout is easier than doing some Windows-portable rm -rf thing
     - name: Move build
