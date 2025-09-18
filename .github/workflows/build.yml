@@ -67,14 +67,14 @@ jobs:
     - name: Set up uv
       uses: astral-sh/setup-uv@v6
     - name: Run pytest (not Windows)
-      if: runner.os != Windows
+      if: runner.os != 'Windows'
       run: |
         uv venv
         source .venv/bin/activate
         uv sync
         pytest tests/system/ --binary build/${{ matrix.preset }}/bin/slang-server
     - name: Run pytest (Windows)
-      if: runner.os == Windows
+      if: runner.os == 'Windows'
       run: |
         uv venv
         .venv/bin/activate
