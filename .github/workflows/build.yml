@@ -71,7 +71,7 @@ jobs:
         uv venv
         source .venv/bin/activate
         uv sync
-        pytest tests/system/
+        pytest tests/system/ --binary build/${{ matrix.preset }}/bin/slang-server
     # Making the neovim plugin the top-level dir below this point for busted action
     # Moving the old checkout is easier than doing some Windows-portable rm -rf thing
     - name: Move build

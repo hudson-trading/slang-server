@@ -33,11 +33,18 @@ def pytest_addoption(parser):
         help="Run server with gdb. Will wait for the given number of seconds to attach before continuing",
     )
 
+    parser.addoption(
+        "--binary",
+        default="build/bin/slang-server",
+        help="Slang server binary",
+    )
+
 
 @dataclass
 class Flags:
     rr: bool = False
     gdb: Union[int, None] = None
+    binary: str = "build/bin/slang-server"
 
 
 @pytest.fixture
@@ -49,6 +56,7 @@ def my_options(request) -> Flags:
     return Flags(
         rr=request.config.getoption("--rr"),
         gdb=request.config.getoption("--gdb"),
+        binary=request.config.getoption("--binary"),
     )
 
 
@@ -197,7 +205,7 @@ class SlangClient(BaseLanguageClient):
         return uris.from_fs_path(self.workspace_root)
 
     async def start(self, options: Flags):
-        binary = "build/bin/slang-server"
+        binary = options.binary
         args = []
         if options.rr:
             args = ["record", binary]
