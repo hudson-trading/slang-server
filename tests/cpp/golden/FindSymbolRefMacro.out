@@ -151,9 +151,9 @@ module test;
     generate
 
         for (i = 0; i < `SIMPLE_MACRO; i++) begin : gen_block
-                    ^ Ref -> `i`
+                    ^ Ref -> `// In test`\n\\n\---\n\\n\`i`
                         ^^^^^^^^^^^^^ Ref -> `// Comprehensive macro test file covering various macro scenarios\n\// Based on test cases from tests/unittests/parsing/DiagnosticTests.cpp\n\// Basic macro definitions\n\`define SIMPLE_MACRO 42`
-                                       ^ Ref -> `i`
+                                       ^ Ref -> `// In test`\n\\n\---\n\\n\`i`
                                                     ^^^^^^^^^ Sym gen_block : LoopGenerate
 
             logic [`FUNC_MACRO(7):0] gen_signal;
