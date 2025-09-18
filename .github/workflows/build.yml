@@ -60,10 +60,16 @@ jobs:
       run: cmake --preset ${{ matrix.preset }} -DSLANG_CI_BUILD=ON
     - name: Build
       run: cmake --build build/${{ matrix.preset }} -j8
-    - name: Run tests
+    - name: Run ctest
       run: ctest --test-dir build/${{ matrix.preset }} --output-on-failure --no-tests=error -j8
       # Don't run tests on windows
       if: matrix.os != 'windows-latest'
+    - name: Run pytest
+      run: |
+        uv venv
+        source .venv/bin/activate
+        uv sync
+        pytest tests/system/
     # Making the neovim plugin the top-level dir below this point for busted action
     # Moving the old checkout is easier than doing some Windows-portable rm -rf thing
     - name: Move build
