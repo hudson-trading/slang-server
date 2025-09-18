@@ -16,6 +16,7 @@
 
 #include "slang/ast/Compilation.h"
 #include "slang/syntax/SyntaxTree.h"
+#include "slang/util/Util.h"
 
 namespace fs = std::filesystem;
 namespace ast = slang::ast;
@@ -117,12 +118,12 @@ void CompletionDispatch::getTriggerCompletions(char triggerChar, char prevChar,
 
         auto& compilation = doc->getCompilation();
         auto pkg = compilation->getPackage(packageName);
-        m_lastDoc = doc;
-        m_lastScope = pkg->getHierarchicalPath();
         if (!pkg) {
             ERROR("No package found for {}", packageName);
             return;
         }
+        m_lastDoc = doc;
+        m_lastScope = pkg->getHierarchicalPath();
         auto originalScope = doc->getScopeAt(loc);
         completions::getMemberCompletions(results, pkg, false, originalScope);
     }
@@ -138,6 +139,31 @@ void CompletionDispatch::getTriggerCompletions(char triggerChar, char prevChar,
         // Add global macros
         for (auto& [name, _info] : m_indexer.macroToFiles.getAllEntries()) {
             results.push_back(completions::getMacroCompletion(name));
+        }
+    }
+    else if (triggerChar == '.') {
+        // Member completions
+        auto exprToken = doc->getTokenAt(loc - 3);
+        if (!exprToken) {
+            WARN("No expression token found before '.'");
+            return;
+        }
+        auto sym = doc->getAnalysis().getSymbolAt(exprToken->location());
+        if (!sym) {
+            WARN("No symbol found for token {}", exprToken->valueText());
+            return;
+        }
+        auto scope = ShallowAnalysis::getScopeFromSym(sym);
+        if (!scope) {
+            WARN("No scope found for sym {}: {}", sym->getHierarchicalPath(), toString(sym->kind));
+            return;
+        }
+        m_lastDoc = doc;
+        m_lastScope = scope ? scope->asSymbol().getHierarchicalPath() : "";
+        INFO("Getting hier completions for symbol {} in scope {}", sym->name,
+             sym->getHierarchicalPath());
+        for (auto& member : scope->members()) {
+            results.push_back(completions::getHierarchicalCompletion(scope->asSymbol(), member));
         }
     }
     else {
@@ -210,6 +236,7 @@ void CompletionDispatch::getCompletionItemResolve(lsp::CompletionItem& item) {
         default: {
             // TODO: grab a shared ptr to the old compilation, so we don't have to do lookups
             // again
+            SLANG_ASSERT(m_lastDoc != nullptr);
             auto& comp = m_lastDoc->getCompilation();
             if (!comp) {
                 ERROR("No compilation available for completion resolution");

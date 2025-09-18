@@ -16,6 +16,7 @@
 
 #include "slang/ast/ASTContext.h"
 #include "slang/ast/Compilation.h"
+#include "slang/ast/symbols/InstanceSymbols.h"
 #include "slang/ast/symbols/ValueSymbol.h"
 #include "slang/ast/types/AllTypes.h"
 #include "slang/ast/types/Type.h"
@@ -184,6 +185,9 @@ const ast::Scope* ShallowAnalysis::getScopeFromSym(const ast::Symbol* symbol) {
         if (type.isScope()) {
             return &type.as<ast::Scope>();
         }
+    }
+    else if (ast::InstanceSymbol::isKind(symbol->kind)) {
+        return &symbol->as<ast::InstanceSymbol>().body.as<ast::Scope>();
     }
 
     return nullptr;

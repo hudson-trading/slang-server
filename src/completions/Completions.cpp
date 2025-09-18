@@ -24,6 +24,7 @@
 #include "slang/ast/symbols/PortSymbols.h"
 #include "slang/ast/symbols/SubroutineSymbols.h"
 #include "slang/ast/symbols/ValueSymbol.h"
+#include "slang/ast/symbols/VariableSymbols.h"
 #include "slang/ast/types/AllTypes.h"
 #include "slang/syntax/SyntaxNode.h"
 #include "slang/syntax/SyntaxPrinter.h"
@@ -242,46 +243,66 @@ void resolveModule(const slang::syntax::SyntaxTree& tree, std::string_view modul
         break;
     }
 }
+lsp::CompletionItemKind getCompletionKind(const slang::ast::Symbol& symbol) {
+    switch (symbol.kind) {
+        case slang::ast::SymbolKind::Variable:
+            return lsp::CompletionItemKind::Variable;
+        case slang::ast::SymbolKind::Parameter:
+            return lsp::CompletionItemKind::TypeParameter;
+        case slang::ast::SymbolKind::TypeAlias: {
+            auto& typeAlias = symbol.as<slang::ast::TypeAliasType>();
+            if (typeAlias.isEnum()) {
+                return lsp::CompletionItemKind::Enum;
+            }
+            else {
+                return lsp::CompletionItemKind::Struct;
+            }
+        }
+        case slang::ast::SymbolKind::TypeParameter:
+            return lsp::CompletionItemKind::Struct;
+        case slang::ast::SymbolKind::Subroutine:
+            return lsp::CompletionItemKind::Function;
+        case slang::ast::SymbolKind::Port:
+        case slang::ast::SymbolKind::InterfacePort:
+            return lsp::CompletionItemKind::Interface;
+        case slang::ast::SymbolKind::Instance:
+        case slang::ast::SymbolKind::InstanceArray:
+            return lsp::CompletionItemKind::Class;
+        case slang::ast::SymbolKind::EnumValue:
+            return lsp::CompletionItemKind::EnumMember;
+        case slang::ast::SymbolKind::GenerateBlock:
+        case slang::ast::SymbolKind::GenerateBlockArray:
+            // Ideally would be "Module" which looks like '{}', but we have to diff between
+            // actual module completions
+            return lsp::CompletionItemKind::Snippet;
+        default:
+            return lsp::CompletionItemKind::Property;
+    }
+};
+
+lsp::CompletionItem getHierarchicalCompletion(const slang::ast::Symbol& parentSymbol,
+                                              const slang::ast::Symbol& symbol) {
+
+    if (ast::FieldSymbol::isKind(symbol.kind)) {
+        auto detailStr = symbol.as<ast::FieldSymbol>().getType().toString();
+        return lsp::CompletionItem{
+            .label = std::string{symbol.name},
+            .labelDetails =
+                lsp::CompletionItemLabelDetails{.detail = " " + detailStr,
+                                                .description = parentSymbol.getHierarchicalPath()},
+            .kind = getCompletionKind(symbol),
+            .documentation = std::nullopt, // Will be populated during resolve
+            .filterText = std::string{symbol.name},
+        };
+    }
+    else {
+        // hierarchical completions;
+        return getMemberCompletion(symbol, symbol.getParentScope());
+    }
+}
 
 lsp::CompletionItem getMemberCompletion(const slang::ast::Symbol& symbol,
                                         const slang::ast::Scope* currentScope) {
-
-    auto completionKind = [&symbol]() -> lsp::CompletionItemKind {
-        switch (symbol.kind) {
-            case slang::ast::SymbolKind::Variable:
-                return lsp::CompletionItemKind::Variable;
-            case slang::ast::SymbolKind::Parameter:
-                return lsp::CompletionItemKind::TypeParameter;
-            case slang::ast::SymbolKind::TypeAlias: {
-                auto& typeAlias = symbol.as<slang::ast::TypeAliasType>();
-                if (typeAlias.isEnum()) {
-                    return lsp::CompletionItemKind::Enum;
-                }
-                else {
-                    return lsp::CompletionItemKind::Struct;
-                }
-            }
-            case slang::ast::SymbolKind::TypeParameter:
-                return lsp::CompletionItemKind::Struct;
-            case slang::ast::SymbolKind::Subroutine:
-                return lsp::CompletionItemKind::Function;
-            case slang::ast::SymbolKind::Port:
-            case slang::ast::SymbolKind::InterfacePort:
-                return lsp::CompletionItemKind::Interface;
-            case slang::ast::SymbolKind::Instance:
-            case slang::ast::SymbolKind::InstanceArray:
-                return lsp::CompletionItemKind::Class;
-            case slang::ast::SymbolKind::EnumValue:
-                return lsp::CompletionItemKind::EnumMember;
-            case slang::ast::SymbolKind::GenerateBlock:
-            case slang::ast::SymbolKind::GenerateBlockArray:
-                // Ideally would be "Module" which looks like '{}', but we have to diff between
-                // actual module completions
-                return lsp::CompletionItemKind::Snippet;
-            default:
-                return lsp::CompletionItemKind::Property;
-        }
-    }();
 
     // Detail str is shown in the dropdown next to the names; show brief type information, fall back
     // to kind. The kind is already revealed in the icon (completionKind above), so we don't need to
@@ -330,6 +351,7 @@ lsp::CompletionItem getMemberCompletion(const slang::ast::Symbol& symbol,
                                     ifaceConn.second ? ifaceConn.second->name : "<generic>");
         }
         else {
+            INFO("Falling back to sym kind for {}", symbol.getHierarchicalPath());
             detailStr = toString(symbol.kind);
         }
     }
@@ -354,7 +376,7 @@ lsp::CompletionItem getMemberCompletion(const slang::ast::Symbol& symbol,
         .label = std::string{symbol.name},
         .labelDetails = lsp::CompletionItemLabelDetails{.detail = " " + detailStr,
                                                         .description = descriptionStr},
-        .kind = completionKind,
+        .kind = getCompletionKind(symbol),
         .documentation = std::nullopt, // Will be populated during resolve
         .filterText = std::string{symbol.name},
     };
@@ -391,7 +413,6 @@ void resolveMemberCompletion(const slang::ast::Scope& scope, lsp::CompletionItem
     }
     else if (slang::ast::ValueSymbol::isKind(symbol.kind) ||
              slang::ast::PortSymbol::isKind(symbol.kind) ||
-             slang::ast::ParameterSymbol::isKind(symbol.kind) ||
              slang::ast::TypeParameterSymbol::isKind(symbol.kind) ||
              slang::ast::InterfacePortSymbol::isKind(symbol.kind)) {
 
@@ -424,6 +445,7 @@ void getMemberCompletions(std::vector<lsp::CompletionItem>& results, const slang
                           bool isLhs, const slang::ast::Scope* originalScope) {
 
     if (!scope) {
+        ERROR("No scope for member completion");
         return;
     }
 

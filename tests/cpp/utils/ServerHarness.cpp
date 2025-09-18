@@ -140,6 +140,12 @@ void DocumentHandle::publishChanges() {
     state = DocState::Open;
 }
 
+void DocumentHandle::ensureSynced() {
+    if (state == DocState::Dirty) {
+        publishChanges();
+    }
+}
+
 void DocumentHandle::save() {
     if (!pending_changes.empty()) {
         publishChanges();
@@ -200,6 +206,8 @@ Cursor& Cursor::write(const std::string& text) {
 }
 
 std::vector<CompletionHandle> Cursor::getCompletions(std::optional<std::string> triggerChar) {
+    m_doc.ensureSynced();
+
     auto ret = m_doc.m_server.getDocCompletion(lsp::CompletionParams{
         .context =
             lsp::CompletionContext{

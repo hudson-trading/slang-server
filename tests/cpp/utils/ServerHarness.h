@@ -88,6 +88,7 @@ public:
     Cursor begin();
 
     void publishChanges();
+    void ensureSynced();
 
     void save();
     void close();
