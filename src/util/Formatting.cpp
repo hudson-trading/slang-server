@@ -4,6 +4,7 @@
 #include "util/Formatting.h"
 
 #include "util/Logging.h"
+#include <fmt/format.h>
 #include <sstream>
 
 #include "slang/syntax/AllSyntax.h"
@@ -172,15 +173,16 @@ std::string svCodeBlockString(std::string_view code) {
 }
 
 std::string svCodeBlockString(const syntax::SyntaxNode& node) {
-    // adjust certain node types to include the type
     const syntax::SyntaxNode* fmtNode = &node;
     switch (node.kind) {
+        // Adjust these to just be the header
         case syntax::SyntaxKind::ModuleDeclaration:
         case syntax::SyntaxKind::ProgramDeclaration:
         case syntax::SyntaxKind::PackageDeclaration:
         case syntax::SyntaxKind::InterfaceDeclaration:
             fmtNode = node.as<syntax::ModuleDeclarationSyntax>().header;
             break;
+        // adjust to include the type in the declaration
         case syntax::SyntaxKind::Declarator:
         case syntax::SyntaxKind::HierarchicalInstance:
         case syntax::SyntaxKind::EnumType:
@@ -188,6 +190,9 @@ std::string svCodeBlockString(const syntax::SyntaxNode& node) {
             break;
         default:
             break;
+    }
+    if (fmtNode->parent && fmtNode->parent->kind == syntax::SyntaxKind::TypedefDeclaration) {
+        fmtNode = fmtNode->parent;
     }
 
     auto res = fmtNode->toString();

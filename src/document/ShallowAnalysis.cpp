@@ -162,6 +162,8 @@ const ast::Symbol* ShallowAnalysis::handleInterfacePortHeader(const parsing::Tok
 
     auto& idef = iface.definition->as<ast::DefinitionSymbol>();
     auto& inst = ast::InstanceSymbol::createDefault(*m_compilation, idef);
+
+    // TODO: avoid creating a default instance each time
     return inst.body.lookupName(header.modport->member.valueText());
 }
 
@@ -396,6 +398,7 @@ std::optional<DefinitionInfo> ShallowAnalysis::getDefinitionInfoAt(const lsp::Po
 
     std::optional<parsing::Token> nameToken;
     const syntax::SyntaxNode* symSyntax = nullptr;
+    const ast::Symbol* symbol = nullptr;
 
     // Directives refer directly to syntaxes; others refer to symbols
     // TODO: handle macro args better. getReferenceAt looks them up, but they may not refer to
@@ -410,29 +413,30 @@ std::optional<DefinitionInfo> ShallowAnalysis::getDefinitionInfoAt(const lsp::Po
             }
             symSyntax = macro->second;
             nameToken = macro->second->name;
+            // symbol remains nullptr for macros
         } break;
         default: {
-            auto sym = getSymbolAtToken(declTok);
-            if (!sym) {
+            symbol = getSymbolAtToken(declTok);
+            if (!symbol) {
                 return std::nullopt;
             }
-            symSyntax = sym->getSyntax();
+            symSyntax = symbol->getSyntax();
 
             if (!symSyntax) {
-                ERROR("Failed to get syntax for symbol {} of kind {}", sym->name,
-                      toString(sym->kind));
+                ERROR("Failed to get syntax for symbol {} of kind {}", symbol->name,
+                      toString(symbol->kind));
                 return std::nullopt;
             }
 
             // For some symbols we want to return the parent to get the data type
-            if (sym->kind == ast::SymbolKind::Modport ||
-                sym->kind == ast::SymbolKind::ModportPort) {
+            if (symbol->kind == ast::SymbolKind::Modport ||
+                symbol->kind == ast::SymbolKind::ModportPort) {
                 symSyntax = symSyntax->parent;
             }
-            nameToken = findNameToken(symSyntax, sym->name);
+            nameToken = findNameToken(symSyntax, symbol->name);
             if (!nameToken) {
-                ERROR("Failed to find name token for symbol '{}' of kind {} = {}", sym->name,
-                      toString(sym->kind), symSyntax->toString());
+                ERROR("Failed to find name token for symbol '{}' of kind {} = {}", symbol->name,
+                      toString(symbol->kind), symSyntax->toString());
 
                 // TODO: figure out why this fails sometimes with all generates
                 nameToken = symSyntax->getFirstToken();
@@ -444,6 +448,7 @@ std::optional<DefinitionInfo> ShallowAnalysis::getDefinitionInfoAt(const lsp::Po
         symSyntax,
         *nameToken,
         SourceRange::NoLocation,
+        symbol,
     };
 
     // fill in original range if behind a macro
@@ -510,15 +515,41 @@ std::optional<lsp::Hover> ShallowAnalysis::getDocHover(const lsp::Position& posi
     }
     auto info = *maybeInfo;
 
-    // Adjust the ranges for some syntaxes
-    const SyntaxNode* nodePtr = info.node;
-
-    auto md = svCodeBlockString(*nodePtr);
+    auto md = svCodeBlockString(*info.node);
 
     if (info.macroUsageRange != SourceRange::NoLocation) {
         auto text = m_sourceManager.getText(info.macroUsageRange);
         md += fmt::format("\n Expanded from\n {}", svCodeBlockString(text));
     }
+
+    // Show hierarchical path if:
+    // 1. Symbol is in a different scope than the current position
+    // 2. Symbol's scope is not the root scope ($unit)
+    if (info.symbol) {
+        auto symbolScope = info.symbol->getParentScope();
+        auto lookupScope = getScopeAt(loc.value());
+
+        if (lookupScope && symbolScope && lookupScope != symbolScope) {
+            auto hierPath = symbolScope->asSymbol().getHierarchicalPath();
+            if (!hierPath.empty() && hierPath != "$unit") {
+                md = fmt::format("{}\n\n---\n\n{}",
+                                 svCodeBlockString(fmt::format("// In {}", hierPath)), md);
+            }
+        }
+    }
+    else {
+        // show file for macros
+        auto macroBuf = info.nameToken.location().buffer();
+        if (macroBuf != m_buffer && m_sourceManager.isValid(macroBuf)) {
+            auto path = m_sourceManager.getFullPath(macroBuf);
+            if (!path.empty()) {
+                md = fmt::format(
+                    "{}\n\n---\n\n{}",
+                    svCodeBlockString(fmt::format("// From {}", path.filename().string())), md);
+            }
+        }
+    }
+
     return lsp::Hover{.contents = markdown(md)};
 }
 

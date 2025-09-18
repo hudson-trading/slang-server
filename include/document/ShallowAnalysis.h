@@ -36,10 +36,12 @@ struct DefinitionInfo {
     slang::parsing::Token nameToken;
     // Optional original source range; exists if it's behind a macro expansion
     slang::SourceRange macroUsageRange;
+    // The symbol this token refers to (if any)
+    const slang::ast::Symbol* symbol;
 
     bool operator==(const DefinitionInfo& other) const {
         return node == other.node && nameToken.location() == other.nameToken.location() &&
-               macroUsageRange == other.macroUsageRange;
+               macroUsageRange == other.macroUsageRange && symbol == other.symbol;
     }
 
     bool operator!=(const DefinitionInfo& other) const { return !(*this == other); }
