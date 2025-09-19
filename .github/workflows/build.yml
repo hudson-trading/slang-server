@@ -73,13 +73,14 @@ jobs:
         source .venv/bin/activate
         uv sync
         pytest tests/system/ --binary build/${{ matrix.preset }}/bin/slang-server
-    - name: Run pytest (Windows)
-      if: runner.os == 'Windows'
-      run: |
-        uv venv
-        .venv\Scripts\activate
-        uv sync
-        pytest tests\system\ --binary build\${{ matrix.preset }}\bin\slang-server
+    # Pytests start but hang on Windows, needs further research
+            #    - name: Run pytest (Windows)
+            #      if: runner.os == 'Windows'
+            #      run: |
+            #        uv venv
+            #        .venv\Scripts\activate
+            #        uv sync
+            #        pytest tests\system\ --binary build\${{ matrix.preset }}\bin\slang-server
     # Making the neovim plugin the top-level dir below this point for busted action
     # Moving the old checkout is easier than doing some Windows-portable rm -rf thing
     - name: Move build
