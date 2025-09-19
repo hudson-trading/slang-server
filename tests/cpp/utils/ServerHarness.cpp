@@ -59,6 +59,111 @@ bool ServerHarness::hasDefinition(const lsp::DefinitionParams& params) {
     return !rfl::holds_alternative<std::monostate>(result);
 }
 
+void ServerHarness::checkGetInstances(const Cursor& cursor, const std::set<std::string>& expected) {
+    auto pos = cursor.getPosition();
+    auto result = getInstances(lsp::TextDocumentPositionParams{
+        .textDocument = {cursor.getUri()},
+        .position = lsp::Position{.line = pos.line, .character = pos.character}});
+
+    std::set<std::string> got;
+    for (const auto& instance : result) {
+        got.insert(instance);
+    }
+    CHECK(got == expected);
+};
+
+void ServerHarness::checkGotoDeclaration(const std::string& path, const Cursor* expectedLocation) {
+    onGotoDeclaration(path);
+
+    if (!expectedLocation) {
+        CHECK(client.m_showDocuments.empty());
+        return;
+    }
+
+    CHECK(client.m_showDocuments.size() == 1);
+
+    auto result = client.m_showDocuments.front();
+    client.m_showDocuments.pop_front();
+
+    CHECK(result.uri == expectedLocation->getUri());
+    auto expectedPos = expectedLocation->getPosition();
+    CHECK(result.selection.has_value());
+    CHECK(result.selection->start.line == expectedPos.line);
+    CHECK(result.selection->start.character == expectedPos.character);
+}
+
+void ServerHarness::checkPrepareCallHierarchy(const Cursor& cursor,
+                                              const std::set<std::string>& expected) {
+    auto pos = cursor.getPosition();
+    auto result = getDocPrepareCallHierarchy(lsp::CallHierarchyPrepareParams{
+        .textDocument = {cursor.getUri()},
+        .position = lsp::Position{.line = pos.line, .character = pos.character}});
+
+    if (!result) {
+        CHECK(expected.empty());
+        return;
+    }
+
+    std::set<std::string> got;
+    for (const auto& item : *result) {
+        got.insert(item.name);
+    }
+    CHECK(got == expected);
+}
+
+template<typename ResultType, typename GetCallFunc, typename ExtractFunc>
+static void checkCallHierarchyGeneric(const std::string& path,
+                                      const std::set<ServerHarness::ExpectedHierResult>& expected,
+                                      GetCallFunc getCallFunc, ExtractFunc extractFunc) {
+    auto result = getCallFunc(path);
+
+    if (!result) {
+        CHECK(expected.empty());
+        return;
+    }
+
+    std::set<ExpectedStart> expStarts;
+    for (const auto& expect : expected) {
+        expStarts.insert({.name = expect.name,
+                          .uri = expect.cursor->getUri().str(),
+                          .start = expect.cursor->getPosition()});
+    }
+
+    std::set<ExpectedStart> gotStarts;
+    for (const auto& call : *result) {
+        CHECK(call.fromRanges.size() == 1);
+        auto [name, uri] = extractFunc(call);
+        gotStarts.insert({.name = name, .uri = uri.str(), .start = call.fromRanges[0].start});
+    }
+    CHECK(gotStarts == expStarts);
+}
+
+void ServerHarness::checkIncomingCalls(const std::string& path,
+                                       const std::set<ExpectedHierResult>& expected) {
+    auto getCall = [this](const std::string& path) {
+        return getCallHierarchyIncomingCalls(
+            lsp::CallHierarchyIncomingCallsParams{.item = {.name = path}});
+    };
+    auto extract = [](const auto& incoming) -> std::pair<std::string, URI> {
+        return {incoming.from.name, incoming.from.uri};
+    };
+
+    checkCallHierarchyGeneric<lsp::CallHierarchyIncomingCall>(path, expected, getCall, extract);
+}
+
+void ServerHarness::checkOutgoingCalls(const std::string& path,
+                                       const std::set<ExpectedHierResult>& expected) {
+    auto getCall = [this](const std::string& path) {
+        return getCallHierarchyOutgoingCalls(
+            lsp::CallHierarchyOutgoingCallsParams{.item = {.name = path}});
+    };
+    auto extract = [](const auto& outgoing) -> std::pair<std::string, URI> {
+        return {outgoing.to.name, outgoing.to.uri};
+    };
+
+    checkCallHierarchyGeneric<lsp::CallHierarchyOutgoingCall>(path, expected, getCall, extract);
+}
+
 std::shared_ptr<server::SlangDoc> ServerHarness::getDoc(const URI& uri) {
     if (!m_driver) {
         return nullptr;
@@ -92,16 +197,16 @@ void DocumentHandle::insert(lsp::uint offset, std::string text) {
     state = DocState::Dirty;
 }
 
-Cursor DocumentHandle::before(std::string before) {
-    auto idx = m_text.find(before);
+Cursor DocumentHandle::before(std::string before, lsp::uint start_pos) {
+    auto idx = m_text.find(before, start_pos);
     if (idx == std::string::npos) {
         throw std::runtime_error(fmt::format("String '{}' not found in document", before));
     }
     return Cursor(*this, idx);
 }
 
-Cursor DocumentHandle::after(std::string after) {
-    auto idx = m_text.find(after);
+Cursor DocumentHandle::after(std::string after, lsp::uint start_pos) {
+    auto idx = m_text.find(after, start_pos);
     if (idx == std::string::npos) {
         throw std::runtime_error(fmt::format("String '{}' not found in document", after));
     }
@@ -314,4 +419,24 @@ std::optional<server::DefinitionInfo> DocumentHandle::getDefinitionInfoAt(lsp::u
         return std::nullopt;
     }
     return doc->getAnalysis().getDefinitionInfoAtPosition(*loc);
+}
+
+Cursor Cursor::before(const std::string& before) {
+    return m_doc.before(before, m_offset);
+}
+
+Cursor Cursor::after(const std::string& after) {
+    return m_doc.after(after, m_offset);
+}
+
+std::ostream& operator<<(std::ostream& os, const Cursor& cursor) {
+    auto pos = cursor.getPosition();
+    os << cursor.getUri().str() << " L " << pos.line << " C " << pos.character;
+    return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const struct ExpectedStart& start) {
+    os << start.name << " U " << start.uri << " L " << start.start.line << " C "
+       << start.start.character;
+    return os;
 }
