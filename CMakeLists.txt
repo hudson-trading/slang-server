@@ -259,7 +259,5 @@ endif()
 
 if(SLANG_SERVER_INCLUDE_TESTS)
   enable_testing()
-  # Define SLANG_SERVER_TESTS for the library when building tests
-  target_compile_definitions(slang_server_obj_lib PRIVATE SLANG_SERVER_TESTS)
   add_subdirectory(tests/cpp)
 endif()
