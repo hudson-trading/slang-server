@@ -1,0 +1,27 @@
+name: Neovim Plugin Repo Sync
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'clients/neovim/**'
+      - '**/neovim-sync.yml'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout source repository
+      uses: actions/checkout@v3
+
+    - name: Mirror the subdirectory to the plugin repo
+      run: |
+        git config --global user.name "Hudson River Trading"
+        git config --global user.email "opensource@hudson-trading.com"
+        git clone https://x-access-token:${{ secrets.NEOVIM_PAT }}@github.com/hudson-trading/slang-server.nvim.git neovim-sync
+        rsync -av --delete --exclude '.git' clients/neovim/ neovim-sync/
+        cd neovim-sync
+        git add .
+        git commit -m "Sync from Slang Server repo"
+        git push
