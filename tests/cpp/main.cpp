@@ -9,6 +9,10 @@
 #include "slang/util/BumpAllocator.h"
 #include "slang/util/OS.h"
 
+#ifdef _WIN32
+#    include <windows.h>
+#endif
+
 namespace slang {
 
 BumpAllocator alloc;
@@ -26,6 +30,13 @@ bool g_updateGoldenFlag = false;
 int main(int argc, char** argv) {
     slang::OS::setupConsole();
     slang::syntax::SyntaxTree::getDefaultSourceManager().setDisableProximatePaths(true);
+
+// Let slang-server know we're running tests
+#ifdef _WIN32
+    SetEnvironmentVariable(TEXT("SLANG_SERVER_TESTS"), TEXT("YES"));
+#else
+    setenv("SLANG_SERVER_TESTS", "YES", true);
+#endif
 
     // We create a Catch2 session
     Catch::Session session;
