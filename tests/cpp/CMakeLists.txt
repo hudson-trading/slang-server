@@ -16,8 +16,6 @@ target_include_directories(
 target_link_libraries(server_unittests PRIVATE reflectcpp)
 
 target_link_libraries(server_unittests PRIVATE slang::slang Catch2::Catch2)
-target_compile_definitions(server_unittests PRIVATE UNITTESTS
-                                                    SLANG_SERVER_TESTS)
 target_include_directories(
   server_unittests PRIVATE ${PROJECT_SOURCE_DIR}/external/slang/tests/unittests)
 
