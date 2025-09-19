@@ -18,7 +18,7 @@
         <link rel="prev" href="../features/">
       
       
-        <link rel="next" href="../hovers/">
+        <link rel="next" href="../../hdl/hdl/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -665,52 +665,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../hovers/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Hover Examples
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../completions/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Completion Examples
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -968,7 +922,12 @@
 
 <h1 id="planned-features">Planned Features<a class="headerlink" href="#planned-features" title="Permanent link">&para;</a></h1>
 <h3 id="goto-references">Goto references<a class="headerlink" href="#goto-references" title="Permanent link">&para;</a></h3>
-<p>This will start out with top level symbols like macros, modules, packages, and interfaces, then work it's way into scope members</p>
+<p>This feature will likely be implemented in this order:</p>
+<ul>
+<li>top level symbols like macros, modules, packages, and interfaces</li>
+<li>scope members</li>
+<li>struct members</li>
+</ul>
 <h3 id="semantic-token-highlighting">Semantic Token Highlighting<a class="headerlink" href="#semantic-token-highlighting" title="Permanent link">&para;</a></h3>
 <p>This will provide additional coloring for variable names, distinguisihing between wires, registers, and parameters.</p>
 <p>For classes/functions it will distinguish betweeen instance variables, function args and locals.</p>
@@ -978,9 +937,9 @@
 <p><strong>Signals</strong> - Show the resolved type of wires and registers, and show the value when a waveform is connected</p>
 <p><strong>Macros/Functions</strong> - Show the positional argument names</p>
 <p><strong>Wildcard Ports</strong> - Show which signals are passed through</p>
-<p><strong>Wildcard Imports</strong> - Show which symbols are imported</p>
+<p><strong>Wildcard Imports</strong> - Show which symbols are used from the import</p>
 <h3 id="formatter">Formatter<a class="headerlink" href="#formatter" title="Permanent link">&para;</a></h3>
-<p>This one is pretty self explanatory.</p>
+<p>This one is pretty self explanatory, but it will live in the slang repo and also be shipped as a standalone binary. In order to make formatting nice for the language server, basic formatting functions already exist in this repo. This includes things like squashing white spaces to condense hovers/completion types, and left aligning blocks of text for hovers and completion docs.</p>
 
 
 

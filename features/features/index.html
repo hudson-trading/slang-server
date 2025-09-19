@@ -638,52 +638,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../hovers/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Hover Examples
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../completions/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Completion Examples
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -915,25 +869,138 @@
 <h1 id="feature-support">Feature Support<a class="headerlink" href="#feature-support" title="Permanent link">&para;</a></h1>
 <p>slang-server provides comprehensive Language Server Protocol (LSP) support for SystemVerilog, offering modern IDE features that significantly enhance development productivity.</p>
 <h3 id="symbol-specific-feature-support">Symbol-Specific Feature Support<a class="headerlink" href="#symbol-specific-feature-support" title="Permanent link">&para;</a></h3>
-<p>| Symbol Type          | GoTo              | Hover | Completion | Notes                                       |
-| -------------------- | ----------------- | ----- | ---------- | ------------------------------------------- | ------------------------- | -------------- | -------------------------- | --- |
-| <strong>Modules</strong>          | ✅                | ✅    | ✅         |                                             |
-| <strong>Interfaces</strong>       | ✅                | ✅    | ✅         |                                             |
-| <strong>Classes</strong>          | 🟡                | 🟡    | 🟡         |                                             |
-| <strong>Functions/Tasks</strong>  | ✅                | ✅    | 🟡         | Completions can be improved with signatures |
-| <strong>Scope Variables</strong>  | ✅                | ✅    | ✅         |                                             |
-| <strong>Ports</strong>            | ✅                | ✅    | ❌         | Completions planned for ports on instances  |
-| <strong>Parameters</strong>       | ✅                | ✅    | ❌         | Completions planned for params on instances |
-| <strong>Typedefs</strong>         | ✅                | ✅    | ⚪         | Custom type definitions                     |
-| <strong>Enums</strong>            | ✅                | ✅    | ⚪         | Enumeration values                          |
-| <strong>Packages</strong>         | ✅                | ✅    | ✅         | Completions for package members             |
-| <strong>Wildcard Imports</strong> | ✅                | ✅    | ✅         | Completions for imported members            |
-| <strong>Macros</strong>           | 🟡                | ✅    | ✅         | Indexed macro completions                   |
-| <strong>System Tasks</strong>     | ⚪                | ❌    | ❌         | Planned                                     |
-| <!--                 | **Constraints**   | 🟡    | ❌         | 🟡                                          | 🟡                        | Basic support² | -->                        |
-| <!--                 | **Covergroups**   | ✅    | ✅         | 🟡                                          | Coverage point navigation |
-| **Assertions**       | ✅                | ✅    | 🟡         | SVA property support                        | -->                       |
-| <!--                 | **DPI Functions** | 🟡    | ❌         | ✅                                          | ✅                        | ✅             | External function imports³ | --> |</p>
+<table>
+<thead>
+<tr>
+<th>Symbol Type</th>
+<th>GoTo</th>
+<th>Hover</th>
+<th>Completion</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Modules</strong></td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>Interfaces</strong></td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>Classes</strong></td>
+<td>🟡</td>
+<td>🟡</td>
+<td>🟡</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>Functions/Tasks</strong></td>
+<td>✅</td>
+<td>✅</td>
+<td>🟡</td>
+<td>Completions can be improved with signatures</td>
+</tr>
+<tr>
+<td><strong>Scope Variables</strong></td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>Ports</strong></td>
+<td>✅</td>
+<td>✅</td>
+<td>❌</td>
+<td>Completions planned for ports on instances</td>
+</tr>
+<tr>
+<td><strong>Parameters</strong></td>
+<td>✅</td>
+<td>✅</td>
+<td>❌</td>
+<td>Completions planned for params on instances</td>
+</tr>
+<tr>
+<td><strong>Typedefs</strong></td>
+<td>✅</td>
+<td>✅</td>
+<td>⚪</td>
+<td>Custom type definitions</td>
+</tr>
+<tr>
+<td><strong>Enums</strong></td>
+<td>✅</td>
+<td>✅</td>
+<td>⚪</td>
+<td>Enumeration values</td>
+</tr>
+<tr>
+<td><strong>Packages</strong></td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>Completions for package members</td>
+</tr>
+<tr>
+<td><strong>Wildcard Imports</strong></td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>Completions for imported members</td>
+</tr>
+<tr>
+<td><strong>Macros</strong></td>
+<td>🟡</td>
+<td>✅</td>
+<td>✅</td>
+<td>Indexed macro completions</td>
+</tr>
+<tr>
+<td><strong>System Tasks</strong></td>
+<td>⚪</td>
+<td>❌</td>
+<td>❌</td>
+<td>Planned</td>
+</tr>
+<tr>
+<td>&lt;!--</td>
+<td><strong>Constraints</strong></td>
+<td>🟡</td>
+<td>❌</td>
+<td>🟡</td>
+</tr>
+<tr>
+<td>&lt;!--</td>
+<td><strong>Covergroups</strong></td>
+<td>✅</td>
+<td>✅</td>
+<td>🟡</td>
+</tr>
+<tr>
+<td><strong>Assertions</strong></td>
+<td>✅</td>
+<td>✅</td>
+<td>🟡</td>
+<td>SVA property support</td>
+</tr>
+<tr>
+<td>&lt;!--</td>
+<td><strong>DPI Functions</strong></td>
+<td>🟡</td>
+<td>❌</td>
+<td>✅</td>
+</tr>
+</tbody>
+</table>
 
 
 

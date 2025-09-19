@@ -546,15 +546,6 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#flags" class="md-nav__link">
-    <span class="md-ellipsis">
-      flags
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#indexglobs" class="md-nav__link">
     <span class="md-ellipsis">
       indexGlobs
@@ -567,6 +558,15 @@
   <a href="#excludedirs" class="md-nav__link">
     <span class="md-ellipsis">
       excludeDirs
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      flags
     </span>
   </a>
   
@@ -724,52 +724,6 @@
   
   <span class="md-ellipsis">
     Planned Features
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../features/hovers/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Hover Examples
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../features/completions/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Completion Examples
     
   </span>
   
@@ -1000,15 +954,6 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#flags" class="md-nav__link">
-    <span class="md-ellipsis">
-      flags
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#indexglobs" class="md-nav__link">
     <span class="md-ellipsis">
       indexGlobs
@@ -1021,6 +966,15 @@
   <a href="#excludedirs" class="md-nav__link">
     <span class="md-ellipsis">
       excludeDirs
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      flags
     </span>
   </a>
   
@@ -1114,48 +1068,50 @@
 <li><code>${workspaceFolder}/.slang/local/server.json</code> (<code>.slang/local</code> should be ignored by source control)</li>
 </ul>
 <h2 id="config-options">Config options<a class="headerlink" href="#config-options" title="Permanent link">&para;</a></h2>
-<p>All configuration options are optional and have sensible defaults.</p>
-<h3 id="flags"><code>flags</code><a class="headerlink" href="#flags" title="Permanent link">&para;</a></h3>
-<p><strong>Type:</strong> <code>string</code>
-<strong>Description:</strong> Flags to pass to slang
-<strong>Example:</strong> <code>"--top=my_top_module --include-dir=./src"</code></p>
+<p>All configuration options are optional and have sensible defaults. In Vscode, the configuration files are self-documenting, meaning that there are completions and hovers for the server.json files.</p>
 <h3 id="indexglobs"><code>indexGlobs</code><a class="headerlink" href="#indexglobs" title="Permanent link">&para;</a></h3>
-<p><strong>Type:</strong> <code>array of strings</code>
-<strong>Default:</strong> <code>["./.../*.sv*"]</code>
-<strong>Description:</strong> SV Globs of what to index. Supports recursive patterns with <code>...</code> \
-<strong>Example:</strong></p>
+<p>Configuring this and excludeDirs are <strong>highly</strong> recommended, as narrowing these can dramatically reduce the indexing time. Crawling a directory can actually take more time than actually indexing the files, so avoiding build dirs and software dirs to reduce that time. If there's rewritten or generated verilog in build dirs that get indexed, it can slow down the language server and make features like gotos and completions inaccurate.</p>
+<p><strong>Type:</strong> <code>array of strings</code></p>
+<p><strong>Default:</strong> <code>["./.../*.sv*"]</code></p>
+<p><strong>Description:</strong> SV Globs of what to index. Supports recursive patterns with <code>...</code> \</p>
+<p><strong>Example:</strong></p>
 <div class="language-json highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;indexGlobs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;./src/.../*.sv&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;./tb/.../*.sv&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;./include/.../*.svh&quot;</span><span class="p">]</span>
 <span class="p">}</span>
 </code></pre></div>
 <h3 id="excludedirs"><code>excludeDirs</code><a class="headerlink" href="#excludedirs" title="Permanent link">&para;</a></h3>
-<p><strong>Type:</strong> <code>array of strings</code>
-<strong>Description:</strong> Directories to exclude from indexing
-<strong>Example:</strong></p>
+<p><strong>Type:</strong> <code>array of strings</code></p>
+<p><strong>Description:</strong> Directories to exclude from indexing</p>
+<p><strong>Example:</strong></p>
 <div class="language-json highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;excludeDirs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;build&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;temp&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;old_code&quot;</span><span class="p">]</span>
 <span class="p">}</span>
 </code></pre></div>
+<h3 id="flags"><code>flags</code><a class="headerlink" href="#flags" title="Permanent link">&para;</a></h3>
+<p>It's recommended to keep your slang flags in a flag file, that way it can be shared by both CI and the language server. Another nice setup is having slang.f contain your CI flags, then have slang-server.f include that file (via <code>-f path/to/slang.f</code>), then add more warnings in <code>slang-server.f</code>. This way more pedantic checks will show as yellow underlines in your editor.</p>
+<p><strong>Type:</strong> <code>string</code></p>
+<p><strong>Description:</strong> Flags to pass to slang</p>
+<p><strong>Example:</strong> <code>"-f path/to/slang_flags.f</code></p>
 <h3 id="indexingthreads"><code>indexingThreads</code><a class="headerlink" href="#indexingthreads" title="Permanent link">&para;</a></h3>
-<p><strong>Type:</strong> <code>integer</code>
-<strong>Default:</strong> <code>0</code> (auto-detect)
-<strong>Description:</strong> Thread count to use for indexing. When set to 0, automatically detects the optimal number of threads based on system capabilities.</p>
+<p><strong>Type:</strong> <code>integer</code></p>
+<p><strong>Default:</strong> <code>0</code> (auto-detect)</p>
+<p><strong>Description:</strong> Thread count to use for indexing. When set to 0, automatically detects the optimal number of threads based on system capabilities.</p>
 <h3 id="parsingthreads"><code>parsingThreads</code><a class="headerlink" href="#parsingthreads" title="Permanent link">&para;</a></h3>
-<p><strong>Type:</strong> <code>integer</code>
-<strong>Default:</strong> <code>8</code>
-<strong>Description:</strong> Thread count to use for parsing SystemVerilog files for compilations.</p>
+<p><strong>Type:</strong> <code>integer</code></p>
+<p><strong>Default:</strong> <code>8</code></p>
+<p><strong>Description:</strong> Thread count to use for parsing SystemVerilog files for compilations.</p>
 <h3 id="build"><code>build</code><a class="headerlink" href="#build" title="Permanent link">&para;</a></h3>
-<p><strong>Type:</strong> <code>string</code> (optional)
-<strong>Description:</strong> Build file to automatically open on start
-<strong>Example:</strong> <code>"./build/compile.f"</code></p>
+<p><strong>Type:</strong> <code>string</code> (optional)</p>
+<p><strong>Description:</strong> Build file to automatically open on start</p>
+<p><strong>Example:</strong> <code>"./build/compile.f"</code></p>
 <h3 id="buildpattern"><code>buildPattern</code><a class="headerlink" href="#buildpattern" title="Permanent link">&para;</a></h3>
-<p><strong>Type:</strong> <code>string</code> (optional)
-<strong>Description:</strong> Build file pattern used to find the a .f file given a the name of a waveform file. (e.g. /tmp/{}.fst with builds/{}.f looks for build/foo.f to load the compilation). This is also used to look for .f files in the vscode client when selecting a .f file.
-<strong>Example:</strong> <code>"builds/{}.f"</code></p>
+<p><strong>Type:</strong> <code>string</code> (optional)</p>
+<p><strong>Description:</strong> Build file pattern used to find the a .f file given a the name of a waveform file. (e.g. /tmp/{}.fst with builds/{}.f looks for build/foo.f to load the compilation). This is also used to look for .f files in the vscode client when selecting a .f file.</p>
+<p><strong>Example:</strong> <code>"builds/{}.f"</code></p>
 <h3 id="wcpcommand"><code>wcpCommand</code><a class="headerlink" href="#wcpcommand" title="Permanent link">&para;</a></h3>
-<p><strong>Type:</strong> <code>string</code>
-<strong>Description:</strong> Waveform viewer command where <code>{}</code> will be replaced with the WCP port
-<strong>Example:</strong> <code>"surfer --wcp-initiate {}"</code></p>
+<p><strong>Type:</strong> <code>string</code></p>
+<p><strong>Description:</strong> Waveform viewer command where <code>{}</code> will be replaced with the WCP port</p>
+<p><strong>Example:</strong> <code>"surfer --wcp-initiate {}"</code></p>
 <h2 id="example-configuration">Example Configuration<a class="headerlink" href="#example-configuration" title="Permanent link">&para;</a></h2>
 <div class="language-json highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;flags&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;-f tools/slang/slang-server.f&quot;</span><span class="p">,</span>
