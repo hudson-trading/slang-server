@@ -16,7 +16,8 @@ Note that it is not necessary to install this plugin in order to use Slang Serve
 
 ## Requirements
 
-Some [Nerd Font](https://www.nerdfonts.com/) characters are used.  Installing and using one of them is recommended.
+* `slang-server` configured as a Neovim language server
+* [Nerd Font](https://www.nerdfonts.com/) is recommended
 
 ## Installation
 Use your favorite Neovim plugin manager to download and install the plugin.  If you happen to use lazy.nvim you can [install the plugin](https://www.lazyvim.org/configuration/plugins) by adding `~/.config/nvim/lua/plugins/slang-server.lua`:
