@@ -60,10 +60,27 @@ jobs:
       run: cmake --preset ${{ matrix.preset }} -DSLANG_CI_BUILD=ON
     - name: Build
       run: cmake --build build/${{ matrix.preset }} -j8
-    - name: Run tests
+    - name: Run ctest
       run: ctest --test-dir build/${{ matrix.preset }} --output-on-failure --no-tests=error -j8
       # Don't run tests on windows
       if: matrix.os != 'windows-latest'
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v6
+    - name: Run pytest (not Windows)
+      if: runner.os != 'Windows'
+      run: |
+        uv venv
+        source .venv/bin/activate
+        uv sync
+        pytest tests/system/ --binary build/${{ matrix.preset }}/bin/slang-server
+    # Pytests start but hang on Windows, needs further research
+            #    - name: Run pytest (Windows)
+            #      if: runner.os == 'Windows'
+            #      run: |
+            #        uv venv
+            #        .venv\Scripts\activate
+            #        uv sync
+            #        pytest tests\system\ --binary build\${{ matrix.preset }}\bin\slang-server
     # Making the neovim plugin the top-level dir below this point for busted action
     # Moving the old checkout is easier than doing some Windows-portable rm -rf thing
     - name: Move build
