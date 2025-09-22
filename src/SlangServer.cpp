@@ -33,6 +33,9 @@
 #include "slang/text/SourceManager.h"
 #include "slang/util/OS.h"
 #include "slang/util/TimeTrace.h"
+
+namespace fs = std::filesystem;
+
 namespace server {
 
 SlangServer::SlangServer(SlangLspClient& client) :
@@ -297,12 +300,11 @@ void SlangServer::loadConfig() {
         auto fsPath = std::filesystem::path(m_workspaceFolder.value().uri.getPath());
         confPaths.push_back((fsPath / ".slang" / "server.json").string());
     }
-#ifndef SLANG_SERVER_TESTS
-    if (getenv("HOME")) {
-        fs::path homePath = getenv("HOME");
+    auto home = std::getenv("HOME");
+    if (home && !std::getenv("SLANG_SERVER_TESTS")) {
+        fs::path homePath(home);
         confPaths.push_back((homePath / ".slang" / "server.json").string());
     }
-#endif
     if (m_workspaceFolder) {
         // std::string workspacePath(m_workspaceFolder.value().uri.getPath());
         auto fsPath = std::filesystem::path(m_workspaceFolder.value().uri.getPath());
