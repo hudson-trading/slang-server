@@ -7,6 +7,12 @@ on:
     paths:
       - 'clients/neovim/**'
       - '**/neovim-sync.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'clients/neovim/**'
+      - '**/neovim-sync.yml'
 
 jobs:
   sync:
@@ -14,17 +20,13 @@ jobs:
     steps:
     - name: Checkout source repository
       uses: actions/checkout@v3
-
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v6
     - name: Mirror the subdirectory to the plugin repo
+      env:
+        GH_PAT: ${{ secrets.NEOVIM_PAT }}
       run: |
-        git log -n1 --format=%B > ${{ runner.temp }}/commit.msg
-        echo "From:" >> ${{ runner.temp }}/commit.msg
-        echo -n "https://github.com/hudson-trading/slang-server/commit/" >> ${{ runner.temp }}/commit.msg
-        git rev-parse HEAD >> ${{ runner.temp }}/commit.msg
-        git config --global user.name "Hudson River Trading"
-        git config --global user.email "opensource@hudson-trading.com"
-        git clone https://x-access-token:${{ secrets.NEOVIM_PAT }}@github.com/hudson-trading/slang-server.nvim.git neovim-sync
-        rsync -av --delete --exclude '.git' clients/neovim/ neovim-sync/
-        git -C neovim-sync add .
-        git -C neovim-sync commit -F ${{ runner.temp }}/commit.msg
-        git -C neovim-sync push
+        uv venv
+        source .venv/bin/activate
+        uv sync
+        scripts/ci/neovim-sync.py --event ${{ github.event_name }}
