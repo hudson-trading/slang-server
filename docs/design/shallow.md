@@ -7,7 +7,7 @@ This isn't really a thing for HDLs, where a full design is almost always assumed
 
 ### Limitations
 
-Hierarchicaly references can go down or up more than one layer, in which case some symbols may not load. It would be nice to continue adding the relevant syntax trees to get all symbols in the current document, rather than just loading directly referenced symbols. Upward references will always be a blind spot for the language server, and are generall not considered a good practice.
+Hierarchical references can go down or up more than one layer, in which case some symbols may not load. It would be nice to continue adding the relevant syntax trees to get all symbols in the current document, rather than just loading directly referenced symbols. Upward references will always be a blind spot for the language server, and are generall not considered a good practice.
 
 ## AllGenerateBranches
 
