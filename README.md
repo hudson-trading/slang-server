@@ -8,7 +8,7 @@ Contributions are welcome! See [DEVELOPING.md](DEVELOPING.md)
 
 ## Features
 
-Quick, high quality lint messages on from [Slang]() on every keystroke, with links to the [Slang warning reference]().
+Quick, high quality lint messages on from [Slang](https://github.com/MikePopoloski/slang) on every keystroke, with links to the [Slang warning reference](https://sv-lang.com/warning-ref.html).
 
 ![](clients/vscode/images/lints.gif)
 
