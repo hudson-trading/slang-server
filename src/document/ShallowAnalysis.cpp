@@ -361,6 +361,11 @@ const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declT
         return def.definition;
     }
 
+    auto pkg = m_compilation->getPackage(declTok->valueText());
+    if (pkg) {
+        return pkg;
+    }
+
     return nullptr;
 }
 

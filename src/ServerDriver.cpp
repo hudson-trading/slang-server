@@ -44,6 +44,7 @@ ServerDriver::ServerDriver(Indexer& indexer, SlangLspClient& client, std::string
     parseOpts.ignoreDuplicates = true;
 
     bool ok = driver.parseCommandLine(flags, parseOpts);
+    driver.options.errorLimit = 0;
     ok &= driver.processOptions(false);
     if (!ok) {
         client.showError(fmt::format("Failed to parse config flags: {}", flags));
@@ -60,7 +61,6 @@ ServerDriver::ServerDriver(Indexer& indexer, SlangLspClient& client, std::string
     }
 
     // Configure diagnostic engine
-    diagEngine.setErrorLimit(1000);
     diagEngine.setIgnoreAllWarnings(false);
     diagEngine.setIgnoreAllNotes(false);
     diagEngine.addClient(diagClient);

@@ -225,7 +225,7 @@ void DocumentHandle::append(std::string text) {
     insert(m_text.size(), text);
 }
 
-void DocumentHandle::erase(int start, int end) {
+void DocumentHandle::erase(size_t start, size_t end) {
     CHECK(state != DocState::Closed);
 
     pending_changes.push_back({lsp::TextDocumentContentChangePartial{

@@ -11,8 +11,11 @@
 #include "document/ShallowAnalysis.h"
 #include "lsp/URI.h"
 #include "util/Logging.h"
+#include <fmt/format.h>
 #include <fmt/ranges.h>
 #include <stdexcept>
+#include <string>
+#include <string_view>
 
 #include "slang/ast/Compilation.h"
 #include "slang/diagnostics/Diagnostics.h"
@@ -129,32 +132,55 @@ bool SlangDoc::textMatches(std::string_view text) {
 }
 
 void SlangDoc::onChange(const std::vector<lsp::TextDocumentContentChangeEvent>& contentChanges) {
-    std::string text;
+    SmallVector<char> buffer;
     std::string_view textView = getText();
     std::vector<size_t> lineOffsets;
 
-    // This is typically length 1, but sometimes can be more
-    for (auto& change_ : contentChanges) {
-        // Only one thread is able to call onchange, so the offsets remain valid without locking
-        lineOffsets.clear();
-        SourceManager::computeLineOffsets(textView, lineOffsets);
-        auto& change = rfl::get<lsp::TextDocumentContentChangePartial>(change_);
+    if (contentChanges.size() == 0) {
+        ERROR("Empty onChange event");
+        return;
+    }
 
-        auto& start = change.range.start;
-        auto& end = change.range.end;
-        if (start.line >= lineOffsets.size() || end.line >= lineOffsets.size()) {
-            ERROR("Range out of bounds: {},{} / {}", start.line, end.line, lineOffsets.size());
-            return;
-        }
+    auto getOffsets = [&](lsp::Range range) {
+        // Only one thread is able to call onchange, so the offsets remain valid without locking
+        SourceManager::computeLineOffsets(textView, lineOffsets);
+        auto& start = range.start;
+        auto& end = range.end;
         auto startOffset = lineOffsets[start.line] + start.character;
         auto endOffset = lineOffsets[end.line] + end.character;
+        if (start.line >= lineOffsets.size() || end.line >= lineOffsets.size()) {
+            throw std::runtime_error(fmt::format("Range out of bounds: {},{} / {}", start.line,
+                                                 end.line, lineOffsets.size()));
+        }
+        return std::make_pair(startOffset, endOffset);
+    };
 
-        text = std::string(textView.substr(0, startOffset)) + change.text +
-               std::string(textView.substr(endOffset));
-        textView = text;
+    // Single change (most common)
+    auto change = rfl::get<lsp::TextDocumentContentChangePartial>(contentChanges[0]);
+    auto offsets = getOffsets(change.range);
+    // insert all parts
+    buffer.append(textView.begin(), textView.begin() + offsets.first);
+    buffer.append(change.text.begin(), change.text.end());
+    buffer.append(textView.begin() + offsets.second, textView.end());
+    if (buffer.empty() || buffer.back() != '\0')
+        buffer.push_back('\0');
+
+    // More than one change is rare- typically things like rename actions, or if there's some lag.
+    for (size_t i = 1; i < contentChanges.size(); i++) {
+        textView = std::string_view{buffer.data(), buffer.size()};
+        change = rfl::get<lsp::TextDocumentContentChangePartial>(contentChanges[i]);
+        lineOffsets.clear();
+        auto offsets = getOffsets(change.range);
+
+        // handle deletes
+        if (offsets.second > offsets.first) {
+            buffer.erase(buffer.begin() + offsets.first, buffer.begin() + offsets.second);
+        }
+        // handle inserts
+        buffer.insert(buffer.begin() + offsets.first, change.text.begin(), change.text.end());
     }
-    // TODO: use assignBuffer to avoid copy
-    m_buffer = m_sourceManager.assignText<true>(m_uri.getPath(), textView).id;
+
+    m_buffer = m_sourceManager.assignBuffer<true>(m_uri.getPath(), std::move(buffer)).id;
 
     // Invalidate pointers to old buffer
     m_tree.reset();
