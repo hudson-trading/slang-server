@@ -161,6 +161,7 @@ std::optional<std::vector<lsp::CallHierarchyItem>> ServerCompilation::getDocPrep
     std::vector<lsp::CallHierarchyItem> result;
     for (const auto& instance : getInstances(posParams)) {
         // TODO -- trace aggregates too
+        // TODO -- remove isWcpVariable once not needed here
         if (!isWcpVariable(instance)) {
             continue;
         }

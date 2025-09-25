@@ -91,7 +91,7 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     // WCP Commands
     registerCommand<lsp::TextDocumentPositionParams, std::vector<std::string>,
                     &SlangServer::getInstances>("slang.getInstances");
-    registerCommand<waves::ScopeToWaveform, std::monostate, &SlangServer::addToWaveform>(
+    registerCommand<waves::ItemToWaveform, std::monostate, &SlangServer::addToWaveform>(
         "slang.addToWaveform");
     registerCommand<std::string, std::monostate, &SlangServer::openWaveform>("slang.openWaveform");
 
@@ -292,20 +292,13 @@ std::vector<std::string> SlangServer::getInstances(const lsp::TextDocumentPositi
     return m_driver->comp->getInstances(params);
 }
 
-std::monostate SlangServer::addToWaveform(const waves::ScopeToWaveform& params) {
-    // TODO -- once WCP variables and scopes are squashed we won't actually need the compilation
-    // here
-    if (!m_driver->comp || !m_wcpClient.has_value() || !m_wcpClient->running()) {
-        ERROR("No compilation or WCP session available, cannot add items");
+std::monostate SlangServer::addToWaveform(const waves::ItemToWaveform& params) {
+    if (!m_wcpClient.has_value() || !m_wcpClient->running()) {
+        ERROR("No WCP session available, cannot add items");
         return std::monostate{};
     }
 
-    if (m_driver->comp->isWcpVariable(params.path)) {
-        m_wcpClient->addVariable(params.path);
-    }
-    else {
-        m_wcpClient->addScope(params);
-    }
+    m_wcpClient->addItem(params);
 
     return std::monostate{};
 }

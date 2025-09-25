@@ -78,7 +78,7 @@ public:
     std::shared_ptr<server::SlangDoc> getDoc(const URI& uri);
 
     // For access to isWcpVariable
-    // TODO -- remove once WCP varaiables and scopes are squashed
+    // TODO -- remove once isWcpVariable is removed
     using SlangServer::m_driver;
 };
 

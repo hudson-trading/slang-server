@@ -51,6 +51,13 @@ struct AddScope {
     bool recursive;
 };
 
+struct AddItems {
+    std::string type;
+    std::string command;
+    std::vector<VariablePath> items;
+    bool recursive;
+};
+
 struct WaveformsLoaded {
     using Tag = rfl::Literal<"waveforms_loaded">;
     std::string type;
