@@ -1,6 +1,6 @@
 # Planned Features
 
-### Goto references
+### Find references
 
 This feature will likely be implemented in this order:
 

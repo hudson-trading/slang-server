@@ -88,6 +88,7 @@ nav:
       # - Completion Examples: features/completions.md
   - HDL Features:
       - hdl/hdl.md
+      - hdl/api.md
   - Design Choices:
       - design/indexing.md
       - design/shallow.md
