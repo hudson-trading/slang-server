@@ -36,29 +36,32 @@ protected:
     /// Register an rpc method with the given Params, Return, and Method (name)
     template<typename P, typename R, auto Method>
     void registerMethod(const std::string& name) {
-        requests[name] = [this](std::optional<rfl::Generic> paramsJson) -> rfl::Generic {
-            // Deserialize params
-            R result;
-            if constexpr (!std::is_same_v<P, std::nullopt_t>) {
-                rfl::Result<P> params = rfl::from_generic<P, rfl::UnderlyingEnums>(
-                    paramsJson.value());
-                if (!params) {
-                    throw std::runtime_error(params.error().what());
-                }
-                result = (static_cast<Impl*>(this)->*Method)(params.value());
-            }
-            else {
-                result = (static_cast<Impl*>(this)->*Method)(std::monostate{});
-            }
-
-            if constexpr (std::is_same_v<R, std::monostate>) {
+        if constexpr (std::is_same_v<R, std::monostate>) {
+            requests[name] = [](std::optional<rfl::Generic>) -> rfl::Generic {
                 return std::nullopt;
-            }
-            else {
-                return rfl::to_generic<rfl::UnderlyingEnums>(result);
-            }
-        };
-        std::cerr << "Registered method: " << name << "\n";
+            };
+        }
+        else {
+            requests[name] = [this](std::optional<rfl::Generic> paramsJson) -> rfl::Generic {
+                // Deserialize params
+
+                auto getResult = [&]() {
+                    if constexpr (!std::is_same_v<P, std::nullopt_t>) {
+                        rfl::Result<P> params = rfl::from_generic<P, rfl::UnderlyingEnums>(
+                            paramsJson.value());
+                        if (!params) {
+                            throw std::runtime_error(params.error().what());
+                        }
+                        return (static_cast<Impl*>(this)->*Method)(params.value());
+                    }
+                    else {
+                        return (static_cast<Impl*>(this)->*Method)(std::monostate{});
+                    }
+                };
+                return rfl::to_generic<rfl::UnderlyingEnums>(getResult());
+            };
+            std::cerr << "Registered method: " << name << "\n";
+        }
     }
 
     /// Register an rpc notification with the given Params and Method (name)
@@ -88,7 +91,8 @@ protected:
             auto it = notifications.find(request.method);
             if (it != notifications.end()) {
                 std::cerr << "<--- " << request.method << std::endl;
-                // std::cerr << rfl::json::write(request.params, rfl::json::pretty) << std::endl;
+                // std::cerr << rfl::json::write(request.params, rfl::json::pretty) <<
+                // std::endl;
                 try {
                     if (request.params.has_value()) {
                         it->second(request.params.value());
