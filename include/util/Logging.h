@@ -31,7 +31,7 @@
 class ScopedTimer {
 public:
     explicit ScopedTimer(std::string name) : m_name(std::move(name)) {
-        INFO("ScopedTimer({})", m_name);
+        INFO("{}...", m_name);
         m_start = std::chrono::high_resolution_clock::now();
     }
 
@@ -39,7 +39,7 @@ public:
         auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - m_start);
         double seconds = static_cast<double>(duration.count()) / 1000000.0;
-        INFO("{} scope took {:.3f}s", m_name, seconds);
+        INFO("{} took {:.3f}s", m_name, seconds);
     }
 
     ScopedTimer(const ScopedTimer&) = delete;

@@ -10,9 +10,11 @@ The server uses a hierarchical configuration system, layering options in this or
 - `${workspaceFolder}/.slang/server.json` (should be on source control)
 - `${workspaceFolder}/.slang/local/server.json` (`.slang/local` should be ignored by source control)
 
+A set config option overrides the existing value in the previous config, except for lists, which are appended.
+
 ## Config options
 
-All configuration options are optional and have sensible defaults. In Vscode, the configuration files are self-documenting, meaning that there are completions and hovers for the server.json files.
+All configuration options are optional and have sensible defaults. In Vscode, the configuration files are self-documenting via a generated json schema, meaning that there are completions and hovers for the server.json files.
 
 
 ### `indexGlobs`

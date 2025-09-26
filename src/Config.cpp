@@ -24,10 +24,11 @@ Config Config::fromFiles(std::vector<std::string> confPaths, SlangLspClient& m_c
     // Paint over options coming from configs
     for (const auto& confPath : confPaths) {
         if (!fs::exists(confPath)) {
+            WARN("Config file {} does not exist, skipping", confPath);
             continue;
         }
 
-        INFO("Loading config from {}", confPath);
+        INFO("Layering config from {}", confPath);
         auto file = std::ifstream(confPath);
         auto jsonstr = std::string(std::istreambuf_iterator<char>(file),
                                    std::istreambuf_iterator<char>());
@@ -49,15 +50,26 @@ Config Config::fromFiles(std::vector<std::string> confPaths, SlangLspClient& m_c
             continue;
         }
 
-        INFO("Doing config merge with {}", confPath);
         auto object = generic->to_object();
         if (!object) {
             m_client.showError(fmt::format("Failed to convert config from {} to object: {}",
                                            confPath, object.error().what()));
             continue;
         }
+
+        // perform the merge
         for (const auto& [k, v] : *object) {
-            config[k] = v;
+            if (auto existingArray = config[k].to_array()) {
+                // append if we're dealing with lists
+                auto arr = existingArray.value();
+                auto newArr = v.to_array().value();
+                arr.reserve(arr.size() + newArr.size());
+                arr.insert(arr.end(), newArr.begin(), newArr.end());
+                config[k] = arr;
+            }
+            else {
+                config[k] = v;
+            }
         }
     }
 

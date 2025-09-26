@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <fmt/base.h>
+#include <fmt/ranges.h>
 #include <memory>
 #include <optional>
 #include <ranges>
@@ -405,10 +406,10 @@ void SlangServer::loadConfig(const Config& config, bool forceIndexing) {
         setExplore();
     }
 
-    if (forceIndexing || (old_config.indexGlobs.value() != m_config.indexGlobs.value() ||
+    auto indexGlobs = m_config.getIndexGlobs();
+    if (forceIndexing || (old_config.getIndexGlobs() != indexGlobs ||
                           (old_config.excludeDirs.value() != m_config.excludeDirs.value()))) {
         INFO("Updating index globs");
-        auto indexGlobs = m_config.indexGlobs.value();
         if (!m_workspaceFolder) {
             // Filter to abs path globs if there's no workspace folder
             std::vector<std::string> filtered;
@@ -418,6 +419,7 @@ void SlangServer::loadConfig(const Config& config, bool forceIndexing) {
                          });
             indexGlobs = std::move(filtered);
         }
+        INFO("Indexing with globs: {}", fmt::join(indexGlobs, ", "));
         m_indexer.startIndexing(indexGlobs, m_config.excludeDirs.value(),
                                 m_config.indexingThreads.value());
     }
@@ -435,6 +437,9 @@ void SlangServer::loadConfig() {
     if (m_workspaceFolder) {
         auto fsPath = std::filesystem::path(m_workspaceFolder.value().uri.getPath());
         confPaths.push_back((fsPath / ".slang" / "server.json").string());
+    }
+    else {
+        WARN("No workspace folder provided, skipping workspace config");
     }
     auto home = std::getenv("HOME");
     if (home && !std::getenv("SLANG_SERVER_TESTS")) {
