@@ -114,10 +114,13 @@ void SymbolIndexer::handle(const slang::ast::InstanceSymbol& sym) {
                 switch (port->kind) {
                     case slang::syntax::SyntaxKind::NamedPortConnection: {
                         auto& portSyntax = port->as<slang::syntax::NamedPortConnectionSyntax>();
-                        const slang::ast::Symbol* portSym = sym.body.lookupName(
-                            portSyntax.name.valueText());
-                        if (portSym) {
-                            symdex[&portSyntax.name] = portSym;
+                        auto name = portSyntax.name.valueText();
+                        if (!name.empty()) {
+                            const slang::ast::Symbol* portSym = sym.body.lookupName(
+                                portSyntax.name.valueText());
+                            if (portSym) {
+                                symdex[&portSyntax.name] = portSym;
+                            }
                         }
                     } break;
                     default:
@@ -148,14 +151,13 @@ void SymbolIndexer::handle(const slang::ast::InstanceSymbol& sym) {
                 switch (param->kind) {
                     case slang::syntax::SyntaxKind::NamedParamAssignment: {
                         auto& paramSyntax = param->as<slang::syntax::NamedParamAssignmentSyntax>();
-                        const slang::ast::Symbol* paramSym = sym.body.lookupName(
-                            paramSyntax.name.valueText());
-                        if (paramSym) {
-                            symdex[&paramSyntax.name] = paramSym;
-                        }
-                        else {
-                            WARN("Failed to find parameter symbol: {} in body: {}",
-                                 paramSyntax.name.valueText(), sym.body.name);
+                        auto name = paramSyntax.name.valueText();
+                        if (!name.empty()) {
+                            const slang::ast::Symbol* paramSym = sym.body.lookupName(
+                                paramSyntax.name.valueText());
+                            if (paramSym) {
+                                symdex[&paramSyntax.name] = paramSym;
+                            }
                         }
                     } break;
                     default:
