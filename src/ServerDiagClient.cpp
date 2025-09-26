@@ -80,17 +80,13 @@ void ServerDiagClient::report(const slang::ReportedDiagnostic& diag) {
     // ~~~~~^~~~~~
     // range range (in ranges)
     // But LSP diags just have a range, so we need to combine them.
-    // lsp::DiagnosticRelatedInformation mainDiag;
-    lsp::DiagnosticRelatedInformation mainDiag;
-    std::vector<lsp::DiagnosticRelatedInformation> related;
 
-    auto formatDiag = [&](SourceLocation loc, std::span<const SourceRange> ranges,
-                          std::string_view message) -> lsp::DiagnosticRelatedInformation {
-        lsp::DiagnosticRelatedInformation result;
+    auto getLocation = [&](SourceLocation loc, std::span<const SourceRange> ranges,
+                           std::string_view message) -> std::optional<lsp::Location> {
         bool hasLocation = loc.buffer() != SourceLocation::NoLocation.buffer();
         if (ranges.empty()) {
             if (hasLocation) {
-                result.location = toLocation(loc, m_sourceManager);
+                return toLocation(loc, m_sourceManager);
             }
             else {
                 ERROR("Diagnostic has no ranges and no location: {}", message);
@@ -117,18 +113,21 @@ void ServerDiagClient::report(const slang::ReportedDiagnostic& diag) {
                     totalRange.end() = std::max(totalRange.end(), loc);
                 }
             }
-            result.location = toLocation(m_sourceManager.getFullyOriginalRange(totalRange),
-                                         m_sourceManager);
+            return toLocation(m_sourceManager.getFullyOriginalRange(totalRange), m_sourceManager);
         }
-        result.message = std::string(message);
-        return result;
+        return std::nullopt;
     };
 
-    // Begin copied code from TextDiagnosticClient::report
+    // Code similar to TextDiagnosticClient::report
     SmallVector<SourceRange> mappedRanges;
     engine->mapSourceRanges(diag.location, diag.ranges, mappedRanges);
-    mainDiag = formatDiag(diag.location, mappedRanges, diag.formattedMessage);
 
+    auto mainLoc = getLocation(diag.location, mappedRanges, diag.formattedMessage);
+    if (!mainLoc) {
+        return;
+    }
+
+    std::vector<lsp::DiagnosticRelatedInformation> related;
     for (auto it = diag.expansionLocs.rbegin(); it != diag.expansionLocs.rend(); it++) {
         SourceLocation loc = *it;
         std::string name(sourceManager->getMacroName(loc));
@@ -139,17 +138,21 @@ void ServerDiagClient::report(const slang::ReportedDiagnostic& diag) {
 
         SmallVector<SourceRange> macroRanges;
         engine->mapSourceRanges(loc, diag.ranges, macroRanges);
-        related.emplace_back(
-            formatDiag(sourceManager->getFullyOriginalLoc(loc), macroRanges, name));
-    }
-    // end of text diag client copy
 
-    auto uri = mainDiag.location.uri;
+        auto relatedLoc = getLocation(sourceManager->getFullyOriginalLoc(loc), macroRanges, name);
+        if (relatedLoc) {
+            related.emplace_back(lsp::DiagnosticRelatedInformation{
+                .location = *relatedLoc, .message = std::string{diag.formattedMessage}});
+        }
+    }
+    // end of text diag related code
+
+    auto uri = mainLoc->uri;
     m_dirtyUris.emplace(uri);
     m_diagnostics[uri].push_back(lsp::Diagnostic{
-        .range = mainDiag.location.range,
+        .range = mainLoc->range,
         .severity = convertSeverity(diag.severity),
-        .message = mainDiag.message,
+        .message = std::string{diag.formattedMessage},
         .relatedInformation = related.empty() ? std::nullopt : std::optional{related},
     });
 

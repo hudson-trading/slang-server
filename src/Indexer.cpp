@@ -130,7 +130,7 @@ void populateIndexForSingleFile(const fs::path& path, Indexer::IndexedPath& dest
         getDataFromTree(tree->get(), dest.relevantSymbols, dest.relevantMacros);
     }
     else {
-        std::cerr << "Error populateSingleIndexFile: " << path << std::endl;
+        ERROR("Error parsing file for indexing: {}", path.string());
         // TODO: decide the proper error handling here
         return;
     }
@@ -197,7 +197,7 @@ void Indexer::dumpIndex() const {
 std::string Indexer::IndexMapEntry::toString(std::string_view name) const {
 
     std::stringstream ss;
-    ss << "name: [" << name << "], uri: [" << location.uri.str() << "], kind: [" << (int)kind
+    ss << "name: [" << name << "], uri: [" << uri.str() << "], kind: [" << (int)kind
        << "], container: [" << containerName.value_or("") << "]";
 
     return ss.str();
@@ -205,7 +205,7 @@ std::string Indexer::IndexMapEntry::toString(std::string_view name) const {
 
 lsp::WorkspaceSymbol Indexer::IndexMapEntry::toWorkSpaceSymbol(std::string_view name) const {
     return lsp::WorkspaceSymbol{
-        .location = location,
+        .location = lsp::LocationUriOnly{uri},
         .name = std::string(name),
         .kind = kind,
         .containerName = containerName,
@@ -231,7 +231,7 @@ void Indexer::IndexStorage::removeEntry(IndexKeyType key, URI uri) {
 
     // an equivalent entry (same name and uri) should only exist once
     for (auto it = start; it != end; ++it) {
-        if (it->second.location.uri == uri) {
+        if (it->second.uri == uri) {
             std::cerr << "found\n";
             entries.erase(it);
             return;
@@ -280,26 +280,26 @@ void Indexer::noteDocSaved(const URI& uri) {
     const auto& update = updateIt->second;
 
     for (auto& it : symbolToFiles.getAllEntries()) {
-        if (it.second.location.uri == uri) {
+        if (it.second.uri == uri) {
             std::cerr << it.second.toString(it.first) << "\n";
         }
     }
 
-    std::for_each(
-        update.symbolUpdates.begin(), update.symbolUpdates.end(), [&](auto& singleUpdate) {
-            auto& [indexData, updateType] = singleUpdate;
-            auto& [name, kind, container] = indexData;
+    std::for_each(update.symbolUpdates.begin(), update.symbolUpdates.end(),
+                  [&](auto& singleUpdate) {
+                      auto& [indexData, updateType] = singleUpdate;
+                      auto& [name, kind, container] = indexData;
 
-            switch (updateType) {
-                case Indexer::IndexDataUpdateType::Added:
-                    symbolToFiles.addEntry(name, IndexMapEntry::fromSymbolData(
-                                                     kind, container, lsp::LocationUriOnly{uri}));
-                    break;
-                case Indexer::IndexDataUpdateType::Removed:
-                    symbolToFiles.removeEntry(name, uri);
-                    break;
-            }
-        });
+                      switch (updateType) {
+                          case Indexer::IndexDataUpdateType::Added:
+                              symbolToFiles.addEntry(
+                                  name, IndexMapEntry::fromSymbolData(kind, container, uri));
+                              break;
+                          case Indexer::IndexDataUpdateType::Removed:
+                              symbolToFiles.removeEntry(name, uri);
+                              break;
+                      }
+                  });
 
     std::for_each(update.macroUpdates.begin(), update.macroUpdates.end(), [&](auto& singleUpdate) {
         auto& [name, updateType] = singleUpdate;
@@ -328,10 +328,9 @@ void Indexer::indexTree(const slang::syntax::SyntaxTree& tree) {
 
 void Indexer::indexPath(Indexer::IndexedPath& indexedFile) {
     for (auto& [symbol, kind, container] : indexedFile.relevantSymbols) {
-        symbolToFiles.addEntry(
-            std::move(symbol),
-            IndexMapEntry::fromSymbolData(kind, container,
-                                          lsp::LocationUriOnly{URI::fromFile(indexedFile.path)}));
+        symbolToFiles.addEntry(std::move(symbol),
+                               IndexMapEntry::fromSymbolData(kind, container,
+                                                             URI::fromFile(indexedFile.path)));
     }
     for (auto& macro : indexedFile.relevantMacros) {
         macroToFiles.addEntry(std::move(macro),
@@ -411,7 +410,7 @@ std::vector<fs::path> Indexer::getRelevantFilesForName(std::string_view name) co
 
     std::vector<fs::path> out;
     for (const auto& [_, entry] : std::ranges::subrange(start, end)) {
-        out.push_back(fs::path(entry.location.uri.getPath()));
+        out.push_back(fs::path(entry.uri.getPath()));
     }
 
     return out;
@@ -422,7 +421,7 @@ std::vector<fs::path> Indexer::getFilesForMacro(std::string_view name) const {
 
     std::vector<fs::path> out;
     for (const auto& [_, entry] : std::ranges::subrange(start, end)) {
-        out.push_back(fs::path(entry.location.uri.getPath()));
+        out.push_back(fs::path(entry.uri.getPath()));
     }
 
     return out;

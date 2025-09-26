@@ -93,7 +93,7 @@ void CompletionDispatch::getTriggerCompletions(char triggerChar, char prevChar,
 
         auto& [_, entry] = *start;
         auto completion = completions::getModuleCompletion(std::string{name}, entry.kind);
-        resolveModuleCompletion(completion, fs::path(entry.location.uri.getPath()), true);
+        resolveModuleCompletion(completion, fs::path(entry.uri.getPath()), true);
         results.push_back(completion);
     }
     else if (triggerChar == ':' && prevChar == ':') {

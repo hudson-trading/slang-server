@@ -8,6 +8,7 @@
 #pragma once
 
 #include "lsp/LspTypes.h"
+#include "lsp/URI.h"
 #include <condition_variable>
 #include <map>
 #include <mutex>
@@ -15,7 +16,6 @@
 #include <vector>
 
 #include "slang/syntax/SyntaxTree.h"
-#include "slang/util/Hash.h"
 
 struct Indexer {
     enum class IndexDataUpdateType : int { Added, Removed };
@@ -39,36 +39,27 @@ struct Indexer {
         lsp::WorkspaceSymbol toWorkSpaceSymbol(std::string_view name) const;
 
         // The ordering of these members is important. They should be sorted by location first.
-        lsp::LocationUriOnly location;
+        URI uri;
 
         lsp::SymbolKind kind{};
         std::optional<std::string> containerName{};
 
         // This should be enough to uniquely identify an entry
-        bool operator==(const IndexMapEntry& other) const {
-            return location.uri == other.location.uri;
-        }
+        bool operator==(const IndexMapEntry& other) const { return uri == other.uri; }
 
         inline static IndexMapEntry fromSymbolData(lsp::SymbolKind kind, std::string container,
-                                                   lsp::LocationUriOnly loc) {
-            IndexMapEntry out;
+                                                   URI uri) {
+            IndexMapEntry out(uri);
             out.kind = kind;
             out.containerName = container.empty() ? std::optional<std::string>()
                                                   : std::move(container);
-            out.location = loc;
-
             return out;
         }
-        inline static IndexMapEntry fromMacroData(URI uri) {
-            IndexMapEntry out;
-            out.location = {uri};
-            return out;
-        }
-
+        inline static IndexMapEntry fromMacroData(URI uri) { return IndexMapEntry(uri); }
+        IndexMapEntry(URI uri) : uri{uri} {}
         // Non-copyable
         IndexMapEntry(IndexMapEntry&) = delete;
         IndexMapEntry(IndexMapEntry&&) noexcept = default;
-        IndexMapEntry() = default;
     };
 
     using IndexMap = std::multimap<IndexKeyType, IndexMapEntry>;
