@@ -216,30 +216,19 @@ static void handleInstanceArray(std::vector<HierItem_t>& result,
         }
     }
 
-    if (!elements.empty()) {
-        std::string declName;
-        lsp::Location declLoc;
-
-        // Extract declaration info from the array elements
-        rfl::visit(
-            [&](auto&& x) {
-                using sym_t = typename std::decay_t<decltype(x)>;
-                if constexpr (std::is_same<sym_t, Instance>()) {
-                    declName = fmt::format("{}{}", x.declName, array.range.toString());
-                    declLoc = x.declLoc;
-                }
-            },
-            elements.front());
-
-        result.push_back(HierItem_t(Instance{
-            .kind = SlangKind::InstanceArray,
-            .instName = std::string(array.getArrayName()),
-            .instLoc = toLocation(array.getSyntax()->sourceRange(), sm),
-            .declName = declName,
-            .declLoc = declLoc,
-            .children = elements,
-        }));
+    if (elements.empty()) {
+        return;
     }
+    // Extract declaration info from the first array element, and append array
+    auto& firstElement = rfl::get<Instance>(elements.front());
+    result.push_back(HierItem_t(Instance{
+        .kind = SlangKind::InstanceArray,
+        .instName = std::string(array.getArrayName()),
+        .instLoc = toLocation(array.getSyntax()->sourceRange(), sm),
+        .declName = fmt::format("{}{}", firstElement.declName, array.range.toString()),
+        .declLoc = firstElement.declLoc,
+        .children = elements,
+    }));
 }
 
 static void handleParameter(std::vector<HierItem_t>& result,

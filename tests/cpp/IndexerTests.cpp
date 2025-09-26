@@ -198,27 +198,21 @@ endclass
 
     SECTION("Symbols") {
         GoldenMap expectedMap;
-        expectedMap.emplace("driver", Indexer::IndexMapEntry::fromSymbolData(
-                                          lsp::SymbolKind::Module, "wire_module",
-                                          lsp::LocationUriOnly{URI::fromFile(f2Path)}));
-        expectedMap.emplace("C", Indexer::IndexMapEntry::fromSymbolData(
-                                     lsp::SymbolKind::Class, "",
-                                     lsp::LocationUriOnly{URI::fromFile(f2Path)}));
+        expectedMap.emplace(
+            "driver", Indexer::IndexMapEntry::fromSymbolData(lsp::SymbolKind::Module, "wire_module",
+                                                             URI::fromFile(f2Path)));
+        expectedMap.emplace("C", Indexer::IndexMapEntry::fromSymbolData(lsp::SymbolKind::Class, "",
+                                                                        URI::fromFile(f2Path)));
         expectedMap.emplace("Iface", Indexer::IndexMapEntry::fromSymbolData(
-                                         lsp::SymbolKind::Interface, "",
-                                         lsp::LocationUriOnly{URI::fromFile(f1Path)}));
+                                         lsp::SymbolKind::Interface, "", URI::fromFile(f1Path)));
         expectedMap.emplace("m1", Indexer::IndexMapEntry::fromSymbolData(
-                                      lsp::SymbolKind::Module, "",
-                                      lsp::LocationUriOnly{URI::fromFile(f1Path)}));
+                                      lsp::SymbolKind::Module, "", URI::fromFile(f1Path)));
         expectedMap.emplace("m4", Indexer::IndexMapEntry::fromSymbolData(
-                                      lsp::SymbolKind::Module, "",
-                                      lsp::LocationUriOnly{URI::fromFile(f1Path)}));
-        expectedMap.emplace("n", Indexer::IndexMapEntry::fromSymbolData(
-                                     lsp::SymbolKind::Module, "",
-                                     lsp::LocationUriOnly{URI::fromFile(f1Path)}));
+                                      lsp::SymbolKind::Module, "", URI::fromFile(f1Path)));
+        expectedMap.emplace("n", Indexer::IndexMapEntry::fromSymbolData(lsp::SymbolKind::Module, "",
+                                                                        URI::fromFile(f1Path)));
         expectedMap.emplace("wire_module", Indexer::IndexMapEntry::fromSymbolData(
-                                               lsp::SymbolKind::Module, "",
-                                               lsp::LocationUriOnly{URI::fromFile(f2Path)}));
+                                               lsp::SymbolKind::Module, "", URI::fromFile(f2Path)));
         checkIndexedMap(indexer.symbolMap().getAllEntries(), expectedMap);
     }
 }
