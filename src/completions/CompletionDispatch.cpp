@@ -58,11 +58,11 @@ void CompletionDispatch::getInvokedCompletions(std::vector<lsp::CompletionItem>&
         // Add packages as completions, because we may grab a value from those
         // Add these after though, since local vars are the common case
         // TODO: add these when we can sort completions
-        // for (auto& [name, info] : m_indexer.symbolToFiles.getAllEntries()) {
-        //     if (info.kind == lsp::SymbolKind::Package) {
-        //         results.push_back(completions::getModuleCompletion(name, info.kind));
-        //     }
-        // }
+        for (auto& [name, info] : m_indexer.symbolToFiles.getAllEntries()) {
+            if (info.kind == lsp::SymbolKind::Package) {
+                results.push_back(completions::getModuleCompletion(name, info.kind));
+            }
+        }
     }
 }
 

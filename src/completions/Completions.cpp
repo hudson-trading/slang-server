@@ -351,7 +351,6 @@ lsp::CompletionItem getMemberCompletion(const slang::ast::Symbol& symbol,
                                     ifaceConn.second ? ifaceConn.second->name : "<generic>");
         }
         else {
-            INFO("Falling back to sym kind for {}", symbol.getHierarchicalPath());
             detailStr = toString(symbol.kind);
         }
     }
@@ -442,7 +441,7 @@ void resolveMemberCompletion(const slang::ast::Scope& scope, lsp::CompletionItem
 
 /// Get completions for members in a scope, recursing up until hitting a module instance
 void getMemberCompletions(std::vector<lsp::CompletionItem>& results, const slang::ast::Scope* scope,
-                          bool isLhs, const slang::ast::Scope* originalScope) {
+                          bool isLhs, const slang::ast::Scope* originalScope, bool isOriginalCall) {
 
     if (!scope) {
         ERROR("No scope for member completion");
@@ -490,12 +489,14 @@ void getMemberCompletions(std::vector<lsp::CompletionItem>& results, const slang
         }
 
         // Add wildcard imports
-        if (auto importData = currentScope->getWildcardImportData()) {
-            for (auto import : importData->wildcardImports) {
-                auto package = import->getPackage();
-                if (package != nullptr) {
-                    INFO("Adding wildcard imports from package {}", package->name);
-                    getMemberCompletions(results, package, isLhs, originalScope);
+        if (isOriginalCall) {
+            if (auto importData = currentScope->getWildcardImportData()) {
+                for (auto import : importData->wildcardImports) {
+                    auto package = import->getPackage();
+                    if (package != nullptr) {
+                        INFO("Adding wildcard imports from package {}", package->name);
+                        getMemberCompletions(results, package, isLhs, originalScope, false);
+                    }
                 }
             }
         }

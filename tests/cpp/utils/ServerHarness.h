@@ -105,7 +105,7 @@ public:
     // onChange functions
     void insert(lsp::uint offset, std::string text);
     void append(std::string text);
-    void erase(int start, int end);
+    void erase(size_t start, size_t end);
 
     Cursor before(std::string before, lsp::uint start_pos = 0);
     Cursor after(std::string after, lsp::uint start_pos = 0);

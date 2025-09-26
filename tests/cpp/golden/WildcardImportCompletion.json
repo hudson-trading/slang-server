@@ -196,6 +196,34 @@
           "value": "````systemverilog\nfunction int find_max(int array[], int size);\n    int max_val = array[0];\n    for (int i = 1; i < size; i++) begin\n        if (array[i] > max_val)\n            max_val = array[i];\n    end\n    return max_val;\nendfunction\n````"
         },
         "filterText": "find_max"
+      },
+      {
+        "label": "base_pkg",
+        "labelDetails": {
+          "detail": " Package"
+        },
+        "kind": "Module",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\npackage base_pkg;\n````"
+        },
+        "filterText": "base_pkg",
+        "insertText": "base_pkg",
+        "insertTextFormat": "PlainText"
+      },
+      {
+        "label": "util_pkg",
+        "labelDetails": {
+          "detail": " Package"
+        },
+        "kind": "Module",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\npackage util_pkg;\n````"
+        },
+        "filterText": "util_pkg",
+        "insertText": "util_pkg",
+        "insertTextFormat": "PlainText"
       }
     ]
   },

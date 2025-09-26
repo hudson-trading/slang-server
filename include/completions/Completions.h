@@ -50,7 +50,8 @@ lsp::CompletionItem getMemberCompletion(const slang::ast::Symbol& symbol,
 
 /// Add completions for members in a scope to results
 void getMemberCompletions(std::vector<lsp::CompletionItem>& results, const slang::ast::Scope* scope,
-                          bool isLhs, const slang::ast::Scope* originalScope);
+                          bool isLhs, const slang::ast::Scope* originalScope,
+                          bool isOriginalCall = true);
 
 /// Resolve additional information for a member completion
 void resolveMemberCompletion(const slang::ast::Scope& scope, lsp::CompletionItem& item);

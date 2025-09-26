@@ -317,6 +317,34 @@
           "value": "````systemverilog\n// Interface port example\nsimple_interface intf();\n````"
         },
         "filterText": "intf"
+      },
+      {
+        "label": "base_pkg",
+        "labelDetails": {
+          "detail": " Package"
+        },
+        "kind": "Module",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\npackage base_pkg;\n````"
+        },
+        "filterText": "base_pkg",
+        "insertText": "base_pkg",
+        "insertTextFormat": "PlainText"
+      },
+      {
+        "label": "util_pkg",
+        "labelDetails": {
+          "detail": " Package"
+        },
+        "kind": "Module",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\npackage util_pkg;\n````"
+        },
+        "filterText": "util_pkg",
+        "insertText": "util_pkg",
+        "insertTextFormat": "PlainText"
       }
     ]
   }
