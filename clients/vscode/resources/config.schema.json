@@ -11,7 +11,7 @@
         },
         "indexGlobs": {
           "type": "array",
-          "description": "Globs of what to index",
+          "description": "Globs of what to index. By default will index all sv and svh files in the workspace.",
           "items": {
             "type": "string"
           }
@@ -54,8 +54,15 @@
           ]
         },
         "wcpCommand": {
-          "type": "string",
-          "description": "Waveform viewer command ({} will be replaced with the WCP port)"
+          "description": "Waveform viewer command ({} will be replaced with the WCP port)",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": []
