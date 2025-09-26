@@ -57,7 +57,17 @@ Config Config::fromFiles(std::vector<std::string> confPaths, SlangLspClient& m_c
             continue;
         }
         for (const auto& [k, v] : *object) {
-            config[k] = v;
+            if (auto existingArray = config[k].to_array()) {
+                // append if we're dealing with lists
+                auto arr = existingArray.value();
+                auto newArr = v.to_array().value();
+                arr.reserve(arr.size() + newArr.size());
+                arr.insert(arr.end(), newArr.begin(), newArr.end());
+                config[k] = arr;
+            }
+            else {
+                config[k] = v;
+            }
         }
     }
 
