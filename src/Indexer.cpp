@@ -285,21 +285,21 @@ void Indexer::noteDocSaved(const URI& uri) {
         }
     }
 
-    std::for_each(
-        update.symbolUpdates.begin(), update.symbolUpdates.end(), [&](auto& singleUpdate) {
-            auto& [indexData, updateType] = singleUpdate;
-            auto& [name, kind, container] = indexData;
+    std::for_each(update.symbolUpdates.begin(), update.symbolUpdates.end(),
+                  [&](auto& singleUpdate) {
+                      auto& [indexData, updateType] = singleUpdate;
+                      auto& [name, kind, container] = indexData;
 
-            switch (updateType) {
-                case Indexer::IndexDataUpdateType::Added:
-                    symbolToFiles.addEntry(name, IndexMapEntry::fromSymbolData(
-                                                     kind, container, lsp::LocationUriOnly{uri}));
-                    break;
-                case Indexer::IndexDataUpdateType::Removed:
-                    symbolToFiles.removeEntry(name, uri);
-                    break;
-            }
-        });
+                      switch (updateType) {
+                          case Indexer::IndexDataUpdateType::Added:
+                              symbolToFiles.addEntry(
+                                  name, IndexMapEntry::fromSymbolData(kind, container, uri));
+                              break;
+                          case Indexer::IndexDataUpdateType::Removed:
+                              symbolToFiles.removeEntry(name, uri);
+                              break;
+                      }
+                  });
 
     std::for_each(update.macroUpdates.begin(), update.macroUpdates.end(), [&](auto& singleUpdate) {
         auto& [name, updateType] = singleUpdate;
@@ -328,10 +328,9 @@ void Indexer::indexTree(const slang::syntax::SyntaxTree& tree) {
 
 void Indexer::indexPath(Indexer::IndexedPath& indexedFile) {
     for (auto& [symbol, kind, container] : indexedFile.relevantSymbols) {
-        symbolToFiles.addEntry(
-            std::move(symbol),
-            IndexMapEntry::fromSymbolData(kind, container,
-                                          lsp::LocationUriOnly{URI::fromFile(indexedFile.path)}));
+        symbolToFiles.addEntry(std::move(symbol),
+                               IndexMapEntry::fromSymbolData(kind, container,
+                                                             URI::fromFile(indexedFile.path)));
     }
     for (auto& macro : indexedFile.relevantMacros) {
         macroToFiles.addEntry(std::move(macro),

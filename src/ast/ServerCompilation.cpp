@@ -164,7 +164,9 @@ std::optional<std::vector<lsp::CallHierarchyItem>> ServerCompilation::getDocPrep
         if (!isWcpVariable(instance)) {
             continue;
         }
-        result.emplace_back(lsp::CallHierarchyItem{.name = instance});
+        // TODO: change to doc of actual symbol, not the declToken
+        result.emplace_back(
+            lsp::CallHierarchyItem{.name = instance, .uri = params.textDocument.uri});
     }
     return std::optional(result);
 }
