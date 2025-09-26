@@ -8,6 +8,7 @@
 #pragma once
 
 #include "lsp/LspTypes.h"
+#include "lsp/URI.h"
 #include <condition_variable>
 #include <map>
 #include <mutex>
@@ -50,25 +51,18 @@ struct Indexer {
         }
 
         inline static IndexMapEntry fromSymbolData(lsp::SymbolKind kind, std::string container,
-                                                   lsp::LocationUriOnly loc) {
-            IndexMapEntry out;
+                                                   URI uri) {
+            IndexMapEntry out(uri);
             out.kind = kind;
             out.containerName = container.empty() ? std::optional<std::string>()
                                                   : std::move(container);
-            out.location = loc;
-
             return out;
         }
-        inline static IndexMapEntry fromMacroData(URI uri) {
-            IndexMapEntry out;
-            out.location = {uri};
-            return out;
-        }
-
+        inline static IndexMapEntry fromMacroData(URI uri) { return IndexMapEntry(uri); }
+        IndexMapEntry(URI uri) : location{uri} {}
         // Non-copyable
         IndexMapEntry(IndexMapEntry&) = delete;
         IndexMapEntry(IndexMapEntry&&) noexcept = default;
-        IndexMapEntry() = default;
     };
 
     using IndexMap = std::multimap<IndexKeyType, IndexMapEntry>;
