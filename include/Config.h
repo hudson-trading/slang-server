@@ -16,8 +16,26 @@ class Config {
 public:
     // all fields must be optional
     rfl::Description<"Flags to pass to slang", std::string> flags;
-    rfl::Description<"Globs of what to index", std::vector<std::string>> indexGlobs =
-        std::vector<std::string>{"./.../*.sv*"};
+    rfl::Description<
+        "Globs of what to index. By default will index all sv and svh files in the workspace.",
+        std::vector<std::string>>
+        indexGlobs;
+
+    // This can't be defaulted because of how we paint configs over each other and append lists
+    // together.
+    std::vector<std::string> getIndexGlobs() {
+        if (indexGlobs.value().size() == 0) {
+            return std::vector<std::string>{"./.../*.sv*"};
+        }
+        else {
+            auto list = indexGlobs.value();
+            // dedup
+            std::sort(list.begin(), list.end());
+            list.erase(std::unique(list.begin(), list.end()), list.end());
+            return list;
+        }
+    }
+
     rfl::Description<"Directories to exclude", std::vector<std::string>> excludeDirs;
     rfl::Description<"Thread count to use for indexing", int> indexingThreads = 0;
     rfl::Description<"Thread count to use for parsing", int> parsingThreads = 8;

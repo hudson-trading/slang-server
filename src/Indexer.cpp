@@ -434,8 +434,9 @@ void Indexer::startIndexing(const std::vector<std::string>& globs,
 
     std::vector<fs::path> pathsToIndex;
     {
-        ScopedTimer t_glob("Globbing Index Paths");
         for (const auto& pattern : globs) {
+            ScopedTimer t_glob("Globbing " + pattern);
+            auto beginCount = pathsToIndex.size();
             slang::SmallVector<fs::path> out;
             std::error_code ec;
             svGlob({}, pattern, slang::GlobMode::Files, out, true, ec);
@@ -452,17 +453,19 @@ void Indexer::startIndexing(const std::vector<std::string>& globs,
                 }
                 pathsToIndex.push_back(path);
             }
+            INFO("found {} files ", pattern, pathsToIndex.size() - beginCount);
         }
     }
 
     std::cerr << "Indexing " << pathsToIndex.size() << " total files\n";
 
     {
-        ScopedTimer t_index("indexing");
+        ScopedTimer t_index("Slang Indexing");
         addDocuments(pathsToIndex, numThreads);
     }
 
-    INFO("Indexing complete. Total symbols: {}", symbolToFiles.getAllEntries().size());
+    INFO("Indexing complete.");
+    INFO("Total symbols: {}", symbolToFiles.getAllEntries().size());
     INFO("Total Macros: {}", macroToFiles.getAllEntries().size());
     INFO("Approximate size: {} Bytes", sizeInBytes());
 
