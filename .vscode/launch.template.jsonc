@@ -4,7 +4,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Attach to running slang-server",
+            "name": "Attach to slang-server",
             "type": "cppdbg",
             "request": "attach",
             "program": "${workspaceFolder}/build/bin/slang-server",
@@ -24,7 +24,7 @@
             ],
         },
         {
-            "name": "Debug tests with gdb",
+            "name": "Debug server_unittests",
             "request": "launch",
             "type": "cppdbg",
             "program": "${workspaceFolder}/build/bin/server_unittests",
@@ -50,7 +50,65 @@
             "outFiles": ["${workspaceFolder}/clients/vscode/out/**"],
             "cwd": "${workspaceFolder}/clients/vscode",
             "resolveSourceMapLocations": ["${workspaceFolder}/clients/vscode/**", "!**/node_modules/**"],
-            "preLaunchTask": "build slang-vscode"
+            "preLaunchTask": "build slang-vscode",
+        },
+        {
+            "name": "Attach to slang-server (auto-attach)",
+            "type": "cppdbg",
+            "request": "attach",
+            "program": "${workspaceFolder}/build/vscode/bin/slang-server",
+            "processId": "${input:slangServerPID}",
+
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Enable break on all exceptions",
+                    "text": "catch throw",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Run slang-vscode with custom server",
+            "type": "extensionHost",
+            "request": "launch",
+            "args": ["--disable-extensions", "--extensionDevelopmentPath=${workspaceFolder}/clients/vscode/"],
+            "outFiles": ["${workspaceFolder}/clients/vscode/out/**"],
+            "cwd": "${workspaceFolder}/clients/vscode",
+            "resolveSourceMapLocations": ["${workspaceFolder}/clients/vscode/**", "!**/node_modules/**"],
+            "preLaunchTask": "build ext deps",
+            "env": {
+                "SLANG_SERVER_PATH": "${workspaceFolder}/build/vscode/bin/slang-server"
+            },
         }
     ],
+    "compounds": [
+        {
+            "name": "Run slang-vscode and attach gdb",
+            "configurations": [
+                "Run slang-vscode with custom server",
+                "Attach to slang-server (auto-attach)"
+            ],
+        }
+    ],
+    "inputs": [
+        {
+            "id": "slangServerPID",
+            "type": "command",
+            "command": "shellCommand.execute",
+            "args": {
+                "command": "${workspaceFolder}/.vscode/find-pid.sh",
+                "args": [
+                    "${workspaceFolder}"
+                ],
+                "useFirstResult": true
+            },
+
+        }
+    ]
 }

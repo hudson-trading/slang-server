@@ -38,6 +38,25 @@
         },
         {
           "type": "shell",
+          "label": "build slang-server",
+          "command": "cmake --build build/vscode -j --target slang_server",
+          "options": {
+            "cwd": "${workspaceFolder}"
+          },
+          "group": {
+            "kind": "build",
+          }
+        },
+        {
+          "label": "build ext deps",
+          "dependsOn": [
+            "build slang-vscode",
+            "build slang-server"
+          ],
+          "problemMatcher": []
+        },
+        {
+          "type": "shell",
           "label": "__watch-tests",
           "command": "pnpm watch-tests",
           "problemMatcher": "$tsc-watch",
@@ -56,6 +75,6 @@
             "__watch-tests"
           ],
           "problemMatcher": []
-        }
+        },
       ]
     }
