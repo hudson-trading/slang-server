@@ -289,7 +289,7 @@ lsp::CompletionItem getHierarchicalCompletion(const slang::ast::Symbol& parentSy
             .label = std::string{symbol.name},
             .labelDetails =
                 lsp::CompletionItemLabelDetails{.detail = " " + detailStr,
-                                                .description = parentSymbol.getHierarchicalPath()},
+                                                .description = parentSymbol.getLexicalPath()},
             .kind = getCompletionKind(symbol),
             .documentation = std::nullopt, // Will be populated during resolve
             .filterText = std::string{symbol.name},
@@ -365,7 +365,7 @@ lsp::CompletionItem getMemberCompletion(const slang::ast::Symbol& symbol,
     std::optional<std::string> descriptionStr;
     if (currentScope == nullptr ||
         (symbol.getParentScope() && symbol.getParentScope() != currentScope)) {
-        auto hierPath = symbol.getParentScope()->asSymbol().getHierarchicalPath();
+        auto hierPath = symbol.getParentScope()->asSymbol().getLexicalPath();
         if (!hierPath.empty()) {
             descriptionStr = hierPath;
         }

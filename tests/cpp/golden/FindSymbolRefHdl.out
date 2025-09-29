@@ -127,37 +127,37 @@ interface bus_if #(
 
     task automatic write_data(input logic [ADDR_WIDTH-1:0] address, input data_t write_data);
                    ^^^^^^^^^^ Sym write_data : TaskDeclaration
-                                           ^^^^^^^^^^ Ref -> `parameter int ADDR_WIDTH = 32`
+                                           ^^^^^^^^^^ Ref -> `// In bus_if`\n\\n\---\n\\n\`parameter int ADDR_WIDTH = 32`
                                                            ^^^^^^^ Sym address : Declarator
-                                                                          ^^^^^^ Ref -> `data_t = bit`
+                                                                          ^^^^^^ Ref -> `// In bus_if`\n\\n\---\n\\n\`data_t = bit`
                                                                                  ^^^^^^^^^^ Sym write_data : Declarator
 
         @(posedge clk);
-                  ^^^ Ref -> `input logic clk`
+                  ^^^ Ref -> `// In bus_if`\n\\n\---\n\\n\`input logic clk`
 
         addr <= address;
-        ^^^^ Ref -> `logic [ADDR_WIDTH-1:0] addr;`
+        ^^^^ Ref -> `// In bus_if`\n\\n\---\n\\n\`logic [ADDR_WIDTH-1:0] addr;`
                 ^^^^^^^ Ref -> `input logic [ADDR_WIDTH-1:0] address`
 
         data <= write_data;
-        ^^^^ Ref -> `data_t data;`
+        ^^^^ Ref -> `// In bus_if`\n\\n\---\n\\n\`data_t data;`
                 ^^^^^^^^^^ Ref -> `input data_t write_data`
 
         write_enable <= 1'b1;
-        ^^^^^^^^^^^^ Ref -> `logic write_enable;`
+        ^^^^^^^^^^^^ Ref -> `// In bus_if`\n\\n\---\n\\n\`logic write_enable;`
 
         valid <= 1'b1;
-        ^^^^^ Ref -> `logic valid;`
+        ^^^^^ Ref -> `// In bus_if`\n\\n\---\n\\n\`logic valid;`
 
         @(posedge clk iff ready);
-                  ^^^ Ref -> `input logic clk`
-                          ^^^^^ Ref -> `logic ready;`
+                  ^^^ Ref -> `// In bus_if`\n\\n\---\n\\n\`input logic clk`
+                          ^^^^^ Ref -> `// In bus_if`\n\\n\---\n\\n\`logic ready;`
 
         valid <= 1'b0;
-        ^^^^^ Ref -> `logic valid;`
+        ^^^^^ Ref -> `// In bus_if`\n\\n\---\n\\n\`logic valid;`
 
         write_enable <= 1'b0;
-        ^^^^^^^^^^^^ Ref -> `logic write_enable;`
+        ^^^^^^^^^^^^ Ref -> `// In bus_if`\n\\n\---\n\\n\`logic write_enable;`
 
     endtask
 
@@ -167,34 +167,34 @@ interface bus_if #(
 
     task automatic read_data(input logic [ADDR_WIDTH-1:0] address, output data_t read_data);
                    ^^^^^^^^^ Sym read_data : TaskDeclaration
-                                          ^^^^^^^^^^ Ref -> `parameter int ADDR_WIDTH = 32`
+                                          ^^^^^^^^^^ Ref -> `// In bus_if`\n\\n\---\n\\n\`parameter int ADDR_WIDTH = 32`
                                                           ^^^^^^^ Sym address : Declarator
-                                                                          ^^^^^^ Ref -> `data_t = bit`
+                                                                          ^^^^^^ Ref -> `// In bus_if`\n\\n\---\n\\n\`data_t = bit`
                                                                                  ^^^^^^^^^ Sym read_data : Declarator
 
         @(posedge clk);
-                  ^^^ Ref -> `input logic clk`
+                  ^^^ Ref -> `// In bus_if`\n\\n\---\n\\n\`input logic clk`
 
         addr <= address;
-        ^^^^ Ref -> `logic [ADDR_WIDTH-1:0] addr;`
+        ^^^^ Ref -> `// In bus_if`\n\\n\---\n\\n\`logic [ADDR_WIDTH-1:0] addr;`
                 ^^^^^^^ Ref -> `input logic [ADDR_WIDTH-1:0] address`
 
         write_enable <= 1'b0;
-        ^^^^^^^^^^^^ Ref -> `logic write_enable;`
+        ^^^^^^^^^^^^ Ref -> `// In bus_if`\n\\n\---\n\\n\`logic write_enable;`
 
         valid <= 1'b1;
-        ^^^^^ Ref -> `logic valid;`
+        ^^^^^ Ref -> `// In bus_if`\n\\n\---\n\\n\`logic valid;`
 
         @(posedge clk iff ready);
-                  ^^^ Ref -> `input logic clk`
-                          ^^^^^ Ref -> `logic ready;`
+                  ^^^ Ref -> `// In bus_if`\n\\n\---\n\\n\`input logic clk`
+                          ^^^^^ Ref -> `// In bus_if`\n\\n\---\n\\n\`logic ready;`
 
         read_data = data;
         ^^^^^^^^^ Ref -> `output data_t read_data`
-                    ^^^^ Ref -> `data_t data;`
+                    ^^^^ Ref -> `// In bus_if`\n\\n\---\n\\n\`data_t data;`
 
         valid <= 1'b0;
-        ^^^^^ Ref -> `logic valid;`
+        ^^^^^ Ref -> `// In bus_if`\n\\n\---\n\\n\`logic valid;`
 
     endtask
 
@@ -495,26 +495,26 @@ module NoDefaults #(
     ^^^ Ref -> `module Sub #(\n\    parameter int WIDTH = 16\n\)(\n\    input logic clk,\n\    input logic rst,\n\    input logic [WIDTH-1:0] data_in,\n\    output logic [WIDTH-1:0] data_out\n\);`
 
         .WIDTH(WIDTH)
-         ^^^^^ Ref -> `// In NoDefaults.sub_inst`\n\\n\---\n\\n\`parameter int WIDTH = 16`
+         ^^^^^ Ref -> `// In Sub`\n\\n\---\n\\n\`parameter int WIDTH = 16`
                ^^^^^ Ref -> `parameter int WIDTH`
 
     ) sub_inst (
       ^^^^^^^^ Sym sub_inst : HierarchicalInstance
 
         .clk(clk),
-         ^^^ Ref -> `// In NoDefaults.sub_inst`\n\\n\---\n\\n\`input logic clk`
+         ^^^ Ref -> `// In Sub`\n\\n\---\n\\n\`input logic clk`
              ^^^ Ref -> `input logic clk`
 
         .rst(rst),
-         ^^^ Ref -> `// In NoDefaults.sub_inst`\n\\n\---\n\\n\`input logic rst`
+         ^^^ Ref -> `// In Sub`\n\\n\---\n\\n\`input logic rst`
              ^^^ Ref -> `input logic rst`
 
         .data_in(data_in),
-         ^^^^^^^ Ref -> `// In NoDefaults.sub_inst`\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+         ^^^^^^^ Ref -> `// In Sub`\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
                  ^^^^^^^ Ref -> `input logic [WIDTH-1:0] data_in`
 
         .data_out(data_out)
-         ^^^^^^^^ Ref -> `// In NoDefaults.sub_inst`\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+         ^^^^^^^^ Ref -> `// In Sub`\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
                   ^^^^^^^^ Ref -> `output logic [WIDTH-1:0] data_out`
 
     );
@@ -534,26 +534,26 @@ module NoDefaults #(
         ^^^ Ref -> `module Sub #(\n\    parameter int WIDTH = 16\n\)(\n\    input logic clk,\n\    input logic rst,\n\    input logic [WIDTH-1:0] data_in,\n\    output logic [WIDTH-1:0] data_out\n\);`
 
             .WIDTH(WIDTH)
-             ^^^^^ Ref -> `// In NoDefaults.gen_loop[0].sub`\n\\n\---\n\\n\`parameter int WIDTH = 16`
+             ^^^^^ Ref -> `// In Sub`\n\\n\---\n\\n\`parameter int WIDTH = 16`
                    ^^^^^ Ref -> `// In NoDefaults`\n\\n\---\n\\n\`parameter int WIDTH`
 
          ) sub (
            ^^^ Sym sub : HierarchicalInstance
 
             .clk(clk),
-             ^^^ Ref -> `// In NoDefaults.gen_loop[0].sub`\n\\n\---\n\\n\`input logic clk`
+             ^^^ Ref -> `// In Sub`\n\\n\---\n\\n\`input logic clk`
                  ^^^ Ref -> `// In NoDefaults`\n\\n\---\n\\n\`input logic clk`
 
             .rst(rst),
-             ^^^ Ref -> `// In NoDefaults.gen_loop[0].sub`\n\\n\---\n\\n\`input logic rst`
+             ^^^ Ref -> `// In Sub`\n\\n\---\n\\n\`input logic rst`
                  ^^^ Ref -> `// In NoDefaults`\n\\n\---\n\\n\`input logic rst`
 
             .data_in(data_in),
-             ^^^^^^^ Ref -> `// In NoDefaults.gen_loop[0].sub`\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+             ^^^^^^^ Ref -> `// In Sub`\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
                      ^^^^^^^ Ref -> `// In NoDefaults`\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
 
             .data_out(data_out)
-             ^^^^^^^^ Ref -> `// In NoDefaults.gen_loop[0].sub`\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+             ^^^^^^^^ Ref -> `// In Sub`\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
                       ^^^^^^^^ Ref -> `// In NoDefaults`\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
 
         );
@@ -570,26 +570,26 @@ module NoDefaults #(
         ^^^ Ref -> `module Sub #(\n\    parameter int WIDTH = 16\n\)(\n\    input logic clk,\n\    input logic rst,\n\    input logic [WIDTH-1:0] data_in,\n\    output logic [WIDTH-1:0] data_out\n\);`
 
             .WIDTH(WIDTH)
-             ^^^^^ Ref -> `// In NoDefaults.gen_branch_block.sub_branch`\n\\n\---\n\\n\`parameter int WIDTH = 16`
+             ^^^^^ Ref -> `// In Sub`\n\\n\---\n\\n\`parameter int WIDTH = 16`
                    ^^^^^ Ref -> `// In NoDefaults`\n\\n\---\n\\n\`parameter int WIDTH`
 
         ) sub_branch (
           ^^^^^^^^^^ Sym sub_branch : HierarchicalInstance
 
             .clk(clk),
-             ^^^ Ref -> `// In NoDefaults.gen_branch_block.sub_branch`\n\\n\---\n\\n\`input logic clk`
+             ^^^ Ref -> `// In Sub`\n\\n\---\n\\n\`input logic clk`
                  ^^^ Ref -> `// In NoDefaults`\n\\n\---\n\\n\`input logic clk`
 
             .rst(rst),
-             ^^^ Ref -> `// In NoDefaults.gen_branch_block.sub_branch`\n\\n\---\n\\n\`input logic rst`
+             ^^^ Ref -> `// In Sub`\n\\n\---\n\\n\`input logic rst`
                  ^^^ Ref -> `// In NoDefaults`\n\\n\---\n\\n\`input logic rst`
 
             .data_in(data_in),
-             ^^^^^^^ Ref -> `// In NoDefaults.gen_branch_block.sub_branch`\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+             ^^^^^^^ Ref -> `// In Sub`\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
                      ^^^^^^^ Ref -> `// In NoDefaults`\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
 
             .data_out(data_out)
-             ^^^^^^^^ Ref -> `// In NoDefaults.gen_branch_block.sub_branch`\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+             ^^^^^^^^ Ref -> `// In Sub`\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
                       ^^^^^^^^ Ref -> `// In NoDefaults`\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
 
         );
@@ -601,26 +601,26 @@ module NoDefaults #(
         ^^^ Ref -> `module Sub #(\n\    parameter int WIDTH = 16\n\)(\n\    input logic clk,\n\    input logic rst,\n\    input logic [WIDTH-1:0] data_in,\n\    output logic [WIDTH-1:0] data_out\n\);`
 
             .WIDTH(WIDTH)
-             ^^^^^ Ref -> `// In NoDefaults.gen_no_branch_block.sub_no_branch`\n\\n\---\n\\n\`parameter int WIDTH = 16`
+             ^^^^^ Ref -> `// In Sub`\n\\n\---\n\\n\`parameter int WIDTH = 16`
                    ^^^^^ Ref -> `// In NoDefaults`\n\\n\---\n\\n\`parameter int WIDTH`
 
         ) sub_no_branch (
           ^^^^^^^^^^^^^ Sym sub_no_branch : HierarchicalInstance
 
             .clk(clk),
-             ^^^ Ref -> `// In NoDefaults.gen_no_branch_block.sub_no_branch`\n\\n\---\n\\n\`input logic clk`
+             ^^^ Ref -> `// In Sub`\n\\n\---\n\\n\`input logic clk`
                  ^^^ Ref -> `// In NoDefaults`\n\\n\---\n\\n\`input logic clk`
 
             .rst(rst),
-             ^^^ Ref -> `// In NoDefaults.gen_no_branch_block.sub_no_branch`\n\\n\---\n\\n\`input logic rst`
+             ^^^ Ref -> `// In Sub`\n\\n\---\n\\n\`input logic rst`
                  ^^^ Ref -> `// In NoDefaults`\n\\n\---\n\\n\`input logic rst`
 
             .data_in(data_in),
-             ^^^^^^^ Ref -> `// In NoDefaults.gen_no_branch_block.sub_no_branch`\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+             ^^^^^^^ Ref -> `// In Sub`\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
                      ^^^^^^^ Ref -> `// In NoDefaults`\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
 
             .data_out(data_out)
-             ^^^^^^^^ Ref -> `// In NoDefaults.gen_no_branch_block.sub_no_branch`\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+             ^^^^^^^^ Ref -> `// In Sub`\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
                       ^^^^^^^^ Ref -> `// In NoDefaults`\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
 
         );
