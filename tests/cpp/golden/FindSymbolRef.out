@@ -133,8 +133,8 @@ macromodule m3;
     I d(.a(), .b());
     ^ Ref -> `interface I(.*);`
       ^ Sym d : HierarchicalInstance
-         ^ Ref -> `// In m3.d`\n\\n\---\n\\n\`input a`
-               ^ Ref -> `// In m3.d`\n\\n\---\n\\n\`output b`
+         ^ Ref -> `// In I`\n\\n\---\n\\n\`input a`
+               ^ Ref -> `// In I`\n\\n\---\n\\n\`output b`
 
 
 
@@ -149,7 +149,7 @@ macromodule m3;
     ^^ Ref -> `module m2 #(\n\    parameter i = 1,\n\    localparam j = i,\n\    parameter type x_t = bit\n\)\n\    (input int a[], (* bar = "asdf" *) output logic b = 1, ref c,\n\    input p::y2 d2,\n\     interface.mod d, .e());`
 
         .x_t(y_t)
-         ^^^ Ref -> `// In m3.m`\n\\n\---\n\\n\`x_t = bit`
+         ^^^ Ref -> `// In m2`\n\\n\---\n\\n\`x_t = bit`
              ^^^ Ref -> `typedef p::y_t y_t;`
 
     ) m (, b, c, d, );
@@ -173,27 +173,27 @@ macromodule m3;
     ^^ Ref -> `module m2 #(\n\    parameter i = 1,\n\    localparam j = i,\n\    parameter type x_t = bit\n\)\n\    (input int a[], (* bar = "asdf" *) output logic b = 1, ref c,\n\    input p::y2 d2,\n\     interface.mod d, .e());`
 
         .i(1),
-         ^ Ref -> `// In m3.m2_inst`\n\\n\---\n\\n\`parameter i = 1`
+         ^ Ref -> `// In m2`\n\\n\---\n\\n\`parameter i = 1`
 
         .x_t(y2)
-         ^^^ Ref -> `// In m3.m2_inst`\n\\n\---\n\\n\`x_t = bit`
+         ^^^ Ref -> `// In m2`\n\\n\---\n\\n\`x_t = bit`
              ^^ Ref -> `typedef p::y2 y2;`
 
     ) m2_inst (
       ^^^^^^^ Sym m2_inst : HierarchicalInstance
 
         .a({1, 2}),
-         ^ Ref -> `// In m3.m2_inst`\n\\n\---\n\\n\`input int a[]`
+         ^ Ref -> `// In m2`\n\\n\---\n\\n\`input int a[]`
 
         .b(b),
-         ^ Ref -> `// In m3.m2_inst`\n\\n\---\n\\n\`(* bar = "asdf" *) output logic b = 1`
+         ^ Ref -> `// In m2`\n\\n\---\n\\n\`(* bar = "asdf" *) output logic b = 1`
            ^ Ref -> `wire b;`
 
         .c(),
-         ^ Ref -> `// In m3.m2_inst`\n\\n\---\n\\n\`ref c`
+         ^ Ref -> `// In m2`\n\\n\---\n\\n\`ref c`
 
         .d(d),
-         ^ Ref -> `// In m3.m2_inst`\n\\n\---\n\\n\`interface.mod d`
+         ^ Ref -> `// In m2`\n\\n\---\n\\n\`interface.mod d`
            ^ Ref -> `I d(.a(), .b());`
 
         .e()
@@ -613,7 +613,7 @@ macromodule m3;
 
     defparam m3.m.i = 1:1:1;
                 ^ Ref -> `m2 #(\n\    .x_t(y_t)\n\) m (, b, c, d, );`
-                  ^ Ref -> `// In m3.m`\n\\n\---\n\\n\`parameter i = 1`
+                  ^ Ref -> `// In m2`\n\\n\---\n\\n\`parameter i = 1`
 
 
 
@@ -863,7 +863,7 @@ module m4;
     ^ Ref -> `module n(Iface.m a);`
       ^^ Sym n2 : HierarchicalInstance
          ^^ Ref -> `Iface i2();`
-            ^ Ref -> `// In m4.i2`\n\\n\---\n\\n\`modport m(export foo, function void bar(int, logic), task baz, export func);`
+            ^ Ref -> `// In Iface`\n\\n\---\n\\n\`modport m(export foo, function void bar(int, logic), task baz, export func);`
 
 
 
@@ -924,7 +924,7 @@ checker assert_window1 (
 );
 
     default clocking @clock; endclocking
-                      ^^^^^ Ref -> `// In m5.aw2`\n\\n\---\n\\n\`event clock = $inferred_clock`
+                      ^^^^^ Ref -> `// In assert_window1`\n\\n\---\n\\n\`event clock = $inferred_clock`
 
     default disable iff reset;
                         ^^^^^ Ref -> `logic reset = $inferred_disable`
@@ -978,10 +978,10 @@ checker assert_window1 (
              ^^^^^^^^ Sym p_window : PropertyDeclaration
 
         start_event && !window |=> test_expr[+] ##0 end_event;
-        ^^^^^^^^^^^ Ref -> `// In m5.aw2`\n\\n\---\n\\n\`untyped start_event`
-                        ^^^^^^ Ref -> `// In m5.aw2`\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
-                                   ^^^^^^^^^ Ref -> `// In m5.aw2`\n\\n\---\n\\n\`logic test_expr`
-                                                    ^^^^^^^^^ Ref -> `// In m5.aw2`\n\\n\---\n\\n\`untyped end_event`
+        ^^^^^^^^^^^ Ref -> `// In assert_window1`\n\\n\---\n\\n\`untyped start_event`
+                        ^^^^^^ Ref -> `// In assert_window1`\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+                                   ^^^^^^^^^ Ref -> `// In assert_window1`\n\\n\---\n\\n\`logic test_expr`
+                                                    ^^^^^^^^^ Ref -> `// In assert_window1`\n\\n\---\n\\n\`untyped end_event`
 
     endproperty
 
@@ -989,8 +989,8 @@ checker assert_window1 (
 
     a_window: assert property (p_window) else $error(error_msg);
     ^^^^^^^^ Sym a_window : AssertPropertyStatement
-                               ^^^^^^^^ Ref -> `// In m5.aw2`\n\\n\---\n\\n\`property p_window;\n\    start_event && !window |=> test_expr[+] ##0 end_event;\n\endproperty`
-                                                     ^^^^^^^^^ Ref -> `// In m5.aw2`\n\\n\---\n\\n\`string error_msg = "violation"`
+                               ^^^^^^^^ Ref -> `// In assert_window1`\n\\n\---\n\\n\`property p_window;\n\    start_event && !window |=> test_expr[+] ##0 end_event;\n\endproperty`
+                                                     ^^^^^^^^^ Ref -> `// In assert_window1`\n\\n\---\n\\n\`string error_msg = "violation"`
 
 
 
@@ -1001,8 +1001,8 @@ checker assert_window1 (
 
         cover_window_open: cover property (start_event && !window)
         ^^^^^^^^^^^^^^^^^ Sym cover_window_open : CoverPropertyStatement
-                                           ^^^^^^^^^^^ Ref -> `// In m5.aw2`\n\\n\---\n\\n\`untyped start_event`
-                                                           ^^^^^^ Ref -> `// In m5.aw2`\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+                                           ^^^^^^^^^^^ Ref -> `// In assert_window1`\n\\n\---\n\\n\`untyped start_event`
+                                                           ^^^^^^ Ref -> `// In assert_window1`\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
 
         $display("window_open covered");
 
@@ -1010,16 +1010,16 @@ checker assert_window1 (
         ^^^^^^^^^^^^ Sym cover_window : CoverPropertyStatement
 
             start_event && !window
-            ^^^^^^^^^^^ Ref -> `// In m5.aw2`\n\\n\---\n\\n\`untyped start_event`
-                            ^^^^^^ Ref -> `// In m5.aw2`\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+            ^^^^^^^^^^^ Ref -> `// In assert_window1`\n\\n\---\n\\n\`untyped start_event`
+                            ^^^^^^ Ref -> `// In assert_window1`\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
 
             ##1 (!end_event && window) [*]
-                  ^^^^^^^^^ Ref -> `// In m5.aw2`\n\\n\---\n\\n\`untyped end_event`
-                               ^^^^^^ Ref -> `// In m5.aw2`\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+                  ^^^^^^^^^ Ref -> `// In assert_window1`\n\\n\---\n\\n\`untyped end_event`
+                               ^^^^^^ Ref -> `// In assert_window1`\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
 
             ##1 end_event && window
-                ^^^^^^^^^ Ref -> `// In m5.aw2`\n\\n\---\n\\n\`untyped end_event`
-                             ^^^^^^ Ref -> `// In m5.aw2`\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+                ^^^^^^^^^ Ref -> `// In assert_window1`\n\\n\---\n\\n\`untyped end_event`
+                             ^^^^^^ Ref -> `// In assert_window1`\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
 
         ) $display("window covered");
 
@@ -1216,7 +1216,7 @@ module m7;
     int i = g2.foo();
         ^ Sym i : Declarator
             ^^ Ref -> `G #(int) g2;`
-               ^^^ Ref -> `// In G#(int)`\n\\n\---\n\\n\`function G::T G::foo;\n\    return 0;\n\endfunction`
+               ^^^ Ref -> `// In G`\n\\n\---\n\\n\`function G::T G::foo;\n\    return 0;\n\endfunction`
 
     real r = D::foo();
          ^ Sym r : Declarator

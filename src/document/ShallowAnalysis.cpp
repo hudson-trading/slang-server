@@ -535,7 +535,7 @@ std::optional<lsp::Hover> ShallowAnalysis::getDocHover(const lsp::Position& posi
         auto lookupScope = getScopeAt(loc.value());
 
         if (lookupScope && symbolScope && lookupScope != symbolScope) {
-            auto hierPath = symbolScope->asSymbol().getHierarchicalPath();
+            auto hierPath = symbolScope->asSymbol().getLexicalPath();
             if (!hierPath.empty() && hierPath != "$unit") {
                 md = fmt::format("{}\n\n---\n\n{}",
                                  svCodeBlockString(fmt::format("// In {}", hierPath)), md);
