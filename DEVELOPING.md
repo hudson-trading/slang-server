@@ -43,14 +43,19 @@ Logs are in `Output > slang-server` in the terminal area
 To refresh the server, run the command "Verilog: Restart Language Server"
 
 ## Vscode Client Testing
+Install the extension dependencies by following the instructions [here](clients/vscode/DEVELOPING.md)
 
 Copy the launch template:
 
 `cp .vscode/launch.template.jsonc .vscode/launch.json`
 
-Go to Debug > Run slang-vscode
+Configure a build for vscode to use
 
-Point to your build of slang-server if needed.
+`cmake -B build/vscode -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCMAKE_BUILD_TYPE=DEBUG`
+
+Go to Debug > Run slang-vscode and attach gdb
+
+This will spin up the extension and automatically attach gdb to the slang-server process.
 
 ## Vscode Debugging
 
@@ -62,6 +67,11 @@ Type in `slang-server` to select the running server
 
 Now adding cpp breakpoints other vscode features should work.
 This method works when running slang-server with vscode or pygls
+
+You can use the auto-attach debug config by pointing your repo to the build/vscode server build, then doing the following after changes:
+- rebuild your changes if any for the build/vscode build
+- run the `Slang: Restart Lanugage Server` command
+- run the `Attach to slang-server (auto-attach)` debug option to reattach.
 
 ## LSP Stubs
 
@@ -98,6 +108,7 @@ GDB: Run with `--gdb <secs>`, then you'll have that long to attach. Then press '
 
 RR: Run with `--rr`, then run `rr replay`
 
+<!--
 ## Neovim Testing
 
-(TODO)
+(TODO) -->

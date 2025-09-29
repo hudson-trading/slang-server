@@ -4,6 +4,7 @@ import * as vscode from 'vscode'
 import * as child_process from 'child_process'
 import { glob } from 'glob'
 import path from 'path'
+import * as process from 'process'
 import { promisify } from 'util'
 import * as vscodelc from 'vscode-languageclient/node'
 import { LanguageClient, LanguageClientOptions, ServerOptions } from 'vscode-languageclient/node'
@@ -118,7 +119,15 @@ export class SlangExtension extends ActivityBarComponent {
 
   async setupLanguageClient(): Promise<void> {
     this.logger.info('starting language server')
-    const slangServerPath = await this.path.getValueAsync()
+
+    // Check for environment variable set in launch.json when debugging in vscode
+    let slangServerPath = process.env.SLANG_SERVER_PATH
+    if (!slangServerPath) {
+      slangServerPath = await this.path.getValueAsync()
+    } else {
+      this.logger.info(`Using slang-server from environment variable: ${slangServerPath}`)
+    }
+
     if (slangServerPath === '') {
       await vscode.window.showErrorMessage(
         `"slang.path not configured. Configure the abs path at slang.path, add to PATH, or disable in config.`
