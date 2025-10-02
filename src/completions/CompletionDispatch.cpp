@@ -163,7 +163,7 @@ void CompletionDispatch::getTriggerCompletions(char triggerChar, char prevChar,
         INFO("Getting hier completions for symbol {} in scope {}", sym->name,
              sym->getHierarchicalPath());
         for (auto& member : scope->members()) {
-            results.push_back(completions::getHierarchicalCompletion(scope->asSymbol(), member));
+            results.push_back(completions::getHierarchicalCompletion(*sym, member));
         }
     }
     else {

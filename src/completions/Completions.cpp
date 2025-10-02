@@ -285,11 +285,15 @@ lsp::CompletionItem getHierarchicalCompletion(const slang::ast::Symbol& parentSy
 
     if (ast::FieldSymbol::isKind(symbol.kind)) {
         auto detailStr = symbol.as<ast::FieldSymbol>().getType().toString();
+        auto valSym = parentSymbol.as_if<ast::ValueSymbol>();
+        auto descStr = valSym ? valSym->getType().getLexicalPath() : parentSymbol.getLexicalPath();
         return lsp::CompletionItem{
             .label = std::string{symbol.name},
             .labelDetails =
-                lsp::CompletionItemLabelDetails{.detail = " " + detailStr,
-                                                .description = parentSymbol.getLexicalPath()},
+                lsp::CompletionItemLabelDetails{
+                    .detail = " " + detailStr,
+                    .description = descStr,
+                },
             .kind = getCompletionKind(symbol),
             .documentation = std::nullopt, // Will be populated during resolve
             .filterText = std::string{symbol.name},
