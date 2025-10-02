@@ -535,8 +535,20 @@ std::optional<lsp::Hover> ShallowAnalysis::getDocHover(const lsp::Position& posi
         auto lookupScope = getScopeAt(loc.value());
 
         if (lookupScope && symbolScope && lookupScope != symbolScope) {
-            auto hierPath = symbolScope->asSymbol().getLexicalPath();
-            if (!hierPath.empty() && hierPath != "$unit") {
+            auto& parentSym = symbolScope->asSymbol();
+            auto hierPath = parentSym.getLexicalPath();
+            // The typedef name needs to be appended; it's not attached to the type
+            if (parentSym.kind == ast::SymbolKind::PackedStructType ||
+                parentSym.kind == ast::SymbolKind::UnpackedStructType) {
+                auto syntax = parentSym.getSyntax();
+                if (syntax && syntax->parent &&
+                    syntax->parent->kind == syntax::SyntaxKind::TypedefDeclaration) {
+                    hierPath += "::";
+                    hierPath +=
+                        syntax->parent->as<syntax::TypedefDeclarationSyntax>().name.valueText();
+                }
+            }
+            if (!hierPath.empty()) {
                 md = fmt::format("{}\n\n---\n\n{}",
                                  svCodeBlockString(fmt::format("// In {}", hierPath)), md);
             }

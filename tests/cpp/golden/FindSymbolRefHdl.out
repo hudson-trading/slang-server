@@ -726,15 +726,15 @@ module StructAssignmentTest (
 
             single_struct.addr <= 8'h00;
             ^^^^^^^^^^^^^ Ref -> `// Variables for testing\n\simple_struct_t single_struct;`
-                          ^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [7:0] addr;`
+                          ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [7:0] addr;`
 
             single_struct.data <= 16'h0000;
             ^^^^^^^^^^^^^ Ref -> `// Variables for testing\n\simple_struct_t single_struct;`
-                          ^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [15:0] data;`
+                          ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [15:0] data;`
 
             single_struct.valid <= 1'b0;
             ^^^^^^^^^^^^^ Ref -> `// Variables for testing\n\simple_struct_t single_struct;`
-                          ^^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic valid;`
+                          ^^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic valid;`
 
 
 
@@ -742,15 +742,15 @@ module StructAssignmentTest (
 
             struct_array[0].addr <= 8'hAA;
             ^^^^^^^^^^^^ Ref -> `simple_struct_t struct_array[4];`
-                            ^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [7:0] addr;`
+                            ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [7:0] addr;`
 
             struct_array[1].data <= 16'hBBBB;
             ^^^^^^^^^^^^ Ref -> `simple_struct_t struct_array[4];`
-                            ^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [15:0] data;`
+                            ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [15:0] data;`
 
             struct_array[2].valid <= 1'b1;
             ^^^^^^^^^^^^ Ref -> `simple_struct_t struct_array[4];`
-                            ^^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic valid;`
+                            ^^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic valid;`
 
 
 
@@ -759,12 +759,12 @@ module StructAssignmentTest (
             struct_array[index].addr <= 8'hCC;
             ^^^^^^^^^^^^ Ref -> `simple_struct_t struct_array[4];`
                          ^^^^^ Ref -> `logic [1:0] index;`
-                                ^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [7:0] addr;`
+                                ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [7:0] addr;`
 
             struct_array[index].data <= data_val;
             ^^^^^^^^^^^^ Ref -> `simple_struct_t struct_array[4];`
                          ^^^^^ Ref -> `logic [1:0] index;`
-                                ^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [15:0] data;`
+                                ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [15:0] data;`
                                         ^^^^^^^^ Ref -> `logic [15:0] data_val;`
 
 
@@ -773,26 +773,26 @@ module StructAssignmentTest (
 
             nested_struct.inner.addr <= 8'hDD;
             ^^^^^^^^^^^^^ Ref -> `nested_struct_t nested_struct;`
-                          ^^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`simple_struct_t inner;`
-                                ^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [7:0] addr;`
+                          ^^^^^ Ref -> `// In StructAssignmentTest::nested_struct_t`\n\\n\---\n\\n\`simple_struct_t inner;`
+                                ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [7:0] addr;`
 
             nested_struct.inner.data <= 16'hEEEE;
             ^^^^^^^^^^^^^ Ref -> `nested_struct_t nested_struct;`
-                          ^^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`simple_struct_t inner;`
-                                ^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [15:0] data;`
+                          ^^^^^ Ref -> `// In StructAssignmentTest::nested_struct_t`\n\\n\---\n\\n\`simple_struct_t inner;`
+                                ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [15:0] data;`
 
             nested_struct.inner.valid <= 1'b0;
             ^^^^^^^^^^^^^ Ref -> `nested_struct_t nested_struct;`
-                          ^^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`simple_struct_t inner;`
-                                ^^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic valid;`
+                          ^^^^^ Ref -> `// In StructAssignmentTest::nested_struct_t`\n\\n\---\n\\n\`simple_struct_t inner;`
+                                ^^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic valid;`
 
             nested_struct.tag <= 4'h5;
             ^^^^^^^^^^^^^ Ref -> `nested_struct_t nested_struct;`
-                          ^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [3:0] tag;`
+                          ^^^ Ref -> `// In StructAssignmentTest::nested_struct_t`\n\\n\---\n\\n\`logic [3:0] tag;`
 
             nested_struct.enable <= 1'b1;
             ^^^^^^^^^^^^^ Ref -> `nested_struct_t nested_struct;`
-                          ^^^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic enable;`
+                          ^^^^^^ Ref -> `// In StructAssignmentTest::nested_struct_t`\n\\n\---\n\\n\`logic enable;`
 
 
 
@@ -800,18 +800,18 @@ module StructAssignmentTest (
 
             nested_array[0].inner.addr <= 8'hFF;
             ^^^^^^^^^^^^ Ref -> `nested_struct_t nested_array[2];`
-                            ^^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`simple_struct_t inner;`
-                                  ^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [7:0] addr;`
+                            ^^^^^ Ref -> `// In StructAssignmentTest::nested_struct_t`\n\\n\---\n\\n\`simple_struct_t inner;`
+                                  ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [7:0] addr;`
 
             nested_array[1].inner.data <= 16'h1234;
             ^^^^^^^^^^^^ Ref -> `nested_struct_t nested_array[2];`
-                            ^^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`simple_struct_t inner;`
-                                  ^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [15:0] data;`
+                            ^^^^^ Ref -> `// In StructAssignmentTest::nested_struct_t`\n\\n\---\n\\n\`simple_struct_t inner;`
+                                  ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [15:0] data;`
 
             nested_array[index].tag <= 4'h7;
             ^^^^^^^^^^^^ Ref -> `nested_struct_t nested_array[2];`
                          ^^^^^ Ref -> `logic [1:0] index;`
-                                ^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [3:0] tag;`
+                                ^^^ Ref -> `// In StructAssignmentTest::nested_struct_t`\n\\n\---\n\\n\`logic [3:0] tag;`
 
 
 
@@ -819,11 +819,11 @@ module StructAssignmentTest (
 
             pkg_struct.id <= 32'h123;
             ^^^^^^^^^^ Ref -> `test_pkg::packet_t pkg_struct;`
-                       ^^ Ref -> `// In test_pkg`\n\\n\---\n\\n\`id_t id;`
+                       ^^ Ref -> `// In test_pkg::packet_t`\n\\n\---\n\\n\`id_t id;`
 
             pkg_struct.data <= 16'h5678;
             ^^^^^^^^^^ Ref -> `test_pkg::packet_t pkg_struct;`
-                       ^^^^ Ref -> `// In test_pkg`\n\\n\---\n\\n\`logic [15:0] data;`
+                       ^^^^ Ref -> `// In test_pkg::packet_t`\n\\n\---\n\\n\`logic [15:0] data;`
 
 
 
@@ -831,16 +831,16 @@ module StructAssignmentTest (
 
             pkg_array[0].id <= 32'h456;
             ^^^^^^^^^ Ref -> `test_pkg::packet_t pkg_array[3];`
-                         ^^ Ref -> `// In test_pkg`\n\\n\---\n\\n\`id_t id;`
+                         ^^ Ref -> `// In test_pkg::packet_t`\n\\n\---\n\\n\`id_t id;`
 
             pkg_array[1].data <= 16'h9ABC;
             ^^^^^^^^^ Ref -> `test_pkg::packet_t pkg_array[3];`
-                         ^^^^ Ref -> `// In test_pkg`\n\\n\---\n\\n\`logic [15:0] data;`
+                         ^^^^ Ref -> `// In test_pkg::packet_t`\n\\n\---\n\\n\`logic [15:0] data;`
 
             pkg_array[index].id <= {24'h0, addr_val};
             ^^^^^^^^^ Ref -> `test_pkg::packet_t pkg_array[3];`
                       ^^^^^ Ref -> `logic [1:0] index;`
-                             ^^ Ref -> `// In test_pkg`\n\\n\---\n\\n\`id_t id;`
+                             ^^ Ref -> `// In test_pkg::packet_t`\n\\n\---\n\\n\`id_t id;`
                                            ^^^^^^^^ Ref -> `logic [7:0] addr_val;`
 
 
@@ -860,19 +860,19 @@ module StructAssignmentTest (
 
             single_struct.addr <= addr_val + 8'h10;
             ^^^^^^^^^^^^^ Ref -> `// Variables for testing\n\simple_struct_t single_struct;`
-                          ^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [7:0] addr;`
+                          ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [7:0] addr;`
                                   ^^^^^^^^ Ref -> `logic [7:0] addr_val;`
 
             single_struct.data <= data_val << 1;
             ^^^^^^^^^^^^^ Ref -> `// Variables for testing\n\simple_struct_t single_struct;`
-                          ^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [15:0] data;`
+                          ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [15:0] data;`
                                   ^^^^^^^^ Ref -> `logic [15:0] data_val;`
 
             single_struct.valid <= ~single_struct.valid;
             ^^^^^^^^^^^^^ Ref -> `// Variables for testing\n\simple_struct_t single_struct;`
-                          ^^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic valid;`
+                          ^^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic valid;`
                                     ^^^^^^^^^^^^^ Ref -> `// Variables for testing\n\simple_struct_t single_struct;`
-                                                  ^^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic valid;`
+                                                  ^^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic valid;`
 
 
 
@@ -881,17 +881,17 @@ module StructAssignmentTest (
             struct_array[index + 1].addr <= single_struct.addr;
             ^^^^^^^^^^^^ Ref -> `simple_struct_t struct_array[4];`
                          ^^^^^ Ref -> `logic [1:0] index;`
-                                    ^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [7:0] addr;`
+                                    ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [7:0] addr;`
                                             ^^^^^^^^^^^^^ Ref -> `// Variables for testing\n\simple_struct_t single_struct;`
-                                                          ^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [7:0] addr;`
+                                                          ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [7:0] addr;`
 
             struct_array[addr_val[1:0]].data <= nested_struct.inner.data;
             ^^^^^^^^^^^^ Ref -> `simple_struct_t struct_array[4];`
                          ^^^^^^^^ Ref -> `logic [7:0] addr_val;`
-                                        ^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [15:0] data;`
+                                        ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [15:0] data;`
                                                 ^^^^^^^^^^^^^ Ref -> `nested_struct_t nested_struct;`
-                                                              ^^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`simple_struct_t inner;`
-                                                                    ^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [15:0] data;`
+                                                              ^^^^^ Ref -> `// In StructAssignmentTest::nested_struct_t`\n\\n\---\n\\n\`simple_struct_t inner;`
+                                                                    ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [15:0] data;`
 
 
 
@@ -899,22 +899,22 @@ module StructAssignmentTest (
 
             nested_struct.inner.addr <= struct_array[0].addr;
             ^^^^^^^^^^^^^ Ref -> `nested_struct_t nested_struct;`
-                          ^^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`simple_struct_t inner;`
-                                ^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [7:0] addr;`
+                          ^^^^^ Ref -> `// In StructAssignmentTest::nested_struct_t`\n\\n\---\n\\n\`simple_struct_t inner;`
+                                ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [7:0] addr;`
                                         ^^^^^^^^^^^^ Ref -> `simple_struct_t struct_array[4];`
-                                                        ^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [7:0] addr;`
+                                                        ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [7:0] addr;`
 
             nested_struct.inner.data <= pkg_struct.data;
             ^^^^^^^^^^^^^ Ref -> `nested_struct_t nested_struct;`
-                          ^^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`simple_struct_t inner;`
-                                ^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [15:0] data;`
+                          ^^^^^ Ref -> `// In StructAssignmentTest::nested_struct_t`\n\\n\---\n\\n\`simple_struct_t inner;`
+                                ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [15:0] data;`
                                         ^^^^^^^^^^ Ref -> `test_pkg::packet_t pkg_struct;`
-                                                   ^^^^ Ref -> `// In test_pkg`\n\\n\---\n\\n\`logic [15:0] data;`
+                                                   ^^^^ Ref -> `// In test_pkg::packet_t`\n\\n\---\n\\n\`logic [15:0] data;`
 
             nested_struct.inner.valid <= pkg_array[index].id[0];
             ^^^^^^^^^^^^^ Ref -> `nested_struct_t nested_struct;`
-                          ^^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`simple_struct_t inner;`
-                                ^^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic valid;`
+                          ^^^^^ Ref -> `// In StructAssignmentTest::nested_struct_t`\n\\n\---\n\\n\`simple_struct_t inner;`
+                                ^^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic valid;`
                                          ^^^^^^^^^ Ref -> `test_pkg::packet_t pkg_array[3];`
                                                    ^^^^^ Ref -> `logic [1:0] index;`
 
@@ -925,20 +925,20 @@ module StructAssignmentTest (
             nested_array[index].inner.addr <= struct_array[addr_val[1:0]].addr;
             ^^^^^^^^^^^^ Ref -> `nested_struct_t nested_array[2];`
                          ^^^^^ Ref -> `logic [1:0] index;`
-                                ^^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`simple_struct_t inner;`
-                                      ^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [7:0] addr;`
+                                ^^^^^ Ref -> `// In StructAssignmentTest::nested_struct_t`\n\\n\---\n\\n\`simple_struct_t inner;`
+                                      ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [7:0] addr;`
                                               ^^^^^^^^^^^^ Ref -> `simple_struct_t struct_array[4];`
                                                            ^^^^^^^^ Ref -> `logic [7:0] addr_val;`
-                                                                          ^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [7:0] addr;`
+                                                                          ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [7:0] addr;`
 
             nested_array[~index].inner.data <= pkg_array[index + 1].data;
             ^^^^^^^^^^^^ Ref -> `nested_struct_t nested_array[2];`
                           ^^^^^ Ref -> `logic [1:0] index;`
-                                 ^^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`simple_struct_t inner;`
-                                       ^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [15:0] data;`
+                                 ^^^^^ Ref -> `// In StructAssignmentTest::nested_struct_t`\n\\n\---\n\\n\`simple_struct_t inner;`
+                                       ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [15:0] data;`
                                                ^^^^^^^^^ Ref -> `test_pkg::packet_t pkg_array[3];`
                                                          ^^^^^ Ref -> `logic [1:0] index;`
-                                                                    ^^^^ Ref -> `// In test_pkg`\n\\n\---\n\\n\`logic [15:0] data;`
+                                                                    ^^^^ Ref -> `// In test_pkg::packet_t`\n\\n\---\n\\n\`logic [15:0] data;`
 
 
 
@@ -946,19 +946,19 @@ module StructAssignmentTest (
 
             pkg_struct.id <= {16'h0, addr_val, data_val[7:0]};
             ^^^^^^^^^^ Ref -> `test_pkg::packet_t pkg_struct;`
-                       ^^ Ref -> `// In test_pkg`\n\\n\---\n\\n\`id_t id;`
+                       ^^ Ref -> `// In test_pkg::packet_t`\n\\n\---\n\\n\`id_t id;`
                                      ^^^^^^^^ Ref -> `logic [7:0] addr_val;`
                                                ^^^^^^^^ Ref -> `logic [15:0] data_val;`
 
             pkg_array[index].data <= single_struct.data ^ nested_struct.inner.data;
             ^^^^^^^^^ Ref -> `test_pkg::packet_t pkg_array[3];`
                       ^^^^^ Ref -> `logic [1:0] index;`
-                             ^^^^ Ref -> `// In test_pkg`\n\\n\---\n\\n\`logic [15:0] data;`
+                             ^^^^ Ref -> `// In test_pkg::packet_t`\n\\n\---\n\\n\`logic [15:0] data;`
                                      ^^^^^^^^^^^^^ Ref -> `// Variables for testing\n\simple_struct_t single_struct;`
-                                                   ^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [15:0] data;`
+                                                   ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [15:0] data;`
                                                           ^^^^^^^^^^^^^ Ref -> `nested_struct_t nested_struct;`
-                                                                        ^^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`simple_struct_t inner;`
-                                                                              ^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [15:0] data;`
+                                                                        ^^^^^ Ref -> `// In StructAssignmentTest::nested_struct_t`\n\\n\---\n\\n\`simple_struct_t inner;`
+                                                                              ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [15:0] data;`
 
 
 
@@ -990,28 +990,28 @@ module StructAssignmentTest (
 
         if (single_struct.valid) begin
             ^^^^^^^^^^^^^ Ref -> `// Variables for testing\n\simple_struct_t single_struct;`
-                          ^^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic valid;`
+                          ^^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic valid;`
 
             nested_struct.tag = struct_array[0].addr[3:0];
             ^^^^^^^^^^^^^ Ref -> `nested_struct_t nested_struct;`
-                          ^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [3:0] tag;`
+                          ^^^ Ref -> `// In StructAssignmentTest::nested_struct_t`\n\\n\---\n\\n\`logic [3:0] tag;`
                                 ^^^^^^^^^^^^ Ref -> `simple_struct_t struct_array[4];`
 
             nested_struct.enable = |pkg_struct.id;
             ^^^^^^^^^^^^^ Ref -> `nested_struct_t nested_struct;`
-                          ^^^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic enable;`
+                          ^^^^^^ Ref -> `// In StructAssignmentTest::nested_struct_t`\n\\n\---\n\\n\`logic enable;`
                                     ^^^^^^^^^^ Ref -> `test_pkg::packet_t pkg_struct;`
-                                               ^^ Ref -> `// In test_pkg`\n\\n\---\n\\n\`id_t id;`
+                                               ^^ Ref -> `// In test_pkg::packet_t`\n\\n\---\n\\n\`id_t id;`
 
         end else begin
 
             nested_struct.tag = 4'h0;
             ^^^^^^^^^^^^^ Ref -> `nested_struct_t nested_struct;`
-                          ^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [3:0] tag;`
+                          ^^^ Ref -> `// In StructAssignmentTest::nested_struct_t`\n\\n\---\n\\n\`logic [3:0] tag;`
 
             nested_struct.enable = 1'b0;
             ^^^^^^^^^^^^^ Ref -> `nested_struct_t nested_struct;`
-                          ^^^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic enable;`
+                          ^^^^^^ Ref -> `// In StructAssignmentTest::nested_struct_t`\n\\n\---\n\\n\`logic enable;`
 
         end
 
@@ -1025,55 +1025,55 @@ module StructAssignmentTest (
 
         single_struct.addr = 8'h77;
         ^^^^^^^^^^^^^ Ref -> `// Variables for testing\n\simple_struct_t single_struct;`
-                      ^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [7:0] addr;`
+                      ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [7:0] addr;`
 
         single_struct.data = 16'h8888;
         ^^^^^^^^^^^^^ Ref -> `// Variables for testing\n\simple_struct_t single_struct;`
-                      ^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [15:0] data;`
+                      ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [15:0] data;`
 
         single_struct.valid = 1'b1;
         ^^^^^^^^^^^^^ Ref -> `// Variables for testing\n\simple_struct_t single_struct;`
-                      ^^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic valid;`
+                      ^^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic valid;`
 
 
 
         struct_array[3].addr = 8'h99;
         ^^^^^^^^^^^^ Ref -> `simple_struct_t struct_array[4];`
-                        ^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [7:0] addr;`
+                        ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [7:0] addr;`
 
         struct_array[3].data = 16'hAAAA;
         ^^^^^^^^^^^^ Ref -> `simple_struct_t struct_array[4];`
-                        ^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [15:0] data;`
+                        ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [15:0] data;`
 
         struct_array[3].valid = 1'b0;
         ^^^^^^^^^^^^ Ref -> `simple_struct_t struct_array[4];`
-                        ^^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic valid;`
+                        ^^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic valid;`
 
 
 
         nested_array[1].inner.addr = 8'hBB;
         ^^^^^^^^^^^^ Ref -> `nested_struct_t nested_array[2];`
-                        ^^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`simple_struct_t inner;`
-                              ^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [7:0] addr;`
+                        ^^^^^ Ref -> `// In StructAssignmentTest::nested_struct_t`\n\\n\---\n\\n\`simple_struct_t inner;`
+                              ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [7:0] addr;`
 
         nested_array[1].inner.data = 16'hCCCC;
         ^^^^^^^^^^^^ Ref -> `nested_struct_t nested_array[2];`
-                        ^^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`simple_struct_t inner;`
-                              ^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [15:0] data;`
+                        ^^^^^ Ref -> `// In StructAssignmentTest::nested_struct_t`\n\\n\---\n\\n\`simple_struct_t inner;`
+                              ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [15:0] data;`
 
         nested_array[1].tag = 4'hD;
         ^^^^^^^^^^^^ Ref -> `nested_struct_t nested_array[2];`
-                        ^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`logic [3:0] tag;`
+                        ^^^ Ref -> `// In StructAssignmentTest::nested_struct_t`\n\\n\---\n\\n\`logic [3:0] tag;`
 
 
 
         pkg_array[2].id = 32'hDEAD;
         ^^^^^^^^^ Ref -> `test_pkg::packet_t pkg_array[3];`
-                     ^^ Ref -> `// In test_pkg`\n\\n\---\n\\n\`id_t id;`
+                     ^^ Ref -> `// In test_pkg::packet_t`\n\\n\---\n\\n\`id_t id;`
 
         pkg_array[2].data = 16'hBEEF;
         ^^^^^^^^^ Ref -> `test_pkg::packet_t pkg_array[3];`
-                     ^^^^ Ref -> `// In test_pkg`\n\\n\---\n\\n\`logic [15:0] data;`
+                     ^^^^ Ref -> `// In test_pkg::packet_t`\n\\n\---\n\\n\`logic [15:0] data;`
 
     end
 
