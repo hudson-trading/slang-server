@@ -1090,8 +1090,9 @@
 <li><code>${workspaceFolder}/.slang/server.json</code> (should be on source control)</li>
 <li><code>${workspaceFolder}/.slang/local/server.json</code> (<code>.slang/local</code> should be ignored by source control)</li>
 </ul>
+<p>A set config option overrides the existing value in the previous config, except for lists, which are appended.</p>
 <h2 id="config-options">Config options<a class="headerlink" href="#config-options" title="Permanent link">&para;</a></h2>
-<p>All configuration options are optional and have sensible defaults. In Vscode, the configuration files are self-documenting, meaning that there are completions and hovers for the server.json files.</p>
+<p>All configuration options are optional and have sensible defaults. In Vscode, the configuration files are self-documenting via a generated json schema, meaning that there are completions and hovers for the server.json files.</p>
 <h3 id="indexglobs"><code>indexGlobs</code><a class="headerlink" href="#indexglobs" title="Permanent link">&para;</a></h3>
 <p>Configuring this and excludeDirs are <strong>highly</strong> recommended, as narrowing these can dramatically reduce the indexing time. Crawling a directory can actually take more time than actually indexing the files, so avoiding build dirs and software dirs to reduce that time. If there's rewritten or generated verilog in build dirs that get indexed, it can slow down the language server and make features like gotos and completions inaccurate.</p>
 <p><strong>Type:</strong> <code>array of strings</code></p>
