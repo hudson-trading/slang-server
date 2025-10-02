@@ -5,7 +5,7 @@
         "label": "addr",
         "labelDetails": {
           "detail": " logic[7:0]",
-          "description": ""
+          "description": "simple_struct_t"
         },
         "kind": "Property",
         "filterText": "addr"
@@ -14,7 +14,7 @@
         "label": "data",
         "labelDetails": {
           "detail": " logic[31:0]",
-          "description": ""
+          "description": "simple_struct_t"
         },
         "kind": "Property",
         "filterText": "data"
@@ -23,7 +23,7 @@
         "label": "valid",
         "labelDetails": {
           "detail": " logic",
-          "description": ""
+          "description": "simple_struct_t"
         },
         "kind": "Property",
         "filterText": "valid"
@@ -36,7 +36,7 @@
         "label": "inner",
         "labelDetails": {
           "detail": " simple_struct_t",
-          "description": ""
+          "description": "nested_struct_t"
         },
         "kind": "Property",
         "filterText": "inner"
@@ -45,7 +45,7 @@
         "label": "tag",
         "labelDetails": {
           "detail": " logic[15:0]",
-          "description": ""
+          "description": "nested_struct_t"
         },
         "kind": "Property",
         "filterText": "tag"
@@ -54,7 +54,7 @@
         "label": "ready",
         "labelDetails": {
           "detail": " logic",
-          "description": ""
+          "description": "nested_struct_t"
         },
         "kind": "Property",
         "filterText": "ready"
@@ -67,7 +67,7 @@
         "label": "level1",
         "labelDetails": {
           "detail": " nested_struct_t",
-          "description": ""
+          "description": "deep_nested_struct_t"
         },
         "kind": "Property",
         "filterText": "level1"
@@ -76,7 +76,7 @@
         "label": "id",
         "labelDetails": {
           "detail": " logic[3:0]",
-          "description": ""
+          "description": "deep_nested_struct_t"
         },
         "kind": "Property",
         "filterText": "id"
@@ -85,7 +85,7 @@
         "label": "enable",
         "labelDetails": {
           "detail": " logic",
-          "description": ""
+          "description": "deep_nested_struct_t"
         },
         "kind": "Property",
         "filterText": "enable"
@@ -98,7 +98,7 @@
         "label": "addr",
         "labelDetails": {
           "detail": " logic[7:0]",
-          "description": ""
+          "description": "simple_struct_t"
         },
         "kind": "Property",
         "filterText": "addr"
@@ -107,7 +107,7 @@
         "label": "data",
         "labelDetails": {
           "detail": " logic[31:0]",
-          "description": ""
+          "description": "simple_struct_t"
         },
         "kind": "Property",
         "filterText": "data"
@@ -116,7 +116,7 @@
         "label": "valid",
         "labelDetails": {
           "detail": " logic",
-          "description": ""
+          "description": "simple_struct_t"
         },
         "kind": "Property",
         "filterText": "valid"
@@ -129,7 +129,7 @@
         "label": "inner",
         "labelDetails": {
           "detail": " simple_struct_t",
-          "description": ""
+          "description": "nested_struct_t"
         },
         "kind": "Property",
         "filterText": "inner"
@@ -138,7 +138,7 @@
         "label": "tag",
         "labelDetails": {
           "detail": " logic[15:0]",
-          "description": ""
+          "description": "nested_struct_t"
         },
         "kind": "Property",
         "filterText": "tag"
@@ -147,7 +147,7 @@
         "label": "ready",
         "labelDetails": {
           "detail": " logic",
-          "description": ""
+          "description": "nested_struct_t"
         },
         "kind": "Property",
         "filterText": "ready"
@@ -160,7 +160,7 @@
         "label": "addr",
         "labelDetails": {
           "detail": " logic[7:0]",
-          "description": ""
+          "description": "simple_struct_t"
         },
         "kind": "Property",
         "filterText": "addr"
@@ -169,7 +169,7 @@
         "label": "data",
         "labelDetails": {
           "detail": " logic[31:0]",
-          "description": ""
+          "description": "simple_struct_t"
         },
         "kind": "Property",
         "filterText": "data"
@@ -178,7 +178,7 @@
         "label": "valid",
         "labelDetails": {
           "detail": " logic",
-          "description": ""
+          "description": "simple_struct_t"
         },
         "kind": "Property",
         "filterText": "valid"
