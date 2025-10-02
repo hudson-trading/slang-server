@@ -73,6 +73,26 @@ You can use the auto-attach debug config by pointing your repo to the build/vsco
 - run the `Slang: Restart Lanugage Server` command
 - run the `Attach to slang-server (auto-attach)` debug option to reattach.
 
+## Neovim Testing
+
+Neovim tests require nlua and busted as [described here](https://mrcjkb.dev/posts/2023-06-06-luarocks-test.html).
+They can be configured and run via luarocks as follows:
+```bash
+cd clients/neovim/
+luarocks --tree .luarocks install nlua
+luarocks --tree .luarocks --lua-version 5.1 install busted
+eval $(luarocks --tree .luarocks --lua-version 5.1 path)
+PATH=$PATH:../../build/bin luarocks --tree .luarocks --lua-version 5.1 test
+```
+
+## lsp-rr-wrapper.py
+
+This wrapper script can be used to aid in debugging `slang-server`.
+It will record the underlying `slang-server` using the [rr debugger](https://rr-project.org/) and
+make a copy of stdin, stdout and stderr in `/tmp/slang-server.std*`.
+To use it, simply wrap the call to `slang-server` with this script in a given editor's LSP config.
+Note that currently the wrapper overwrites temp every time it is run.
+
 ## LSP Stubs
 
 Server stubs are generated from Microsoft's [stubs generation](https://github.com/microsoft/lsprotocol) repo. These should rarely need to be updated.
