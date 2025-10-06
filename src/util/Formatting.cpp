@@ -39,9 +39,18 @@ void shiftIndent(std::string& s) {
     bool usingTabs = s.find('\t') != std::string::npos;
     char iChar = usingTabs ? '\t' : ' ';
 
+    // if it's a single line, just lstrip
+    if (isSingleLine(s)) {
+        ltrim(s);
+        return;
+    }
+
+    // skip the first line, since it's whitepsace isn't included
+    std::getline(stream, line);
     while (std::getline(stream, line)) {
+        // Skip empty lines
         if (line.empty()) {
-            continue; // Skip empty lines
+            continue;
         }
 
         size_t indent = 0;
@@ -195,7 +204,10 @@ std::string svCodeBlockString(const syntax::SyntaxNode& node) {
         fmtNode = fmtNode->parent;
     }
 
-    auto res = fmtNode->toString();
+    auto res = slang::syntax::SyntaxPrinter().printExcludingLeadingTrivia(*fmtNode).str();
+
+    res = slang::syntax::SyntaxPrinter().printLeadingComments(*fmtNode).str() + res;
+
     return svCodeBlockString(res);
 }
 

@@ -265,10 +265,12 @@ module TestModule (
     input logic rst,
                 ^^^ Sym rst : Declarator
 
-    input logic [test_pkg::WIDTH-1:0] width_port,
-                 ^^^^^^^^ Ref -> `package test_pkg;`
-                           ^^^^^ Ref -> `// In test_pkg`\n\\n\---\n\\n\`parameter int WIDTH = 32`
-                                      ^^^^^^^^^^ Sym width_port : Declarator
+    // some useful info
+
+    input logic          [test_pkg::WIDTH-1:0] width_port,
+                          ^^^^^^^^ Ref -> `package test_pkg;`
+                                    ^^^^^ Ref -> `// In test_pkg`\n\\n\---\n\\n\`parameter int WIDTH = 32`
+                                               ^^^^^^^^^^ Sym width_port : Declarator
 
     input test_pkg::id_t [test_pkg::WIDTH-1:0] id_array,
           ^^^^^^^^ Ref -> `package test_pkg;`
@@ -440,14 +442,17 @@ module TestModule (
         ^^^^^^^^^^ Ref -> `bus_if.master bus_master`
                    ^^^^^^^^^^^^ Ref -> `// In bus_if.master`\n\\n\---\n\\n\`output valid, addr, data, write_enable`
 
-        bus_master.addr <= '0;
+        bus_master.addr = width_port[0];
         ^^^^^^^^^^ Ref -> `bus_if.master bus_master`
                    ^^^^ Ref -> `// In bus_if.master`\n\\n\---\n\\n\`output valid, addr, data, write_enable`
+                          ^^^^^^^^^^ Ref -> `// some useful info\n\input logic          [test_pkg::WIDTH-1:0] width_port`
 
         bus_master.data <= state;
         ^^^^^^^^^^ Ref -> `bus_if.master bus_master`
                    ^^^^ Ref -> `// In bus_if.master`\n\\n\---\n\\n\`output valid, addr, data, write_enable`
                            ^^^^^ Ref -> `test_pkg::state_t state, state_next;`
+
+
 
     end
 
