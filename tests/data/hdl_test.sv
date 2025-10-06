@@ -89,7 +89,8 @@ endmodule
 module TestModule (
     input logic clk,
     input logic rst,
-    input logic [test_pkg::WIDTH-1:0] width_port,
+    // some useful info
+    input logic          [test_pkg::WIDTH-1:0] width_port,
     input test_pkg::id_t [test_pkg::WIDTH-1:0] id_array,
     input test_pkg::packet_t pkt_in,
     output test_pkg::data_t data_out,
@@ -136,8 +137,9 @@ module TestModule (
     initial begin
         bus_master.valid <= 1'b0;
         bus_master.write_enable <= 1'b0;
-        bus_master.addr <= '0;
+        bus_master.addr = width_port[0];
         bus_master.data <= state;
+
     end
 
 endmodule

@@ -40,7 +40,7 @@ module cycle_test_module;
                                   ^^^^^^^^^^^^^ Ref -> `// In util_pkg`\n\\n\---\n\\n\`function automatic base_pkg::config_t create_config(input base_pkg::data_width_t width);\n\    base_pkg::config_t cfg = base_pkg::get_default_config();\n\    cfg.max_width = width;\n\    return cfg;\n\endfunction`
 
         bus_width = system_config.max_width;
-        ^^^^^^^^^ Ref -> `// This should resolve via export\n\  base_pkg::data_width_t bus_width;`
+        ^^^^^^^^^ Ref -> `base_pkg::data_width_t bus_width;`
                     ^^^^^^^^^^^^^ Ref -> `// Use types from base_pkg (which exports util_pkg types)\n\base_pkg::config_t system_config;`
                                   ^^^^^^^^^ Ref -> `// In base_pkg::config_t`\n\\n\---\n\\n\`data_width_t max_width;`
 

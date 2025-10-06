@@ -263,7 +263,7 @@ macromodule m3;
 
 
         disable m3.foo;
-                   ^^^ Ref -> `begin : foo\n\   end : foo`
+                   ^^^ Ref -> `begin : foo\n\end : foo`
 
 
 
@@ -692,7 +692,7 @@ endprimitive
 
 (* attr = 3.14 *) bind m3.m m1 #(1) bound('x, , , );
                           ^ Ref -> `m2 #(\n\    .x_t(y_t)\n\) m (, b, c, d, );`
-                            ^^ Ref -> `module automatic m1 import p::*; #(int i = 1)\n\    (a, b, , .c({a, b[0]}));`
+                            ^^ Ref -> `module automatic m1 import p::*; #(int i = 1)\n\(a, b, , .c({a, b[0]}));`
                                     ^^^^^ Sym bound : HierarchicalInstance
 
 

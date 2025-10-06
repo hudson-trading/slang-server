@@ -1,6 +1,6 @@
 [submodule "external/slang"]
 	path = external/slang
-	url = https://github.com/MikePopoloski/slang.git
+	url = https://github.com/AndrewNolte/slang.git
 [submodule "external/reflect-cpp"]
 	path = external/reflect-cpp
 	url = https://github.com/getml/reflect-cpp.git

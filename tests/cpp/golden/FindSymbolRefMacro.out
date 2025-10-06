@@ -99,7 +99,7 @@ module test;
 
     localparam int SIMPLE_VAL = `SIMPLE_MACRO;
                    ^^^^^^^^^^ Sym SIMPLE_VAL : Declarator
-                                ^^^^^^^^^^^^^ Ref -> `// Comprehensive macro test file covering various macro scenarios\n\// Based on test cases from tests/unittests/parsing/DiagnosticTests.cpp\n\// Basic macro definitions\n\`define SIMPLE_MACRO 42`
+                                ^^^^^^^^^^^^^ Ref -> `// Basic macro definitions\n\`define SIMPLE_MACRO 42`
 
 
 
@@ -123,7 +123,7 @@ module test;
 
     `DECLARE_INT(some_int, 1)
     ^^^^^^^^^^^^ Ref -> ``define DECLARE_INT(name, val) localparam int name = val;`
-                 ^^^^^^^^ Ref -> `// Test definition behind macro\n\localparam int some_int = 1`\n\ Expanded from\n\ ``DECLARE_INT(some_int, 1)`
+                 ^^^^^^^^ Ref -> `localparam int some_int = 1`\n\ Expanded from\n\ ``DECLARE_INT(some_int, 1)`
 
     `DECLARE_INT(other_int, 2)
     ^^^^^^^^^^^^ Ref -> ``define DECLARE_INT(name, val) localparam int name = val;`
@@ -137,7 +137,7 @@ module test;
 
     localparam int x = some_int;
                    ^ Sym x : Declarator
-                       ^^^^^^^^ Ref -> `// Test definition behind macro\n\localparam int some_int = 1`\n\ Expanded from\n\ ``DECLARE_INT(some_int, 1)`
+                       ^^^^^^^^ Ref -> `localparam int some_int = 1`\n\ Expanded from\n\ ``DECLARE_INT(some_int, 1)`
 
 
 
@@ -152,7 +152,7 @@ module test;
 
         for (i = 0; i < `SIMPLE_MACRO; i++) begin : gen_block
                     ^ Ref -> `// In test`\n\\n\---\n\\n\`i`
-                        ^^^^^^^^^^^^^ Ref -> `// Comprehensive macro test file covering various macro scenarios\n\// Based on test cases from tests/unittests/parsing/DiagnosticTests.cpp\n\// Basic macro definitions\n\`define SIMPLE_MACRO 42`
+                        ^^^^^^^^^^^^^ Ref -> `// Basic macro definitions\n\`define SIMPLE_MACRO 42`
                                        ^ Ref -> `// In test`\n\\n\---\n\\n\`i`
                                                     ^^^^^^^^^ Sym gen_block : LoopGenerate
 
@@ -174,7 +174,7 @@ module test;
               ^^^^^^^^ Ref -> `// Variables for testing\n\int test_var;`
 
             `SIMPLE_MACRO: bus_signal = `TWO_ARG_MACRO(1, 2);
-            ^^^^^^^^^^^^^ Ref -> `// Comprehensive macro test file covering various macro scenarios\n\// Based on test cases from tests/unittests/parsing/DiagnosticTests.cpp\n\// Basic macro definitions\n\`define SIMPLE_MACRO 42`
+            ^^^^^^^^^^^^^ Ref -> `// Basic macro definitions\n\`define SIMPLE_MACRO 42`
                            ^^^^^^^^^^ Ref -> `logic [31:0] bus_signal;`
                                         ^^^^^^^^^^^^^^ Ref -> ``define TWO_ARG_MACRO(a, b) (a + b)`
 
@@ -193,7 +193,7 @@ module test;
     initial begin
 
         $display("Testing macro: %d", `SIMPLE_MACRO);
-                                      ^^^^^^^^^^^^^ Ref -> `// Comprehensive macro test file covering various macro scenarios\n\// Based on test cases from tests/unittests/parsing/DiagnosticTests.cpp\n\// Basic macro definitions\n\`define SIMPLE_MACRO 42`
+                                      ^^^^^^^^^^^^^ Ref -> `// Basic macro definitions\n\`define SIMPLE_MACRO 42`
 
         $display("Function macro result: %d", `FUNC_MACRO(25));
                                               ^^^^^^^^^^^ Ref -> ``define FUNC_MACRO(x) (x + 1)`
