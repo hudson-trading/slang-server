@@ -199,7 +199,7 @@ public:
     std::vector<std::string> getInstances(const lsp::TextDocumentPositionParams&);
 
     /// Add the given variable or scope to the waveform via WCP
-    std::monostate addToWaveform(const waves::ScopeToWaveform&);
+    std::monostate addToWaveform(const waves::ItemToWaveform&);
 
     /// Open a given waveform file and establish a WCP connection
     std::monostate openWaveform(const std::string&);
