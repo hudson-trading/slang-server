@@ -7,7 +7,7 @@ This isn't really a thing for HDLs, where a full design is almost always assumed
 
 ### Limitations
 
-Hierarchical references can go down or up more than one layer, in which case some symbols may not load. It would be nice to continue adding the relevant syntax trees to get all symbols in the current document, rather than just loading directly referenced symbols. Upward references will always be a blind spot for the language server, and are generall not considered a good practice.
+Hierarchical references can go down or up more than one layer, in which case some symbols may not load. It would be nice to continue adding the relevant syntax trees to get all symbols in the current document, rather than just loading directly referenced symbols. Upward references will always be a blind spot for the language server, and are generally not considered a good practice.
 
 ## AllGenerateBranches
 
@@ -23,6 +23,6 @@ It's a common pattern to declare an input/output interface with a datatype, howe
 
 The slang `--single-unit` causes all parsed files to essentially be squashed together, which has the effect of syntax trees inheriting preprocessor macros and defines.
 
-This isn't great for a language server, and isn't supported at the moment, meaning repos that use this will see errors for undefined macros.
+Actually parsing the files this way in the language server would slow down the server considerably. So repos that use this will see errors for symbols - typically macros - that are not explicitly included.
 
-Support for this could be added by feeding the indexed macros to the preprocessor if it can't find the macro in its current working set.
+Support for this could be added in the future by feeding the indexed macros to the preprocessor if it can't find the macro in its current working set.

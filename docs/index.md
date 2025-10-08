@@ -19,16 +19,16 @@ slang-server provides comprehensive SystemVerilog language support for modern ed
 
 ## Quick Start
 
-Ready to get started? Check out our [installation guide](start/installing.md) and learn how to [configure your editor](start/config.md).
+Check out the [installation guide](start/installing.md) and learn how to [configure your editor](start/config.md).
 
 ## Project Status
 
-slang-server is actively developed by the hardware team at Hudson River Trading and welcomes community contributions. The project aims to provide the most comprehensive and performant SystemVerilog language server available.
+slang-server is actively developed by the hardware team at Hudson River Trading and welcomes community contributions. The project aims to be the most comprehensive and performant SystemVerilog language server.
 
 ## Support & Contributing
 
 - **Bug Reports**: Open an issue on [GitHub](https://github.com/hudson-trading/slang-server)
-- **Contributing**: Pull requests are welcome! See our contributing guidelines.
+- **Contributing**: Pull requests are welcome! See our [contributing guidelines](https://github.com/hudson-trading/slang-server/blob/main/CONTRIBUTING.md).
 
 ## License
 

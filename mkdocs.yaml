@@ -88,6 +88,8 @@ nav:
       # - Completion Examples: features/completions.md
   - HDL Features:
       - hdl/hdl.md
+      - Vscode: hdl/vscode.md
+      - Neovim: hdl/neovim.md
       - hdl/api.md
   - Design Choices:
       - design/indexing.md

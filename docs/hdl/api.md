@@ -19,4 +19,4 @@ Similarly, it would be ideal to subscribe to a compilation and receive updates i
 
 ## Other Integrations
 
-One can look to the [Surfer wcp work](https://gitlab.com/waveform-control-protocol/wcp) for implementing a language-agnostic integration over JsonRPC.
+One can look to the [Surfer wcp work](https://gitlab.com/waveform-control-protocol/wcp) for implementing an editor-agnostic and implementation-language-agnostic integration over JsonRPC.
