@@ -2,8 +2,6 @@ name: Deploy PR Preview to gh-pages
 
 on:
   pull_request:
-    branches:
-      - main
     paths:
       - 'docs/**'
       - '**/mkdocs*.yml'

@@ -30,4 +30,4 @@ For classes/functions it will distinguish betweeen instance variables, function 
 
 ### Formatter
 
-This one is pretty self explanatory, but it will live in the slang repo and also be shipped as a standalone binary. In order to make formatting nice for the language server, basic formatting functions already exist in this repo. This includes things like squashing white spaces to condense hovers/completion types, and left aligning blocks of text for hovers and completion docs.
+This one is pretty self explanatory, but it will live in the slang repo and also be shipped as a standalone binary. In order to make formatting nice for things like hovers and completions, basic formatting functions already exist in this repo, but not a full formatter. This includes things like squashing white spaces to condense hovers/completion types, and left aligning blocks of text for hovers and completion docs.
