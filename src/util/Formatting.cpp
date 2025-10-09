@@ -174,6 +174,9 @@ std::string svCodeBlockString(std::string_view code) {
     auto res = std::string{code};
     stripBlankLines(res);
     shiftIndent(res);
+    if (isSingleLine(res)) {
+        squashSpaces(res);
+    }
     // We use quad backticks since in sv triple can be used for macro concatenations
     return fmt::format("````systemverilog\n{}\n````", res);
 }
@@ -202,9 +205,6 @@ std::string svCodeBlockString(const syntax::SyntaxNode& node) {
     }
 
     auto res = slang::syntax::SyntaxPrinter().printExcludingLeadingTrivia(*fmtNode).str();
-    if (isSingleLine(res)) {
-        squashSpaces(res);
-    }
 
     res = slang::syntax::SyntaxPrinter().printLeadingComments(*fmtNode).str() + res;
 
