@@ -27,7 +27,7 @@ An OpenVSX release is coming soon, but in the meantime it's possible to run `cd 
 
 ### Neovim
 
-> **Note**
+> [!NOTE]
 > Once Slang Server is more actively used (you can help by starring [the project](https://github.com/hudson-trading/slang-server)!), it will be added to [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig) and [mason.nvim](https://github.com/mason-org/mason.nvim) and no additional configuration will be required. Until then, follow one of the methods below to manually add the server configuration.
 
 There are many ways to configure a language server in Neovim.
