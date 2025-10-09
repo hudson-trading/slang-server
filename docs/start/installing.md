@@ -27,7 +27,36 @@ An OpenVSX release is coming soon, but in the meantime it's possible to run `cd 
 
 ### Neovim
 
-There are many ways to configure a language server in Neovim. One can use the [nvim API](https://neovim.io/doc/user/lsp.html#vim.lsp.start()) directly. Plugins like nvim-lspconfig and mason make managing language servers easier but slang-server has not yet been added to those projects. For users of lazy.nvim, the language server can be configured by adding or amending `~/.config/nvim/lua/plugins/lsp/nvim-lspconfig.lua` with this:
+> **Note**
+> Once Slang Server is more actively used (you can help by starring [the project](https://github.com/hudson-trading/slang-server)!), it will be added to [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig) and [mason.nvim](https://github.com/mason-org/mason.nvim) and no additional configuration will be required. Until then, follow one of the methods below to manually add the server configuration.
+
+There are many ways to configure a language server in Neovim.
+
+For older versions of Neovim (< v0.11) with `nvim-lspconfig`, the server can be configured with:
+```lua
+local configs = require("lspconfig.configs")
+local util = require("lspconfig.util")
+
+if not configs.slang_server then
+  configs.slang_server = {
+    default_config = {
+      cmd = {
+        "slang-server",
+      },
+      filetypes = {
+        "systemverilog",
+        "verilog",
+      },
+      single_file_support = true,
+      root_dir = function(fname)
+        return util.root_pattern(".git", ".slang")(fname)
+      end,
+    },
+  }
+end
+```
+
+For users of lazy.nvim, the above could be added to their `nvim-lspconfig` spec at `~/.config/nvim/lua/plugins/nvim-lspconfig.lua` like this:
 ```lua
 return {
   "neovim/nvim-lspconfig",
@@ -49,8 +78,7 @@ return {
               },
               single_file_support = true,
               root_dir = function(fname)
-                return util.root_pattern(".slang-server.json")(fname)
-                  or vim.fs.dirname(vim.fs.find(".git", { path = fname, upward = true })[1])
+                return util.root_pattern(".git", ".slang")(fname)
               end,
             },
           }
@@ -67,7 +95,23 @@ return {
 }
 ```
 
-Neovim natively handles the LSP. No additional plugin is required to use Slang Server for standard LSP actions (e.g. [Go to Definition](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_definition), however a plugin is provided to enable use of the features which extend the LSP (e.g. hierachical compilation).  The plugin can be found in `clients/neovim/` and is also mirrored in [slang-server.nvim](https://github.com/hudson-trading/slang-server.nvim) for ease of use with Neovim plugin managers.
+For newer versions of Neovim (≥ v0.11), the new [vim.lsp API](https://neovim.io/doc/user/lsp.html#vim.lsp.start()) is the preferred, simpler way to configure language servers:
+```lua
+vim.lsp.config("slang-server", {
+  cmd = "slang-server",
+  root_markers = { ".git", ".slang" },
+  filetypes = {
+    "systemverilog",
+    "verilog",
+  },
+})
+
+vim.lsp.enable("slang-server")
+```
+
+Neovim natively handles the LSP. No additional plugin is required to use Slang Server for standard LSP actions (e.g. [Go to Definition](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_definition).
+
+However, a plugin is provided to enable use of some enhanced client-side features which extend the LSP (e.g. hierachical compilation). The plugin can be found in `clients/neovim/` and is also mirrored in [slang-server.nvim](https://github.com/hudson-trading/slang-server.nvim) for ease of use with Neovim plugin managers.
 
 ### Other editors
 
