@@ -20,8 +20,7 @@ import {
 } from './lib/libconfig'
 import { ProjectComponent } from './sidebar/ProjectComponent'
 import * as slang from './SlangInterface'
-import { getWorkspaceFolder, systemverilogSelector } from './utils'
-const asyncGlob = promisify(glob)
+import { anyVerilogSelector, getWorkspaceFolder } from './utils'
 
 export var ext: SlangExtension
 
@@ -149,7 +148,7 @@ export class SlangExtension extends ActivityBarComponent {
     }
 
     const clientOptions: LanguageClientOptions = {
-      documentSelector: systemverilogSelector,
+      documentSelector: anyVerilogSelector,
     }
 
     this.client = new LanguageClient('slang-server', serverOptions, clientOptions)
