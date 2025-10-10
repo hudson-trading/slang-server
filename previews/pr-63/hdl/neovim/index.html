@@ -1156,16 +1156,16 @@ Once installed the <code>SlangServer</code> command will provide a number of sub
 </code></pre></div>
 <p>This will open the hierarchy view and, if <code>SCOPE</code> is provided, expand the view to that scope.</p>
 <h2 id="cone-tracing-experimental">Cone Tracing (experimental)<a class="headerlink" href="#cone-tracing-experimental" title="Permanent link">&para;</a></h2>
-<div class="language-text highlight"><pre><span></span><code>:lua vim.lsp.buf.incoming_calls()
-:lua vim.lsp.buf.outgoing_calls()
+<p><div class="language-text highlight"><pre><span></span><code>:lua vim.lsp.buf.incoming_calls()
 </code></pre></div>
+<div class="language-text highlight"><pre><span></span><code>:lua vim.lsp.buf.outgoing_calls()
+</code></pre></div></p>
 <p>This allows for drivers/loads tracing over the <a href="https://neovim.io/doc/user/lsp.html#vim.lsp.buf.incoming_calls()">call hierarchy lsp route</a>, since it's an analogous concept.  Tracing incoming calls yields drivers of a given signal and outgoing calls yields loads or things the signal drives.
 Calling one of these functions will trace the signal currently under the cursor.
 If there is more than one instance of the signal then first a list of instances will be presented.
 After an instance is selected (or if there is only one instance) a list of drivers or loads will be presented.</p>
 <h2 id="waveform-integration-experimental">Waveform Integration (experimental)<a class="headerlink" href="#waveform-integration-experimental" title="Permanent link">&para;</a></h2>
-<div class="grid">
-<div class="grid-item">
+<p><img alt="WCP" src="wcp.gif" /></p>
 <p>This is currently only setup between Neovim and Surfer, through the WCP (waveform control protocol), which runs on JSON-RPC over TCP.</p>
 <h3 id="editor-features">Editor Features<a class="headerlink" href="#editor-features" title="Permanent link">&para;</a></h3>
 <h4 id="open-waveform-file">Open Waveform File<a class="headerlink" href="#open-waveform-file" title="Permanent link">&para;</a></h4>
@@ -1189,11 +1189,6 @@ If more than one instance of the item exists, a list of instances will be provid
 <li>Add Drivers</li>
 <li>Add Loads</li>
 </ul>
-</div>
-<div class="grid-item">
-<p><img alt="WCP" src="wcp.gif" /></p>
-</div>
-</div>
 
 
 
