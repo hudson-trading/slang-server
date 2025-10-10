@@ -32,6 +32,20 @@ An OpenVSX release is coming soon, but in the meantime it's possible to run `cd 
 
 There are many ways to configure a language server in Neovim.
 
+For newer versions of Neovim (≥ v0.11), the new [vim.lsp API](https://neovim.io/doc/user/lsp.html#vim.lsp.start()) is the preferred, simpler way to configure language servers:
+```lua
+vim.lsp.config("slang-server", {
+  cmd = "slang-server",
+  root_markers = { ".git", ".slang" },
+  filetypes = {
+    "systemverilog",
+    "verilog",
+  },
+})
+
+vim.lsp.enable("slang-server")
+```
+
 For older versions of Neovim (< v0.11) with `nvim-lspconfig`, the server can be configured with:
 ```lua
 local configs = require("lspconfig.configs")
@@ -93,20 +107,6 @@ return {
     },
   },
 }
-```
-
-For newer versions of Neovim (≥ v0.11), the new [vim.lsp API](https://neovim.io/doc/user/lsp.html#vim.lsp.start()) is the preferred, simpler way to configure language servers:
-```lua
-vim.lsp.config("slang-server", {
-  cmd = "slang-server",
-  root_markers = { ".git", ".slang" },
-  filetypes = {
-    "systemverilog",
-    "verilog",
-  },
-})
-
-vim.lsp.enable("slang-server")
 ```
 
 Neovim natively handles the LSP. No additional plugin is required to use Slang Server for standard LSP actions (e.g. [Go to Definition](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_definition).
