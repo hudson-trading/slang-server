@@ -59,7 +59,7 @@ module automatic m1 import p::*; #(int i = 1)
 
     localparam p::y d = {1'b0, 1'b1};
                ^ Ref -> `package static p;`
-                  ^ Ref -> `// In p`\n\\n\---\n\\n\`y = logic[x:0]`
+                  ^ Ref -> `// In p`\n\\n\---\n\\n\`parameter type y = logic[x:0]`
                     ^ Sym d : Declarator
 
 endmodule
@@ -87,7 +87,7 @@ module m2 #(
 
     input p::y2 d2,
           ^ Ref -> `package static p;`
-             ^^ Ref -> `// In p`\n\\n\---\n\\n\`y2 = logic[x2:0]`
+             ^^ Ref -> `// In p`\n\\n\---\n\\n\`parameter type y2 = logic[x2:0]`
                 ^^ Sym d2 : Declarator
 
      interface.mod d, .e());
@@ -140,7 +140,7 @@ macromodule m3;
 
     typedef p::y_t y_t;
             ^ Ref -> `package static p;`
-               ^^^ Ref -> `// In p`\n\\n\---\n\\n\`y_t = logic[x:0]`
+               ^^^ Ref -> `// In p`\n\\n\---\n\\n\`parameter type y_t = logic[x:0]`
                    ^^^ Sym y_t : TypedefDeclaration
 
 
@@ -149,7 +149,7 @@ macromodule m3;
     ^^ Ref -> `module m2 #(\n\    parameter i = 1,\n\    localparam j = i,\n\    parameter type x_t = bit\n\)\n\    (input int a[], (* bar = "asdf" *) output logic b = 1, ref c,\n\    input p::y2 d2,\n\     interface.mod d, .e());`
 
         .x_t(y_t)
-         ^^^ Ref -> `// In m2`\n\\n\---\n\\n\`x_t = bit`
+         ^^^ Ref -> `// In m2`\n\\n\---\n\\n\`parameter type x_t = bit`
              ^^^ Ref -> `typedef p::y_t y_t;`
 
     ) m (, b, c, d, );
@@ -164,7 +164,7 @@ macromodule m3;
 
     typedef p::y2 y2;
             ^ Ref -> `package static p;`
-               ^^ Ref -> `// In p`\n\\n\---\n\\n\`y2 = logic[x2:0]`
+               ^^ Ref -> `// In p`\n\\n\---\n\\n\`parameter type y2 = logic[x2:0]`
                   ^^ Sym y2 : TypedefDeclaration
 
 
@@ -176,7 +176,7 @@ macromodule m3;
          ^ Ref -> `// In m2`\n\\n\---\n\\n\`parameter i = 1`
 
         .x_t(y2)
-         ^^^ Ref -> `// In m2`\n\\n\---\n\\n\`x_t = bit`
+         ^^^ Ref -> `// In m2`\n\\n\---\n\\n\`parameter type x_t = bit`
              ^^ Ref -> `typedef p::y2 y2;`
 
     ) m2_inst (

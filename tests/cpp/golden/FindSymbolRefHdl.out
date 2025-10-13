@@ -75,7 +75,7 @@ interface bus_if #(
                            ^^^^ Sym addr : Declarator
 
     data_t data;
-    ^^^^^^ Ref -> `data_t = bit`
+    ^^^^^^ Ref -> `parameter type data_t = bit`
            ^^^^ Sym data : Declarator
 
     logic write_enable;
@@ -129,7 +129,7 @@ interface bus_if #(
                    ^^^^^^^^^^ Sym write_data : TaskDeclaration
                                            ^^^^^^^^^^ Ref -> `// In bus_if`\n\\n\---\n\\n\`parameter int ADDR_WIDTH = 32`
                                                            ^^^^^^^ Sym address : Declarator
-                                                                          ^^^^^^ Ref -> `// In bus_if`\n\\n\---\n\\n\`data_t = bit`
+                                                                          ^^^^^^ Ref -> `// In bus_if`\n\\n\---\n\\n\`parameter type data_t = bit`
                                                                                  ^^^^^^^^^^ Sym write_data : Declarator
 
         @(posedge clk);
@@ -169,7 +169,7 @@ interface bus_if #(
                    ^^^^^^^^^ Sym read_data : TaskDeclaration
                                           ^^^^^^^^^^ Ref -> `// In bus_if`\n\\n\---\n\\n\`parameter int ADDR_WIDTH = 32`
                                                           ^^^^^^^ Sym address : Declarator
-                                                                          ^^^^^^ Ref -> `// In bus_if`\n\\n\---\n\\n\`data_t = bit`
+                                                                          ^^^^^^ Ref -> `// In bus_if`\n\\n\---\n\\n\`parameter type data_t = bit`
                                                                                  ^^^^^^^^^ Sym read_data : Declarator
 
         @(posedge clk);
@@ -286,7 +286,7 @@ module TestModule (
 
     output test_pkg::data_t data_out,
            ^^^^^^^^ Ref -> `package test_pkg;`
-                     ^^^^^^ Ref -> `// In test_pkg`\n\\n\---\n\\n\`data_t = logic [7:0]`
+                     ^^^^^^ Ref -> `// In test_pkg`\n\\n\---\n\\n\`parameter type data_t = logic [7:0]`
                             ^^^^^^^^ Sym data_out : Declarator
 
     bus_if.master bus_master,

@@ -8,6 +8,7 @@
 #include <sstream>
 
 #include "slang/syntax/AllSyntax.h"
+#include "slang/syntax/SyntaxKind.h"
 #include "slang/syntax/SyntaxPrinter.h"
 #include "slang/text/CharInfo.h"
 
@@ -192,6 +193,7 @@ std::string svCodeBlockString(const syntax::SyntaxNode& node) {
         case syntax::SyntaxKind::Declarator:
         case syntax::SyntaxKind::HierarchicalInstance:
         case syntax::SyntaxKind::EnumType:
+        case syntax::SyntaxKind::TypeAssignment:
             fmtNode = node.parent;
             break;
         default:
