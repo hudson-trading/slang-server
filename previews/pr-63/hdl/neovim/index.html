@@ -1167,7 +1167,8 @@ If there is more than one instance of the signal then first a list of instances 
 After an instance is selected (or if there is only one instance) a list of drivers or loads will be presented.</p>
 <h2 id="waveform-integration-experimental">Waveform Integration (experimental)<a class="headerlink" href="#waveform-integration-experimental" title="Permanent link">&para;</a></h2>
 <p><img alt="WCP" src="wcp.gif" /></p>
-<p>This is currently only setup between Neovim and Surfer, through the WCP (waveform control protocol), which runs on JSON-RPC over TCP.</p>
+<p><code>slang-server</code> can interact with waveform viewers via the <a href="https://gitlab.com/waveform-control-protocol/wcp">WCP (waveform control protocol)</a>.
+The only known implementation of WCP is currently in <a href="https://surfer-project.org/">Surfer</a>.</p>
 <h3 id="editor-features">Editor Features<a class="headerlink" href="#editor-features" title="Permanent link">&para;</a></h3>
 <h4 id="open-waveform-file">Open Waveform File<a class="headerlink" href="#open-waveform-file" title="Permanent link">&para;</a></h4>
 <div class="language-text highlight"><pre><span></span><code>:SlangServer openWaveform WAVEFILE
