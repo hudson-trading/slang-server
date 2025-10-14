@@ -92,6 +92,9 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     // WCP Commands
     registerCommand<lsp::TextDocumentPositionParams, std::vector<std::string>,
                     &SlangServer::getInstances>("slang.getInstances");
+
+    registerCommand<std::string, std::vector<std::string>, &SlangServer::getModulesInFile>(
+        "slang.getModulesInFile");
     registerCommand<waves::ItemToWaveform, std::monostate, &SlangServer::addToWaveform>(
         "slang.addToWaveform");
     registerCommand<std::string, std::monostate, &SlangServer::openWaveform>("slang.openWaveform");
@@ -291,6 +294,11 @@ std::vector<std::string> SlangServer::getInstances(const lsp::TextDocumentPositi
         return {};
     }
     return m_driver->comp->getInstances(params);
+}
+
+std::vector<std::string> SlangServer::getModulesInFile(const std::string path) {
+    // just use the shallow compilation
+    return m_driver->getModulesInFile(path);
 }
 
 std::monostate SlangServer::addToWaveform(const waves::ItemToWaveform& params) {

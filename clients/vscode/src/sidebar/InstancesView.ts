@@ -2,6 +2,8 @@ import * as vscode from 'vscode'
 
 import { TreeItemButton, ViewComponent } from '../lib/libconfig'
 import * as slang from '../SlangInterface'
+import { ext } from '../extension'
+import { HierItem } from './ProjectComponent'
 
 export class InstanceViewItem {
   data: slang.QualifiedInstance
@@ -95,14 +97,59 @@ export class InstancesView
   copyHierarchyPath: TreeItemButton = new TreeItemButton(
     {
       title: 'Copy Path',
-      inlineContext: ['Instance'],
-      icon: {
-        light: './resources/light/files.svg',
-        dark: './resources/dark/files.svg',
-      },
+      viewItems: ['Instance'],
+      icon: '$(files)',
+      isSubmenu: true,
+      keybind: 'cmd+c',
     },
-    async (item: InstanceViewItem) => {
+    async (item: InstanceViewItem | undefined) => {
+      if (item === undefined) {
+        // undefined if we're coming from keybind
+        if (this.treeView?.selection.length === 0) {
+          return
+        }
+        const genericItem = this.treeView?.selection[0]
+        if (genericItem instanceof ModuleItem) {
+          vscode.env.clipboard.writeText(genericItem.data.declName)
+          return
+        } else {
+          item = genericItem as InstanceViewItem
+        }
+      }
       vscode.env.clipboard.writeText(item.data.instPath)
+    }
+  )
+
+  showInWaveform: TreeItemButton = new TreeItemButton(
+    {
+      title: 'Show in Waveform',
+      viewItems: ['Instance'],
+      icon: '$(graph-line)',
+      keybind: 'w',
+    },
+    async (instItem: InstanceViewItem | undefined) => {
+      if (instItem === undefined) {
+        // undefined if we're coming from keybind
+        if (
+          !this.treeView ||
+          this.treeView.selection.length === 0 ||
+          !(this.treeView.selection[0] instanceof InstanceViewItem)
+        ) {
+          this.logger.warn('No instance selected to show in waveform')
+          return
+        }
+        instItem = this.treeView.selection[0]
+      }
+      const item: HierItem = await ext.project.setInstance.func(instItem.data.instPath, {
+        revealInstance: false,
+        revealFile: false,
+        revealHierarchy: true,
+      })
+      const ok = await ext.project.maybeOpenWaveform()
+      if (!ok) {
+        return
+      }
+      await item.showChildrenInWaveform(this.logger)
     }
   )
 
@@ -123,14 +170,18 @@ export class InstancesView
     this._onDidChangeTreeData.fire()
   }
 
-  revealPath(module: string, path: string) {
+  revealPath(module: string, path: string | undefined = undefined, focus: boolean = false) {
     const moduleItem = this.modules.get(module)
     if (moduleItem === undefined) {
       return
     }
+    if (path === undefined) {
+      this.treeView?.reveal(moduleItem, { select: true, focus: focus, expand: true })
+      return
+    }
     const inst = moduleItem.instances.get(path)
     if (inst) {
-      this.treeView?.reveal(inst, { select: true, focus: true, expand: true })
+      this.treeView?.reveal(inst, { select: true, focus: focus, expand: true })
     }
   }
   private _onDidChangeTreeData: vscode.EventEmitter<void> = new vscode.EventEmitter<void>()

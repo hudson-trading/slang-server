@@ -116,6 +116,9 @@ public:
     // Returns the instances of a module
     std::vector<hier::QualifiedInstance> getInstancesOfModule(const std::string moduleName);
 
+    // Returns the modules defined in a file, used for the modules view
+    std::vector<std::string> getModulesInFile(const std::string path);
+
     // Returns the files that contain a specific module, used for terminal links
     std::vector<std::string> getFilesContainingModule(const std::string moduleName);
 

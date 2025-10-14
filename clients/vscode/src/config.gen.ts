@@ -8,37 +8,37 @@ export interface ConfigSchema {
   /**
    * Flags to pass to slang
    */
-  flags?: string | null
+  flags?: string
   /**
-   * Globs of what to index
+   * Globs of what to index. By default will index all sv and svh files in the workspace.
    */
-  indexGlobs?: string[] | null
+  indexGlobs?: string[]
   /**
    * Directories to exclude
    */
-  excludeDirs?: string[] | null
-  /**
-   * Globs for build.f files
-   */
-  buildGlobs?: string[] | null
+  excludeDirs?: string[]
   /**
    * Thread count to use for indexing
    */
-  indexingThreads?: number | null
+  indexingThreads?: number
   /**
    * Thread count to use for parsing
    */
-  parsingThreads?: number | null
+  parsingThreads?: number
   /**
-   * Build file
+   * Build file to use
    */
   build?: string | null
   /**
-   * Waveform to build file pattern
+   * Build file glob pattern, e.g. `builds/{}.f`. Used for selecting build files.
    */
   buildPattern?: string | null
   /**
-   * Waveform viewer command ({} will be replaced with the WCP port)
+   * Waveform file glob to open given a build. Name and top variables can be passed with {name}, {top})
+   */
+  wavesPattern?: string | null
+  /**
+   * Waveform viewer command ({} will be replaced with the WCP port), used for direct wcp connection with neovim and surfer.
    */
   wcpCommand?: string | null
   [k: string]: unknown

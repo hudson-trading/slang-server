@@ -7,8 +7,8 @@
 //------------------------------------------------------------------------------
 #pragma once
 #include "rfl/Description.hpp"
+#include <optional>
 #include <rfl/Result.hpp>
-
 /// A singleton to hold global configuration options.
 class SlangLspClient;
 class Config {
@@ -40,8 +40,15 @@ public:
     rfl::Description<"Thread count to use for indexing", int> indexingThreads = 0;
     rfl::Description<"Thread count to use for parsing", int> parsingThreads = 8;
     rfl::Description<"Build file to use", std::optional<std::string>> build;
-    rfl::Description<"Build file pattern, ex builds/{}.f", std::optional<std::string>> buildPattern;
-    rfl::Description<"Waveform viewer command ({} will be replaced with the WCP port)",
+    rfl::Description<"Build file glob pattern, e.g. `builds/{}.f`. Used for selecting build files.",
+                     std::optional<std::string>>
+        buildPattern;
+    rfl::Description<"Waveform file glob to open given a build. Name and top variables can be "
+                     "passed with {name}, {top})",
+                     std::optional<std::string>>
+        wavesPattern;
+    rfl::Description<"Waveform viewer command ({} will be replaced with the WCP port), used for "
+                     "direct wcp connection with neovim and surfer.",
                      std::optional<std::string>>
         wcpCommand;
 

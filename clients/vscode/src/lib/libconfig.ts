@@ -230,6 +230,8 @@ export abstract class ExtensionComponent extends ExtensionNode {
       let viewsWelcome: any = []
       let viewsTitleButtons: any = []
       let viewsInlineButtons: any = []
+      let webviewButtons: any = []
+      let binds: any = []
       this.preOrderComponentTraverse((cont: ExtensionComponent) => {
         if (!(cont instanceof ViewContainerComponent)) {
           return
@@ -261,11 +263,32 @@ export abstract class ExtensionComponent extends ExtensionNode {
           }
 
           for (let button of view.getCommands()) {
-            if (button instanceof ViewButton) {
-              viewsTitleButtons.push(button.getWhen())
-            }
-            if (button instanceof TreeItemButton) {
-              viewsInlineButtons.push(button.getWhen())
+            if (button instanceof ButtonNode) {
+              if (button instanceof ViewButton) {
+                viewsTitleButtons.push(button.getButtonWhen())
+              } else if (button instanceof TreeItemButton) {
+                viewsInlineButtons.push(button.getButtonWhen())
+                if (button.obj.isSubmenu) {
+                  // add submenu number for priority
+                  viewsInlineButtons[viewsInlineButtons.length - 1].group +=
+                    `@${viewsInlineButtons.length}`
+                }
+              } else if (button instanceof WebviewButton) {
+                webviewButtons.push(button.getButtonWhen())
+              }
+
+              if (button.obj.keybind) {
+                let bind: { key: any; command: string; when: string; mac?: string } = {
+                  key: button.obj.keybind,
+                  command: button.configPath!,
+                  when: button.getBindWhen(),
+                }
+                if (bind.key.includes('cmd+')) {
+                  bind.mac = bind.key
+                  bind.key = bind.key.replace('cmd+', 'ctrl+')
+                }
+                binds.push(bind)
+              }
             }
           }
         }
@@ -278,6 +301,8 @@ export abstract class ExtensionComponent extends ExtensionNode {
       }
       json.contributes.menus['view/title'] = viewsTitleButtons
       json.contributes.menus['view/item/context'] = viewsInlineButtons
+      json.contributes.menus['webview/context'] = webviewButtons
+      json.contributes.keybindings = binds
     }
 
     {
@@ -285,7 +310,7 @@ export abstract class ExtensionComponent extends ExtensionNode {
       let editorButtons: any = []
       this.preOrderTraverse((node: ExtensionNode) => {
         if (node instanceof EditorButton) {
-          editorButtons.push(node.getWhen())
+          editorButtons.push(node.getButtonWhen())
         }
       })
       json.contributes.menus['editor/title'] = editorButtons
@@ -322,20 +347,19 @@ export abstract class ExtensionComponent extends ExtensionNode {
 ////////////////////////////////////////////////////
 // Commands and Buttons
 ////////////////////////////////////////////////////
-type iconSvgs = { dark: string; light: string }
-type iconType = string | iconSvgs
+type iconType = string | { dark: string; light: string }
 
 interface CommandConfigSpec {
-  // command: string // filled in
+  // command: string - this is filled in via configPath
   title: string
   shortTitle?: string
   icon?: iconType
   // From vscode api
   category?: string
   enablement?: string
+  keybind?: string
 }
 interface ContextCommandSpec extends CommandConfigSpec {
-  when?: string
   // Since context commands are from buttons, they typically won't be labeled with the extension name
   shown?: boolean
 }
@@ -344,12 +368,36 @@ interface EditorButtonSpec extends ContextCommandSpec {
   languages: string[]
 }
 
-interface ViewButtonSpec extends ContextCommandSpec {}
+interface WebviewButtonSpec extends ContextCommandSpec {
+  editorId: string
+  webviewSection: string
+  group: string
+}
+
+interface ViewButtonSpec extends ContextCommandSpec {
+  // Whether the keybinds for this should apply to the container rather than just that view
+  keybindContainer?: boolean
+}
 interface TreeItemButtonSpec extends ContextCommandSpec {
   // These can only take light/dark svgs for an icon
-  icon?: iconSvgs
-  inlineContext?: string[]
+  icon?: iconType
+
+  isSubmenu?: boolean
+  // Contexts (viewItem) in which this button should be shown. Empty implies always
+  viewItems?: string[]
+  // Override the view when clause for external view buttons
+  viewOverride?: string
 }
+
+// interface ContextMenuButtonSpec extends ContextCommandSpec {
+//   // These can only take light/dark svgs for an icon
+//   icon?: iconType
+//   // Contexts (viewItem) in which this button should be shown. Empty implies always
+//   viewItems?: string[]
+//   // Override the view when clause for external view buttons
+//   viewOverride?: string
+// }
+
 export class CommandNode<
   Spec extends ContextCommandSpec = CommandConfigSpec,
 > extends ExtensionNode {
@@ -376,10 +424,9 @@ export class CommandNode<
 interface ButtonSpec {
   command: string
   group: string
-  when?: string
+  when: string
 }
-
-class ButtonNode<Spec extends ContextCommandSpec> extends CommandNode<Spec> {
+abstract class ButtonNode<Spec extends ContextCommandSpec> extends CommandNode<Spec> {
   async activate(context: vscode.ExtensionContext): Promise<void> {
     // same thing, but don't add the extension title; it's implied
     if (this.obj.shown) {
@@ -390,41 +437,72 @@ class ButtonNode<Spec extends ContextCommandSpec> extends CommandNode<Spec> {
       )
     }
   }
+
+  abstract getButtonWhen(): ButtonSpec
+
+  abstract getBindWhen(): string
 }
 export class ViewButton extends ButtonNode<ViewButtonSpec> {
-  getWhen() {
+  getButtonWhen() {
     return {
       command: this.configPath!,
       group: 'navigation',
       when: `view == ${this._parentNode!.configPath}`,
     }
   }
+
+  getBindWhen() {
+    return this.obj.keybindContainer
+      ? `sideBarFocus && activeViewlet == workbench.view.extension.${this._parentNode?.getRoot().configPath} && !inputFocus`
+      : `focusedView == ${this._parentNode!.configPath} && !inputFocus`
+  }
+}
+
+export class WebviewButton extends ButtonNode<WebviewButtonSpec> {
+  getButtonWhen(): ButtonSpec {
+    return {
+      command: this.configPath!,
+      group: this.obj.group,
+      when: `activeCustomEditorId == ${this.obj.editorId} && webviewSection == ${this.obj.webviewSection}`,
+    }
+  }
+
+  getBindWhen(): string {
+    return `activeCustomEditorId == ${this.obj.editorId} && !inputFocus`
+  }
 }
 
 export class TreeItemButton extends ButtonNode<TreeItemButtonSpec> {
-  getWhen(): ButtonSpec {
+  getButtonWhen(): ButtonSpec {
     let obj: ButtonSpec = {
       command: this.configPath!,
-      group: 'inline',
-      when: `view == ${this._parentNode!.configPath}`,
+      group: this.obj.isSubmenu ? 'submenu' : 'inline',
+      when: `view == ${this.obj.viewOverride ?? this._parentNode!.configPath}`,
     }
-    if (this.obj.inlineContext) {
+    if (this.obj.viewItems) {
       // empty implies no restrictions
-      if (this.obj.inlineContext.length > 0) {
-        obj.when += ' && ' + this.obj.inlineContext.map((id) => `viewItem == ${id}`).join(' || ')
+      if (this.obj.viewItems.length > 0) {
+        obj.when += ' && ' + this.obj.viewItems.map((id) => `viewItem == ${id}`).join(' || ')
       }
     }
     return obj
   }
+
+  getBindWhen(): string {
+    return `focusedView == ${this.obj.viewOverride ?? this._parentNode!.configPath} && !inputFocus`
+  }
 }
 
 export class EditorButton extends ButtonNode<EditorButtonSpec> {
-  getWhen(): ButtonSpec {
+  getButtonWhen(): ButtonSpec {
     return {
       command: this.configPath!,
       when: this.obj.languages.map((lang) => `resourceLangId == ${lang}`).join(' || '),
       group: 'navigation',
     }
+  }
+  getBindWhen(): string {
+    return this.obj.languages.map((lang) => `resourceLangId == ${lang}`).join(' || ')
   }
 }
 

@@ -86,6 +86,13 @@ export function getAbsPath(inputPath: string): string {
   return path.join(wspath, inputPath)
 }
 
+export function getIcons(name: string) {
+  return {
+    light: `./resources/light/${name}.svg`,
+    dark: `./resources/dark/${name}.svg`,
+  }
+}
+
 export class FileDiagnostic extends vscode.Diagnostic {
   file: string
   constructor(
@@ -156,6 +163,15 @@ export function zip<T, U>(a: T[], b: U[]): [T, U][] {
 
 export function pathFilename(uri: vscode.Uri): string {
   return path.basename(uri.fsPath, path.extname(uri.fsPath))
+}
+
+/**
+ * Get the basename of a path without extension
+ * @param filePath - Path string to extract basename from
+ * @returns The basename without extension, or undefined if not found
+ */
+export function getBasename(filePath: string): string | undefined {
+  return filePath.split(/[\\/]/).pop()?.split('.')[0]
 }
 
 // end position in line

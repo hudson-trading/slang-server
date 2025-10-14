@@ -2,7 +2,7 @@
   "name": "vscode-slang",
   "displayName": "slang-server: Verilog/SystemVerilog LSP",
   "description": "Verilog and SystemVerilog support via the slang language server.",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "publisher": "Hudson-River-Trading",
   "keywords": [
     "verilog",
@@ -314,13 +314,21 @@
       {
         "command": "slang.project.instancesView.copyHierarchyPath",
         "title": "Copy Path",
-        "inlineContext": [
+        "viewItems": [
           "Instance"
         ],
-        "icon": {
-          "light": "./resources/light/files.svg",
-          "dark": "./resources/dark/files.svg"
-        }
+        "icon": "$(files)",
+        "isSubmenu": true,
+        "keybind": "cmd+c"
+      },
+      {
+        "command": "slang.project.instancesView.showInWaveform",
+        "title": "Show in Waveform",
+        "viewItems": [
+          "Instance"
+        ],
+        "icon": "$(graph-line)",
+        "keybind": "w"
       },
       {
         "command": "slang.project.setTopLevel",
@@ -333,18 +341,36 @@
         "icon": "$(chip)"
       },
       {
+        "command": "slang.project.selectTopLevel",
+        "title": "Slang: Select Top Level",
+        "shortTitle": "Select Top"
+      },
+      {
         "command": "slang.project.clearTopLevel",
         "title": "Clear Top Level",
         "icon": "$(panel-close)"
+      },
+      {
+        "command": "slang.project.fuzzyFindInstance",
+        "title": "Fuzzy Find Instances",
+        "icon": "$(search-view-icon)",
+        "keybind": "cmd+f",
+        "keybindContainer": true
       },
       {
         "command": "slang.project.setInstance",
         "title": "Slang: Select Instance"
       },
       {
+        "command": "slang.project.showBuildFile",
+        "title": "Slang: Open Build File",
+        "icon": "$(file)",
+        "shown": true
+      },
+      {
         "command": "slang.project.selectBuildFile",
         "title": "Slang: Select build file",
-        "icon": "$(file-code)",
+        "icon": "$(file-directory)",
         "shown": true
       },
       {
@@ -365,7 +391,7 @@
       {
         "command": "slang.project.showSourceFile",
         "title": "Show Module",
-        "inlineContext": [
+        "viewItems": [
           "Module"
         ],
         "icon": {
@@ -374,13 +400,37 @@
         }
       },
       {
+        "command": "slang.project.showInWaveform",
+        "title": "Show in Waveform",
+        "icon": "$(graph-line)",
+        "keybind": "w"
+      },
+      {
+        "command": "slang.project.showInEditorFromNetlist",
+        "title": "Show in Editor",
+        "icon": "$(file-code)",
+        "viewOverride": "waveformViewerNetlistView",
+        "keybind": "e"
+      },
+      {
+        "command": "slang.project.showInEditorFromVaporview",
+        "title": "Show in Editor",
+        "icon": "$(file-code)",
+        "group": "2_variables@2.1",
+        "editorId": "vaporview.waveformViewer",
+        "webviewSection": "signal",
+        "keybind": "e"
+      },
+      {
         "command": "slang.project.copyHierarchyPath",
         "title": "Copy Path",
-        "inlineContext": [],
+        "viewItems": [],
+        "isSubmenu": true,
         "icon": {
           "light": "./resources/light/files.svg",
           "dark": "./resources/dark/files.svg"
-        }
+        },
+        "keybind": "cmd+c"
       },
       {
         "command": "slang.rewrite",
@@ -441,6 +491,16 @@
           "when": "view == slang.project"
         },
         {
+          "command": "slang.project.fuzzyFindInstance",
+          "group": "navigation",
+          "when": "view == slang.project"
+        },
+        {
+          "command": "slang.project.showBuildFile",
+          "group": "navigation",
+          "when": "view == slang.project"
+        },
+        {
           "command": "slang.project.selectBuildFile",
           "group": "navigation",
           "when": "view == slang.project"
@@ -468,12 +528,27 @@
           "when": "view == slang.project && viewItem == Module"
         },
         {
-          "command": "slang.project.copyHierarchyPath",
+          "command": "slang.project.showInWaveform",
           "group": "inline",
           "when": "view == slang.project"
         },
         {
+          "command": "slang.project.showInEditorFromNetlist",
+          "group": "inline",
+          "when": "view == waveformViewerNetlistView"
+        },
+        {
+          "command": "slang.project.copyHierarchyPath",
+          "group": "submenu@4",
+          "when": "view == slang.project"
+        },
+        {
           "command": "slang.project.instancesView.copyHierarchyPath",
+          "group": "submenu@5",
+          "when": "view == slang.project.instancesView && viewItem == Instance"
+        },
+        {
+          "command": "slang.project.instancesView.showInWaveform",
           "group": "inline",
           "when": "view == slang.project.instancesView && viewItem == Instance"
         }
@@ -489,8 +564,55 @@
           "when": "resourceLangId == verilog || resourceLangId == systemverilog",
           "group": "navigation"
         }
+      ],
+      "webview/context": [
+        {
+          "command": "slang.project.showInEditorFromVaporview",
+          "group": "2_variables@2.1",
+          "when": "activeCustomEditorId == vaporview.waveformViewer && webviewSection == signal"
+        }
       ]
-    }
+    },
+    "keybindings": [
+      {
+        "key": "ctrl+f",
+        "command": "slang.project.fuzzyFindInstance",
+        "when": "sideBarFocus && activeViewlet == workbench.view.extension.slang && !inputFocus",
+        "mac": "cmd+f"
+      },
+      {
+        "key": "w",
+        "command": "slang.project.showInWaveform",
+        "when": "focusedView == slang.project && !inputFocus"
+      },
+      {
+        "key": "e",
+        "command": "slang.project.showInEditorFromNetlist",
+        "when": "focusedView == waveformViewerNetlistView && !inputFocus"
+      },
+      {
+        "key": "e",
+        "command": "slang.project.showInEditorFromVaporview",
+        "when": "activeCustomEditorId == vaporview.waveformViewer && !inputFocus"
+      },
+      {
+        "key": "ctrl+c",
+        "command": "slang.project.copyHierarchyPath",
+        "when": "focusedView == slang.project && !inputFocus",
+        "mac": "cmd+c"
+      },
+      {
+        "key": "ctrl+c",
+        "command": "slang.project.instancesView.copyHierarchyPath",
+        "when": "focusedView == slang.project.instancesView && !inputFocus",
+        "mac": "cmd+c"
+      },
+      {
+        "key": "w",
+        "command": "slang.project.instancesView.showInWaveform",
+        "when": "focusedView == slang.project.instancesView && !inputFocus"
+      }
+    ]
   },
   "scripts": {
     "clean": "rm -rf out dist .vscode-test",
@@ -515,7 +637,7 @@
     "lint": "pnpm lint:ts",
     "pretest": "pnpm clean:light && pnpm build-tests && pnpm build && pnpm lint",
     "syntax": "js-yaml ./languages/sv/systemverilog.tmLanguage.yaml > ./languages/sv/systemverilog.tmLanguage.json",
-    "genconfig": "slang-server --config-schema > src/config.schema.json && npx json2ts -i src/config.schema.json -o src/config.gen.ts"
+    "genconfig": "../../build/bin/slang-server --config-schema > resources/config.schema.json && npx json2ts -i resources/config.schema.json -o src/config.gen.ts"
   },
   "dependencies": {
     "js-yaml": "^4.1.0",

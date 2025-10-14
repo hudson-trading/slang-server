@@ -2,9 +2,10 @@
 import * as vscode from 'vscode'
 
 import * as child_process from 'child_process'
-import { glob } from 'glob'
+
 import path from 'path'
 import * as process from 'process'
+
 import * as vscodelc from 'vscode-languageclient/node'
 import { LanguageClient, LanguageClientOptions, ServerOptions } from 'vscode-languageclient/node'
 import { ExternalFormatter } from './ExternalFormatter'
@@ -20,6 +21,7 @@ import {
 import { ProjectComponent } from './sidebar/ProjectComponent'
 import * as slang from './SlangInterface'
 import { anyVerilogSelector, getWorkspaceFolder } from './utils'
+import { glob } from 'glob'
 
 export var ext: SlangExtension
 

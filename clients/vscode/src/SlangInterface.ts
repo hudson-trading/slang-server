@@ -133,6 +133,10 @@ export async function getInstancesOfModule(declName: string): Promise<QualifiedI
 export async function getFilesContainingModule(moduleName: string): Promise<string[]> {
   return await vscode.commands.executeCommand('slang.getFilesContainingModule', moduleName)
 }
+
+export async function getModulesInFile(fsPath: string): Promise<string[]> {
+  return await vscode.commands.executeCommand('slang.getModulesInFile', fsPath)
+}
 ////////////////////////////////////////////////////////////
 /// server -> client is in commands in the project component
 ////////////////////////////////////////////////////////////

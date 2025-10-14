@@ -60,8 +60,20 @@ lsp::Range toRange(const SourceLocation& loc, const SourceManager& sourceManager
 }
 
 lsp::Location toLocation(const SourceRange& range, const SourceManager& sourceManager) {
-    return lsp::Location{.uri = URI::fromFile(sourceManager.getFullPath(range.start().buffer())),
-                         .range = toRange(range, sourceManager)};
+    // TODO: make this logic just one function in source manager
+    auto declRange = range;
+
+    // Get location of `MACRO_USAGE if from a macro expansion
+    auto locs = sourceManager.getMacroExpansions(range.start());
+    if (locs.size()) {
+        auto macroInfo = sourceManager.getMacroInfo(locs.back());
+        declRange = macroInfo ? macroInfo->expansionRange
+                              : sourceManager.getFullyOriginalRange(range);
+    }
+
+    return lsp::Location{.uri = URI::fromFile(
+                             sourceManager.getFullPath(declRange.start().buffer())),
+                         .range = toRange(declRange, sourceManager)};
 }
 
 lsp::Location toLocation(const SourceLocation& loc, const SourceManager& sourceManager) {
