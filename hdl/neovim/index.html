@@ -740,6 +740,48 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#setting-a-compilation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Setting a Compilation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Setting a Compilation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#setting-a-build-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      Setting a build file
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#setting-a-top-level" class="md-nav__link">
+    <span class="md-ellipsis">
+      Setting a top level
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hierarchyview" class="md-nav__link">
+    <span class="md-ellipsis">
+      HierarchyView
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#cone-tracing-experimental" class="md-nav__link">
     <span class="md-ellipsis">
       Cone Tracing (experimental)
@@ -764,6 +806,30 @@
       Editor Features
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Editor Features">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#open-waveform-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      Open Waveform File
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#add-item" class="md-nav__link">
+    <span class="md-ellipsis">
+      Add Item
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -945,6 +1011,48 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#setting-a-compilation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Setting a Compilation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Setting a Compilation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#setting-a-build-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      Setting a build file
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#setting-a-top-level" class="md-nav__link">
+    <span class="md-ellipsis">
+      Setting a top level
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hierarchyview" class="md-nav__link">
+    <span class="md-ellipsis">
+      HierarchyView
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#cone-tracing-experimental" class="md-nav__link">
     <span class="md-ellipsis">
       Cone Tracing (experimental)
@@ -969,6 +1077,30 @@
       Editor Features
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Editor Features">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#open-waveform-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      Open Waveform File
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#add-item" class="md-nav__link">
+    <span class="md-ellipsis">
+      Add Item
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -1008,28 +1140,57 @@
 
 
 <h1 id="hardware-language-features-neovim">Hardware Language Features - Neovim<a class="headerlink" href="#hardware-language-features-neovim" title="Permanent link">&para;</a></h1>
+<p>All features listed here require the Neovim plugin.  See the <a href="../../start/installing/">installation guide</a> for how to get started.
+Once installed the <code>SlangServer</code> command will provide a number of subcommands outlined below.</p>
+<h2 id="setting-a-compilation">Setting a Compilation<a class="headerlink" href="#setting-a-compilation" title="Permanent link">&para;</a></h2>
+<h3 id="setting-a-build-file">Setting a build file<a class="headerlink" href="#setting-a-build-file" title="Permanent link">&para;</a></h3>
+<div class="language-text highlight"><pre><span></span><code>:SlangServer setBuildFile BUILDFILE
+</code></pre></div>
+<p>This uses the file located at `BUILDFILE`` to compile a full hierarchy and is required for some of the commands below.</p>
+<h3 id="setting-a-top-level">Setting a top level<a class="headerlink" href="#setting-a-top-level" title="Permanent link">&para;</a></h3>
+<div class="language-text highlight"><pre><span></span><code>:SlangServer setTopLevel [TOPFILE]
+</code></pre></div>
+<p>This uses a file to run a compilation using the top-most module in the provided file.  If <code>TOPFILE</code> is not provided the file from the current buffer will be used.</p>
+<h2 id="hierarchyview">HierarchyView<a class="headerlink" href="#hierarchyview" title="Permanent link">&para;</a></h2>
+<div class="language-text highlight"><pre><span></span><code>:SlangServer hierarchy [SCOPE]
+</code></pre></div>
+<p>This will open the hierarchy view and, if <code>SCOPE</code> is provided, expand the view to that scope.</p>
+<p><img alt="Hierarchy View" src="hierarchy.png" /></p>
 <h2 id="cone-tracing-experimental">Cone Tracing (experimental)<a class="headerlink" href="#cone-tracing-experimental" title="Permanent link">&para;</a></h2>
-<p>This allows for drivers/loads tracing over the call hierarchy lsp route, since it's an analogous concept.</p>
+<p><div class="language-text highlight"><pre><span></span><code>:lua vim.lsp.buf.incoming_calls()
+</code></pre></div>
+<div class="language-text highlight"><pre><span></span><code>:lua vim.lsp.buf.outgoing_calls()
+</code></pre></div></p>
+<p>This allows for drivers/loads tracing over the <a href="https://neovim.io/doc/user/lsp.html#vim.lsp.buf.incoming_calls()">call hierarchy lsp route</a>, since it's an analogous concept.  Tracing incoming calls yields drivers of a given signal and outgoing calls yields loads or things the signal drives.
+Calling one of these functions will trace the signal currently under the cursor.
+If there is more than one instance of the signal then first a list of instances will be presented.
+After an instance is selected (or if there is only one instance) a list of drivers or loads will be presented.</p>
 <h2 id="waveform-integration-experimental">Waveform Integration (experimental)<a class="headerlink" href="#waveform-integration-experimental" title="Permanent link">&para;</a></h2>
-<div class="grid">
-<div class="grid-item">
-<p>This is currently only setup between Neovim and Surfer, through the WCP (waveform control protocol), which runs on JSON-RPC over TCP.</p>
+<p><img alt="WCP" src="wcp.gif" /></p>
+<p><code>slang-server</code> can interact with waveform viewers via the <a href="https://gitlab.com/waveform-control-protocol/wcp">WCP (waveform control protocol)</a>.
+The only known implementation of WCP is currently in <a href="https://surfer-project.org/">Surfer</a>.</p>
 <h3 id="editor-features">Editor Features<a class="headerlink" href="#editor-features" title="Permanent link">&para;</a></h3>
-<ul>
-<li>open waveform file</li>
-<li>open signal in wave viewer</li>
-<li>open module in wave viewer</li>
-</ul>
+<h4 id="open-waveform-file">Open Waveform File<a class="headerlink" href="#open-waveform-file" title="Permanent link">&para;</a></h4>
+<div class="language-text highlight"><pre><span></span><code>:SlangServer openWaveform WAVEFILE
+</code></pre></div>
+<p>This opens the waveform file (e.g. VCD or FST) indicated by <code>WAVEFILE</code>.
+If there is no currently active WCP session a new waveform viewer will be launched using the command provided in the <code>wcpCommand</code> config field.
+By default this is Surfer.
+If a WCP session already exists, the new waveform file will be loaded.
+Additionally, if a <code>buildPattern</code> config field is provided, the build file which corresponds to the current wave file will be used to produce a compilation.
+E.g. given a wave file of <code>/some/dir/foo.fst</code> and a <code>buildPattern</code> of <code>/some/other/dir/{}.f</code> and compilation will be made using <code>/some/other/dir/foo.f</code>.</p>
+<h4 id="add-item">Add Item<a class="headerlink" href="#add-item" title="Permanent link">&para;</a></h4>
+<div class="language-text highlight"><pre><span></span><code>:SlangServer addToWaves [RECURSIVE]
+</code></pre></div>
+<p>Adds the signal, module, interface or other scope currently under the cursor to the waveform viewer.
+If <code>RECURSIVE</code> is provided and is <code>true</code> and the item is a scope it will be added recursively.
+If more than one instance of the item exists, a list of instances will be provided to choose from.</p>
 <h3 id="wave-viewer-features">Wave Viewer Features<a class="headerlink" href="#wave-viewer-features" title="Permanent link">&para;</a></h3>
 <ul>
-<li>open signal in hierarchy view / editor</li>
-<li>open driver/loads for signal</li>
+<li>Goto Definition</li>
+<li>Add Drivers</li>
+<li>Add Loads</li>
 </ul>
-</div>
-<div class="grid-item">
-<p><img alt="WCP" src="wcp.gif" /></p>
-</div>
-</div>
 
 
 
