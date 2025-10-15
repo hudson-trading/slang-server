@@ -5,7 +5,6 @@ import * as child_process from 'child_process'
 import { glob } from 'glob'
 import path from 'path'
 import * as process from 'process'
-import { promisify } from 'util'
 import * as vscodelc from 'vscode-languageclient/node'
 import { LanguageClient, LanguageClientOptions, ServerOptions } from 'vscode-languageclient/node'
 import { ExternalFormatter } from './ExternalFormatter'
@@ -257,7 +256,7 @@ export class SlangExtension extends ActivityBarComponent {
     /////////////////////////////////////////////
 
     this.onConfigUpdated(() => {
-      this.checkFormatDirs()
+      void this.checkFormatDirs()
     })
     await this.checkFormatDirs()
 
@@ -281,9 +280,9 @@ export class SlangExtension extends ActivityBarComponent {
     const find = async (str: string): Promise<vscode.Uri[]> => {
       let ret: vscode.Uri[]
       if (path.isAbsolute(str)) {
-        ret = (await asyncGlob(str)).map((p) => vscode.Uri.file(p))
+        ret = (await glob(str)).map((p) => vscode.Uri.file(p))
       } else if (useGlob) {
-        ret = (await asyncGlob(path.join(ws, str))).map((p) => vscode.Uri.file(p))
+        ret = (await glob(path.join(ws, str))).map((p) => vscode.Uri.file(p))
       } else {
         ret = await vscode.workspace.findFiles(new vscode.RelativePattern(ws, str))
       }

@@ -16,18 +16,35 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
         with:
-          node-version: 20
-      - run: cd clients/vscode
-      - run: npm ci
-      - run: npm install -g @vscode/vsce
-      - run: git config --global user.email "${{ github.actor }}@users.noreply.github.com"
-      - run: git config --global user.name "${{ github.actor }}"
+          version: 10
+          run_install: false
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+          cache-dependency-path: 'clients/vscode/pnpm-lock.yaml'
+      - name: Install dependencies
+        working-directory: clients/vscode
+        run: pnpm install --frozen-lockfile
+      - name: Install vsce
+        run: pnpm install -g @vscode/vsce
+      - name: Configure git
+        run: |
+          git config --global user.email "${{ github.actor }}@users.noreply.github.com"
+          git config --global user.name "${{ github.actor }}"
       - name: Publish to Visual Studio Marketplace
+        working-directory: clients/vscode
         run: vsce publish ${{ inputs.kind }} ${{ inputs.prerelease && '--pre-release' || '' }} --pat ${{ secrets.VS_MARKETPLACE_TOKEN }}
-      - run: npm install -g ovsx
-      - name: Publish to Open Vsix
-        run: npx ovsx publish ${{ inputs.prerelease && '--pre-release' || '' }} --pat ${{ secrets.OPEN_VSX_TOKEN }}
-      - run: git push
+      # - name: Install ovsx
+      #   run: pnpm install -g ovsx
+      # - name: Publish to Open Vsix
+      #   working-directory: clients/vscode
+      #   run: npx ovsx publish ${{ inputs.prerelease && '--pre-release' || '' }} --pat ${{ secrets.OPEN_VSX_TOKEN }}
+      - name: Push changes
+        run: git push

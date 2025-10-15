@@ -1,6 +1,5 @@
 import * as vscode from 'vscode'
 
-// eslint-disable-next-line unused-imports/no-unused-imports
 import { ConfigSchema } from './config.gen'
 // enum class SlangKind {
 //   InstanceKind,

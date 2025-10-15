@@ -20,7 +20,7 @@
     "url": "https://github.com/hudson-trading/slang-server/issues"
   },
   "engines": {
-    "vscode": "^1.75.0"
+    "vscode": "^1.101.0"
   },
   "categories": [
     "Programming Languages",
@@ -34,52 +34,12 @@
     "workspaceContains:**/*.{v,sv,vh,svh}"
   ],
   "files": [
-    "vscode-slang.vsix",
-    "images/icon.png"
+    "dist",
+    "images",
+    "languages",
+    "resources",
+    "LICENSE"
   ],
-  "eslintConfig": {
-    "root": true,
-    "parser": "@typescript-eslint/parser",
-    "parserOptions": {
-      "ecmaVersion": 6,
-      "sourceType": "module"
-    },
-    "plugins": [
-      "@typescript-eslint",
-      "unused-imports"
-    ],
-    "rules": {
-      "@typescript-eslint/naming-convention": [
-        "error",
-        {
-          "selector": "enumMember",
-          "format": [
-            "PascalCase"
-          ]
-        }
-      ],
-      "@typescript-eslint/semi": "off",
-      "curly": "warn",
-      "eqeqeq": "warn",
-      "no-throw-literal": "warn",
-      "semi": "off",
-      "no-extra-semi": "error",
-      "no-unused-vars": "off",
-      "no-undef": "warn",
-      "no-constant-condition": "warn",
-      "unused-imports/no-unused-imports": "error"
-    },
-    "ignorePatterns": [
-      "out",
-      "dist",
-      "**/*.d.ts",
-      "src/test"
-    ],
-    "extends": [
-      "eslint:recommended",
-      "prettier"
-    ]
-  },
   "contributes": {
     "jsonValidation": [
       {
@@ -536,8 +496,6 @@
     "clean": "rm -rf out dist .vscode-test",
     "clean:light": "rm -rf out dist .vscode-test/extensions .vscode-test/user-data",
     "package": "pnpm vsce package --no-dependencies",
-    "format:prettier-eslint:ts": "prettier-eslint --write --log-level error \"**/*.ts\"",
-    "format": "pnpm pnpm format:prettier-eslint:ts",
     "gen-types": "pnpm -F slanglib gen-types",
     "check-types": "pnpm gen-types && tsc --noEmit",
     "check-deps": "depcheck --ignore-patterns 'out/node-packages'",
@@ -567,19 +525,19 @@
   "devDependencies": {
     "@types/glob": "^8.1.0",
     "@types/node": "~20.11.30",
-    "@types/vscode": "^1.75.0",
+    "@types/vscode": "^1.101.0",
     "@types/which": "^3.0.3",
-    "@typescript-eslint/eslint-plugin": "^7.3.1",
-    "@typescript-eslint/parser": "^7.3.1",
-    "@vscode/vsce": "~2.24.0",
+    "@typescript-eslint/eslint-plugin": "^8.21.0",
+    "@typescript-eslint/parser": "^8.21.0",
+    "@vscode/vsce": "^3.6.2",
     "depcheck": "^1.4.7",
-    "esbuild": "^0.20.2",
-    "eslint": "8.57.0",
+    "esbuild": "^0.25.11",
+    "eslint": "^9.18.0",
     "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-unused-imports": "^3.1.0",
-    "glob": "^7.1.1",
+    "eslint-plugin-unused-imports": "^4.2.0",
+    "glob": "^11.0.0",
+    "jiti": "^2.6.1",
     "json-schema-to-typescript": "^15.0.4",
-    "prettier-eslint-cli": "^8.0.1",
     "prettier-plugin-organize-imports": "^4.1.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.3"
