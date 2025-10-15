@@ -29,7 +29,7 @@ class ExtensionNode {
   onConfigUpdated(func: () => Promise<void> | void): vscode.Disposable {
     return vscode.workspace.onDidChangeConfiguration(async (e) => {
       if (e.affectsConfiguration(this.configPath!)) {
-        func()
+        void func()
       }
     })
   }
@@ -77,7 +77,7 @@ export abstract class ExtensionComponent extends ExtensionNode {
     this.title = title
     this.compile(nodeName)
 
-    this.postOrderTraverse(async (node: ExtensionNode) => {
+    await this.postOrderTraverse(async (node: ExtensionNode) => {
       if (node instanceof ExtensionComponent || node instanceof CommandNode) {
         await node.activate(context)
       }
@@ -146,15 +146,15 @@ export abstract class ExtensionComponent extends ExtensionNode {
     })
   }
 
-  postOrderTraverse(func: (obj: ExtensionNode) => void): void {
-    this.children.forEach((obj: ExtensionNode) => {
+  async postOrderTraverse(func: (obj: ExtensionNode) => Promise<void> | void): Promise<void> {
+    for (const obj of this.children) {
       if (obj instanceof ExtensionComponent) {
-        obj.preOrderTraverse(func)
+        await obj.postOrderTraverse(func)
       } else {
-        func(obj)
+        await func(obj)
       }
-    })
-    func(this)
+    }
+    await func(this)
   }
 
   compile(nodeName: string, parentNode?: ExtensionComponent): void {
@@ -628,7 +628,7 @@ export class PathConfigObject extends ConfigObject<string> {
         return stdout.split('\r\n')[0].trim()
       }
       return stdout.trim()
-    } catch (error) {
+    } catch {
       return ''
     }
   }

@@ -349,7 +349,7 @@ export class ProjectComponent
   )
 
   async onStart(): Promise<void> {
-    this.setTopModule()
+    await this.setTopModule()
   }
 
   // TODO: this should only apply to files with one module,
