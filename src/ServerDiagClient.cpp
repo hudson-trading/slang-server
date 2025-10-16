@@ -113,7 +113,7 @@ void ServerDiagClient::report(const slang::ReportedDiagnostic& diag) {
                     totalRange.end() = std::max(totalRange.end(), loc);
                 }
             }
-            return toLocation(m_sourceManager.getFullyOriginalRange(totalRange), m_sourceManager);
+            return toLocation(totalRange, m_sourceManager);
         }
         return std::nullopt;
     };

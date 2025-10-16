@@ -231,6 +231,29 @@ std::vector<std::shared_ptr<SlangDoc>> ServerDriver::getDependentDocs(
     return result;
 }
 
+std::vector<std::string> ServerDriver::getModulesInFile(const std::string& path) {
+    // Find the document
+    auto uri = URI::fromFile(path);
+    auto it = docs.find(uri);
+    if (it == docs.end()) {
+        WARN("Document {} not found", path);
+        return {};
+    }
+
+    auto& doc = it->second;
+
+    // Get the module-like things from the document and collect into a vector
+    std::vector<std::string> moduleNames;
+    for (auto& name : doc->getSyntaxTree()->getMetadata().getDeclaredSymbols()) {
+        moduleNames.push_back(std::string{name});
+    }
+    if (moduleNames.empty()) {
+        WARN("No modules found in file {}", path);
+    }
+    INFO("Found {} modules in file {}", moduleNames.size(), path);
+    return moduleNames;
+}
+
 bool ServerDriver::createCompilation(const URI& uri, std::string_view top) {
     // Find the document
     auto it = docs.find(uri);

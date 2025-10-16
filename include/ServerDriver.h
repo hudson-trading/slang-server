@@ -87,6 +87,8 @@ public:
 
     std::vector<std::shared_ptr<SlangDoc>> getDependentDocs(std::shared_ptr<SyntaxTree> tree);
 
+    std::vector<std::string> getModulesInFile(const std::string& path);
+
     /// @brief Creates a compilation from the given URI and top module name.
     /// @return True if the compilation was created successfully
     bool createCompilation(const URI& uri, std::string_view top);

@@ -231,6 +231,36 @@ static void handleInstanceArray(std::vector<HierItem_t>& result,
     }));
 }
 
+// Ports and ValueSymbols both have these, but don't share a base class
+template<typename T>
+concept HasTypeAndDeclaredType = requires(T a) {
+    { a.getType() } -> std::convertible_to<const slang::ast::Type&>;
+    { a.getDeclaredType() } -> std::convertible_to<const slang::ast::DeclaredType*>;
+};
+
+template<HasTypeAndDeclaredType T>
+static std::string getTypeString(const T& value) {
+    const slang::ast::Type& decl = value.getDeclaredType() ? value.getDeclaredType()->getType()
+                                                           : value.getType();
+
+    // if the canonical (resolved) type is different, we want to provide that data too
+    auto ret = decl.toString();
+    const slang::ast::Type& type = value.getType().getCanonicalType();
+    if (type.isStruct()) {
+        ret += " / struct";
+    }
+    else if (type.isUnion()) {
+        ret += " / union";
+    }
+    else if (type.isEnum()) {
+        ret += " / enum";
+    }
+    else if (&type != &decl) {
+        ret += " / " + type.toString();
+    }
+    return ret;
+}
+
 static void handleParameter(std::vector<HierItem_t>& result,
                             const slang::ast::ParameterSymbol& param, const SourceManager& sm) {
     result.push_back(HierItem_t(Var{
@@ -239,20 +269,18 @@ static void handleParameter(std::vector<HierItem_t>& result,
         .instLoc = toLocation(param.getSyntax()->sourceRange(), sm),
         // the type of params isn't really relevant- they're mostly ints.
         // TODO: have enums print the string value, rather than the int value
-        .type = param.getType().toString(),
+        .type = getTypeString(param),
         .value = param.getValue().toString(),
     }));
 }
 
 static void handlePort(std::vector<HierItem_t>& result, const slang::ast::PortSymbol& port,
                        const SourceManager& sm) {
-    auto declType = port.getDeclaredType();
-    auto typeStr = declType ? declType->getType().toString() : port.getType().toString();
     result.push_back(HierItem_t(Var{
         .kind = SlangKind::Port,
         .instName = std::string(port.name),
         .instLoc = toLocation(port.getSyntax()->sourceRange(), sm),
-        .type = fmt::format("{} {}", portString(port.direction), typeStr),
+        .type = fmt::format("{} {}", portString(port.direction), getTypeString(port)),
     }));
 }
 
@@ -276,7 +304,7 @@ static void handleValue(std::vector<HierItem_t>& result, const slang::ast::Value
             .kind = SlangKind::Logic,
             .instName = std::string(val.name),
             .instLoc = toLocation(val.getSyntax()->sourceRange(), sm),
-            .type = val.getType().toString(),
+            .type = getTypeString(val),
         }));
     }
 }

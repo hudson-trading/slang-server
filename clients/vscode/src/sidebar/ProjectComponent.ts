@@ -7,9 +7,14 @@ import {
   TreeItemButton,
   ViewButton,
   ViewComponent,
+  WebviewButton,
 } from '../lib/libconfig'
 import * as slang from '../SlangInterface'
 import { InstancesView } from './InstancesView'
+import * as vv from './VaporviewApi'
+import { getBasename, getIcons, isAnyVerilog } from '../utils'
+import { Logger } from '../lib/logger'
+import { glob } from 'glob'
 
 const STRUCTURE_SYMS = [
   slang.SlangKind.Instance,
@@ -23,7 +28,46 @@ interface HasChildren {
   getChild(name: string): Promise<HierItem | undefined>
   getPath(): string
 }
+
+interface RevealOptions {
+  revealHierarchy?: boolean
+  revealFile?: boolean
+  revealInstance?: boolean
+  focus?: 'editor' | 'hierarchy' | 'modules'
+  showBeside?: boolean
+}
+
+interface BuildFileParams {
+  name?: string
+  top?: string
+}
+
+type CompilationSource =
+  | { type: 'buildfile'; buildfile: string; topFile?: never }
+  | { type: 'topfile'; topFile: vscode.Uri; buildfile?: never }
+  | { type: 'none'; buildfile?: never; topFile?: never }
+
+function formatString(template: string, vars: BuildFileParams): string {
+  return template.replace(/{(\w+)}/g, (_, key: string) => vars[key as keyof BuildFileParams] || '*')
+}
 export abstract class HierItem implements HasChildren {
+  async showChildrenInWaveform(logger: Logger): Promise<void> {
+    const signals = (await this.getChildren()).filter(
+      (c) => c instanceof VarItem && c.inst.kind !== slang.SlangKind.Param
+    )
+    if (signals.length === 0) {
+      vscode.window.showInformationMessage('No data signals to add in waveform')
+      return
+    }
+    await Promise.all(
+      signals.map((signal) =>
+        vv.addVariable({
+          instancePath: signal.getPath(),
+        })
+      )
+    )
+    logger.info(`Added ${signals.length} signals to waveform`)
+  }
   getPath(): string {
     if (this.path !== undefined) {
       return this.path
@@ -86,6 +130,18 @@ export abstract class HierItem implements HasChildren {
     for (let child of await this.getChildren()) {
       await child.preOrderTraversal(fn)
     }
+  }
+
+  // Return the module containing this item
+  getModule(): InstanceItem | undefined {
+    let current: HierItem | undefined = this
+    while (current !== undefined) {
+      if (current instanceof InstanceItem) {
+        return current
+      }
+      current = current.parent
+    }
+    return undefined
   }
 
   async hasChildren(): Promise<boolean> {
@@ -316,12 +372,52 @@ export class ProjectComponent
 {
   // Top $unit, has top level(s) + packages
   unit: UnitItem | undefined = undefined
-  focused: HierItem | undefined = undefined
+
+  // Top level, if there's a single top. One of unit's children
+  top: RootItem | undefined = undefined
+
+  // Current build or top - mutually exclusive
+  private compilationSource: CompilationSource = { type: 'none' }
+
+  // Getters for backward compatibility
+  get buildfile(): string | undefined {
+    return this.compilationSource.type === 'buildfile'
+      ? this.compilationSource.buildfile
+      : undefined
+  }
+
+  get topFile(): vscode.Uri | undefined {
+    return this.compilationSource.type === 'topfile' ? this.compilationSource.topFile : undefined
+  }
+
+  // Setters to maintain mutual exclusivity
+  set buildfile(value: string | undefined) {
+    if (value === undefined) {
+      this.compilationSource = { type: 'none' }
+    } else {
+      this.compilationSource = { type: 'buildfile', buildfile: value }
+    }
+  }
+
+  set topFile(value: vscode.Uri | undefined) {
+    if (value === undefined) {
+      this.compilationSource = { type: 'none' }
+    } else {
+      this.compilationSource = { type: 'topfile', topFile: value }
+    }
+  }
+
+  // Show the selected instance for the open file
+  focusedBar: vscode.StatusBarItem
+
+  // Map from instance uri to instance for following along in the hierarchy view
+  moduleToInstance: Map<string, InstanceItem> = new Map()
 
   // Hierarchy Tree
   private _onDidChangeTreeData: vscode.EventEmitter<void> = new vscode.EventEmitter<void>()
   readonly onDidChangeTreeData: vscode.Event<void> = this._onDidChangeTreeData.event
   treeView: vscode.TreeView<HierItem> | undefined
+  focused: HierItem | undefined = undefined
 
   // Instances Index
   instancesView: InstancesView = new InstancesView()
@@ -343,78 +439,46 @@ export class ProjectComponent
         return
       }
       // should also be active text editor
+      this.topFile = uri
       await slang.setTopLevel(uri.fsPath)
-      await this.setTopModule()
+      await this.refreshSlangCompilation()
     }
   )
 
+  selectTopLevel: CommandNode = new CommandNode(
+    {
+      title: 'Select Top Level',
+      shortTitle: 'Select Top',
+    },
+    async () => {
+      // get all open sv and v files
+      const files = vscode.workspace.textDocuments
+        .filter((doc) => {
+          return doc.languageId === 'verilog' || doc.languageId === 'systemverilog'
+        })
+        .map((doc) => doc.uri)
+      if (files.length === 0) {
+        vscode.window.showErrorMessage('No .v or .sv files open')
+        return
+      }
+      const selection = await vscode.window.showQuickPick(
+        files.map((f) => vscode.workspace.asRelativePath(f)),
+        {
+          placeHolder: 'Select a top level module',
+        }
+      )
+      if (selection === undefined) {
+        return
+      }
+      const file = vscode.Uri.joinPath(vscode.workspace.workspaceFolders![0].uri, selection)
+      await this.setTopLevel.func(vscode.Uri.file(file.fsPath))
+    }
+  )
+  isRevalingFile: boolean = false
+
   async onStart(): Promise<void> {
-    await this.setTopModule()
+    await this.refreshSlangCompilation()
   }
-
-  // TODO: this should only apply to files with one module,
-  // else it should be an action/prompt on the module decl
-
-  // setInstanceByFile: EditorButton = new EditorButton(
-  //   {
-  //     title: 'Select Instance',
-  //     icon: '$(symbol-class)',
-  //     languages: ['verilog', 'systemverilog'],
-  //   },
-  //   async (openModule: vscode.Uri | undefined) => {
-  //     if (openModule === undefined) {
-  //       vscode.window.showErrorMessage('Open a verilog file to select instance')
-  //       return
-  //     }
-  //     // get the module from the current file
-  //     const doc = await vscode.workspace.openTextDocument(openModule)
-  //     const moduleSym = await selectModule(doc)
-  //     if (moduleSym === undefined) {
-  //       return
-  //     }
-  //     // get the instances of the module
-  //     let moduleItem: ModuleItem | undefined = undefined
-  //     // These are sometimes different symbols instances
-  //     for (const [key, value] of this.instancesView.modules.entries()) {
-  //       if (key.name === moduleSym.name) {
-  //         moduleItem = value
-  //         break
-  //       }
-  //     }
-  //     if (moduleItem === undefined) {
-  //       return
-  //     }
-  //     await this.instancesView.treeView?.reveal(moduleItem, {
-  //       select: true,
-  //       focus: true,
-  //       expand: true,
-  //     })
-  //     const instances: string[] = Array.from(moduleItem.instances.values()).map(
-  //       (item: InstanceViewItem) => item.inst.getPath()
-  //     )
-  //     if (instances.length === 0) {
-  //       vscode.window.showErrorMessage('No instances found in module')
-  //       return
-  //     }
-  //     const path = await vscode.window.showQuickPick(instances, {
-  //       title: 'Select Instance',
-  //     })
-  //     if (path === undefined) {
-  //       return
-  //     }
-  //     // look upinstance that was selected
-  //     const instance = moduleItem.instances.get(path)
-  //     if (instance === undefined) {
-  //       return
-  //     }
-  //     // reveal in sidebar, don't change file
-  //     await this.setInstance.func(instance.inst, {
-  //       revealHierarchy: true,
-  //       revealFile: false,
-  //       revealInstance: true,
-  //     })
-  //   }
-  // )
 
   //////////////////////////////////////////////////////////////////
   // Hierarchy View Buttons
@@ -426,36 +490,51 @@ export class ProjectComponent
       icon: '$(panel-close)',
     },
     async () => {
-      this.buildfile = undefined
+      this.compilationSource = { type: 'none' }
+
       this.unit = undefined
+      this.top = undefined
+
       await this.instancesView.clearModules()
       this._onDidChangeTreeData.fire()
       await slang.setBuildFile('')
+      this.focusedBar.hide()
     }
   )
 
-  async reveal(item: HierItem | undefined = undefined) {
+  async reveal(item: HierItem | undefined = undefined, focus: boolean = false) {
     if (item === undefined) {
       if (this.focused === undefined) {
         this._onDidChangeTreeData.fire()
         return
       }
-      // We may have toggled params off for example, in which case our item is no longer visible
-      if (!this.symFilter.has(this.focused.inst.kind)) {
-        this.focused = this.focused.parent
-      }
       item = this.focused
+    }
+    // We may have toggled params off for example, in which case our item is no longer visible
+    if (!this.shouldBeVisible(item)) {
+      item = item.parent
+      this.focused = item
     }
     this._onDidChangeTreeData.fire()
     if (item !== undefined) {
-      await this.treeView?.reveal(item, { select: true, focus: true, expand: true })
       this.logger.info('Revealing in hierarchy: ' + item.getPath())
+      await this.treeView?.reveal(item, { select: true, focus: focus, expand: true })
     }
-    // if (item !== undefined) {
-    //   this.logger.info('Revealing in hierarchy: ' + item.getPath())
-    //   await this.treeView?.reveal(item, { select: true, focus: true, expand: true })
-    // }
   }
+
+  fuzzyFindInstance: ViewButton = new ViewButton(
+    {
+      title: 'Fuzzy Find Instances',
+      icon: '$(search-view-icon)',
+      keybind: 'cmd+f',
+      keybindContainer: true,
+    },
+    async (_instance: HierItem | undefined) => {
+      // Calling with undefined will pull up the instance quick pick
+      // We can't bind setInstance directly since it'll pass the focused tree item
+      await this.setInstance.func(undefined)
+    }
+  )
 
   // Set instance given one of:
   // - a path (from internal calls)
@@ -467,11 +546,7 @@ export class ProjectComponent
     },
     async (
       instance: HierItem | string | undefined,
-      {
-        revealHierarchy,
-        revealFile,
-        revealInstance,
-      }: { revealHierarchy?: boolean; revealFile?: boolean; revealInstance?: boolean } = {
+      { revealHierarchy, revealFile, revealInstance, focus, showBeside }: RevealOptions = {
         revealHierarchy: true,
         revealFile: true,
         revealInstance: true,
@@ -511,6 +586,13 @@ export class ProjectComponent
         // const scopes = await slang.getScopes(instance)
         const scopes = splitScope(instance)
         // Go through hierarchy, revealing each level
+        if (this.unit === undefined) {
+          // TODO: set the top level based on top name?
+          await vscode.window.showErrorMessage(
+            'Please set top level or build file first (no $unit)'
+          )
+          return
+        }
         let current: HasChildren = this.unit!
         for (let scope of scopes) {
           let child = await current.getChild(scope)
@@ -535,25 +617,41 @@ export class ProjectComponent
       this.focused = instance
       if (revealHierarchy) {
         if (instance.isVirtualLoc && !this.includeMacroDefined) {
-          this.toggleHidden.func()
+          await this.toggleHiddenFunc()
         }
         if (!this.symFilter.has(instance.inst.kind)) {
           switch (instance.inst.kind) {
             case slang.SlangKind.Param:
-              await this.toggleParams.func()
+              await this.toggleParamsFunc()
               break
             case slang.SlangKind.Logic:
-              await this.toggleData.func()
+              await this.toggleDataFunc()
               break
           }
         }
-        await this.reveal(instance)
+        await this.reveal(instance, focus === 'hierarchy')
       }
 
       if (revealFile) {
-        vscode.window.showTextDocument(vscode.Uri.parse(instance.inst.instLoc.uri), {
-          selection: instance.inst.instLoc.range,
-        })
+        const uri = vscode.Uri.parse(instance.inst.instLoc.uri)
+        // Check if URI has a valid path (not empty or just a directory)
+        if (uri.path && uri.path !== '/' && uri.path.length > 0) {
+          try {
+            this.isRevalingFile = true
+            await vscode.window.showTextDocument(uri, {
+              selection: instance.inst.instLoc.range,
+              preserveFocus: focus !== 'editor',
+              viewColumn: showBeside ? vscode.ViewColumn.Beside : undefined,
+            })
+            this.isRevalingFile = false
+          } catch (error) {
+            this.logger.warn(`Failed to open file at ${uri.toString()}: ${error}`)
+            this.isRevalingFile = false
+          }
+        } else {
+          // This will be fixed in a future release by asking slang server to do the open
+          vscode.window.showWarningMessage('Cannot open file, likely defined from a macro.')
+        }
       }
 
       if (revealInstance) {
@@ -566,15 +664,153 @@ export class ProjectComponent
         }
         this.instancesView.revealPath(instance.inst.declName, instance.getPath())
       }
+
+      const parentModule = instance.getModule()
+      if (parentModule) {
+        this.moduleToInstance.set(parentModule.inst.declLoc.uri, parentModule!)
+        this.focusedBar.text = `$(chip) ${parentModule.getPath()}`
+        this.focusedBar.show()
+      }
+
+      return instance
     }
   )
 
-  buildfile: string | undefined = undefined
+  public async maybeOpenWaveform(): Promise<boolean> {
+    const vvExt = await vv.getVaporviewExtension()
+
+    if (!vvExt) {
+      return false
+    }
+
+    // check if a waveform is already open
+    const docs = await vv.getOpenDocuments()
+    if (docs.documents.length > 0) {
+      return true
+    }
+
+    // try to guess the wave file name
+    if (ext.slangConfig.wavesPattern) {
+      let fillBlob: BuildFileParams = {}
+      if (this.buildfile) {
+        const basename = getBasename(this.buildfile)
+
+        if (basename) {
+          fillBlob.name = basename
+        }
+      }
+
+      if (this.top) {
+        fillBlob.top = this.top.inst.declName
+      }
+
+      const fileGlob = formatString(ext.slangConfig.wavesPattern, fillBlob)
+
+      this.logger.info('Looking for waveform: ' + fileGlob)
+
+      const files = await glob(fileGlob)
+
+      if (files.length > 0) {
+        let selected: string | undefined = files[0]
+        if (files.length > 1) {
+          selected = await vscode.window.showQuickPick(
+            files.map((f) => vscode.workspace.asRelativePath(f)),
+            { placeHolder: 'Select waveform file to open' }
+          )
+        }
+        if (selected) {
+          await vv.openFile({ uri: vscode.Uri.file(selected) })
+          return true
+        }
+      } else {
+        this.logger.info('No wavesPattern pattern set in slang config, using glob')
+        const files = await glob(
+          formatString(ext.slangConfig.wavesPattern, { name: '*', top: '*' })
+        )
+        const selected = await vscode.window.showQuickPick(
+          files.map((f) => vscode.workspace.asRelativePath(f)),
+          { placeHolder: 'Select waveform file to open' }
+        )
+        if (selected) {
+          await vv.openFile({ uri: vscode.Uri.file(selected) })
+          return true
+        }
+      }
+      return false
+    } else {
+      return this.openWaveformGeneric()
+    }
+  }
+
+  public async openWaveformGeneric(): Promise<boolean> {
+    const options: vscode.OpenDialogOptions = {
+      canSelectFiles: true,
+      canSelectFolders: false,
+      canSelectMany: false,
+      filters: {
+        'Wave files': ['vcd', 'fst', 'ghw', 'fsdb'],
+      },
+    }
+
+    const uris = await vscode.window.showOpenDialog(options)
+    if (!uris || uris.length === 0) {
+      return false
+    }
+    const selectedFile = uris[0] // Get the first (and only) selected file
+    try {
+      await vv.openFile({ uri: selectedFile })
+    } catch (error) {
+      vscode.window.showErrorMessage('Failed to open waveform: ' + error)
+      return false
+    }
+    return true
+  }
+
+  // This only needs to be used for generated .f files- otherwise people may overuse this
+  // We should setup a proper file watcher on the build file instead
+  // refreshCompilation: ViewButton = new ViewButton(
+  //   {
+  //     title: 'Refresh Compilation',
+  //     icon: '$(refresh)',
+  //   },
+  //   async () => {
+  //     // set either top or buildfile again
+  //     if (this.buildfile) {
+  //       // await slang.setBuildFile(this.buildfile)
+  //       await this.selectBuildFile.func()
+  //     } else if (this.topFile) {
+  //       await this.setTopLevel.func(this.topFile)
+  //     }
+  //     await this.refreshSlangCompilation()
+  //   }
+  // )
+
+  showBuildFile: ViewButton = new ViewButton(
+    {
+      title: 'Open Build File',
+      icon: '$(file)',
+      shown: true,
+    },
+    async () => {
+      // open the build file
+      if (this.topFile) {
+        vscode.window.showInformationMessage('Top level set from file, no build file to open')
+        return
+      }
+      if (!this.buildfile) {
+        vscode.window.showErrorMessage('No build file set')
+        return
+      }
+      this.logger.info('Opening build file: ' + this.buildfile)
+      const doc = await vscode.workspace.openTextDocument(this.buildfile)
+      await vscode.window.showTextDocument(doc)
+    }
+  )
 
   selectBuildFile: ViewButton = new ViewButton(
     {
       title: 'Select build file',
-      icon: '$(file-code)',
+      icon: '$(file-directory)',
       shown: true,
     },
     async () => {
@@ -585,6 +821,7 @@ export class ProjectComponent
         return
       }
       // can't use workspace findfiles bc the build.f files are probably generated and not in repo
+      this.logger.info('Looking for build files: ' + glob.replace('{}', '*'))
       const files = await ext.findFiles([glob.replace('{}', '*')], true)
       if (files.length === 0) {
         vscode.window.showErrorMessage('No build files found')
@@ -607,7 +844,7 @@ export class ProjectComponent
       this.buildfile = commonPrefix + selection
       await slang.setBuildFile(this.buildfile)
 
-      await this.setTopModule()
+      await this.refreshSlangCompilation()
     }
   )
 
@@ -629,51 +866,62 @@ export class ProjectComponent
       title: 'Toggle Params',
       icon: '$(symbol-type-parameter)',
     },
-    async () => {
-      this.includeParams = !this.includeParams
-      if (this.includeParams) {
-        for (let type of VarItem.PARAM_TYPES) {
-          this.symFilter.add(type)
-        }
-      } else {
-        for (let type of VarItem.PARAM_TYPES) {
-          this.symFilter.delete(type)
-        }
-      }
+    async (_item: HierItem | undefined) => {
+      await this.toggleParamsFunc()
       await this.reveal()
     }
   )
+
+  async toggleParamsFunc() {
+    this.includeParams = !this.includeParams
+    if (this.includeParams) {
+      for (let type of VarItem.PARAM_TYPES) {
+        this.symFilter.add(type)
+      }
+    } else {
+      for (let type of VarItem.PARAM_TYPES) {
+        this.symFilter.delete(type)
+      }
+    }
+  }
 
   toggleData: ViewButton = new ViewButton(
     {
       title: 'Toggle Data',
       icon: '$(symbol-variable)',
     },
-    async () => {
-      this.includeData = !this.includeData
-      if (this.includeData) {
-        for (let type of VarItem.DATA_TYPES) {
-          this.symFilter.add(type)
-        }
-      } else {
-        for (let type of VarItem.DATA_TYPES) {
-          this.symFilter.delete(type)
-        }
-      }
+    async (_item: HierItem | undefined) => {
+      await this.toggleDataFunc()
       await this.reveal()
     }
   )
+  async toggleDataFunc() {
+    this.includeData = !this.includeData
+    if (this.includeData) {
+      for (let type of VarItem.DATA_TYPES) {
+        this.symFilter.add(type)
+      }
+    } else {
+      for (let type of VarItem.DATA_TYPES) {
+        this.symFilter.delete(type)
+      }
+    }
+  }
 
   toggleHidden: ViewButton = new ViewButton(
     {
       title: 'Toggle Macro Defined',
       icon: '$(eye)',
     },
-    async () => {
-      this.includeMacroDefined = !this.includeMacroDefined
+    async (_item: HierItem | undefined) => {
+      await this.toggleHiddenFunc()
       await this.reveal()
     }
   )
+
+  async toggleHiddenFunc() {
+    this.includeMacroDefined = !this.includeMacroDefined
+  }
 
   //////////////////////////////////////////////////////////////////
   // Inline Item Buttons
@@ -682,31 +930,214 @@ export class ProjectComponent
   showSourceFile: TreeItemButton = new TreeItemButton(
     {
       title: 'Show Module',
-      inlineContext: ['Module'],
-      icon: {
-        light: './resources/light/go-to-file.svg',
-        dark: './resources/dark/go-to-file.svg',
-      },
+      viewItems: ['Module'],
+      icon: getIcons('go-to-file'),
     },
     async (item: HierItem) => {
       if (item instanceof InstanceItem && item) {
-        vscode.window.showTextDocument(vscode.Uri.parse(item.inst.declLoc.uri), {
+        this.isRevalingFile = true
+        await vscode.window.showTextDocument(vscode.Uri.parse(item.inst.declLoc.uri), {
           selection: item.inst.declLoc.range,
         })
+        this.isRevalingFile = false
       }
+    }
+  )
+
+  showInWaveform: TreeItemButton = new TreeItemButton(
+    {
+      title: 'Show in Waveform',
+      icon: '$(graph-line)',
+      keybind: 'w',
+    },
+    async (item: HierItem | undefined) => {
+      if (item === undefined) {
+        item = this.focused
+      }
+      if (item === undefined) {
+        vscode.window.showErrorMessage('No instance selected to show in waveform')
+        return
+      }
+
+      const ok = await this.maybeOpenWaveform()
+      if (!ok) {
+        return
+      }
+      if (item instanceof VarItem) {
+        this.logger.info('Showing variable in waveform: ' + item.getPath())
+        await vv.addVariable({
+          instancePath: item.getPath(),
+        })
+      } else {
+        this.logger.info('Showing scope in waveform: ' + item.getPath())
+        // toggle if not visible
+        let didToggle = false
+        if (!this.includeData) {
+          await this.toggleDataFunc()
+          didToggle = true
+        }
+        if (!this.includeParams) {
+          await this.toggleParamsFunc()
+          didToggle = true
+        }
+        if (didToggle) {
+          void this.reveal(item)
+        }
+        await item.showChildrenInWaveform(this.logger)
+      }
+    }
+  )
+
+  async openBuildFile(params: BuildFileParams = {}) {
+    if (!ext.slangConfig.buildPattern) {
+      return
+    }
+    const fmtParams = {
+      name: '*',
+      top: '*',
+    }
+    if (params.name) {
+      fmtParams.name = params.name
+    }
+    if (params.top) {
+      fmtParams.top = params.top
+    }
+    let buildPattern = formatString(ext.slangConfig.buildPattern, fmtParams)
+    if (params.name) {
+      buildPattern = buildPattern.replace('{}', params.name)
+    }
+
+    const files = await ext.findFiles([buildPattern], true)
+    if (files.length > 0) {
+      if (files.length > 1) {
+        const selection = await vscode.window.showQuickPick(
+          files.map((f) => vscode.workspace.asRelativePath(f)),
+          {
+            placeHolder: 'Select Build File',
+          }
+        )
+        if (selection === undefined) {
+          return
+        }
+        this.buildfile = vscode.Uri.joinPath(
+          vscode.workspace.workspaceFolders![0].uri,
+          selection
+        ).fsPath
+      } else {
+        this.buildfile = files[0].fsPath
+      }
+      await slang.setBuildFile(this.buildfile)
+      await this.refreshSlangCompilation({
+        revealFile: false,
+        revealHierarchy: false,
+        revealInstance: false,
+      })
+    } else {
+      this.logger.warn('No build files found for pattern: ' + buildPattern)
+    }
+  }
+
+  // For vaporview
+  showInEditorFromNetlist: TreeItemButton = new TreeItemButton(
+    {
+      title: 'Show in Editor',
+      icon: '$(file-code)',
+      viewOverride: 'waveformViewerNetlistView',
+      keybind: 'e',
+    },
+    async (item: vv.NetlistTreeItemData | undefined) => {
+      if (item === undefined) {
+        // The keybind press comes with 'undefined', but
+        // - the selected netlist signals are not in the extension state (should add this)
+        // - we should be able to get the selected one from onDidSelectSignal subscription, but that doesn't seem to be working
+        await vscode.window.showErrorMessage(
+          "'e' keybind from netlist view not supported yet; please use the button."
+        )
+        return
+      }
+      let fullpath = item.name
+      if (item.scopePath) {
+        fullpath = item.scopePath + '.' + fullpath
+      }
+      if (this.unit === undefined && ext.slangConfig.buildPattern) {
+        const decoded = vv.decodeNetlistUri(item.resourceUri!)
+        const basename = getBasename(decoded.fsPath)!
+        const top = decoded.scopeId?.split('.')[0] || ''
+        await this.openBuildFile({ name: basename, top: top })
+      }
+      await this.setInstance.func(fullpath, {
+        revealHierarchy: true,
+        revealFile: true,
+        revealInstance: true,
+        focus: 'editor',
+        showBeside: true,
+      })
+    }
+  )
+
+  showInEditorFromVaporview: WebviewButton = new WebviewButton(
+    {
+      title: 'Show in Editor',
+      icon: '$(file-code)',
+      group: '2_variables@2.1',
+      editorId: 'vaporview.waveformViewer',
+      webviewSection: 'signal',
+      keybind: 'e',
+    },
+    async (item: vv.SignalItemData | undefined) => {
+      // If we're coming from the keybind, we have to get the focused signal ourselves
+      let signalPath = ''
+      let vvExt: vv.ViewerSettings | undefined = undefined
+      if (item === undefined) {
+        vvExt = await vv.getViewerState()
+        signalPath = vvExt.selectedSignal?.name || ''
+      } else {
+        signalPath = item.signalName
+        if (item.scopePath) {
+          signalPath = item.scopePath + '.' + signalPath
+        }
+      }
+
+      if (this.unit === undefined && ext.slangConfig.buildPattern) {
+        let basename = ''
+        let top = ''
+        if (item === undefined) {
+          top = vvExt!.selectedSignal?.name.split('.')[0] || ''
+          basename = getBasename(vvExt!.fileName)!
+        } else {
+          top = item.scopePath.split('.')[0] || ''
+          basename = getBasename(item.uri.path)!
+        }
+
+        await this.openBuildFile({ name: basename, top: top })
+      }
+
+      await this.setInstance.func(signalPath, {
+        revealHierarchy: true,
+        revealFile: true,
+        revealInstance: true,
+        focus: 'editor',
+        showBeside: true,
+      })
     }
   )
 
   copyHierarchyPath: TreeItemButton = new TreeItemButton(
     {
       title: 'Copy Path',
-      inlineContext: [],
-      icon: {
-        light: './resources/light/files.svg',
-        dark: './resources/dark/files.svg',
-      },
+      viewItems: [],
+      isSubmenu: true,
+      icon: getIcons('files'),
+      keybind: 'cmd+c',
     },
-    async (item: HierItem) => {
+    async (item: HierItem | undefined) => {
+      if (item === undefined) {
+        if (this.focused === undefined) {
+          this.logger.warn('No instance focused to copy path from')
+          return
+        }
+        item = this.focused
+      }
       vscode.env.clipboard.writeText(item.getPath())
     }
   )
@@ -718,6 +1149,57 @@ export class ProjectComponent
         contents:
           '[Select Build File](command:slang.project.selectBuildFile)\n[Select Top Level](command:slang.project.selectTopLevel)',
       },
+    })
+    this.focusedBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100)
+    this.focusedBar.name = 'Slang Instance'
+    vscode.window.onDidChangeActiveTextEditor(async (e: vscode.TextEditor | undefined) => {
+      if (e === undefined) {
+        return
+      }
+      if (this.unit === undefined) {
+        return
+      }
+      if (!isAnyVerilog(e.document.languageId)) {
+        return
+      }
+      if (this.isRevalingFile) {
+        return
+      }
+
+      this.logger.info(
+        'Active editor changed: ' + e.document.uri.toString(),
+        'updating instances view'
+      )
+
+      // if we had selected this instance before, go back to it
+      const instance = this.moduleToInstance.get(e.document.uri.toString())
+      if (
+        instance !== undefined &&
+        !vscode.window.activeTextEditor!.document.uri.fsPath.endsWith(instance.inst.instLoc.uri)
+      ) {
+        await this.setInstance.func(instance, {
+          revealHierarchy: true,
+          revealFile: false,
+          revealInstance: false,
+          focus: 'hierarchy',
+        })
+      }
+
+      // always open the modules view so we can select an instance
+
+      // try this first to avoid querying slang-server
+      const basename = getBasename(e.document.uri.fsPath)!
+      if (this.instancesView.modules.has(basename)) {
+        this.instancesView.revealPath(basename)
+        return
+      }
+
+      const modules = await slang.getModulesInFile(e.document.uri.fsPath)
+      if (modules.length === 0) {
+        this.logger.info('No modules found in file')
+        return
+      }
+      this.instancesView.revealPath(modules[0])
     })
   }
 
@@ -765,7 +1247,12 @@ export class ProjectComponent
       }
       await this.setTopLevel.func(vscode.Uri.file(file))
     }
-    await this.setInstance.func(link.path)
+    await this.setInstance.func(link.path, {
+      revealHierarchy: true,
+      revealFile: true,
+      revealInstance: true,
+      focus: 'editor',
+    })
   }
 
   async activate(context: vscode.ExtensionContext): Promise<void> {
@@ -781,10 +1268,31 @@ export class ProjectComponent
     // context.subscriptions.push(vscode.window.registerTreeDataProvider(this.configPath!, this))
 
     context.subscriptions.push(vscode.window.registerTerminalLinkProvider(this))
+
+    // user updates to buildfile
+    vscode.workspace.onDidSaveTextDocument(async (document) => {
+      if (document.uri.fsPath === this.buildfile) {
+        this.logger.info(
+          'Build file updated, reloading: ' + vscode.workspace.asRelativePath(this.buildfile)
+        )
+        vscode.commands.executeCommand('slang.setBuildFile', this.buildfile)
+        await this.refreshSlangCompilation()
+      }
+    })
   }
 
-  async setTopModule() {
+  async refreshSlangCompilation(
+    revealOptions: RevealOptions = {
+      revealHierarchy: true,
+      revealFile: true,
+      revealInstance: false,
+    }
+  ) {
     const unit = await slang.getUnit()
+    if (unit.length === 0) {
+      this.unit = undefined
+      return
+    }
     this.unit = new UnitItem(
       unit.map((item) =>
         item.kind === slang.SlangKind.Instance ? new TopItem(item) : new PkgItem(item)
@@ -794,11 +1302,8 @@ export class ProjectComponent
     const tops = this.unit.children.filter((item) => item.inst.kind === slang.SlangKind.Instance)
 
     if (tops.length === 1 && this.treeView !== undefined) {
-      this.setInstance.func(tops[0], {
-        revealHierarchy: true,
-        revealFile: true,
-        revealInstance: false,
-      })
+      this.top = tops[0]
+      this.setInstance.func(tops[0], revealOptions)
     }
     this._onDidChangeTreeData.fire()
     // TODO: maybe setInstance() regardless of how many tops there are
@@ -838,11 +1343,18 @@ export class ProjectComponent
       // Packages don't have children loaded, but should always have something
       return children
     }
-    const filtered = children.filter((child) => this.symFilter.has(child.inst.kind))
-    if (this.includeMacroDefined) {
-      return filtered
+    return children.filter((child) => this.shouldBeVisible(child))
+  }
+
+  // doesn't include filtering for package children
+  shouldBeVisible(element: HierItem): boolean {
+    if (!this.symFilter.has(element.inst.kind)) {
+      return false
     }
-    return filtered.filter((child) => !child.isVirtualLoc)
+    if (!this.includeMacroDefined && element.isVirtualLoc) {
+      return false
+    }
+    return true
   }
 
   getParent(element: HierItem): HierItem | undefined {

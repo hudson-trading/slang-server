@@ -36,7 +36,10 @@ int main(int argc, char** argv) {
     if (configSchema == true) {
         try {
             const std::string schema = rfl::json::to_schema<Config, rfl::DefaultIfMissing>(
-                rfl::json::pretty);
+                rfl::json::pretty | YYJSON_WRITE_PRETTY_TWO_SPACES
+                // Add this when comment support is added
+                // , "@generated from `include/Config.h`"
+            );
             OS::print(schema);
         }
         catch (const std::exception& e) {

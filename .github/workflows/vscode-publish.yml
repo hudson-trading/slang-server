@@ -46,5 +46,8 @@ jobs:
       # - name: Publish to Open Vsix
       #   working-directory: clients/vscode
       #   run: npx ovsx publish ${{ inputs.prerelease && '--pre-release' || '' }} --pat ${{ secrets.OPEN_VSX_TOKEN }}
-      - name: Push changes
-        run: git push
+      - name: Commit and push version bump
+        run: |
+          git add clients/vscode/package.json
+          git commit -m "Published vscode extension version $(jq -r .version clients/vscode/package.json)"
+          git push

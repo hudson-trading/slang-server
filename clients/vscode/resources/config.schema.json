@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$ref": "#/definitions/Config",
-  "definitions": {
+  "$ref": "#/$defs/Config",
+  "$defs": {
     "Config": {
       "type": "object",
       "properties": {
@@ -43,7 +43,18 @@
           ]
         },
         "buildPattern": {
-          "description": "Build file pattern, ex builds/{}.f",
+          "description": "Build file glob pattern, e.g. `builds/{}.f`. Used for selecting build files.",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "wavesPattern": {
+          "description": "Waveform file glob to open given a build. Name and top variables can be passed with {name}, {top})",
           "anyOf": [
             {
               "type": "string"
@@ -54,7 +65,7 @@
           ]
         },
         "wcpCommand": {
-          "description": "Waveform viewer command ({} will be replaced with the WCP port)",
+          "description": "Waveform viewer command ({} will be replaced with the WCP port), used for direct wcp connection with neovim and surfer.",
           "anyOf": [
             {
               "type": "string"

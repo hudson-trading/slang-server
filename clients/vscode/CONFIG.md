@@ -24,7 +24,7 @@
 
     mac:     `slang-server`
 
-  windows: `slang-server.exe`
+    windows: `slang-server.exe`
 
 - `slang.args`: array = []
 
