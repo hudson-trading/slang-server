@@ -40,7 +40,7 @@ jobs:
           git config --global user.name "${{ github.actor }}"
       - name: Publish to Visual Studio Marketplace
         working-directory: clients/vscode
-        run: vsce publish ${{ inputs.kind }} ${{ inputs.prerelease && '--pre-release' || '' }} --pat ${{ secrets.VS_MARKETPLACE_TOKEN }}
+        run: vsce publish ${{ inputs.kind }} ${{ inputs.prerelease && '--pre-release' || '' }} --no-dependencies --pat ${{ secrets.VS_MARKETPLACE_TOKEN }}
       # - name: Install ovsx
       #   run: pnpm install -g ovsx
       # - name: Publish to Open Vsix
