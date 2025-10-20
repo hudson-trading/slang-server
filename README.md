@@ -1,6 +1,6 @@
 # Slang Server
 
-`slang-server` is a [Language Server](https://microsoft.github.io/language-server-protocol/) for SystemVerilog using the [Slang](https://github.com/MikePopoloski/slang) Library. It provides useful language features for editors like Vscode and Neovim.
+`slang-server` is a [Language Server](https://microsoft.github.io/language-server-protocol/) for SystemVerilog based on the [Slang](https://github.com/MikePopoloski/slang) library, providing useful language features for editors like Vscode and Neovim.
 
 See [the docs](https://hudson-trading.github.io/slang-server) for instructions on [installing](https://hudson-trading.github.io/slang-server/start/installing/) and [configuring](https://hudson-trading.github.io/slang-server/start/config/).
 
@@ -8,7 +8,7 @@ Contributions are welcome! See [DEVELOPING.md](DEVELOPING.md)
 
 ## Features
 
-Quick, high quality lint messages on from [Slang](https://github.com/MikePopoloski/slang) on every keystroke, with links to the [Slang warning reference](https://sv-lang.com/warning-ref.html).
+Quick, high quality lint messages on every keystroke, with links to the [Slang warning reference](https://sv-lang.com/warning-ref.html).
 
 ![](clients/vscode/images/lints.gif)
 
@@ -20,7 +20,7 @@ Intuitive completions for module instances and macros, as well as scope members 
 
 ![](clients/vscode/images/completions.gif)
 
-HDL-specific features that allow you to easily set a filelist or top level for a design, browse the elaborated hierarchy, and interact with waveform viewers.
+HDL-specific features that allow you to easily set a filelist or top level for a design, browse the elaborated hierarchy, and go back and forth with a waveform viewer.
 
 ![](clients/vscode/images/hdl.gif)
 
