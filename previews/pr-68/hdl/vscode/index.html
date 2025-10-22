@@ -768,19 +768,19 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#setting-a-scope" class="md-nav__link">
+  <a href="#setting-an-instance" class="md-nav__link">
     <span class="md-ellipsis">
-      Setting a scope
+      Setting an Instance
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Setting a scope">
+    <nav class="md-nav" aria-label="Setting an Instance">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#slang-select-scope-buttoncommand" class="md-nav__link">
+  <a href="#slang-select-instance-command" class="md-nav__link">
     <span class="md-ellipsis">
-      Slang: Select Scope Button/Command
+      Slang: Select Instance Command
     </span>
   </a>
   
@@ -1038,19 +1038,19 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#setting-a-scope" class="md-nav__link">
+  <a href="#setting-an-instance" class="md-nav__link">
     <span class="md-ellipsis">
-      Setting a scope
+      Setting an Instance
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Setting a scope">
+    <nav class="md-nav" aria-label="Setting an Instance">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#slang-select-scope-buttoncommand" class="md-nav__link">
+  <a href="#slang-select-instance-command" class="md-nav__link">
     <span class="md-ellipsis">
-      Slang: Select Scope Button/Command
+      Slang: Select Instance Command
     </span>
   </a>
   
@@ -1105,29 +1105,36 @@
 </div>
 </div>
 <h2 id="hierarchy-view">Hierarchy View<a class="headerlink" href="#hierarchy-view" title="Permanent link">&para;</a></h2>
+<p>The Hierarchy View shows the elaborated tree, with declared types and resolved values to the right of the identifier.
+Clicking a symbol in the hierarchy view or modules view will open the instance in the file, as well as in the other view.</p>
 <div class="grid">
 <div class="grid-item">
-<p>The Hierarchy View shows the elaborated tree, with declared types and resolved values to the right of the identifier.</p>
-<p><strong>Hierarchy Buttons (left to right):</strong>
-- Clear top level
-- Select Instance
-- Open selected build file
-- Select build file (from glob)
-- Toggle data signals like wires and registers
-- Toggle objects defined behind macro usages.
-- Toggle paramters like params and local params.
-- Collapse all</p>
-<p><strong>Tree Item Buttons</strong>
-- Open in waveform (or press w)
-  - For scopes, this will add the children recursively
-  - Some signals like structs may not open, this will be fixed in a future release
-- Open Module
-  - This will open the module rather than the instance
-- Copy path (cmd+c, or right click &gt; copy path)</p>
-<p><strong>Vaporview Buttons</strong>
-- Open in Editor (or press e with selected signal)
-- At the moment, pressing 'e' only works on selected signal, not selected netlist item</p>
-<p>Clicking a symbol in the hierarchy view or modules view will open the instance in the file, as well as in the other view.</p>
+<p><strong>Hierarchy Buttons (left to right):</strong></p>
+<ul>
+<li>Clear top level</li>
+<li>Select Instance</li>
+<li>Open selected build file</li>
+<li>Select build file (from glob)</li>
+<li>Toggle data signals</li>
+<li>Toggle symbols defined behind macro usages.</li>
+<li>Toggle parameters</li>
+<li>Collapse all</li>
+</ul>
+<p><strong>Tree Item Buttons</strong></p>
+<ul>
+<li>Open in waveform (or press <code>w</code>)<ul>
+<li>For scopes, this will add the children recursively</li>
+<li>Some signals like structs may not open, this will be fixed in a future release</li>
+</ul>
+</li>
+<li>Open Module - This will open the module rather than the instance</li>
+<li>Copy path (<code>cmd+c</code>, or right click &gt; copy path)</li>
+</ul>
+<p><strong>Vaporview Buttons</strong></p>
+<ul>
+<li>Open in Editor (or press <code>e</code> with selected signal)</li>
+<li>At the moment, pressing <code>e</code> only works on selected signal, not selected netlist item</li>
+</ul>
 </div>
 <div class="grid-item">
 <p><img alt="HierarchyView" src="HierarchyView.png" /></p>
@@ -1143,10 +1150,17 @@
 <p><img alt="ModulesView" src="ModulesView.png" /></p>
 </div>
 </div>
-<h2 id="setting-a-scope">Setting a scope<a class="headerlink" href="#setting-a-scope" title="Permanent link">&para;</a></h2>
-<h3 id="slang-select-scope-buttoncommand"><code>Slang: Select Scope</code> Button/Command<a class="headerlink" href="#slang-select-scope-buttoncommand" title="Permanent link">&para;</a></h3>
+<h2 id="setting-an-instance">Setting an Instance<a class="headerlink" href="#setting-an-instance" title="Permanent link">&para;</a></h2>
+<h3 id="slang-select-instance-command"><code>Slang: Select Instance</code> Command<a class="headerlink" href="#slang-select-instance-command" title="Permanent link">&para;</a></h3>
+<div class="grid">
+<div class="grid-item">
 <p>This command pulls up a fuzzy finder where you can enter the hierarchical path of a scope/instance.</p>
-<p>Pressing <code>cmd+f</code> while the hierarchy or modules view is in focus will also trigger this command.</p>
+<p>It's also available via the magnifying glass icon in the Hierachy view, or by pressing <code>cmd+f</code> while the sidebar is in focus.</p>
+</div>
+<div class="grid-item">
+<p><img alt="SelectInstance" src="SelectInstance.png" /></p>
+</div>
+</div>
 <h3 id="terminal-links">Terminal Links<a class="headerlink" href="#terminal-links" title="Permanent link">&para;</a></h3>
 <div class="grid">
 <div class="grid-item">
