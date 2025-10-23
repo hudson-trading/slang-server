@@ -51,3 +51,9 @@ jobs:
           git add clients/vscode/package.json
           git commit -m "Published vscode extension version $(jq -r .version clients/vscode/package.json)"
           git push
+      - name: Create git tag for major/minor releases
+        if: inputs.kind == 'major' || inputs.kind == 'minor'
+        run: |
+          VERSION=$(jq -r .version clients/vscode/package.json)
+          git tag -a "v${VERSION}" -m "Release v${VERSION}"
+          git push origin "v${VERSION}"
