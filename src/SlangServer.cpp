@@ -118,9 +118,28 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
         if (folders.size() > 1) {
 
             m_client.showWarning(
-                "Slang only supports a single workspace folder, using the first one");
+                "Slang only supports a single workspace folder at the moment; using the first one");
         }
         m_workspaceFolder = params.workspaceFolders->at(0);
+    }
+    else if (params.rootUri.has_value()) {
+        m_workspaceFolder = lsp::WorkspaceFolder{
+            .uri = params.rootUri.value(),
+            .name = "root",
+        };
+    }
+    else if (params.rootPath.has_value()) {
+        m_workspaceFolder = lsp::WorkspaceFolder{
+            .uri = URI::fromFile(params.rootPath.value()),
+            .name = "root",
+        };
+    }
+
+    if (m_workspaceFolder) {
+        INFO("Using workspace folder: {}", m_workspaceFolder->uri.getPath());
+    }
+    else {
+        WARN("No workspace folder or root provided");
     }
 
     // TODO: watch for changes to config file
