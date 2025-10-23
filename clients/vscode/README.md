@@ -15,18 +15,18 @@ Then point to your build in the `slang.path` vscode setting.
 
 Quick, high quality lint messages on from [Slang](https://github.com/MikePopoloski/slang) on every keystroke, with links to the [Slang warning reference](https://sv-lang.com/warning-ref.html).
 
-![](images/lints.gif)
+![Lints](images/lints.gif)
 
 Informative hovers and gotos on nearly every symbol across your workspace and libraries.
 
-![](images/hovers.gif)
+![Hovers](images/hovers.gif)
 
 Intuitive completions for module instances and macros, as well as scope members of packages, modules, structs, and more.
 
-![](images/completions.gif)
+![Completions](images/completions.gif)
 
 HDL-specific features that allow you to easily set a filelist or top level for a design, browse the elaborated hierarchy, and interact with waveform viewers.
 
-![](images/hdl.gif)
+![HDL Features](images/hdl.gif)
 
 For more detailed feature info, see [the docs](https://hudson-trading.github.io/slang-server/features/features/).

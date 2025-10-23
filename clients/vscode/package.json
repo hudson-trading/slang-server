@@ -14,7 +14,8 @@
   "homepage": "https://hudson-trading.github.io/slang-server",
   "repository": {
     "type": "git",
-    "url": "https://github.com/hudson-trading/slang-server"
+    "url": "https://github.com/hudson-trading/slang-server",
+    "directory": "clients/vscode"
   },
   "bugs": {
     "url": "https://github.com/hudson-trading/slang-server/issues"
