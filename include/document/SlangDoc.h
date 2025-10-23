@@ -142,15 +142,7 @@ public:
     // Previous text on and before a position
     std::string getPrevText(const lsp::Position& position);
 
-    std::vector<lsp::LocationLink> getDocDefinition(const lsp::Position& position) {
-        return getAnalysis().getDocDefinition(position);
-    }
-
     std::vector<lsp::DocumentLink> getDocLinks() { return getAnalysis().getDocLinks(); }
-
-    std::optional<lsp::Hover> getDocHover(const lsp::Position& position) {
-        return getAnalysis().getDocHover(position);
-    }
 };
 
 } // namespace server

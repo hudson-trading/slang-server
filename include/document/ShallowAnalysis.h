@@ -68,11 +68,6 @@ public:
     /// @return Vector of LSP document links to included files
     std::vector<lsp::DocumentLink> getDocLinks() const;
 
-    /// @brief Gets LSP definition links for a position
-    /// @param position The LSP position to query
-    /// @return Vector of location links to definitions
-    std::vector<lsp::LocationLink> getDocDefinition(const lsp::Position& position);
-
     /// @brief Gets hover information for a symbol at an LSP position
     /// @param position The LSP position to query
     /// @return Optional hover information, or nullopt if none available
@@ -87,7 +82,7 @@ public:
     /// @param loc The source location to query
     /// @return Pointer to the word token at the location, or nullptr if none found
     const slang::parsing::Token* getWordTokenAt(slang::SourceLocation loc) const {
-        return m_syntaxes.getWordTokenAt(loc);
+        return syntaxes.getWordTokenAt(loc);
     }
 
     /// @brief Gets the AST symbol at a specific source location
@@ -109,12 +104,18 @@ public:
 
     const std::unique_ptr<slang::ast::Compilation>& getCompilation() const { return m_compilation; }
 
-    /// @brief Gets definition information for a symbol at an LSP position (for testing)
-    /// @param position The LSP position to query
-    /// @return Optional definition information
-    std::optional<DefinitionInfo> getDefinitionInfoAtPosition(const lsp::Position& position) {
-        return getDefinitionInfoAt(position);
-    }
+    /// @brief Generates debug hover information for a syntax node, traversing up the parent
+    /// syntax pointers
+    std::string getDebugHover(const slang::parsing::Token& node) const;
+
+    /// @brief Gets the AST symbol that a declared token refers to, if any
+    const slang::ast::Symbol* getSymbolAtToken(const slang::parsing::Token* node) const;
+
+    /// Syntax finder for location->syntax mapping
+    SyntaxIndexer syntaxes;
+
+    /// Map from macro name to macro definition
+    slang::flat_hash_map<std::string_view, const slang::syntax::DefineDirectiveSyntax*> macros;
 
     friend class DocumentHandle;
 
@@ -144,28 +145,6 @@ private:
 
     /// Symbol indexer for syntax->symbol mapping
     SymbolIndexer m_symbolIndexer;
-
-    /// Syntax finder for location->syntax mapping
-    SyntaxIndexer m_syntaxes;
-
-    // For testing
-
-    /// @brief Gets definition information for a symbol at an LSP position, called by hover and goto
-    std::optional<DefinitionInfo> getDefinitionInfoAt(const lsp::Position& position);
-
-    /// @brief Gets the definition link for a definition info object
-    /// @param info The definition info to get the link for
-    const std::vector<lsp::LocationLink> getDefinition(const DefinitionInfo& info) const;
-
-    /// @brief Generates debug hover information for a syntax node, traversing up the parent
-    /// syntax pointers
-    std::string getDebugHover(const slang::parsing::Token& node) const;
-
-    /// @brief Gets the AST symbol that a declared token refers to, if any
-    const slang::ast::Symbol* getSymbolAtToken(const slang::parsing::Token* node) const;
-
-    /// Map from macro name to macro definition
-    slang::flat_hash_map<std::string_view, const slang::syntax::DefineDirectiveSyntax*> m_macros;
 
     /// @brief Helper method to check if a token is positioned over a selector
     bool isOverSelector(const slang::parsing::Token* node,

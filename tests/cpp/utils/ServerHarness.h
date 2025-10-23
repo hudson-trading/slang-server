@@ -139,6 +139,8 @@ public:
 
     std::optional<server::DefinitionInfo> getDefinitionInfoAt(lsp::uint offset);
 
+    std::optional<lsp::Hover> getHoverAt(lsp::uint offset);
+
     std::string m_text;
     URI m_uri;
     ServerHarness& m_server;
@@ -321,7 +323,8 @@ protected:
         else {
             test.record(fmt::format(" Ref -> "));
             // Print hover, but turn newlines into \n
-            auto maybeHover = doc->getAnalysis().getDocHover(hdl->getPosition(offset), true);
+            // auto maybeHover = doc->getAnalysis().getDocHover(hdl->getPosition(offset), true);
+            auto maybeHover = hdl->getHoverAt(offset);
             if (!maybeHover) {
                 test.record(" No Hover\n");
                 return;

@@ -11,6 +11,7 @@
 #include "SlangLspClient.h"
 #include "ast/ServerCompilation.h"
 #include "completions/CompletionDispatch.h"
+#include "document/ShallowAnalysis.h"
 #include "lsp/URI.h"
 #include <memory>
 #include <unordered_map>
@@ -88,6 +89,26 @@ public:
     std::vector<std::shared_ptr<SlangDoc>> getDependentDocs(std::shared_ptr<SyntaxTree> tree);
 
     std::vector<std::string> getModulesInFile(const std::string& path);
+
+    /// @brief Gets definition information for a symbol at an LSP position, used for
+    /// hovers and definitions
+    /// @param uri The URI of the document
+    /// @param position The LSP position to query
+    /// @return Optional definition information
+    std::optional<DefinitionInfo> getDefinitionInfoAt(const URI& uri,
+                                                      const lsp::Position& position);
+
+    /// @brief Gets LSP definition links for a position in a document
+    /// @param uri The URI of the document
+    /// @param position The LSP position to query
+    /// @return Vector of location links to definitions
+    std::vector<lsp::LocationLink> getDocDefinition(const URI& uri, const lsp::Position& position);
+
+    /// @brief Gets hover information for a symbol at an LSP position
+    /// @param uri The URI of the document
+    /// @param position The LSP position to query
+    /// @return Optional hover information, or nullopt if none available
+    std::optional<lsp::Hover> getDocHover(const URI& uri, const lsp::Position& position);
 
     /// @brief Creates a compilation from the given URI and top module name.
     /// @return True if the compilation was created successfully
