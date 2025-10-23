@@ -453,7 +453,7 @@ void Indexer::startIndexing(const std::vector<std::string>& globs,
                 }
                 pathsToIndex.push_back(path);
             }
-            INFO("found {} files ", pattern, pathsToIndex.size() - beginCount);
+            INFO("found {} files ", pathsToIndex.size() - beginCount);
         }
     }
 
