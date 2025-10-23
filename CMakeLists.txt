@@ -23,6 +23,38 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
                 "'CMakeCache.txt' and 'CMakeFiles/' before building again.")
 endif()
 
+# Determine our patch version by looking at git tags.
+set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
+include(gitversion)
+get_git_version(SLANG_SERVER_VERSION_PATCH SLANG_SERVER_VERSION_HASH)
+
+# Extract version from package.json
+execute_process(
+  COMMAND jq -r .version
+          "${CMAKE_CURRENT_SOURCE_DIR}/clients/vscode/package.json"
+  OUTPUT_VARIABLE PACKAGE_JSON_VERSION
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+  RESULT_VARIABLE JQ_RESULT)
+
+if(NOT JQ_RESULT EQUAL 0)
+  message(
+    FATAL_ERROR
+      "Failed to extract version from package.json. Ensure jq is installed.")
+endif()
+
+# Parse major and minor from version string
+string(REPLACE "." ";" VERSION_LIST "${PACKAGE_JSON_VERSION}")
+list(GET VERSION_LIST 0 SLANG_SERVER_VERSION_MAJOR)
+list(GET VERSION_LIST 1 SLANG_SERVER_VERSION_MINOR)
+
+set(SLANG_SERVER_VERSION_STRING
+    "${SLANG_SERVER_VERSION_MAJOR}.${SLANG_SERVER_VERSION_MINOR}.${SLANG_SERVER_VERSION_PATCH}"
+)
+message(
+  STATUS
+    "slang version: ${SLANG_SERVER_VERSION_STRING}+${SLANG_SERVER_VERSION_HASH}"
+)
+
 # Set the default build type if none is set explicitly, but only for
 # single-config generators.
 get_property(isMultiConfig GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
@@ -197,9 +229,14 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
                                             -Wno-unused-parameter -fexceptions)
 endif()
 
+# Generate version header
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/util/VersionInfo.cpp.in
+               ${CMAKE_CURRENT_BINARY_DIR}/VersionInfo.cpp @ONLY)
+
 # Build the slang-server library
 add_library(
   slang_server_obj_lib OBJECT
+  ${CMAKE_CURRENT_BINARY_DIR}/VersionInfo.cpp
   src/ast/ServerCompilation.cpp
   src/ast/WcpClient.cpp
   src/document/ShallowAnalysis.cpp

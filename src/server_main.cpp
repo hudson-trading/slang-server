@@ -11,6 +11,7 @@
 #include <rfl/DefaultIfMissing.hpp>
 
 #include "slang/util/CommandLine.h"
+#include "slang/util/VersionInfo.h"
 
 using namespace slang;
 using namespace server;
@@ -23,6 +24,9 @@ int main(int argc, char** argv) {
     std::optional<bool> showHelp;
     cmdline.add("-h,--help", showHelp, "Display available options");
 
+    std::optional<bool> showVersion;
+    cmdline.add("--version", showVersion, "Display version information and exit");
+
     std::optional<bool> configSchema;
     cmdline.add("--config-schema", configSchema, "Print json schema of config file and exit");
 
@@ -30,6 +34,13 @@ int main(int argc, char** argv) {
 
     if (showHelp == true) {
         OS::print(cmdline.getHelpText("Slang Language Server"));
+        return 0;
+    }
+
+    if (showVersion == true) {
+        OS::print(fmt::format("slang-server version {}.{}.{}+{}\n", VersionInfo::getMajor(),
+                              VersionInfo::getMinor(), VersionInfo::getPatch(),
+                              VersionInfo::getHash()));
         return 0;
     }
 
