@@ -5,6 +5,7 @@ import * as child_process from 'child_process'
 
 import path from 'path'
 import * as process from 'process'
+import * as semver from 'semver'
 
 import * as vscodelc from 'vscode-languageclient/node'
 import { LanguageClient, LanguageClientOptions, ServerOptions } from 'vscode-languageclient/node'
@@ -181,6 +182,39 @@ export class SlangExtension extends ActivityBarComponent {
     )
 
     await this.client.start()
+
+    // Log server version from initialize result
+    const serverInfo = this.client.initializeResult?.serverInfo
+    if (serverInfo) {
+      this.logger.info(`Using ${serverInfo.name} v${serverInfo.version}`)
+
+      // Parse and check semver (version format is "major.minor.patch+hash")
+      const versionStr = serverInfo.version?.trim()
+      if (versionStr) {
+        // Extract semver part before the '+' (git hash)
+        const serverVString = versionStr.split('+')[0]
+        // make sure server version (major,minor) >= client version (major,minor)
+        const clientVString = vscode.extensions.getExtension('AndrewNolte.vscode-slang')
+          ?.packageJSON.version
+        if (clientVString && serverVString) {
+          const serverVersion = semver.coerce(serverVString)
+          const clientVersion = semver.coerce(clientVString)
+          // Just need minor version to be up to date.
+          // Client auto-updates, so will always be ahead.
+          clientVersion!.patch = 0
+          if (serverVersion && clientVersion && semver.lt(serverVersion, clientVersion)) {
+            vscode.window.showWarningMessage(
+              `Slang server version ${serverVString} is older than the minimum required version ${clientVersion}. ` +
+                `Please update your server installation to ensure new client features work as intended.`
+            )
+          }
+        } else {
+          const which = !serverVString ? 'server' : 'client'
+          this.logger.warn(`Could not parse ${which} version for compatibility check.`)
+        }
+      }
+    }
+
     this.logger.info('language server started')
     await this.project.onStart()
   }
