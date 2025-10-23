@@ -20,6 +20,7 @@
 `define FOO(blah) blah
 
 `define BAR(blah) `FOO(blah)
+                  ^^^^ Ref -> `// Nested macro definitions\n\`define FOO(blah) blah`
 
 `define BAZ(xy) xy
 
@@ -28,8 +29,10 @@
 // More complex nested macros
 
 `define COMPLEX_FOO(blah, flurb) blah+`BAZ(flurb)
+                                      ^^^^ Ref -> ``define BAZ(xy) xy`
 
 `define COMPLEX_BAR(blah, flurb) `COMPLEX_FOO(blah, flurb)
+                                 ^^^^^^^^^^^^ Ref -> `// More complex nested macros\n\`define COMPLEX_FOO(blah, flurb) blah+`BAZ(flurb)`
 
 
 
@@ -40,6 +43,8 @@
 `define CLOSING_PAREN 1)
 
 `define COMBINED_MACRO `INCOMPLETE_PAREN + `CLOSING_PAREN ()
+                       ^^^^^^^^^^^^^^^^^ Ref -> `// Macros that create syntax issues\n\`define INCOMPLETE_PAREN (i`
+                                           ^^^^^^^^^^^^^^ Ref -> ``define CLOSING_PAREN 1)`
 
 
 
