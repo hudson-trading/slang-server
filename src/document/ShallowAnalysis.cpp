@@ -408,45 +408,45 @@ std::optional<DefinitionInfo> ShallowAnalysis::getDefinitionInfoAt(const lsp::Po
     // Directives refer directly to syntaxes; others refer to symbols
     // TODO: handle macro args better. getReferenceAt looks them up, but they may not refer to
     // anything, like if being used to make a lhs id name.
-    switch (declSyntax->kind) {
-        case syntax::SyntaxKind::MacroUsage: {
-            // look in macro list
-            auto macro = m_macros.find(
-                declSyntax->as<syntax::MacroUsageSyntax>().directive.valueText().substr(1));
-            if (macro == m_macros.end()) {
-                return std::nullopt;
-            }
-            symSyntax = macro->second;
-            nameToken = macro->second->name;
-            // symbol remains nullptr for macros
-        } break;
-        default: {
-            symbol = getSymbolAtToken(declTok);
-            if (!symbol) {
-                return std::nullopt;
-            }
-            symSyntax = symbol->getSyntax();
+    if (declTok->kind == parsing::TokenKind::Directive &&
+        (declSyntax->kind == syntax::SyntaxKind::MacroUsage ||
+         (declSyntax->kind == syntax::SyntaxKind::TokenList &&
+          declSyntax->parent->kind == syntax::SyntaxKind::DefineDirective))) {
+        // look in macro list
+        auto macro = m_macros.find(declTok->rawText().substr(1));
+        if (macro == m_macros.end()) {
+            return std::nullopt;
+        }
+        symSyntax = macro->second;
+        nameToken = macro->second->name;
+        // symbol remains nullptr for macros
+    }
+    else {
+        symbol = getSymbolAtToken(declTok);
+        if (!symbol) {
+            return std::nullopt;
+        }
+        symSyntax = symbol->getSyntax();
 
-            if (!symSyntax) {
-                ERROR("Failed to get syntax for symbol {} of kind {}", symbol->name,
-                      toString(symbol->kind));
-                return std::nullopt;
-            }
+        if (!symSyntax) {
+            ERROR("Failed to get syntax for symbol {} of kind {}", symbol->name,
+                  toString(symbol->kind));
+            return std::nullopt;
+        }
 
-            // For some symbols we want to return the parent to get the data type
-            if (symbol->kind == ast::SymbolKind::Modport ||
-                symbol->kind == ast::SymbolKind::ModportPort) {
-                symSyntax = symSyntax->parent;
-            }
-            nameToken = findNameToken(symSyntax, symbol->name);
-            if (!nameToken) {
-                ERROR("Failed to find name token for symbol '{}' of kind {} = {}", symbol->name,
-                      toString(symbol->kind), symSyntax->toString());
+        // For some symbols we want to return the parent to get the data type
+        if (symbol->kind == ast::SymbolKind::Modport ||
+            symbol->kind == ast::SymbolKind::ModportPort) {
+            symSyntax = symSyntax->parent;
+        }
+        nameToken = findNameToken(symSyntax, symbol->name);
+        if (!nameToken) {
+            ERROR("Failed to find name token for symbol '{}' of kind {} = {}", symbol->name,
+                  toString(symbol->kind), symSyntax->toString());
 
-                // TODO: figure out why this fails sometimes with all generates
-                nameToken = symSyntax->getFirstToken();
-            }
-        } break;
+            // TODO: figure out why this fails sometimes with all generates
+            nameToken = symSyntax->getFirstToken();
+        }
     }
 
     auto ret = DefinitionInfo{
