@@ -484,21 +484,11 @@ void SlangServer::loadConfig() {
 
 rfl::Variant<lsp::Definition, std::vector<lsp::DefinitionLink>, std::monostate> SlangServer::
     getDocDefinition(const lsp::DefinitionParams& params) {
-
-    auto doc = m_driver->getDocument(params.textDocument.uri);
-    if (!doc) {
-        ERROR("Document {} not found", params.textDocument.uri.getPath());
-        return std::monostate{};
-    }
-    return doc->getDocDefinition(params.position);
+    return m_driver->getDocDefinition(params.textDocument.uri, params.position);
 }
 
 std::optional<lsp::Hover> SlangServer::getDocHover(const lsp::HoverParams& params) {
-    auto doc = m_driver->getDocument(params.textDocument.uri);
-    if (!doc) {
-        return std::nullopt;
-    }
-    return doc->getDocHover(params.position);
+    return m_driver->getDocHover(params.textDocument.uri, params.position);
 }
 
 std::optional<std::vector<lsp::DocumentLink>> SlangServer::getDocDocumentLink(

@@ -13,6 +13,8 @@
 #include "ast/ServerCompilation.h"
 #include "completions/CompletionDispatch.h"
 #include "document/SlangDoc.h"
+#include "util/Converters.h"
+#include "util/Formatting.h"
 #include "util/Logging.h"
 #include <memory>
 #include <queue>
@@ -22,10 +24,12 @@
 #include "slang/diagnostics/DiagnosticEngine.h"
 #include "slang/driver/Driver.h"
 #include "slang/driver/SourceLoader.h"
+#include "slang/syntax/SyntaxTree.h"
 #include "slang/text/SourceLocation.h"
 #include "slang/text/SourceManager.h"
 
 namespace server {
+using namespace slang;
 
 ServerDriver::ServerDriver(Indexer& indexer, SlangLspClient& client, std::string_view flags,
                            std::vector<std::string> buildfiles) :
@@ -330,6 +334,199 @@ bool ServerDriver::createCompilation() {
 
     comp = std::make_unique<ServerCompilation>(std::move(documents), this->options, sm);
     return true;
+}
+
+std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
+                                                                const lsp::Position& position) {
+    auto doc = getDocument(uri);
+    if (!doc) {
+        return {};
+    }
+    auto& analysis = doc->getAnalysis();
+
+    // Get location, token, and syntax node at position
+    auto loc = sm.getSourceLocation(doc->getBuffer(), position.line, position.character);
+    if (!loc) {
+        return {};
+    }
+    const parsing::Token* declTok = analysis.syntaxes.getWordTokenAt(loc.value());
+    if (!declTok) {
+        return {};
+    }
+    const syntax::SyntaxNode* declSyntax = analysis.syntaxes.getSyntaxAt(declTok);
+    if (!declSyntax) {
+        return {};
+    }
+
+    std::optional<parsing::Token> nameToken;
+    const syntax::SyntaxNode* symSyntax = nullptr;
+    const ast::Symbol* symbol = nullptr;
+
+    if (declTok->kind == parsing::TokenKind::Directive &&
+        (declSyntax->kind == syntax::SyntaxKind::MacroUsage ||
+         (declSyntax->kind == syntax::SyntaxKind::TokenList &&
+          declSyntax->parent->kind == syntax::SyntaxKind::DefineDirective))) {
+        // look in macro list
+        auto macro = analysis.macros.find(declTok->rawText().substr(1));
+        if (macro == analysis.macros.end()) {
+            // TODO: Check workspace indexer for macro in other files
+            return {};
+        }
+        symSyntax = macro->second;
+        nameToken = macro->second->name;
+        // symbol remains nullptr for macros
+    }
+    else {
+        symbol = analysis.getSymbolAtToken(declTok);
+        if (!symbol) {
+            return {};
+        }
+        symSyntax = symbol->getSyntax();
+
+        if (!symSyntax) {
+            ERROR("Failed to get syntax for symbol {} of kind {}", symbol->name,
+                  toString(symbol->kind));
+            return {};
+        }
+
+        // For some symbols we want to return the parent to get the data type
+        if (symbol->kind == ast::SymbolKind::Modport ||
+            symbol->kind == ast::SymbolKind::ModportPort) {
+            symSyntax = symSyntax->parent;
+        }
+        nameToken = findNameToken(symSyntax, symbol->name);
+        if (!nameToken) {
+            ERROR("Failed to find name token for symbol '{}' of kind {} = {}", symbol->name,
+                  toString(symbol->kind), symSyntax->toString());
+
+            // TODO: figure out why this fails sometimes with all generates
+            nameToken = symSyntax->getFirstToken();
+        }
+    }
+
+    auto ret = DefinitionInfo{
+        symSyntax,
+        *nameToken,
+        SourceRange::NoLocation,
+        symbol,
+    };
+
+    // fill in original range if behind a macro
+    if (ret.nameToken && sm.isMacroLoc(ret.nameToken.location())) {
+        auto locs = sm.getMacroExpansions(ret.nameToken.location());
+        // TODO: maybe include more expansion infos?
+        auto macroInfo = sm.getMacroInfo(locs.back());
+        auto text = macroInfo ? sm.getText(macroInfo->expansionRange) : "";
+        if (text.empty()) {
+            ERROR("Couldn't get original range for symbol {}", ret.nameToken.valueText());
+        }
+        else {
+            ret.macroUsageRange = macroInfo->expansionRange;
+        }
+    }
+
+    return ret;
+}
+
+std::optional<lsp::Hover> ServerDriver::getDocHover(const URI& uri, const lsp::Position& position) {
+    auto doc = getDocument(uri);
+    if (!doc) {
+        return {};
+    }
+    auto& analysis = doc->getAnalysis();
+    auto loc = sm.getSourceLocation(doc->getBuffer(), position.line, position.character);
+    if (!loc) {
+        return {};
+    }
+    auto maybeInfo = getDefinitionInfoAt(uri, position);
+    if (!maybeInfo) {
+#ifdef SLANG_DEBUG
+        // Shows debug info for the token under cursor when debugging
+        auto tok = analysis.getTokenAt(loc.value());
+        if (tok == nullptr) {
+            return {};
+        }
+        return lsp::Hover{
+            .contents = lsp::MarkupContent{.kind = lsp::MarkupKind::make<"markdown">(),
+                                           .value = analysis.getDebugHover(*tok)}};
+#endif
+        return {};
+    }
+    auto info = *maybeInfo;
+
+    auto md = svCodeBlockString(*info.node);
+
+    if (info.macroUsageRange != SourceRange::NoLocation) {
+        auto text = sm.getText(info.macroUsageRange);
+        md += fmt::format("\n Expanded from\n {}", svCodeBlockString(text));
+    }
+
+    if (info.symbol) {
+        // Show hierarchical path if:
+        // 1. Symbol is in a different scope than the current position
+        // 2. and Symbol's scope is not the root scope ($unit)
+        auto symbolScope = info.symbol->getParentScope();
+        auto lookupScope = analysis.getScopeAt(loc.value());
+
+        if (lookupScope && symbolScope && lookupScope != symbolScope) {
+            auto& parentSym = symbolScope->asSymbol();
+            auto hierPath = parentSym.getLexicalPath();
+            // The typedef name needs to be appended; it's not attached to the type
+            if (parentSym.kind == ast::SymbolKind::PackedStructType ||
+                parentSym.kind == ast::SymbolKind::UnpackedStructType) {
+                auto syntax = parentSym.getSyntax();
+                if (syntax && syntax->parent &&
+                    syntax->parent->kind == syntax::SyntaxKind::TypedefDeclaration) {
+                    hierPath += "::";
+                    hierPath +=
+                        syntax->parent->as<syntax::TypedefDeclarationSyntax>().name.valueText();
+                }
+            }
+            if (!hierPath.empty()) {
+                md = fmt::format("{}\n\n---\n\n{}",
+                                 svCodeBlockString(fmt::format("// In {}", hierPath)), md);
+            }
+        }
+    }
+    else {
+        // show file for macros
+        auto macroBuf = info.nameToken.location().buffer();
+        if (macroBuf != doc->getBuffer() && sm.isValid(macroBuf)) {
+            auto path = sm.getFullPath(macroBuf);
+            if (!path.empty()) {
+                md = fmt::format(
+                    "{}\n\n---\n\n{}",
+                    svCodeBlockString(fmt::format("// From {}", path.filename().string())), md);
+            }
+        }
+    }
+
+    return lsp::Hover{.contents = markdown(md)};
+}
+
+std::vector<lsp::LocationLink> ServerDriver::getDocDefinition(const URI& uri,
+                                                              const lsp::Position& position) {
+    auto maybeInfo = getDefinitionInfoAt(uri, position);
+    if (!maybeInfo) {
+        return {};
+    }
+    auto info = *maybeInfo;
+    auto targetRange = info.macroUsageRange != SourceRange::NoLocation ? info.macroUsageRange
+                                                                       : info.nameToken.range();
+    auto path = sm.getFullPath(targetRange.start().buffer());
+    if (path.empty()) {
+        ERROR("No path found for symbol {}", info.nameToken ? info.nameToken.valueText() : "");
+        return {};
+    }
+    auto lspRange = toRange(targetRange, sm);
+
+    return {lsp::LocationLink{
+        .targetUri = URI::fromFile(path),
+        // This is supposed to be the full source range- however the hover view already provides
+        // that, leading to a worse UI
+        .targetRange = lspRange,
+        .targetSelectionRange = lspRange,
+    }};
 }
 
 } // namespace server
