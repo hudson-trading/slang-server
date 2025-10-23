@@ -1,0 +1,222 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux x64 with Clang
+          - preset: clang-release
+            os: ubuntu-latest
+            artifact_name: slang-server-linux-x64
+            binary_path: build/clang-release/bin/slang-server
+          # Linux ARM64 with GCC
+          - preset: gcc-release
+            os: ubuntu-24.04-arm
+            artifact_name: slang-server-linux-arm64
+            binary_path: build/gcc-release/bin/slang-server
+          # macOS (universal or x64)
+          - preset: macos-release
+            os: macos-latest
+            artifact_name: slang-server-macos
+            binary_path: build/macos-release/bin/slang-server
+          # Windows x64
+          - preset: win64-release
+            os: windows-latest
+            artifact_name: slang-server-windows-x64
+            binary_path: build/win64-release/bin/slang-server.exe
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        submodules: true
+        fetch-depth: 0
+
+    - name: Install dependencies (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+        sudo add-apt-repository "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-20 main"
+        sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+        sudo apt-get update
+        sudo apt-get install -y g++-14 clang-20
+
+    - name: Install dependencies (Ubuntu ARM)
+      if: matrix.os == 'ubuntu-24.04-arm'
+      run: |
+        sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+        sudo apt-get update
+        sudo apt-get install -y g++-14
+
+    - name: Setup MSVC
+      if: matrix.os == 'windows-latest'
+      uses: ilammy/msvc-dev-cmd@v1
+
+    - name: Setup Xcode
+      if: matrix.os == 'macos-latest'
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: 'latest'
+
+    - name: Configure
+      run: cmake --preset ${{ matrix.preset }} -DSLANG_SERVER_INCLUDE_INSTALL=ON
+
+    - name: Build
+      run: cmake --build build/${{ matrix.preset }} -j8 --target slang_server
+
+    - name: Strip binary (Linux/macOS)
+      if: runner.os != 'Windows'
+      run: strip ${{ matrix.binary_path }}
+
+    - name: Create artifact directory
+      run: |
+        mkdir -p release-artifacts
+
+    - name: Copy binary (Linux/macOS)
+      if: runner.os != 'Windows'
+      run: |
+        cp ${{ matrix.binary_path }} release-artifacts/slang-server
+        chmod +x release-artifacts/slang-server
+
+    - name: Copy binary (Windows)
+      if: runner.os == 'Windows'
+      shell: bash
+      run: |
+        cp ${{ matrix.binary_path }} release-artifacts/slang-server.exe
+
+    - name: Create README
+      shell: bash
+      run: |
+        cat > release-artifacts/README.txt << 'EOF'
+        Slang Server - SystemVerilog Language Server
+
+        This is a pre-built binary of slang-server.
+
+        Installation:
+        1. Extract this archive
+        2. Add the binary to your PATH, or
+        3. Configure your editor to use the absolute path to this binary
+
+        For more information, visit:
+        https://github.com/hudson-trading/slang-server
+
+        Platform: ${{ matrix.artifact_name }}
+        Build date: $(date -u +%Y-%m-%d)
+        EOF
+
+    - name: Create tarball (Linux/macOS)
+      if: runner.os != 'Windows'
+      run: |
+        cd release-artifacts
+        tar -czf ../${{ matrix.artifact_name }}.tar.gz *
+        cd ..
+
+    - name: Create zip (Windows)
+      if: runner.os == 'Windows'
+      shell: bash
+      run: |
+        cd release-artifacts
+        7z a ../${{ matrix.artifact_name }}.zip *
+        cd ..
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.artifact_name }}
+        path: |
+          ${{ matrix.artifact_name }}.tar.gz
+          ${{ matrix.artifact_name }}.zip
+        retention-days: 7
+
+  create-release:
+    needs: build-release
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+
+    - name: Display structure of downloaded files
+      run: ls -R artifacts
+
+    - name: Prepare release assets
+      run: |
+        mkdir -p release-assets
+        find artifacts -type f \( -name "*.tar.gz" -o -name "*.zip" \) -exec cp {} release-assets/ \;
+        ls -lh release-assets/
+
+    - name: Determine tag name
+      id: tag
+      run: |
+        echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+    - name: Generate release notes
+      id: notes
+      run: |
+        cat > release-notes.md << 'EOF'
+        # Slang Server Release ${{ steps.tag.outputs.tag }}
+
+        ## What's New
+
+        This release includes builds for:
+        - Linux x64 (Ubuntu-compatible)
+        - Linux ARM64 (Ubuntu-compatible)
+        - macOS (x64/Apple Silicon)
+        - Windows x64
+
+        ## Installation
+
+        1. Download the appropriate archive for your platform
+        2. Extract the archive
+        3. Add the binary to your PATH or configure your editor to use it
+
+        ## Checksums
+
+        ```
+        EOF
+
+        cd release-assets
+        for file in *; do
+          if [ -f "$file" ]; then
+            sha256sum "$file" >> ../release-notes.md
+          fi
+        done
+        cd ..
+
+        echo '```' >> release-notes.md
+
+        cat >> release-notes.md << 'EOF'
+
+        ## Documentation
+
+        For setup instructions and documentation, visit:
+        https://github.com/hudson-trading/slang-server
+        EOF
+
+    - name: Create Release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release create ${{ steps.tag.outputs.tag }} \
+          --title "Release ${{ steps.tag.outputs.tag }}" \
+          --notes-file release-notes.md \
+          release-assets/*
