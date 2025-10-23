@@ -31,9 +31,9 @@ using namespace slang;
 ShallowAnalysis::ShallowAnalysis(const SourceManager& sourceManager, slang::BufferID buffer,
                                  std::shared_ptr<SyntaxTree> tree, slang::Bag options,
                                  const std::vector<std::shared_ptr<SyntaxTree>>& dependentTrees) :
-    m_sourceManager(sourceManager), m_buffer(buffer), m_tree(tree),
-    m_dependentTrees(dependentTrees), m_symbolTreeVisitor(m_sourceManager), m_symbolIndexer(buffer),
-    m_syntaxes(*tree) {
+    syntaxes(*tree), m_sourceManager(sourceManager), m_buffer(buffer), m_tree(tree),
+    m_dependentTrees(dependentTrees), m_symbolTreeVisitor(m_sourceManager),
+    m_symbolIndexer(buffer) {
 
     if (!m_tree) {
         ERROR("DocumentAnalysis initialized with null syntax tree");
@@ -44,14 +44,13 @@ ShallowAnalysis::ShallowAnalysis(const SourceManager& sourceManager, slang::Buff
 
     auto path = m_sourceManager.getFullPath(m_buffer).string();
 
-    if (m_syntaxes.collected.size() == 0) {
+    if (syntaxes.collected.size() == 0) {
         ERROR("No syntaxes found in document {}", path);
     }
 
     // Index macros
-    m_macros.clear();
     for (auto& macro : m_tree->getDefinedMacros()) {
-        m_macros[macro->name.valueText()] = macro;
+        macros[macro->name.valueText()] = macro;
     }
 
     // Set up options for shallow compilation
@@ -67,7 +66,7 @@ ShallowAnalysis::ShallowAnalysis(const SourceManager& sourceManager, slang::Buff
         m_compilation->addSyntaxTree(depTree);
     }
 
-    // Index syntax/token -> symbol
+    // Elaborate and index token -> symbol defs, syntax -> scopes
     m_compilation->getRoot().visit(m_symbolIndexer);
 }
 
@@ -79,7 +78,7 @@ std::vector<lsp::DocumentSymbol> ShallowAnalysis::getDocSymbols() {
 }
 
 const parsing::Token* ShallowAnalysis::getTokenAt(SourceLocation loc) const {
-    return m_syntaxes.getTokenAt(loc);
+    return syntaxes.getTokenAt(loc);
 }
 
 const syntax::NameSyntax* ShallowAnalysis::findNameSyntax(const syntax::SyntaxNode& node) const {
@@ -227,21 +226,23 @@ const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declT
     }
 
     if (!m_compilation) {
-        ERROR("No compilation available for getReferenceAt");
+        ERROR("No compilation available for getSymbolAtToken");
         return nullptr;
     }
-    auto syntax = m_syntaxes.getSyntaxAt(declTok);
+    auto syntax = syntaxes.getSyntaxAt(declTok);
     // Note: SuperHandle nodes can cause issues in symbol lookup
     if (!syntax || syntax->kind == syntax::SyntaxKind::SuperHandle) {
         return nullptr;
     }
 
-    // Handle macro args- syntax needs to live for this function
-    std::shared_ptr<SyntaxTree> tokTree;
+    // Handle macro args
+    std::shared_ptr<SyntaxTree> tokTree; // syntax needs to live for this function
     if (syntax->kind == syntax::SyntaxKind::TokenList &&
         syntax->parent->kind == syntax::SyntaxKind::MacroActualArgument) {
         // parse the token list, and use those name syntaxes for lookups
         // TODO: be more precise; handle args that produce lhs ids
+        // they may not refer to
+        // anything, like if being used to make a lhs id name.
 
         std::string_view tokList = std::string_view{syntax->getFirstToken().rawText().data(),
                                                     syntax->toString().size()};
@@ -370,7 +371,7 @@ const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declT
 }
 
 const ast::Symbol* ShallowAnalysis::getSymbolAt(SourceLocation loc) const {
-    auto node = m_syntaxes.getWordTokenAt(loc);
+    auto node = syntaxes.getWordTokenAt(loc);
     if (!node) {
         return nullptr;
     }
@@ -378,107 +379,11 @@ const ast::Symbol* ShallowAnalysis::getSymbolAt(SourceLocation loc) const {
 }
 
 const ast::Scope* ShallowAnalysis::getScopeAt(SourceLocation loc) const {
-    auto syntax = m_syntaxes.getSyntaxAt(loc);
+    auto syntax = syntaxes.getSyntaxAt(loc);
     if (!syntax) {
         return nullptr;
     }
     return m_symbolIndexer.getScopeForSyntax(*syntax);
-}
-
-std::optional<DefinitionInfo> ShallowAnalysis::getDefinitionInfoAt(const lsp::Position& position) {
-
-    // Get location, token, and syntax node at position
-    auto loc = m_sourceManager.getSourceLocation(m_buffer, position.line, position.character);
-    if (!loc) {
-        return std::nullopt;
-    }
-    const parsing::Token* declTok = m_syntaxes.getWordTokenAt(loc.value());
-    if (!declTok) {
-        return std::nullopt;
-    }
-    const syntax::SyntaxNode* declSyntax = m_syntaxes.getSyntaxAt(declTok);
-    if (!declSyntax) {
-        return std::nullopt;
-    }
-
-    std::optional<parsing::Token> nameToken;
-    const syntax::SyntaxNode* symSyntax = nullptr;
-    const ast::Symbol* symbol = nullptr;
-
-    // Directives refer directly to syntaxes; others refer to symbols
-    // TODO: handle macro args better. getReferenceAt looks them up, but they may not refer to
-    // anything, like if being used to make a lhs id name.
-    if (declTok->kind == parsing::TokenKind::Directive &&
-        (declSyntax->kind == syntax::SyntaxKind::MacroUsage ||
-         (declSyntax->kind == syntax::SyntaxKind::TokenList &&
-          declSyntax->parent->kind == syntax::SyntaxKind::DefineDirective))) {
-        // look in macro list
-        auto macro = m_macros.find(declTok->rawText().substr(1));
-        if (macro == m_macros.end()) {
-            return std::nullopt;
-        }
-        symSyntax = macro->second;
-        nameToken = macro->second->name;
-        // symbol remains nullptr for macros
-    }
-    else {
-        symbol = getSymbolAtToken(declTok);
-        if (!symbol) {
-            return std::nullopt;
-        }
-        symSyntax = symbol->getSyntax();
-
-        if (!symSyntax) {
-            ERROR("Failed to get syntax for symbol {} of kind {}", symbol->name,
-                  toString(symbol->kind));
-            return std::nullopt;
-        }
-
-        // For some symbols we want to return the parent to get the data type
-        if (symbol->kind == ast::SymbolKind::Modport ||
-            symbol->kind == ast::SymbolKind::ModportPort) {
-            symSyntax = symSyntax->parent;
-        }
-        nameToken = findNameToken(symSyntax, symbol->name);
-        if (!nameToken) {
-            ERROR("Failed to find name token for symbol '{}' of kind {} = {}", symbol->name,
-                  toString(symbol->kind), symSyntax->toString());
-
-            // TODO: figure out why this fails sometimes with all generates
-            nameToken = symSyntax->getFirstToken();
-        }
-    }
-
-    auto ret = DefinitionInfo{
-        symSyntax,
-        *nameToken,
-        SourceRange::NoLocation,
-        symbol,
-    };
-
-    // fill in original range if behind a macro
-    if (ret.nameToken && m_sourceManager.isMacroLoc(ret.nameToken.location())) {
-        auto locs = m_sourceManager.getMacroExpansions(ret.nameToken.location());
-        // TODO: maybe include more expansion infos?
-        auto macroInfo = m_sourceManager.getMacroInfo(locs.back());
-        auto text = macroInfo ? m_sourceManager.getText(macroInfo->expansionRange) : "";
-        if (text.empty()) {
-            ERROR("Couldn't get original range for symbol {}", ret.nameToken.valueText());
-        }
-        else {
-            ret.macroUsageRange = macroInfo->expansionRange;
-        }
-    }
-
-    return ret;
-}
-
-std::vector<lsp::LocationLink> ShallowAnalysis::getDocDefinition(const lsp::Position& position) {
-    auto info = getDefinitionInfoAt(position);
-    if (!info) {
-        return {};
-    }
-    return {getDefinition(*info)};
 }
 
 std::vector<lsp::DocumentLink> ShallowAnalysis::getDocLinks() const {
@@ -494,80 +399,6 @@ std::vector<lsp::DocumentLink> ShallowAnalysis::getDocLinks() const {
         });
     }
     return links;
-}
-
-std::optional<lsp::Hover> ShallowAnalysis::getDocHover(const lsp::Position& position,
-                                                       [[maybe_unused]] bool noDebug) {
-    auto loc = m_sourceManager.getSourceLocation(m_buffer, position.line, position.character);
-    if (!loc) {
-        return std::nullopt;
-    }
-    auto maybeInfo = getDefinitionInfoAt(position);
-    if (!maybeInfo) {
-#ifdef SLANG_DEBUG
-        if (!noDebug) {
-            // Shows debug info for the token under cursor when debugging
-            auto tok = m_syntaxes.getTokenAt(loc.value());
-            if (tok == nullptr) {
-                return std::nullopt;
-            }
-            return lsp::Hover{
-                .contents = lsp::MarkupContent{.kind = lsp::MarkupKind::make<"markdown">(),
-                                               .value = getDebugHover(*tok)}};
-        }
-#endif
-        return std::nullopt;
-    }
-    auto info = *maybeInfo;
-
-    auto md = svCodeBlockString(*info.node);
-
-    if (info.macroUsageRange != SourceRange::NoLocation) {
-        auto text = m_sourceManager.getText(info.macroUsageRange);
-        md += fmt::format("\n Expanded from\n {}", svCodeBlockString(text));
-    }
-
-    // Show hierarchical path if:
-    // 1. Symbol is in a different scope than the current position
-    // 2. Symbol's scope is not the root scope ($unit)
-    if (info.symbol) {
-        auto symbolScope = info.symbol->getParentScope();
-        auto lookupScope = getScopeAt(loc.value());
-
-        if (lookupScope && symbolScope && lookupScope != symbolScope) {
-            auto& parentSym = symbolScope->asSymbol();
-            auto hierPath = parentSym.getLexicalPath();
-            // The typedef name needs to be appended; it's not attached to the type
-            if (parentSym.kind == ast::SymbolKind::PackedStructType ||
-                parentSym.kind == ast::SymbolKind::UnpackedStructType) {
-                auto syntax = parentSym.getSyntax();
-                if (syntax && syntax->parent &&
-                    syntax->parent->kind == syntax::SyntaxKind::TypedefDeclaration) {
-                    hierPath += "::";
-                    hierPath +=
-                        syntax->parent->as<syntax::TypedefDeclarationSyntax>().name.valueText();
-                }
-            }
-            if (!hierPath.empty()) {
-                md = fmt::format("{}\n\n---\n\n{}",
-                                 svCodeBlockString(fmt::format("// In {}", hierPath)), md);
-            }
-        }
-    }
-    else {
-        // show file for macros
-        auto macroBuf = info.nameToken.location().buffer();
-        if (macroBuf != m_buffer && m_sourceManager.isValid(macroBuf)) {
-            auto path = m_sourceManager.getFullPath(macroBuf);
-            if (!path.empty()) {
-                md = fmt::format(
-                    "{}\n\n---\n\n{}",
-                    svCodeBlockString(fmt::format("// From {}", path.filename().string())), md);
-            }
-        }
-    }
-
-    return lsp::Hover{.contents = markdown(md)};
 }
 
 bool ShallowAnalysis::hasValidBuffers() {
@@ -589,7 +420,7 @@ bool ShallowAnalysis::hasValidBuffers() {
 std::string ShallowAnalysis::getDebugHover(const parsing::Token& tok) const {
     std::string value = fmt::format("`{}` Token\n", toString(tok.kind));
 
-    auto node = m_syntaxes.getSyntaxAt(&tok);
+    auto node = syntaxes.getSyntaxAt(&tok);
     for (auto nodePtr = node; nodePtr; nodePtr = nodePtr->parent) {
         // In case of bad memory
         if (nodePtr->kind > syntax::SyntaxKind::XorAssignmentExpression) {
@@ -618,26 +449,6 @@ std::string ShallowAnalysis::getDebugHover(const parsing::Token& tok) const {
         }
     }
     return value;
-}
-
-const std::vector<lsp::LocationLink> ShallowAnalysis::getDefinition(
-    const DefinitionInfo& info) const {
-    auto targetRange = info.macroUsageRange != SourceRange::NoLocation ? info.macroUsageRange
-                                                                       : info.nameToken.range();
-    auto path = m_sourceManager.getFullPath(targetRange.start().buffer());
-    if (path.empty()) {
-        ERROR("No path found for symbol {}", info.nameToken ? info.nameToken.valueText() : "");
-        return {};
-    }
-    auto lspRange = toRange(targetRange, m_sourceManager);
-
-    return {lsp::LocationLink{
-        .targetUri = URI::fromFile(path),
-        // This is supposed to be the full source range- however the hover view already provides
-        // that, leading to a worse UI
-        .targetRange = lspRange,
-        .targetSelectionRange = lspRange,
-    }};
 }
 
 } // namespace server
