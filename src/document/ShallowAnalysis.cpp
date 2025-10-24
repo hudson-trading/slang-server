@@ -264,6 +264,17 @@ const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declT
         }
         // set declTok to the new one. they should have the same raw text
     }
+    else if (syntax->kind == syntax::SyntaxKind::PackageExportDeclaration ||
+             syntax->kind == syntax::SyntaxKind::PackageImportItem) {
+        auto pkg = m_compilation->getPackage(syntax->getFirstToken().valueText());
+        if (!pkg) {
+            return {};
+        }
+        if (syntax->getFirstToken() == *declTok) {
+            return pkg;
+        }
+        return pkg->find(declTok->valueText());
+    }
     else if (auto sym = m_symbolIndexer.getSymbol(declTok)) {
         // Check for symbol declarations
         return sym;
@@ -344,22 +355,9 @@ const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declT
     WARN("No sym found for token {} in scope {}", declTok->valueText(),
          scope->asSymbol().getHierarchicalPath());
 
-    // Handle special syntax cases
-    switch (syntax->kind) {
-        case syntax::SyntaxKind::PackageImportItem: {
-            if (auto pkg = m_compilation->getPackage(declTok->valueText())) {
-                return pkg;
-            }
-            ERROR("No package found for token {}", declTok->valueText());
-            return nullptr;
-        }
-        case syntax::SyntaxKind::DotMemberClause: {
-            return handleInterfacePortHeader(declTok, syntax, scope);
-        }
-        default:
-            break;
+    if (syntax->kind == syntax::SyntaxKind::DotMemberClause) {
+        return handleInterfacePortHeader(declTok, syntax, scope);
     }
-
     // Try getting a definition as a last resort
     auto def = m_compilation->tryGetDefinition(declTok->valueText(), *scope);
     if (def.definition) {
