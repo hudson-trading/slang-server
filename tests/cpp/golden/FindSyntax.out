@@ -105,6 +105,66 @@ endpackage
 
 
 
+package pkg1;
+^^^^^^^ PackageKeyword
+        ^^^^ Identifier
+            ^ Semicolon
+
+    typedef struct packed {
+    ^^^^^^^ TypedefKeyword
+            ^^^^^^ StructKeyword
+                   ^^^^^^ PackedKeyword
+                          ^ OpenBrace
+
+        logic [7:0] data;
+        ^^^^^ LogicKeyword
+              ^ OpenBracket
+               ^ IntegerLiteral
+                ^ Colon
+                 ^ IntegerLiteral
+                  ^ CloseBracket
+                    ^^^^ Identifier
+                        ^ Semicolon
+
+        logic valid;
+        ^^^^^ LogicKeyword
+              ^^^^^ Identifier
+                   ^ Semicolon
+
+    } packet_t;
+    ^ CloseBrace
+      ^^^^^^^^ Identifier
+              ^ Semicolon
+
+endpackage
+^^^^^^^^^^ EndPackageKeyword
+
+
+
+package pkg2;
+^^^^^^^ PackageKeyword
+        ^^^^ Identifier
+            ^ Semicolon
+
+    import pkg1::packet_t;
+    ^^^^^^ ImportKeyword
+           ^^^^ Identifier
+               ^^ DoubleColon
+                 ^^^^^^^^ Identifier
+                         ^ Semicolon
+
+    export pkg1::packet_t;
+    ^^^^^^ ExportKeyword
+           ^^^^ Identifier
+               ^^ DoubleColon
+                 ^^^^^^^^ Identifier
+                         ^ Semicolon
+
+endpackage
+^^^^^^^^^^ EndPackageKeyword
+
+
+
 module automatic m1 import p::*; #(int i = 1)
 ^^^^^^ ModuleKeyword
        ^^^^^^^^^ AutomaticKeyword
