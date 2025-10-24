@@ -40,7 +40,7 @@
 module test;
 
     // Basic struct for testing member access
-    struct {
+    typedef struct {
         int i;
         logic [7:0] data;
     } test_struct;
@@ -92,6 +92,15 @@ module test;
     // Signals for memory instantiation
     logic clk, rst_n, write_enable;
     logic [31:0] write_data, read_data;
+
+    // Test ifdef/else conditional compilation
+`ifdef USE_MEMORY_MODULE
+    // Use the macro to instantiate memory_module
+    `INST_MEMORY(mem_inst, 32)
+`else
+    // Alternative implementation without memory_module
+    test_struct my_struct;
+`endif
 
     // Test macro with system tasks
     initial begin

@@ -92,14 +92,14 @@ module test;
 
     // Basic struct for testing member access
 
-    struct {
+    typedef struct {
 
         int i;
 
         logic [7:0] data;
 
     } test_struct;
-      ^^^^^^^^^^^ Sym test_struct : Declarator
+      ^^^^^^^^^^^ Sym test_struct : TypedefDeclaration
 
 
 
@@ -233,6 +233,31 @@ module test;
     logic [31:0] write_data, read_data;
                  ^^^^^^^^^^ Sym write_data : Declarator
                              ^^^^^^^^^ Sym read_data : Declarator
+
+
+
+    // Test ifdef/else conditional compilation
+
+`ifdef USE_MEMORY_MODULE
+^^^^^^ Ref -> `// Basic struct for testing member access\n\typedef struct {\n\    int i;\n\    logic [7:0] data;\n\} test_struct;`
+       ^^^^^^^^^^^^^^^^^ Ref -> `// Basic struct for testing member access\n\typedef struct {\n\    int i;\n\    logic [7:0] data;\n\} test_struct;`
+
+    // Use the macro to instantiate memory_module
+
+    `INST_MEMORY(mem_inst, 32)
+    ^^^^^^^^^^^^ Ref -> `// Basic struct for testing member access\n\typedef struct {\n\    int i;\n\    logic [7:0] data;\n\} test_struct;`
+                 ^^^^^^^^ Ref -> `// Basic struct for testing member access\n\typedef struct {\n\    int i;\n\    logic [7:0] data;\n\} test_struct;`
+
+`else
+^^^^^ Ref -> `// Basic struct for testing member access\n\typedef struct {\n\    int i;\n\    logic [7:0] data;\n\} test_struct;`
+
+    // Alternative implementation without memory_module
+
+    test_struct my_struct;
+    ^^^^^^^^^^^ Ref -> `// Basic struct for testing member access\n\typedef struct {\n\    int i;\n\    logic [7:0] data;\n\} test_struct;`
+                ^^^^^^^^^ Sym my_struct : Declarator
+
+`endif
 
 
 
