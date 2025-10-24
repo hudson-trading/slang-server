@@ -418,7 +418,15 @@ std::optional<server::DefinitionInfo> DocumentHandle::getDefinitionInfoAt(lsp::u
     if (!loc) {
         return std::nullopt;
     }
-    return doc->getAnalysis().getDefinitionInfoAtPosition(*loc);
+    return m_server.m_driver->getDefinitionInfoAt(m_uri, *loc);
+}
+
+std::optional<lsp::Hover> DocumentHandle::getHoverAt(lsp::uint offset) {
+    auto loc = getLspLocation(offset);
+    if (!loc) {
+        return std::nullopt;
+    }
+    return m_server.m_driver->getDocHover(m_uri, *loc);
 }
 
 Cursor Cursor::before(const std::string& before) {
