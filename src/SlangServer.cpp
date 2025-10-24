@@ -36,6 +36,7 @@
 #include "slang/text/SourceManager.h"
 #include "slang/util/OS.h"
 #include "slang/util/TimeTrace.h"
+#include "slang/util/VersionInfo.h"
 
 namespace fs = std::filesystem;
 
@@ -189,7 +190,13 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
                             .commands = getCommandList(),
                         },
                     .callHierarchyProvider = true,
-                }};
+                },
+            .serverInfo = lsp::ServerInfo{.name = "slang-server",
+                                          .version = fmt::format(
+                                              "{}.{}.{}+{}\n", VersionInfo::getMajor(),
+                                              VersionInfo::getMinor(), VersionInfo::getPatch(),
+                                              VersionInfo::getHash())},
+        };
 
     INFO("Initialize result: {} ", rfl::json::write(result));
 
