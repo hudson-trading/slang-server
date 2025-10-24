@@ -35,7 +35,7 @@ ServerDriver::ServerDriver(Indexer& indexer, SlangLspClient& client, std::string
                            std::vector<std::string> buildfiles) :
     sm(driver.sourceManager), diagEngine(driver.diagEngine), client(client),
     diagClient(std::make_shared<ServerDiagClient>(sm, client)), completions(indexer, sm, options),
-    indexer(indexer) {
+    m_indexer(indexer) {
     // Create and configure the driver with our source manager and diagnostic engine
     // SourceManager must not be moved, since diagEngine, syntax trees hold references to it
     driver.addStandardArgs();
@@ -89,7 +89,7 @@ ServerDriver::ServerDriver(Indexer& indexer, SlangLspClient& client, std::string
 
 // Doc updates (open, change, save)
 void ServerDriver::updateDoc(SlangDoc& doc, FileUpdateType type) {
-    indexer.waitForIndexingCompletion();
+    m_indexer.waitForIndexingCompletion();
     diagClient->clear(doc.getURI());
     // Grab dependent documents
     doc.setDependentDocuments(getDependentDocs(doc.getSyntaxTree()));
@@ -201,7 +201,7 @@ std::vector<std::shared_ptr<SlangDoc>> ServerDriver::getDependentDocs(
 
             // Don't try multiple times
             knownNames.emplace(name);
-            auto paths = indexer.getRelevantFilesForName(name);
+            auto paths = m_indexer.getRelevantFilesForName(name);
             if (!paths.empty()) {
                 auto filePath = paths[0].string();
 
@@ -272,7 +272,7 @@ bool ServerDriver::createCompilation(const URI& uri, std::string_view top) {
     driver::SourceLoader::loadTrees(
         syntaxTrees,
         [this](std::string_view name) {
-            auto paths = indexer.getRelevantFilesForName(name);
+            auto paths = m_indexer.getRelevantFilesForName(name);
             SourceBuffer buffer;
             if (!paths.empty()) {
                 auto maybeBuf = sm.readSource(paths[0], /* library */ nullptr);
@@ -370,16 +370,42 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
         auto macro = analysis.macros.find(declTok->rawText().substr(1));
         if (macro == analysis.macros.end()) {
             // TODO: Check workspace indexer for macro in other files
-            return {};
+            auto files = m_indexer.getFilesForMacro(declTok->rawText().substr(1));
+            if (files.empty()) {
+                return {};
+            }
+            auto macroDoc = getDocument(URI::fromFile(files[0].string()));
+            if (!macroDoc) {
+                return {};
+            }
+            auto& macroAnalysis = macroDoc->getAnalysis();
+            macro = macroAnalysis.macros.find(declTok->rawText().substr(1));
+            if (macro == macroAnalysis.macros.end()) {
+                return {};
+            }
         }
         symSyntax = macro->second;
         nameToken = macro->second->name;
-        // symbol remains nullptr for macros
     }
     else {
         symbol = analysis.getSymbolAtToken(declTok);
         if (!symbol) {
-            return {};
+            // check the index
+            auto symbols = m_indexer.getRelevantFilesForName(declTok->rawText());
+            if (symbols.empty()) {
+                return {};
+            }
+            auto symDoc = getDocument(URI::fromFile(symbols[0].string()));
+            if (!symDoc) {
+                return {};
+            }
+            auto& symAnalysis = symDoc->getAnalysis();
+            auto result = symAnalysis.getCompilation()->tryGetDefinition(
+                declTok->rawText(), symAnalysis.getCompilation()->getRoot());
+            if (!result.definition) {
+                return {};
+            }
+            symbol = result.definition;
         }
         symSyntax = symbol->getSyntax();
 
