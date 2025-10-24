@@ -239,17 +239,12 @@ module test;
     // Test ifdef/else conditional compilation
 
 `ifdef USE_MEMORY_MODULE
-^^^^^^ Ref -> `// Basic struct for testing member access\n\typedef struct {\n\    int i;\n\    logic [7:0] data;\n\} test_struct;`
-       ^^^^^^^^^^^^^^^^^ Ref -> `// Basic struct for testing member access\n\typedef struct {\n\    int i;\n\    logic [7:0] data;\n\} test_struct;`
 
     // Use the macro to instantiate memory_module
 
     `INST_MEMORY(mem_inst, 32)
-    ^^^^^^^^^^^^ Ref -> `// Basic struct for testing member access\n\typedef struct {\n\    int i;\n\    logic [7:0] data;\n\} test_struct;`
-                 ^^^^^^^^ Ref -> `// Basic struct for testing member access\n\typedef struct {\n\    int i;\n\    logic [7:0] data;\n\} test_struct;`
 
 `else
-^^^^^ Ref -> `// Basic struct for testing member access\n\typedef struct {\n\    int i;\n\    logic [7:0] data;\n\} test_struct;`
 
     // Alternative implementation without memory_module
 

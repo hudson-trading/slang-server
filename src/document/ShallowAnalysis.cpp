@@ -9,7 +9,6 @@
 #include "document/ShallowAnalysis.h"
 
 #include "util/Converters.h"
-#include "util/Formatting.h"
 #include "util/Logging.h"
 #include <memory>
 #include <string_view>
@@ -83,6 +82,11 @@ const parsing::Token* ShallowAnalysis::getTokenAt(SourceLocation loc) const {
 
 const syntax::NameSyntax* ShallowAnalysis::findNameSyntax(const syntax::SyntaxNode& node) const {
     if (node.parent == nullptr) {
+        return nullptr;
+    }
+    // Untaken ifdefs go token -> tokenlist -> ifdef directive.
+    // This should apply for other directives as well
+    if (syntax::DirectiveSyntax::isKind(node.kind)) {
         return nullptr;
     }
     auto scopedParent = node.parent->as_if<syntax::ScopedNameSyntax>();
