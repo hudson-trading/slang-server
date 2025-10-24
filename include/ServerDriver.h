@@ -131,7 +131,7 @@ public:
 
 private:
     /// Reference to the indexer for module/macro indexing
-    Indexer& indexer;
+    Indexer& m_indexer;
 
     /// Set of URIs for documents that are explicitly opened by the client
     flat_hash_set<URI> m_openDocs;
