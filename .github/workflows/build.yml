@@ -12,7 +12,6 @@ on:
       - 'pyproject.toml'
       - 'uv.lock'
   pull_request:
-    branches: [ main ]
     paths-ignore:
       - 'docs/**'
       - 'clients/**'
