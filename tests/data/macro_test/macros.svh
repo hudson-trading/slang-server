@@ -6,6 +6,11 @@
 `define FUNC_MACRO(x) (x + 1)
 `define TWO_ARG_MACRO(a, b) (a + b)
 
+// Use macros from common_macros.svh
+`define BUS_WIDTH `WIDTH
+`define MEM_SIZE `DEPTH
+`define ADDR_BITS `ADDR_WIDTH
+
 // Nested macro definitions
 `define FOO(blah) blah
 `define BAR(blah) `FOO(blah)
@@ -40,9 +45,14 @@ module test;
         logic [7:0] data;
     } test_struct;
 
-    // Variables for testing
+    // Variables for testing - use macros from common_macros.svh
     int test_var;
-    logic [31:0] bus_signal;
+    logic [`BUS_WIDTH-1:0] bus_signal;
+    logic [`ADDR_BITS-1:0] address;
+
+    // Use CREATE_REG macro from common_macros.svh
+    `CREATE_REG(status_reg, 8)
+    `CREATE_REG(control_reg, 16)
 
     // Test simple macro usage
     localparam int SIMPLE_VAL = `SIMPLE_MACRO;
@@ -78,10 +88,20 @@ module test;
         endcase
     end
 
+
+    // Signals for memory instantiation
+    logic clk, rst_n, write_enable;
+    logic [31:0] write_data, read_data;
+
     // Test macro with system tasks
     initial begin
         $display("Testing macro: %d", `SIMPLE_MACRO);
         $display("Function macro result: %d", `FUNC_MACRO(25));
+        $display("Max value: %d", `MAX(10, 20));
+        $display("Min value: %d", `MIN(10, 20));
+
+        // Test assertion macro from common_macros.svh
+        `ASSERT_EQ(10, 10)
     end
 
 endmodule

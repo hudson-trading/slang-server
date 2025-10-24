@@ -34,8 +34,8 @@ TEST_CASE("FindSymbolRefHdl") {
 
 TEST_CASE("FindSymbolRefMacro") {
     /// Find the referenced symbol at each location in the macro test file.
-    ServerHarness server("");
-    auto hdl = server.openFile("macro_test.sv");
+    ServerHarness server("macro_test");
+    auto hdl = server.openFile("macros.svh");
 
     SymbolRefScanner scanner;
     scanner.scanDocument(hdl);
