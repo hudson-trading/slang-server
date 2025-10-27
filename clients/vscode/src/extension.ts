@@ -5,6 +5,7 @@ import * as child_process from 'child_process'
 
 import path from 'path'
 import * as process from 'process'
+import * as semver from 'semver'
 
 import * as vscodelc from 'vscode-languageclient/node'
 import { LanguageClient, LanguageClientOptions, ServerOptions } from 'vscode-languageclient/node'
@@ -154,33 +155,75 @@ export class SlangExtension extends ActivityBarComponent {
 
     this.client = new LanguageClient('slang-server', serverOptions, clientOptions)
     this.context.subscriptions.push(
-      this.client.onDidChangeState(({ oldState, newState }) => {
-        if (newState === vscodelc.State.Running) {
-          // clangd starts or restarts after crash.
-          this.client!.onNotification('slang/setConfig', (config: slang.Config) => {
-            // Set after initialization
-            this.slangConfig = config
-          })
-        } else if (
-          oldState === vscodelc.State.Running &&
-          newState === vscodelc.State.Stopped &&
-          !this.isRestarting
-        ) {
-          vscode.window
-            .showErrorMessage(
-              'Slang language server has crashed. You can restart it using the "Restart Language Server" command.',
-              'Restart Now'
-            )
-            .then((selection) => {
-              if (selection === 'Restart Now') {
-                this.restartLanguageServer.func()
-              }
+      this.client.onDidChangeState(
+        ({ oldState, newState }: { oldState: vscodelc.State; newState: vscodelc.State }) => {
+          if (newState === vscodelc.State.Running) {
+            // clangd starts or restarts after crash.
+            this.client!.onNotification('slang/setConfig', (config: slang.Config) => {
+              // Set after initialization
+              this.slangConfig = config
             })
+          } else if (
+            oldState === vscodelc.State.Running &&
+            newState === vscodelc.State.Stopped &&
+            !this.isRestarting
+          ) {
+            vscode.window
+              .showErrorMessage(
+                'Slang language server has crashed. You can restart it using the "Restart Language Server" command.',
+                'Restart Now'
+              )
+              .then((selection) => {
+                if (selection === 'Restart Now') {
+                  this.restartLanguageServer.func()
+                }
+              })
+          }
         }
-      })
+      )
     )
 
     await this.client.start()
+
+    // Log and check version compatibility
+    const clientVersion = vscode.extensions.getExtension('Hudson-River-Trading.vscode-slang')
+      ?.packageJSON.version
+    this.logger.info(`Using slang-vscode v${clientVersion ?? 'unknown'}`)
+
+    const serverInfo = this.client.initializeResult?.serverInfo
+    const serverFullVersion = serverInfo?.version?.trim()
+
+    if (!serverInfo || !serverFullVersion) {
+      this.logger.warn('Using old version of slang server without version info.')
+    } else {
+      this.logger.info(`Using ${serverInfo.name} v${serverFullVersion}`)
+
+      // Extract semver part (before '+' git hash): "1.2.3+hash" -> "1.2.3"
+      const serverVersion = serverFullVersion.split('+')[0]
+
+      if (clientVersion && serverVersion) {
+        const parsedServer = semver.coerce(serverVersion)
+        const parsedClient = semver.coerce(clientVersion)
+
+        if (!parsedServer || !parsedClient) {
+          this.logger.warn(
+            `Failed to parse versions: server=${serverVersion}, client=${clientVersion}`
+          )
+        } else {
+          // Server must have at least client's major.minor version
+          const minRequiredVersion = `${parsedClient.major}.${parsedClient.minor}.0`
+          const serverMajorMinor = `${parsedServer.major}.${parsedServer.minor}.0`
+
+          if (semver.lt(serverMajorMinor, minRequiredVersion)) {
+            vscode.window.showWarningMessage(
+              `Slang server v${serverVersion} is older than minimum required v${minRequiredVersion}. ` +
+                `Please update your server installation.`
+            )
+          }
+        }
+      }
+    }
+
     this.logger.info('language server started')
     await this.project.onStart()
   }

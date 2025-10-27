@@ -1,0 +1,31 @@
+//------------------------------------------------------------------------------
+// VersionInfo.cpp
+// Input file for build-time version source generation
+//
+// SPDX-FileCopyrightText: Hudson River Trading
+// SPDX-License-Identifier: MIT
+//------------------------------------------------------------------------------
+#include "slang/util/VersionInfo.h"
+
+using std::string_view;
+using namespace std::literals;
+
+namespace slang {
+
+int VersionInfo::getMajor() {
+    return @SLANG_SERVER_VERSION_MAJOR@;
+}
+
+int VersionInfo::getMinor() {
+    return @SLANG_SERVER_VERSION_MINOR@;
+}
+
+int VersionInfo::getPatch() {
+    return @SLANG_SERVER_VERSION_PATCH@;
+}
+
+string_view VersionInfo::getHash() {
+    return "@SLANG_SERVER_VERSION_HASH@"sv;
+}
+
+}
