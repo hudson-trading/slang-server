@@ -169,6 +169,7 @@ module test;
     `DECLARE_INT(log_int, $clog2(other_int))
     ^^^^^^^^^^^^ Ref -> ``define DECLARE_INT(name, val) localparam int name = val;`
                  ^^^^^^^ Ref -> `localparam int log_int = $clog2(other_int)`\n\ Expanded from\n\ ``DECLARE_INT(log_int, $clog2(other_int))`
+                                 ^^^^^^^^^ Ref -> `localparam int other_int = 2`\n\ Expanded from\n\ ``DECLARE_INT(other_int, 2)`
 
 
 
