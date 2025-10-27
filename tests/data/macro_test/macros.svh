@@ -67,6 +67,9 @@ module test;
     `DECLARE_INT(some_int, 1)
     `DECLARE_INT(other_int, 2)
 
+    // test function calls in macro arguments
+    `DECLARE_INT(log_int, $clog2(other_int))
+
     `INFO(some_int + other_int)
 
     localparam int x = some_int;
