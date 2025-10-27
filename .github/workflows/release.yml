@@ -219,34 +219,34 @@ jobs:
         gh release edit "$TAG_NAME" --notes-file updated-notes.md
         gh release upload "$TAG_NAME" release-assets/* --clobber
 
-    - name: Update CHANGELOG.md
-      run: |
-        TAG_NAME="${{ steps.release.outputs.tag }}"
-        RELEASE_DATE=$(date -u +%Y-%m-%d)
+    # - name: Update CHANGELOG.md
+    #   run: |
+    #     TAG_NAME="${{ steps.release.outputs.tag }}"
+    #     RELEASE_DATE=$(date -u +%Y-%m-%d)
 
-        # Create temporary file with new entry
-        cat > new-entry.md << 'EOF'
-        ## [${{ steps.release.outputs.tag }}] -
-        EOF
-        echo "$RELEASE_DATE" >> new-entry.md
-        echo "" >> new-entry.md
-        echo "${{ steps.release.outputs.notes }}" >> new-entry.md
-        echo "" >> new-entry.md
+    #     # Create temporary file with new entry
+    #     cat > new-entry.md << 'EOF'
+    #     ## [${{ steps.release.outputs.tag }}] -
+    #     EOF
+    #     echo "$RELEASE_DATE" >> new-entry.md
+    #     echo "" >> new-entry.md
+    #     echo "${{ steps.release.outputs.notes }}" >> new-entry.md
+    #     echo "" >> new-entry.md
 
-        # Insert at the <!-- new-release-here --> marker
-        awk '/<!-- new-release-here -->/ { print; system("cat new-entry.md"); next } {print}' CHANGELOG.md > CHANGELOG.tmp
-        mv CHANGELOG.tmp CHANGELOG.md
-        rm new-entry.md
+    #     # Insert at the <!-- new-release-here --> marker
+    #     awk '/<!-- new-release-here -->/ { print; system("cat new-entry.md"); next } {print}' CHANGELOG.md > CHANGELOG.tmp
+    #     mv CHANGELOG.tmp CHANGELOG.md
+    #     rm new-entry.md
 
-    - name: Commit CHANGELOG.md
-      run: |
-        git config user.name "github-actions[bot]"
-        git config user.email "github-actions[bot]@users.noreply.github.com"
-        git add CHANGELOG.md
+    # - name: Commit CHANGELOG.md
+    #   run: |
+    #     git config user.name "github-actions[bot]"
+    #     git config user.email "github-actions[bot]@users.noreply.github.com"
+    #     git add CHANGELOG.md
 
-        if git diff --staged --quiet; then
-          echo "No changes to CHANGELOG.md"
-        else
-          git commit -m "Update CHANGELOG.md for ${{ steps.release.outputs.tag }}
-          git push
-        fi
+    #     if git diff --staged --quiet; then
+    #       echo "No changes to CHANGELOG.md"
+    #     else
+    #       git commit -m "Update CHANGELOG.md for ${{ steps.release.outputs.tag }}
+    #       git push
+    #     fi

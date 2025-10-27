@@ -28,31 +28,14 @@ set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 include(gitversion)
 get_git_version(SLANG_SERVER_VERSION_PATCH SLANG_SERVER_VERSION_HASH)
 
-# Extract version from package.json
-execute_process(
-  COMMAND jq -r .version
-          "${CMAKE_CURRENT_SOURCE_DIR}/clients/vscode/package.json"
-  OUTPUT_VARIABLE PACKAGE_JSON_VERSION
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-  RESULT_VARIABLE JQ_RESULT)
-
-if(NOT JQ_RESULT EQUAL 0)
-  message(
-    FATAL_ERROR
-      "Failed to extract version from package.json. Ensure jq is installed.")
-endif()
-
-# Parse major and minor from version string
-string(REPLACE "." ";" VERSION_LIST "${PACKAGE_JSON_VERSION}")
-list(GET VERSION_LIST 0 SLANG_SERVER_VERSION_MAJOR)
-list(GET VERSION_LIST 1 SLANG_SERVER_VERSION_MINOR)
-
+set(SLANG_SERVER_VERSION_MAJOR 0)
+set(SLANG_SERVER_VERSION_MINOR 1)
 set(SLANG_SERVER_VERSION_STRING
     "${SLANG_SERVER_VERSION_MAJOR}.${SLANG_SERVER_VERSION_MINOR}.${SLANG_SERVER_VERSION_PATCH}"
 )
 message(
   STATUS
-    "slang version: ${SLANG_SERVER_VERSION_STRING}+${SLANG_SERVER_VERSION_HASH}"
+    "slang-server version: ${SLANG_SERVER_VERSION_STRING}+${SLANG_SERVER_VERSION_HASH}"
 )
 
 # Set the default build type if none is set explicitly, but only for
@@ -71,7 +54,7 @@ endif()
 
 project(
   slang-server
-  VERSION 0.1.0
+  VERSION ${SLANG_SERVER_VERSION_STRING}
   LANGUAGES CXX
   HOMEPAGE_URL https://github.com/hudson-trading/slang-server
   DESCRIPTION "SystemVerilog language server based on slang")
