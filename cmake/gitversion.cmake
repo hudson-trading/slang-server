@@ -147,10 +147,23 @@ function(get_git_version _patch _hash)
     COMMAND ${GIT_EXECUTABLE} describe --tags --dirty
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     OUTPUT_VARIABLE _version_string
+    RESULT_VARIABLE _git_describe_result
     ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
 
-  # Check if there are commits after the tag (format: v0.1.0-4-g1234abc)
-  if(${_version_string} MATCHES ".+-([0-9]+-g[0-9a-z]+).*")
+  # If git describe fails (no tags), count all commits
+  if(NOT _git_describe_result EQUAL 0 OR "${_version_string}" STREQUAL "")
+    execute_process(
+      COMMAND ${GIT_EXECUTABLE} rev-list --count HEAD
+      WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+      OUTPUT_VARIABLE local_patch
+      ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+    execute_process(
+      COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+      WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+      OUTPUT_VARIABLE local_hash
+      ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+    # Check if there are commits after the tag (format: v0.1.0-4-g1234abc)
+  elseif(${_version_string} MATCHES ".+-([0-9]+-g[0-9a-z]+).*")
     # Extract number of commits since tag
     string(REGEX REPLACE "^v?[0-9]+\\.[0-9]+\\.[0-9]+-([0-9]+)-.*" "\\1"
                          local_patch "${_version_string}")
