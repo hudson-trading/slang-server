@@ -642,12 +642,14 @@
   },
   "dependencies": {
     "js-yaml": "^4.1.0",
+    "semver": "^7.7.3",
     "vscode-languageclient": "^9.0.1",
     "which": "^4.0.0"
   },
   "devDependencies": {
     "@types/glob": "^8.1.0",
     "@types/node": "~20.11.30",
+    "@types/semver": "^7.7.1",
     "@types/vscode": "^1.101.0",
     "@types/which": "^3.0.3",
     "@typescript-eslint/eslint-plugin": "^8.21.0",
@@ -664,10 +666,5 @@
     "prettier-plugin-organize-imports": "^4.1.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.3"
-  },
-  "__metadata": {
-    "id": "feb7e3b5-7d35-4f95-a3d2-61eeaa12efa5",
-    "publisherDisplayName": "AndrewNolte",
-    "publisherId": "fcf32c99-a624-437b-9f47-9333ea128623"
   }
 }
