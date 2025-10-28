@@ -23,20 +23,34 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
                 "'CMakeCache.txt' and 'CMakeFiles/' before building again.")
 endif()
 
-# Determine our patch version by looking at git tags.
-set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
-include(gitversion)
-get_git_version(SLANG_SERVER_VERSION_PATCH SLANG_SERVER_VERSION_HASH)
+# Read version from VERSION file
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" SLANG_SERVER_VERSION_STRING)
+string(STRIP "${SLANG_SERVER_VERSION_STRING}" SLANG_SERVER_VERSION_STRING)
 
-set(SLANG_SERVER_VERSION_MAJOR 0)
-set(SLANG_SERVER_VERSION_MINOR 1)
-set(SLANG_SERVER_VERSION_STRING
-    "${SLANG_SERVER_VERSION_MAJOR}.${SLANG_SERVER_VERSION_MINOR}.${SLANG_SERVER_VERSION_PATCH}"
-)
-message(
-  STATUS
-    "slang-server version: ${SLANG_SERVER_VERSION_STRING}+${SLANG_SERVER_VERSION_HASH}"
-)
+# Parse version components
+string(REPLACE "." ";" VERSION_LIST "${SLANG_SERVER_VERSION_STRING}")
+list(GET VERSION_LIST 0 SLANG_SERVER_VERSION_MAJOR)
+list(GET VERSION_LIST 1 SLANG_SERVER_VERSION_MINOR)
+list(GET VERSION_LIST 2 SLANG_SERVER_VERSION_PATCH)
+
+# Append git hash if available
+set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
+if(NOT GIT_FOUND)
+  find_package(Git QUIET)
+endif()
+if(GIT_FOUND)
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    OUTPUT_VARIABLE SLANG_SERVER_VERSION_HASH
+    ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+  message(
+    STATUS
+      "slang-server version: ${SLANG_SERVER_VERSION_STRING}+${SLANG_SERVER_VERSION_HASH}"
+  )
+else()
+  message(STATUS "slang-server version: ${SLANG_SERVER_VERSION_STRING}")
+endif()
 
 # Set the default build type if none is set explicitly, but only for
 # single-config generators.

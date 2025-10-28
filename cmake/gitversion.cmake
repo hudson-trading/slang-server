@@ -162,16 +162,19 @@ function(get_git_version _patch _hash)
       WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
       OUTPUT_VARIABLE local_hash
       ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
-    # Check if there are commits after the tag (format: v0.1.0-4-g1234abc)
+    # Check if there are commits after the tag (format: v9.0-4-g1234abc or
+    # v0.1.0-4-g1234abc)
   elseif(${_version_string} MATCHES ".+-([0-9]+-g[0-9a-z]+).*")
-    # Extract number of commits since tag
-    string(REGEX REPLACE "^v?[0-9]+\\.[0-9]+\\.[0-9]+-([0-9]+)-.*" "\\1"
+    # Extract number of commits since tag (works for both v9.0-X-gHASH and
+    # v0.1.0-X-gHASH)
+    string(REGEX REPLACE "^v?[0-9]+\\.[0-9]+(\\.([0-9]+))?-([0-9]+)-.*" "\\3"
                          local_patch "${_version_string}")
     # Extract short hash
-    string(REGEX REPLACE "^v?[0-9]+\\.[0-9]+\\.[0-9]+-[0-9]+-g([0-9a-z]+).*"
-                         "\\1" local_hash "${_version_string}")
+    string(REGEX
+           REPLACE "^v?[0-9]+\\.[0-9]+(\\.([0-9]+))?-[0-9]+-g([0-9a-z]+).*"
+                   "\\3" local_hash "${_version_string}")
   else()
-    # Exact tag match (v0.1.0) - patch is 0
+    # Exact tag match (v9.0 or v0.1.0) - patch is 0
     set(local_patch 0)
     execute_process(
       COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
