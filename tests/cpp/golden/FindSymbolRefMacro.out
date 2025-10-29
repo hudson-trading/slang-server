@@ -18,10 +18,13 @@
 // Use macros from common_macros.svh
 
 `define BUS_WIDTH `WIDTH
+                  ^^^^^^ Ref -> `// From common_macros.svh`\n\\n\---\n\\n\``define WIDTH 32`
 
 `define MEM_SIZE `DEPTH
+                 ^^^^^^ Ref -> `// From common_macros.svh`\n\\n\---\n\\n\``define DEPTH 1024`
 
 `define ADDR_BITS `ADDR_WIDTH
+                  ^^^^^^^^^^^ Ref -> `// From common_macros.svh`\n\\n\---\n\\n\``define ADDR_WIDTH $clog2(`DEPTH)`
 
 
 
@@ -118,8 +121,10 @@ module test;
     // Use CREATE_REG macro from common_macros.svh
 
     `CREATE_REG(status_reg, 8)
+    ^^^^^^^^^^^ Ref -> `// From common_macros.svh`\n\\n\---\n\\n\``define CREATE_REG(name, width) \\n\logic [width-1:0] name; \\n\assign name = {width{1'b0}};`
 
     `CREATE_REG(control_reg, 16)
+    ^^^^^^^^^^^ Ref -> `// From common_macros.svh`\n\\n\---\n\\n\``define CREATE_REG(name, width) \\n\logic [width-1:0] name; \\n\assign name = {width{1'b0}};`
 
 
 
@@ -242,14 +247,17 @@ module test;
                                               ^^^^^^^^^^^ Ref -> ``define FUNC_MACRO(x) (x + 1)`
 
         $display("Max value: %d", `MAX(10, 20));
+                                  ^^^^ Ref -> `// From common_macros.svh`\n\\n\---\n\\n\``define MAX(a, b) ((a) > (b) ? (a) : (b))`
 
         $display("Min value: %d", `MIN(10, 20));
+                                  ^^^^ Ref -> `// From common_macros.svh`\n\\n\---\n\\n\``define MIN(a, b) ((a) < (b) ? (a) : (b))`
 
 
 
         // Test assertion macro from common_macros.svh
 
         `ASSERT_EQ(10, 10)
+        ^^^^^^^^^^ Ref -> `// From common_macros.svh`\n\\n\---\n\\n\``define ASSERT_EQ(actual, expected) \\n\if (actual !== expected) \\n\    $error("Assertion failed: %s != %s", `"actual`", `"expected`");`
 
     end
 
