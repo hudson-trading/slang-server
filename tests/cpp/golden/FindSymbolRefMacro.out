@@ -15,6 +15,16 @@
 
 
 
+// Use macros from common_macros.svh
+
+`define BUS_WIDTH `WIDTH
+
+`define MEM_SIZE `DEPTH
+
+`define ADDR_BITS `ADDR_WIDTH
+
+
+
 // Nested macro definitions
 
 `define FOO(blah) blah
@@ -90,13 +100,26 @@ module test;
 
 
 
-    // Variables for testing
+    // Variables for testing - use macros from common_macros.svh
 
     int test_var;
         ^^^^^^^^ Sym test_var : Declarator
 
-    logic [31:0] bus_signal;
-                 ^^^^^^^^^^ Sym bus_signal : Declarator
+    logic [`BUS_WIDTH-1:0] bus_signal;
+           ^^^^^^^^^^ Ref -> `// Use macros from common_macros.svh\n\`define BUS_WIDTH `WIDTH`
+                           ^^^^^^^^^^ Sym bus_signal : Declarator
+
+    logic [`ADDR_BITS-1:0] address;
+           ^^^^^^^^^^ Ref -> ``define ADDR_BITS `ADDR_WIDTH`
+                           ^^^^^^^ Sym address : Declarator
+
+
+
+    // Use CREATE_REG macro from common_macros.svh
+
+    `CREATE_REG(status_reg, 8)
+
+    `CREATE_REG(control_reg, 16)
 
 
 
@@ -176,20 +199,35 @@ module test;
     always_comb begin
 
         case (test_var)
-              ^^^^^^^^ Ref -> `// Variables for testing\n\int test_var;`
+              ^^^^^^^^ Ref -> `// Variables for testing - use macros from common_macros.svh\n\int test_var;`
 
             `SIMPLE_MACRO: bus_signal = `TWO_ARG_MACRO(1, 2);
             ^^^^^^^^^^^^^ Ref -> `// Basic macro definitions\n\`define SIMPLE_MACRO 42`
-                           ^^^^^^^^^^ Ref -> `logic [31:0] bus_signal;`
+                           ^^^^^^^^^^ Ref -> `logic [-1:0] bus_signal;`
                                         ^^^^^^^^^^^^^^ Ref -> ``define TWO_ARG_MACRO(a, b) (a + b)`
 
             default: bus_signal = `FUNC_MACRO(0);
-                     ^^^^^^^^^^ Ref -> `logic [31:0] bus_signal;`
+                     ^^^^^^^^^^ Ref -> `logic [-1:0] bus_signal;`
                                   ^^^^^^^^^^^ Ref -> ``define FUNC_MACRO(x) (x + 1)`
 
         endcase
 
     end
+
+
+
+
+
+    // Signals for memory instantiation
+
+    logic clk, rst_n, write_enable;
+          ^^^ Sym clk : Declarator
+               ^^^^^ Sym rst_n : Declarator
+                      ^^^^^^^^^^^^ Sym write_enable : Declarator
+
+    logic [31:0] write_data, read_data;
+                 ^^^^^^^^^^ Sym write_data : Declarator
+                             ^^^^^^^^^ Sym read_data : Declarator
 
 
 
@@ -202,6 +240,16 @@ module test;
 
         $display("Function macro result: %d", `FUNC_MACRO(25));
                                               ^^^^^^^^^^^ Ref -> ``define FUNC_MACRO(x) (x + 1)`
+
+        $display("Max value: %d", `MAX(10, 20));
+
+        $display("Min value: %d", `MIN(10, 20));
+
+
+
+        // Test assertion macro from common_macros.svh
+
+        `ASSERT_EQ(10, 10)
 
     end
 
