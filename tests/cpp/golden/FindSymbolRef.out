@@ -58,11 +58,11 @@ package pkg2;
 
     import pkg1::packet_t;
            ^^^^ Ref -> `package pkg1;`
-                 ^^^^^^^^ Sym packet_t : PackageImportItem
+                 ^^^^^^^^ Ref -> `// In pkg1`\n\\n\---\n\\n\`typedef struct packed {\n\    logic [7:0] data;\n\    logic valid;\n\} packet_t;`
 
     export pkg1::packet_t;
            ^^^^ Ref -> `package pkg1;`
-                 ^^^^^^^^ Sym packet_t : PackageImportItem
+                 ^^^^^^^^ Ref -> `// In pkg1`\n\\n\---\n\\n\`typedef struct packed {\n\    logic [7:0] data;\n\    logic valid;\n\} packet_t;`
 
 endpackage
 
