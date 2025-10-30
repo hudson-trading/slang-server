@@ -203,7 +203,7 @@ std::string svCodeBlockString(const syntax::SyntaxNode& node) {
         fmtNode = fmtNode->parent;
     }
 
-    auto res = slang::syntax::SyntaxPrinter().printExcludingLeadingTrivia(*fmtNode).str();
+    auto res = slang::syntax::SyntaxPrinter().printExcludingLeadingComments(*fmtNode).str();
     if (isSingleLine(res)) {
         squashSpaces(res);
     }
