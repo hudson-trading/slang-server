@@ -248,12 +248,19 @@ const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declT
         // they may not refer to
         // anything, like if being used to make a lhs id name.
 
-        std::string_view tokList = std::string_view{syntax->getFirstToken().rawText().data(),
-                                                    syntax->toString().size()};
-        tokTree = SyntaxTree::fromText(tokList);
-        tokTree->root().parent = syntax->parent;
+        auto& macroArgSyntax = syntax->parent->as<syntax::MacroActualArgumentSyntax>();
+
+        auto firstToken = macroArgSyntax.getFirstToken();
+        auto lastToken = macroArgSyntax.getLastToken();
+        size_t startOffset = firstToken.location().offset();
+        size_t endOffset = lastToken.location().offset() + lastToken.rawText().size();
+
+        std::string_view macroArg{firstToken.rawText().data(), endOffset - startOffset};
+
+        tokTree = SyntaxTree::fromText(macroArg);
+        tokTree->root().parent = macroArgSyntax.parent;
         OffsetFinder visitor(declTok->location().offset() -
-                             syntax->getFirstToken().location().offset());
+                             macroArgSyntax.getFirstToken().location().offset());
         visitor.visit(tokTree->root());
         if (visitor.foundSyntax && visitor.foundToken) {
             syntax = visitor.foundSyntax;
