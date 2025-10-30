@@ -37,6 +37,37 @@ endpackage
 
 
 
+package pkg1;
+        ^^^^ Sym pkg1 : PackageDeclaration
+
+    typedef struct packed {
+
+        logic [7:0] data;
+
+        logic valid;
+
+    } packet_t;
+      ^^^^^^^^ Sym packet_t : TypedefDeclaration
+
+endpackage
+
+
+
+package pkg2;
+        ^^^^ Sym pkg2 : PackageDeclaration
+
+    import pkg1::packet_t;
+           ^^^^ Ref -> `package pkg1;`
+                 ^^^^^^^^ Sym packet_t : PackageImportItem
+
+    export pkg1::packet_t;
+           ^^^^ Ref -> `package pkg1;`
+                 ^^^^^^^^ Sym packet_t : PackageImportItem
+
+endpackage
+
+
+
 module automatic m1 import p::*; #(int i = 1)
                  ^^ Sym m1 : ModuleDeclaration
                            ^ Ref -> `package static p;`

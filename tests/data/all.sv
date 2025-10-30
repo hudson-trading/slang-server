@@ -12,6 +12,18 @@ timeprecision 1ps;
     export *::*;
 endpackage
 
+package pkg1;
+    typedef struct packed {
+        logic [7:0] data;
+        logic valid;
+    } packet_t;
+endpackage
+
+package pkg2;
+    import pkg1::packet_t;
+    export pkg1::packet_t;
+endpackage
+
 module automatic m1 import p::*; #(int i = 1)
     (a, b, , .c({a, b[0]}));
     input a;
