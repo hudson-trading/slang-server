@@ -52,7 +52,7 @@ jobs:
         dnf -y install 'dnf-command(config-manager)'
         dnf config-manager --set-enabled powertools
         dnf -y install epel-release
-        dnf -y install gcc-c++ cmake git make gcc-toolset-14-libatomic-devel
+        dnf -y install cmake git make gcc-toolset-14-gcc-c++
 
     - name: Checkout
       uses: actions/checkout@v4
@@ -88,10 +88,18 @@ jobs:
         xcode-version: 'latest'
 
     - name: Configure
-      run: cmake --preset ${{ matrix.preset }} -DSLANG_SERVER_INCLUDE_INSTALL=ON
+      run: |
+        if [ -f /opt/rh/gcc-toolset-14/enable ]; then
+          source /opt/rh/gcc-toolset-14/enable
+        fi
+        cmake --preset ${{ matrix.preset }} -DSLANG_SERVER_INCLUDE_INSTALL=ON
 
     - name: Build
-      run: cmake --build build/${{ matrix.preset }} -j8 --target slang_server
+      run: |
+        if [ -f /opt/rh/gcc-toolset-14/enable ]; then
+          source /opt/rh/gcc-toolset-14/enable
+        fi
+        cmake --build build/${{ matrix.preset }} -j8 --target slang_server
 
     - name: Strip binary (Linux/macOS)
       if: runner.os != 'Windows'
