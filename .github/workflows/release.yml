@@ -87,19 +87,25 @@ jobs:
       with:
         xcode-version: 'latest'
 
-    - name: Configure
+    - name: Configure (Rocky Linux)
+      if: matrix.container == 'rockylinux:8'
       run: |
-        if [ -f /opt/rh/gcc-toolset-14/enable ]; then
-          source /opt/rh/gcc-toolset-14/enable
-        fi
+        source /opt/rh/gcc-toolset-14/enable
         cmake --preset ${{ matrix.preset }} -DSLANG_SERVER_INCLUDE_INSTALL=ON
 
-    - name: Build
+    - name: Configure (Other)
+      if: matrix.container != 'rockylinux:8'
+      run: cmake --preset ${{ matrix.preset }} -DSLANG_SERVER_INCLUDE_INSTALL=ON
+
+    - name: Build (Rocky Linux)
+      if: matrix.container == 'rockylinux:8'
       run: |
-        if [ -f /opt/rh/gcc-toolset-14/enable ]; then
-          source /opt/rh/gcc-toolset-14/enable
-        fi
+        source /opt/rh/gcc-toolset-14/enable
         cmake --build build/${{ matrix.preset }} -j8 --target slang_server
+
+    - name: Build (Other)
+      if: matrix.container != 'rockylinux:8'
+      run: cmake --build build/${{ matrix.preset }} -j8 --target slang_server
 
     - name: Strip binary (Linux/macOS)
       if: runner.os != 'Windows'
@@ -167,6 +173,7 @@ jobs:
 
   add-release-assets:
     needs: build-release
+    if: always()
     runs-on: ubuntu-latest
 
     steps:
@@ -182,12 +189,22 @@ jobs:
         path: artifacts
 
     - name: Prepare release assets
+      id: prepare
       run: |
         mkdir -p release-assets
-        find artifacts -type f \( -name "*.tar.gz" -o -name "*.zip" \) -exec cp {} release-assets/ \;
-        ls -lh release-assets/
+        if [ -d artifacts ]; then
+          find artifacts -type f \( -name "*.tar.gz" -o -name "*.zip" \) -exec cp {} release-assets/ \; 2>/dev/null || true
+        fi
+        if [ -z "$(ls -A release-assets 2>/dev/null)" ]; then
+          echo "Warning: No release artifacts found"
+          echo "has_artifacts=false" >> $GITHUB_OUTPUT
+        else
+          echo "has_artifacts=true" >> $GITHUB_OUTPUT
+          ls -lh release-assets/
+        fi
 
     - name: Get release info
+      if: steps.prepare.outputs.has_artifacts == 'true'
       id: release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -202,6 +219,7 @@ jobs:
         echo "EOF" >> $GITHUB_OUTPUT
 
     - name: Generate checksums and update release
+      if: steps.prepare.outputs.has_artifacts == 'true'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
