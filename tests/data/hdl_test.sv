@@ -86,7 +86,9 @@ module Sub #(
 
 endmodule
 
-module TestModule (
+module TestModule #(
+    parameter int NUM_SUBS = 4
+)(
     input logic clk,
     input logic rst,
     // some useful info
@@ -100,6 +102,17 @@ module TestModule (
 
     test_pkg::state_t state, state_next;
     test_pkg::id_t counter;
+
+    // Instance array that depends on NUM_SUBS parameter
+    logic [15:0] sub_data_in [NUM_SUBS];
+    logic [15:0] sub_data_out [NUM_SUBS];
+
+    Sub #(.WIDTH(16)) sub_inst [NUM_SUBS] (
+        .clk(clk),
+        .rst(rst),
+        .data_in(sub_data_in),
+        .data_out(sub_data_out)
+    );
 
     always_ff @(posedge clk) begin
         if (rst) begin

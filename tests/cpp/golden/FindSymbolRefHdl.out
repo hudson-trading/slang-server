@@ -256,8 +256,13 @@ endmodule
 
 
 
-module TestModule (
+module TestModule #(
        ^^^^^^^^^^ Sym TestModule : ModuleDeclaration
+
+    parameter int NUM_SUBS = 4
+                  ^^^^^^^^ Sym NUM_SUBS : Declarator
+
+)(
 
     input logic clk,
                 ^^^ Sym clk : Declarator
@@ -325,6 +330,39 @@ module TestModule (
     ^^^^^^^^ Ref -> `package test_pkg;`
               ^^^^ Ref -> `// In test_pkg`\n\\n\---\n\\n\`typedef logic [WIDTH-1:0] id_t;`
                    ^^^^^^^ Sym counter : Declarator
+
+
+
+    // Instance array that depends on NUM_SUBS parameter
+
+    logic [15:0] sub_data_in [NUM_SUBS];
+                 ^^^^^^^^^^^ Sym sub_data_in : Declarator
+                              ^^^^^^^^ Ref -> `parameter int NUM_SUBS = 4`
+
+    logic [15:0] sub_data_out [NUM_SUBS];
+                 ^^^^^^^^^^^^ Sym sub_data_out : Declarator
+                               ^^^^^^^^ Ref -> `parameter int NUM_SUBS = 4`
+
+
+
+    Sub #(.WIDTH(16)) sub_inst [NUM_SUBS] (
+    ^^^ Ref -> `module Sub #(\n\    parameter int WIDTH = 16\n\)(\n\    input logic clk,\n\    input logic rst,\n\    input logic [WIDTH-1:0] data_in,\n\    output logic [WIDTH-1:0] data_out\n\);`
+                      ^^^^^^^^ Sym sub_inst : HierarchicalInstance
+                                ^^^^^^^^ Ref -> `// In TestModule`\n\\n\---\n\\n\`parameter int NUM_SUBS = 4`
+
+        .clk(clk),
+             ^^^ Ref -> `// In TestModule`\n\\n\---\n\\n\`input logic clk`
+
+        .rst(rst),
+             ^^^ Ref -> `// In TestModule`\n\\n\---\n\\n\`input logic rst`
+
+        .data_in(sub_data_in),
+                 ^^^^^^^^^^^ Ref -> `// In TestModule`\n\\n\---\n\\n\`// Instance array that depends on NUM_SUBS parameter\n\logic [15:0] sub_data_in [NUM_SUBS];`
+
+        .data_out(sub_data_out)
+                  ^^^^^^^^^^^^ Ref -> `// In TestModule`\n\\n\---\n\\n\`logic [15:0] sub_data_out [NUM_SUBS];`
+
+    );
 
 
 
