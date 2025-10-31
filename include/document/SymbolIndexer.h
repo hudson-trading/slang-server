@@ -46,6 +46,7 @@ public:
     const slang::ast::Scope* getScopeForSyntax(const slang::syntax::SyntaxNode& syntax) const;
 
     /// Module instances- module name, parameters, ports
+    void handle(const slang::ast::InstanceArraySymbol& sym);
     void handle(const slang::ast::InstanceSymbol& sym);
 
     /// Index ValueSymbol names
@@ -80,6 +81,12 @@ public:
         // Index symbol name for other symbol types
         visitDefault(astNode);
     }
+
+private:
+    /// Helper to index instance syntax (shared by InstanceSymbol and InstanceArraySymbol)
+    void indexInstanceSyntax(const slang::syntax::HierarchicalInstanceSyntax& instSyntax,
+                             const slang::ast::InstanceBodySymbol& instanceSymbol,
+                             const slang::ast::DefinitionSymbol& definition);
 };
 
 } // namespace server

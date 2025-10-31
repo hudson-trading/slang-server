@@ -89,9 +89,106 @@ const slang::ast::Scope* SymbolIndexer::getScopeForSyntax(
     return nullptr;
 }
 
+void SymbolIndexer::indexInstanceSyntax(const slang::syntax::HierarchicalInstanceSyntax& instSyntax,
+                                        const slang::ast::InstanceBodySymbol& body,
+                                        const slang::ast::DefinitionSymbol& definition) {
+
+    // Mark ports
+    for (auto port : instSyntax.connections) {
+        switch (port->kind) {
+            case slang::syntax::SyntaxKind::NamedPortConnection: {
+                auto& portSyntax = port->as<slang::syntax::NamedPortConnectionSyntax>();
+                auto name = portSyntax.name.valueText();
+                if (!name.empty()) {
+                    const slang::ast::Symbol* portSym = body.lookupName(
+                        portSyntax.name.valueText());
+                    if (portSym) {
+                        symdex[&portSyntax.name] = portSym;
+                    }
+                }
+            } break;
+            default:
+                WARN("Unknown port symbol kind: {}", toString(port->kind));
+                break;
+        }
+    }
+
+    if (instSyntax.parent == nullptr) {
+        return;
+    }
+
+    // Mark module type and param if we haven't already
+    auto& paramInst = instSyntax.parent->as<slang::syntax::HierarchyInstantiationSyntax>();
+    if (symdex.find(&paramInst.type) != symdex.end()) {
+        return;
+    }
+
+    // Mark instance type
+    symdex[&paramInst.type] = &definition;
+
+    if (paramInst.parameters == nullptr) {
+        return;
+    }
+
+    // Mark parameters
+    for (auto param : paramInst.parameters->parameters) {
+        switch (param->kind) {
+            case slang::syntax::SyntaxKind::NamedParamAssignment: {
+                auto& paramSyntax = param->as<slang::syntax::NamedParamAssignmentSyntax>();
+                auto name = paramSyntax.name.valueText();
+                if (!name.empty()) {
+                    const slang::ast::Symbol* paramSym = body.lookupName(
+                        paramSyntax.name.valueText());
+                    if (paramSym) {
+                        symdex[&paramSyntax.name] = paramSym;
+                    }
+                }
+            } break;
+            default:
+                WARN("Unknown parameter kind: {}", toString(param->kind));
+                break;
+        }
+    }
+}
+
+void SymbolIndexer::handle(const slang::ast::InstanceArraySymbol& sym) {
+    // Index based on syntax, looking up definition from parent scope if needed
+    if (sym.getSyntax() == nullptr || sym.getSyntax()->sourceRange().start().buffer() != m_buffer ||
+        sym.getSyntax()->kind != slang::syntax::SyntaxKind::HierarchicalInstance) {
+        return;
+    }
+
+    auto& instSyntax = sym.getSyntax()->as<slang::syntax::HierarchicalInstanceSyntax>();
+    symdex[&instSyntax.decl->name] = &sym;
+
+    // Get definition and body - either from first element or by lookup
+    if (!sym.elements.empty() && sym.elements[0]->kind == slang::ast::SymbolKind::Instance) {
+        // Use first element if available
+        auto& firstInst = sym.elements[0]->as<slang::ast::InstanceSymbol>();
+        indexInstanceSyntax(instSyntax, firstInst.body, firstInst.getDefinition());
+    }
+    else if (instSyntax.parent != nullptr &&
+             instSyntax.parent->kind == slang::syntax::SyntaxKind::HierarchyInstantiation) {
+        // Create an invalid instance to use for lookups
+        auto& paramInst = instSyntax.parent->as<slang::syntax::HierarchyInstantiationSyntax>();
+        auto parentScope = sym.getParentScope();
+        if (!parentScope) {
+            return;
+        }
+        auto result = parentScope->getCompilation().tryGetDefinition(paramInst.type.valueText(),
+                                                                     *parentScope);
+        if (!result.definition) {
+            return;
+        }
+        auto& definition = result.definition->as<slang::ast::DefinitionSymbol>();
+        auto& inst = slang::ast::InstanceSymbol::createInvalid(parentScope->getCompilation(),
+                                                               definition);
+        indexInstanceSyntax(instSyntax, inst.body, definition);
+    }
+}
+
 /// Module instances- module name, parameters, ports
 void SymbolIndexer::handle(const slang::ast::InstanceSymbol& sym) {
-
     if (sym.getSyntax() == nullptr) {
         // This means it's the top level- just index the module name
         auto& modName =
@@ -108,63 +205,7 @@ void SymbolIndexer::handle(const slang::ast::InstanceSymbol& sym) {
         case slang::syntax::SyntaxKind::HierarchicalInstance: {
             auto& instSyntax = sym.getSyntax()->as<slang::syntax::HierarchicalInstanceSyntax>();
             symdex[&instSyntax.decl->name] = &sym;
-
-            // Mark ports
-            for (auto port : instSyntax.connections) {
-                switch (port->kind) {
-                    case slang::syntax::SyntaxKind::NamedPortConnection: {
-                        auto& portSyntax = port->as<slang::syntax::NamedPortConnectionSyntax>();
-                        auto name = portSyntax.name.valueText();
-                        if (!name.empty()) {
-                            const slang::ast::Symbol* portSym = sym.body.lookupName(
-                                portSyntax.name.valueText());
-                            if (portSym) {
-                                symdex[&portSyntax.name] = portSym;
-                            }
-                        }
-                    } break;
-                    default:
-                        WARN("Unknown port symbol kind: {}", toString(port->kind));
-                        break;
-                }
-            }
-
-            if (instSyntax.parent == nullptr) {
-                break;
-            }
-
-            // Mark param decl if we haven't already
-            auto& paramInst = instSyntax.parent->as<slang::syntax::HierarchyInstantiationSyntax>();
-            if (symdex.find(&paramInst.type) != symdex.end()) {
-                break;
-            }
-
-            // Mark instance type
-            symdex[&paramInst.type] = &sym.getDefinition();
-
-            if (paramInst.parameters == nullptr) {
-                break;
-            }
-
-            // Mark parameters
-            for (auto param : paramInst.parameters->parameters) {
-                switch (param->kind) {
-                    case slang::syntax::SyntaxKind::NamedParamAssignment: {
-                        auto& paramSyntax = param->as<slang::syntax::NamedParamAssignmentSyntax>();
-                        auto name = paramSyntax.name.valueText();
-                        if (!name.empty()) {
-                            const slang::ast::Symbol* paramSym = sym.body.lookupName(
-                                paramSyntax.name.valueText());
-                            if (paramSym) {
-                                symdex[&paramSyntax.name] = paramSym;
-                            }
-                        }
-                    } break;
-                    default:
-                        WARN("Unknown parameter kind: {}", toString(param->kind));
-                        break;
-                }
-            }
+            indexInstanceSyntax(instSyntax, sym.body, sym.getDefinition());
         } break;
         default: {
             WARN("Unknown instance symbol kind: {}", toString(sym.getSyntax()->kind));
