@@ -3,6 +3,13 @@ name: Release
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      test_mode:
+        description: 'Test mode - artifacts will not be uploaded to a release'
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -173,7 +180,7 @@ jobs:
 
   add-release-assets:
     needs: build-release
-    if: always()
+    if: always() && github.event_name == 'release'
     runs-on: ubuntu-latest
 
     steps:
