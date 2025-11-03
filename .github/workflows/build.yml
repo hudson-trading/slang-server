@@ -2,6 +2,13 @@ name: CI Build
 
 on:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      upload_artifacts:
+        description: 'Upload build artifacts'
+        required: false
+        type: boolean
+        default: false
   push:
     branches: [ main ]
     paths-ignore:
@@ -28,21 +35,39 @@ jobs:
         include:
           - preset: clang-release
             os: ubuntu-latest
+            artifact_name: slang-server-linux-x64-clang
+          - preset: clang-release
+            os: ubuntu-latest
+            container: rockylinux:8
+            artifact_name: slang-server-rockylinux-x64
+            extra_flags: -DCMAKE_CXX_COMPILER=clang++-19
           - preset: gcc-release
             os: ubuntu-24.04-arm
+            artifact_name: slang-server-linux-arm64
           - preset: macos-release
             os: macos-latest
+            artifact_name: slang-server-macos
           - preset: win64-release
             os: windows-latest
+            artifact_name: slang-server-windows-x64
 
     runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
     steps:
+    - name: Install dependencies (Rocky Linux 8)
+      if: matrix.container == 'rockylinux:8'
+      run: |
+        dnf -y update
+        dnf -y install 'dnf-command(config-manager)'
+        dnf config-manager --set-enabled powertools
+        dnf -y install epel-release
+        dnf -y install gcc-c++ clang cmake git make gcc-toolset-14-libatomic-devel
     - uses: actions/checkout@v4
       with:
         submodules: true
         fetch-depth: 0
-    - name: Install dependencies
-      if: matrix.os == 'ubuntu-latest'
+    - name: Install dependencies (Ubuntu x64 Clang)
+      if: matrix.os == 'ubuntu-latest' && matrix.container != 'rockylinux:8'
       run: |
         # Add LLVM repository using modern method
         wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/llvm.asc
@@ -57,7 +82,7 @@ jobs:
       with:
         xcode-version: 'latest'
     - name: Configure
-      run: cmake --preset ${{ matrix.preset }} -DSLANG_CI_BUILD=ON
+      run: cmake --preset ${{ matrix.preset }} -DSLANG_CI_BUILD=ON ${{ matrix.extra_flags }}
     - name: Build
       run: cmake --build build/${{ matrix.preset }} -j8
     - name: Run ctest
@@ -81,9 +106,78 @@ jobs:
             #        .venv\Scripts\activate
             #        uv sync
             #        pytest tests\system\ --binary build\${{ matrix.preset }}\bin\slang-server
+
+    # Artifact creation for releases
+    - name: Strip binary (Linux/macOS)
+      if: inputs.upload_artifacts && runner.os != 'Windows'
+      run: strip build/${{ matrix.preset }}/bin/slang-server
+
+    - name: Create artifact directory
+      if: inputs.upload_artifacts
+      run: mkdir -p release-artifacts
+
+    - name: Copy binary (Linux/macOS)
+      if: inputs.upload_artifacts && runner.os != 'Windows'
+      run: |
+        cp build/${{ matrix.preset }}/bin/slang-server release-artifacts/slang-server
+        chmod +x release-artifacts/slang-server
+
+    - name: Copy binary (Windows)
+      if: inputs.upload_artifacts && runner.os == 'Windows'
+      shell: bash
+      run: cp build/${{ matrix.preset }}/bin/slang-server.exe release-artifacts/slang-server.exe
+
+    - name: Create README
+      if: inputs.upload_artifacts
+      shell: bash
+      run: |
+        cat > release-artifacts/README.txt << 'EOF'
+        Slang Server - SystemVerilog Language Server
+
+        This is a pre-built binary of slang-server.
+
+        Installation:
+        1. Extract this archive
+        2. Add the binary to your PATH, or
+        3. Configure your editor to use the absolute path to this binary
+
+        For more information, visit:
+        https://github.com/hudson-trading/slang-server
+
+        Platform: ${{ matrix.artifact_name }}
+        Build date: $(date -u +%Y-%m-%d)
+        EOF
+
+    - name: Create tarball (Linux/macOS)
+      if: inputs.upload_artifacts && runner.os != 'Windows'
+      run: |
+        cd release-artifacts
+        tar -czf ../${{ matrix.artifact_name }}.tar.gz *
+        cd ..
+
+    - name: Create zip (Windows)
+      if: inputs.upload_artifacts && runner.os == 'Windows'
+      shell: bash
+      run: |
+        cd release-artifacts
+        7z a ../${{ matrix.artifact_name }}.zip *
+        cd ..
+
+    - name: Upload artifact
+      if: inputs.upload_artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.artifact_name }}
+        path: |
+          ${{ matrix.artifact_name }}.tar.gz
+          ${{ matrix.artifact_name }}.zip
+        retention-days: 7
+
     # Making the neovim plugin the top-level dir below this point for busted action
     # Moving the old checkout is easier than doing some Windows-portable rm -rf thing
     - name: Move build
+      # Skip for container builds (Rocky Linux) as paths don't work the same way
+      if: matrix.container == ''
       run: |
         echo ${{ runner.temp }}/slang-build/bin >> $GITHUB_PATH
         mv ${{ github.workspace }}/build/${{ matrix.preset }} ${{ runner.temp }}/slang-build
@@ -94,5 +188,6 @@ jobs:
     - name: Run Neovim plugin tests
       # This should work on Windows as well, but there's some linker error
       # that I don't feel like debugging via GH
-      if: runner.os != 'Windows'
+      # Skip for container builds (Rocky Linux) as paths don't work the same way
+      if: runner.os != 'Windows' && matrix.container == ''
       uses: nvim-neorocks/nvim-busted-action@v1
