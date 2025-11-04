@@ -4,182 +4,18 @@ on:
   release:
     types: [published]
   workflow_dispatch:
-    inputs:
-      test_mode:
-        description: 'Test mode - artifacts will not be uploaded to a release'
-        required: false
-        type: boolean
-        default: true
 
 permissions:
   contents: write
 
 jobs:
-  build-release:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # Linux x64 with GCC on Rocky Linux 8 (glibc 2.28 for wide compatibility)
-          - preset: gcc-release
-            os: ubuntu-latest
-            container: rockylinux:8
-            artifact_name: slang-server-rockylinux-x64
-            binary_path: build/gcc-release/bin/slang-server
-          # Linux x64 with Clang on modern Ubuntu (optimized for newer systems)
-          - preset: clang-release
-            os: ubuntu-latest
-            artifact_name: slang-server-linux-x64-clang
-            binary_path: build/clang-release/bin/slang-server
-          # Linux ARM64 with GCC
-          - preset: gcc-release
-            os: ubuntu-24.04-arm
-            artifact_name: slang-server-linux-arm64
-            binary_path: build/gcc-release/bin/slang-server
-          # macOS (universal or x64)
-          - preset: macos-release
-            os: macos-latest
-            artifact_name: slang-server-macos
-            binary_path: build/macos-release/bin/slang-server
-          # Windows x64
-          - preset: win64-release
-            os: windows-latest
-            artifact_name: slang-server-windows-x64
-            binary_path: build/win64-release/bin/slang-server.exe
-
-    runs-on: ${{ matrix.os }}
-    container: ${{ matrix.container }}
-
-    steps:
-    # Install git and dependencies before checkout for Rocky Linux container
-    - name: Install dependencies (Rocky Linux 8)
-      if: matrix.container == 'rockylinux:8'
-      run: |
-        dnf -y update
-        dnf -y install 'dnf-command(config-manager)'
-        dnf config-manager --set-enabled powertools
-        dnf -y install epel-release
-        dnf -y install cmake git make gcc-toolset-14-gcc-c++
-
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        submodules: true
-        fetch-depth: 0
-
-    - name: Install dependencies (Ubuntu x64 Clang)
-      if: matrix.os == 'ubuntu-latest' && matrix.artifact_name == 'slang-server-linux-x64-clang'
-      run: |
-        # Add LLVM repository using modern method
-        wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/llvm.asc
-        echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-20 main" | sudo tee /etc/apt/sources.list.d/llvm.list
-        sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        sudo apt-get update
-        sudo apt-get install -y g++-14 clang-20
-
-    - name: Install dependencies (Ubuntu ARM)
-      if: matrix.os == 'ubuntu-24.04-arm'
-      run: |
-        sudo add-apt-repository ppa:ubuntu-toolchain-r/test
-        sudo apt-get update
-        sudo apt-get install -y g++-14
-
-    - name: Setup MSVC
-      if: matrix.os == 'windows-latest'
-      uses: ilammy/msvc-dev-cmd@v1
-
-    - name: Setup Xcode
-      if: matrix.os == 'macos-latest'
-      uses: maxim-lobanov/setup-xcode@v1
-      with:
-        xcode-version: 'latest'
-
-    - name: Configure (Rocky Linux)
-      if: matrix.container == 'rockylinux:8'
-      run: |
-        source /opt/rh/gcc-toolset-14/enable
-        cmake --preset ${{ matrix.preset }} -DSLANG_SERVER_INCLUDE_INSTALL=ON
-
-    - name: Configure (Other)
-      if: matrix.container != 'rockylinux:8'
-      run: cmake --preset ${{ matrix.preset }} -DSLANG_SERVER_INCLUDE_INSTALL=ON
-
-    - name: Build (Rocky Linux)
-      if: matrix.container == 'rockylinux:8'
-      run: |
-        source /opt/rh/gcc-toolset-14/enable
-        cmake --build build/${{ matrix.preset }} -j8 --target slang_server
-
-    - name: Build (Other)
-      if: matrix.container != 'rockylinux:8'
-      run: cmake --build build/${{ matrix.preset }} -j8 --target slang_server
-
-    - name: Strip binary (Linux/macOS)
-      if: runner.os != 'Windows'
-      run: strip ${{ matrix.binary_path }}
-
-    - name: Create artifact directory
-      run: |
-        mkdir -p release-artifacts
-
-    - name: Copy binary (Linux/macOS)
-      if: runner.os != 'Windows'
-      run: |
-        cp ${{ matrix.binary_path }} release-artifacts/slang-server
-        chmod +x release-artifacts/slang-server
-
-    - name: Copy binary (Windows)
-      if: runner.os == 'Windows'
-      shell: bash
-      run: |
-        cp ${{ matrix.binary_path }} release-artifacts/slang-server.exe
-
-    - name: Create README
-      shell: bash
-      run: |
-        cat > release-artifacts/README.txt << 'EOF'
-        Slang Server - SystemVerilog Language Server
-
-        This is a pre-built binary of slang-server.
-
-        Installation:
-        1. Extract this archive
-        2. Add the binary to your PATH, or
-        3. Configure your editor to use the absolute path to this binary
-
-        For more information, visit:
-        https://github.com/hudson-trading/slang-server
-
-        Platform: ${{ matrix.artifact_name }}
-        Build date: $(date -u +%Y-%m-%d)
-        EOF
-
-    - name: Create tarball (Linux/macOS)
-      if: runner.os != 'Windows'
-      run: |
-        cd release-artifacts
-        tar -czf ../${{ matrix.artifact_name }}.tar.gz *
-        cd ..
-
-    - name: Create zip (Windows)
-      if: runner.os == 'Windows'
-      shell: bash
-      run: |
-        cd release-artifacts
-        7z a ../${{ matrix.artifact_name }}.zip *
-        cd ..
-
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ matrix.artifact_name }}
-        path: |
-          ${{ matrix.artifact_name }}.tar.gz
-          ${{ matrix.artifact_name }}.zip
-        retention-days: 7
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      upload_artifacts: true
 
   add-release-assets:
-    needs: build-release
+    needs: build
     if: always() && github.event_name == 'release'
     runs-on: ubuntu-latest
 
@@ -251,35 +87,3 @@ jobs:
         # Update release with checksums and upload artifacts
         gh release edit "$TAG_NAME" --notes-file updated-notes.md
         gh release upload "$TAG_NAME" release-assets/* --clobber
-
-    # - name: Update CHANGELOG.md
-    #   run: |
-    #     TAG_NAME="${{ steps.release.outputs.tag }}"
-    #     RELEASE_DATE=$(date -u +%Y-%m-%d)
-
-    #     # Create temporary file with new entry
-    #     cat > new-entry.md << 'EOF'
-    #     ## [${{ steps.release.outputs.tag }}] -
-    #     EOF
-    #     echo "$RELEASE_DATE" >> new-entry.md
-    #     echo "" >> new-entry.md
-    #     echo "${{ steps.release.outputs.notes }}" >> new-entry.md
-    #     echo "" >> new-entry.md
-
-    #     # Insert at the <!-- new-release-here --> marker
-    #     awk '/<!-- new-release-here -->/ { print; system("cat new-entry.md"); next } {print}' CHANGELOG.md > CHANGELOG.tmp
-    #     mv CHANGELOG.tmp CHANGELOG.md
-    #     rm new-entry.md
-
-    # - name: Commit CHANGELOG.md
-    #   run: |
-    #     git config user.name "github-actions[bot]"
-    #     git config user.email "github-actions[bot]@users.noreply.github.com"
-    #     git add CHANGELOG.md
-
-    #     if git diff --staged --quiet; then
-    #       echo "No changes to CHANGELOG.md"
-    #     else
-    #       git commit -m "Update CHANGELOG.md for ${{ steps.release.outputs.tag }}
-    #       git push
-    #     fi
