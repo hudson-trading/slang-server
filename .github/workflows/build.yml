@@ -9,6 +9,11 @@ on:
         required: false
         type: boolean
         default: false
+      ref:
+        description: 'Git ref to checkout (branch, tag, or commit)'
+        required: false
+        type: string
+        default: ''
   push:
     branches: [ main ]
     paths-ignore:
@@ -64,6 +69,7 @@ jobs:
         dnf -y install gcc-c++ clang cmake git make gcc-toolset-14-libatomic-devel
     - uses: actions/checkout@v4
       with:
+        ref: ${{ inputs.ref || github.ref }}
         submodules: true
         fetch-depth: 0
     - name: Install dependencies (Ubuntu x64 Clang)
