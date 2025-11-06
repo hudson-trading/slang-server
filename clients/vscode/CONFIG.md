@@ -12,10 +12,6 @@
 
   Formatter Command. The file contents will be sent to stdin, and formatted code should be sent back on stdout. E.g. `path/to/verible-format --indentation_spaces=4 -
 
-- `slang.rewriterPath`: string = ""
-
-  Rewriter command for macro expansion; e.g. `path/to/slang_rewriter --expand-macros`. This will shortly be part of the language server, and will not have to be set separately.
-
 - `slang.path`: path
 
   Platform Defaults:
@@ -33,3 +29,4 @@
 - `slang.debugArgs`: array = []
 
   Arguments to pass to slang-server when debugging
+

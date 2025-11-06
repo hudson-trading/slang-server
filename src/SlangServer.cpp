@@ -32,6 +32,7 @@
 #include "slang/ast/Scope.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
 #include "slang/driver/Driver.h"
+#include "slang/syntax/SyntaxPrinter.h"
 #include "slang/text/SourceLocation.h"
 #include "slang/text/SourceManager.h"
 #include "slang/util/OS.h"
@@ -113,6 +114,11 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
                     &SlangServer::getScopesByModule>("slang.getScopesByModule");
     registerCommand<std::string, std::vector<hier::QualifiedInstance>,
                     &SlangServer::getInstancesOfModule>("slang.getInstancesOfModule");
+
+    
+    // File features
+    registerCommand<ExpandMacroArgs, bool,
+        &SlangServer::expandMacros>("slang.expandMacros");
 
     if (params.workspaceFolders.has_value()) {
         auto folders = params.workspaceFolders.value();
@@ -284,6 +290,21 @@ std::vector<hier::QualifiedInstance> SlangServer::getInstancesOfModule(
         m_client.showError(fmt::format("Module {} not found", moduleName));
     }
     return result;
+}
+
+bool SlangServer::expandMacros(ExpandMacroArgs args) {
+    auto doc = m_driver->getDocument(URI::fromFile(args.src));
+
+    if(!doc){
+        return false;
+    }
+
+    SyntaxPrinter printer;
+    printer.setIncludeDirectives(true);
+    printer.setSquashNewlines(false);
+    printer.setExpandMacros(true);
+    OS::writeFile(args.dst, printer.print(*doc->getSyntaxTree()).str());
+    return true;
 }
 
 std::vector<std::string> SlangServer::getFilesContainingModule(const std::string moduleName) {

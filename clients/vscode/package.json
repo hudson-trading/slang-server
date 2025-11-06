@@ -283,11 +283,6 @@
           "default": "",
           "type": "string"
         },
-        "slang.rewriterPath": {
-          "default": "",
-          "description": "Rewriter command for macro expansion; e.g. `path/to/slang_rewriter --expand-macros`. This will shortly be part of the language server, and will not have to be set separately.",
-          "type": "string"
-        },
         "slang.path": {
           "description": "Path to the slang-server (not slang)",
           "default": "",

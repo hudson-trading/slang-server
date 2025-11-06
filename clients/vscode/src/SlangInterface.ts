@@ -137,6 +137,14 @@ export async function getFilesContainingModule(moduleName: string): Promise<stri
 export async function getModulesInFile(fsPath: string): Promise<string[]> {
   return await vscode.commands.executeCommand('slang.getModulesInFile', fsPath)
 }
+
+interface ExpandMacroArgs {
+  dst: string,
+  src: string
+}
+export async function expandMacros(args: ExpandMacroArgs): Promise<boolean> {
+  return await vscode.commands.executeCommand('slang.expandMacros', args)
+}
 ////////////////////////////////////////////////////////////
 /// server -> client is in commands in the project component
 ////////////////////////////////////////////////////////////

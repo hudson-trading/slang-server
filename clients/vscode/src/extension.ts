@@ -6,6 +6,7 @@ import * as child_process from 'child_process'
 import path from 'path'
 import * as process from 'process'
 import * as semver from 'semver'
+import * as fs from 'fs';
 
 import * as vscodelc from 'vscode-languageclient/node'
 import { LanguageClient, LanguageClientOptions, ServerOptions } from 'vscode-languageclient/node'
@@ -50,11 +51,6 @@ export class SlangExtension extends ActivityBarComponent {
   /// top level commands and configs
   ////////////////////////////////////////////////
   expandDir: vscode.Uri | undefined = undefined
-  rewriterPath: ConfigObject<string> = new ConfigObject({
-    default: '',
-    description:
-      'Rewriter command for macro expansion; e.g. `path/to/slang_rewriter --expand-macros`. This will shortly be part of the language server, and will not have to be set separately.',
-  })
 
   rewrite: EditorButton = new EditorButton(
     {
@@ -69,24 +65,18 @@ export class SlangExtension extends ActivityBarComponent {
         vscode.window.showErrorMessage('Open a verilog document to expand macros')
         return
       }
-
-      if (ext.rewriterPath.getValue() === '') {
-        vscode.window.showErrorMessage('`slang.rewriter` not provided in settings.json')
+      if (this.expandDir === undefined) {
         return
       }
-      let expDir = this.expandDir
-      if (expDir === undefined) {
+        
+      let expUri: vscode.Uri = vscode.Uri.joinPath(this.expandDir, doc.uri.path.split('/').pop()!)
+      const ok = await slang.expandMacros({src: doc.uri.fsPath, dst: expUri.fsPath})
+      if(!ok){
+        await vscode.window.showErrorMessage("Failed to expand macros")
         return
       }
-
-      let expanded = child_process.execSync(ext.rewriterPath.getValue() + ' ' + doc.uri.fsPath, {
-        cwd: getWorkspaceFolder(),
-      })
-
-      let uri: vscode.Uri = vscode.Uri.joinPath(expDir, doc.uri.path.split('/').pop()!)
-      await vscode.workspace.fs.writeFile(uri, expanded)
-      await vscode.workspace.openTextDocument(uri)
-      await vscode.commands.executeCommand('vscode.diff', uri, doc.uri)
+      await vscode.workspace.openTextDocument(expUri)
+      await vscode.commands.executeCommand('vscode.diff', expUri, doc.uri)
     }
   )
 
@@ -293,7 +283,9 @@ export class SlangExtension extends ActivityBarComponent {
     await this.setupLanguageClient()
 
     if (context.storageUri !== undefined) {
-      this.expandDir = vscode.Uri.joinPath(context.storageUri, '.sv_cache', 'expanded')
+      this.expandDir = vscode.Uri.joinPath(context.storageUri, 'expanded')
+      // Have to create if it doesn't exists, including storage uri
+      fs.mkdirSync(this.expandDir.fsPath, {recursive: true})
     }
 
     /////////////////////////////////////////////
