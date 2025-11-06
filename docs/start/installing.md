@@ -111,7 +111,7 @@ return {
 
 Neovim natively handles the LSP. No additional plugin is required to use Slang Server for standard LSP actions (e.g. [Go to Definition](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_definition).
 
-However, a plugin is provided to enable use of some enhanced client-side features which extend the LSP (e.g. hierachical compilation). The plugin can be found in `clients/neovim/` and is also mirrored in [slang-server.nvim](https://github.com/hudson-trading/slang-server.nvim) for ease of use with Neovim plugin managers.
+However, a plugin is provided to enable use of some enhanced client-side features which extend the LSP (e.g. hierarchical compilation). The plugin can be found in `clients/neovim/` and is also mirrored in [slang-server.nvim](https://github.com/hudson-trading/slang-server.nvim) for ease of use with Neovim plugin managers.
 
 ### Other editors
 
