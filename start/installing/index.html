@@ -1015,7 +1015,7 @@ Once Slang Server is more actively used (you can help by starring <a href="https
 <p>There are many ways to configure a language server in Neovim.</p>
 <p>For newer versions of Neovim (≥ v0.11), the new <a href="https://neovim.io/doc/user/lsp.html#vim.lsp.start()">vim.lsp API</a> is the preferred, simpler way to configure language servers:
 <div class="language-lua highlight"><pre><span></span><code><span class="nv">vim</span><span class="p">.</span><span class="py">lsp</span><span class="p">.</span><span class="nf">config</span><span class="p">(</span><span class="s2">&quot;slang-server&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nv">cmd</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;slang-server&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nv">cmd</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s2">&quot;slang-server&quot;</span><span class="w"> </span><span class="p">},</span>
 <span class="w">  </span><span class="nv">root_markers</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s2">&quot;.git&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;.slang&quot;</span><span class="w"> </span><span class="p">},</span>
 <span class="w">  </span><span class="nv">filetypes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="s2">&quot;systemverilog&quot;</span><span class="p">,</span>
