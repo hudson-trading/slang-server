@@ -7,6 +7,7 @@
 //------------------------------------------------------------------------------
 #include "completions/Completions.h"
 
+#include "lsp/LspTypes.h"
 #include "lsp/SnippetString.h"
 #include "util/Converters.h"
 #include "util/Formatting.h"
@@ -172,7 +173,7 @@ void resolveModule(const slang::syntax::ModuleHeaderSyntax& header, lsp::Complet
             output.appendPlaceholder(name);
         }
         else {
-            // TODO: ideally we could append hover info, don't think that's supported
+            // TODO: We should use textDocument/signatureHelp to show types and default values
             output.appendPlaceholder(fmt::format("{} /* default {} */", name, defaults[i]));
         }
         output.appendText(")");
@@ -410,6 +411,28 @@ void resolveMemberCompletion(const slang::ast::Scope& scope, lsp::CompletionItem
         else {
             docStr = fmt::format("{} {}(...)", subroutine.getReturnType().toString(), symbol.name);
         }
+        SnippetString toInsert(subroutine.name);
+        toInsert.appendText("(");
+        auto args = subroutine.getArguments();
+        for (auto& arg : args) {
+            auto argType = arg->getDeclaredType()->getType().toString();
+
+            // TODO: We should use textDocument/signatureHelp to show types and default values
+            if (arg->getDefaultValue() && arg->getDefaultValue()->syntax) {
+                toInsert.appendPlaceholder(fmt::format("{} /* : {} = {} */", arg->name, argType,
+                                                       arg->getDefaultValue()->syntax->toString()));
+            }
+            else {
+                toInsert.appendPlaceholder(fmt::format("{} /* {} */", arg->name, argType));
+            }
+
+            if (arg != args.back()) {
+                toInsert.appendText(", ");
+            }
+        }
+        toInsert.appendText(")");
+        item.insertText = toInsert.getValue();
+        item.insertTextFormat = lsp::InsertTextFormat::Snippet;
     }
     else if (symbol.kind == slang::ast::SymbolKind::TypeAlias) {
         symSyntax = symbol.getSyntax();
