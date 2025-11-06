@@ -4,10 +4,6 @@
 
   List of formatter configurations. Each entry specifies a command, directories to format, and language IDs. File input is sent to stdin, and formatted output is read from stdout.
 
-- `slang.rewriterPath`: string = ""
-
-  Rewriter command for macro expansion; e.g. `path/to/slang_rewriter --expand-macros`. This will shortly be part of the language server, and will not have to be set separately.
-
 - `slang.path`: path
 
   Platform Defaults:

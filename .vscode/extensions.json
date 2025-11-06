@@ -1,8 +1,9 @@
 {
   "recommendations": [
     // For C++ language features
-    "ms-vscode.cpptools",
     // Disable intellisense, use clangd for that; This is just for the debugger
+    "ms-vscode.cpptools",
+    // Much better intellisense
     "llvm-vs-code-extensions.vscode-clangd",
     // For C++ unit tests
     "matepek.vscode-catch2-test-adapter",
@@ -10,6 +11,8 @@
     "ms-python.python",
     "charliermarsh.ruff",
     "ms-python.mypy-type-checker",
-    "ms-python.debugpy"
+    "ms-python.debugpy",
+    // For running the vscode + gdb autoattach (yes, one click)
+    "augustocdias.tasks-shell-input"
   ]
 }

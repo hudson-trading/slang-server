@@ -125,6 +125,13 @@ public:
     // Return the item at this path
     std::vector<hier::HierItem_t> getScope(const std::string& hierPath);
 
+    struct ExpandMacroArgs {
+        std::string src;
+        std::string dst;
+    };
+    // Expand macros in a file
+    bool expandMacros(ExpandMacroArgs args);
+
     ////////////////////////////////////////////////
     /// Server Lifecycle
     ////////////////////////////////////////////////
