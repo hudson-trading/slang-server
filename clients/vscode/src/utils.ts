@@ -115,6 +115,8 @@ export const AnyVerilogLanguages = [
   'verilogheader',
 ]
 
+export type AnyVerilogLanguageType = (typeof AnyVerilogLanguages)[number]
+
 export const verilogSelector = [
   { scheme: 'file', language: 'verilog' },
   { scheme: 'file', language: 'verilogheader' },
