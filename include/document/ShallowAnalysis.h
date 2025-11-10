@@ -50,14 +50,17 @@ struct DefinitionInfo {
 class DocumentHandle;
 class ShallowAnalysis {
 public:
-    /// @brief Constructs a DocumentAnalysis instance with syntax and symbol indexing
+/// @brief Constructs a DocumentAnalysis instance with syntax and symbol indexing
+    /// 
+    /// An instance is created on every document open and change.
+    /// It's designed to provide index structures for performing lookups, and all the data that's immediately queried by the client following an open or change.
     /// @param sourceManager Reference to the source manager for file operations
     /// @param buffer The source buffer containing the document to analyze
-    /// @param tree The syntax tree for the main document
+    /// @param tree The syntax tree for the document
     /// @param options Compilation options bag for semantic analysis
     /// @param trees Additional syntax trees that this document depends on
     ShallowAnalysis(const SourceManager& sourceManager, slang::BufferID buffer,
-                    std::shared_ptr<slang::syntax::SyntaxTree> tree, slang::Bag options,
+        std::shared_ptr<slang::syntax::SyntaxTree> tree, slang::Bag options,
                     const std::vector<std::shared_ptr<slang::syntax::SyntaxTree>>& trees = {});
 
     /// @brief Retrieves document symbols for LSP outline view, called right after open
@@ -67,17 +70,17 @@ public:
     /// @brief Gets document links for include directives, called right after open
     /// @return Vector of LSP document links to included files
     std::vector<lsp::DocumentLink> getDocLinks() const;
-
+    
     /// @brief Gets hover information for a symbol at an LSP position
     /// @param position The LSP position to query
     /// @return Optional hover information, or nullopt if none available
     std::optional<lsp::Hover> getDocHover(const lsp::Position& position, bool noDebug = false);
-
+    
     /// @brief Gets the token at a specific source location
     /// @param loc The source location to query
     /// @return Pointer to the token at the location, or nullptr if none found
     const slang::parsing::Token* getTokenAt(slang::SourceLocation loc) const;
-
+    
     /// @brief Gets the word token at a specific source location
     /// @param loc The source location to query
     /// @return Pointer to the word token at the location, or nullptr if none found
@@ -107,7 +110,7 @@ public:
     /// @brief Generates debug hover information for a syntax node, traversing up the parent
     /// syntax pointers
     std::string getDebugHover(const slang::parsing::Token& node) const;
-
+    
     /// @brief Gets the AST symbol that a declared token refers to, if any
     const slang::ast::Symbol* getSymbolAtToken(const slang::parsing::Token* node) const;
 
@@ -116,6 +119,10 @@ public:
 
     /// Map from macro name to macro definition
     slang::flat_hash_map<std::string_view, const slang::syntax::DefineDirectiveSyntax*> macros;
+
+    /// Inlay hints collected on creation
+    /// These are things like port types and function argument names that are shown inline.
+    std::vector<lsp::InlayHint> inlayHints;
 
     friend class DocumentHandle;
 
@@ -140,11 +147,13 @@ private:
     /// Compilation context for symbol resolution
     std::unique_ptr<slang::ast::Compilation> m_compilation;
 
-    /// Symbol tree visitor for document symbols
+    /// Symbol tree visitor for /documentSymbols
+    /// Currently this is relies on syntax, but we should switch it to use the shallow compilation when symbols exist
     SymbolTreeVisitor m_symbolTreeVisitor;
 
-    /// Symbol indexer for syntax->symbol mapping
+    /// Symbol indexer for syntax->symbol mapping; Used for lookups
     SymbolIndexer m_symbolIndexer;
+
 
     /// @brief Helper method to check if a token is positioned over a selector
     bool isOverSelector(const slang::parsing::Token* node,

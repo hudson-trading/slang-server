@@ -8,19 +8,23 @@
 
 #include "document/ShallowAnalysis.h"
 
+#include "lsp/LspTypes.h"
 #include "util/Converters.h"
 #include "util/Logging.h"
 #include <memory>
 #include <string_view>
 
 #include "slang/ast/ASTContext.h"
+#include "slang/ast/ASTVisitor.h"
 #include "slang/ast/Compilation.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
+#include "slang/ast/symbols/PortSymbols.h"
 #include "slang/ast/symbols/ValueSymbol.h"
 #include "slang/ast/types/AllTypes.h"
 #include "slang/ast/types/Type.h"
 #include "slang/driver/Driver.h"
 #include "slang/parsing/Token.h"
+#include "slang/syntax/AllSyntax.h"
 #include "slang/syntax/SyntaxKind.h"
 #include "slang/syntax/SyntaxTree.h"
 #include "slang/text/SourceLocation.h"
@@ -48,6 +52,7 @@ ShallowAnalysis::ShallowAnalysis(const SourceManager& sourceManager, slang::Buff
     }
 
     // Index macros
+    // TODO: these should be tagged in the preprocessor instead, since users may `undef them
     for (auto& macro : m_tree->getDefinedMacros()) {
         macros[macro->name.valueText()] = macro;
     }
@@ -67,6 +72,20 @@ ShallowAnalysis::ShallowAnalysis(const SourceManager& sourceManager, slang::Buff
 
     // Elaborate and index token -> symbol defs, syntax -> scopes
     m_compilation->getRoot().visit(m_symbolIndexer);
+
+
+    // Collect inlay hints
+    m_compilation->getRoot().visit(ast::makeVisitor(
+        [&](auto&  /*v*/, const ast::InstanceSymbol sym) {
+            for(auto& port : sym.getPortConnections()){
+                inlayHints.push_back(lsp::InlayHint{
+                    .position = toPosition(port->port.location + port->port.name.size(), m_sourceManager),
+                    .label = port->port.getDeclaredType()->getType().toString()
+                });
+            }
+            // don't go into instances
+        }
+    ));
 }
 
 std::vector<lsp::DocumentSymbol> ShallowAnalysis::getDocSymbols() {

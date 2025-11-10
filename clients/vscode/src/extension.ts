@@ -111,10 +111,11 @@ export class SlangExtension extends ActivityBarComponent {
   async setupLanguageClient(): Promise<void> {
     this.logger.info('starting language server')
 
-    // Check for environment variable set in launch.json when debugging in vscode
+    // Check for environment variable set in launch.json; set when debugging in vscode
     let slangServerPath = process.env.SLANG_SERVER_PATH
     if (!slangServerPath) {
       slangServerPath = await this.path.getValueAsync()
+      this.logger.info(`Using slang-server at ${slangServerPath}`)
     } else {
       this.logger.info(`Using slang-server from environment variable: ${slangServerPath}`)
     }

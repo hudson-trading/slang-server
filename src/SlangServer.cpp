@@ -73,6 +73,8 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     registerDocCompletion();
     registerCompletionItemResolve();
 
+    registerDocInlayHint();
+
     // Cone tracing (drivers/loads)
     registerDocPrepareCallHierarchy();
     registerCallHierarchyIncomingCalls();
@@ -640,6 +642,15 @@ lsp::CompletionItem SlangServer::getCompletionItemResolve(const lsp::CompletionI
     lsp::CompletionItem ret = item;
     m_driver->completions.getCompletionItemResolve(ret);
     return ret;
+}
+
+std::optional<std::vector<lsp::InlayHint>> SlangServer::getDocInlayHint(const lsp::InlayHintParams& params) {
+    auto doc = m_driver->getDocument(params.textDocument.uri);
+    if(!doc){
+        return {};
+    }
+    return doc->getAnalysis().inlayHints;
+
 }
 
 SourceManager& SlangServer::sourceManager() {
