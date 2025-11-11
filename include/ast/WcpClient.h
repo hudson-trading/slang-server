@@ -27,6 +27,7 @@ typedef SSIZE_T ssize_t;
 #else
 #    include <arpa/inet.h>
 #    include <netinet/in.h>
+#    include <netinet/tcp.h>
 #    include <sys/socket.h>
 #    include <unistd.h>
 #endif
@@ -119,6 +120,13 @@ private:
             }
             else {
                 m_recvBuffer.append(buff, size);
+
+                // prevent nagle / delayed ack deadlock
+                // should also make sure servers use TCP_NODELAY
+#ifdef __linux__
+                int flag = 1;
+                setsockopt(m_clientFd, IPPROTO_TCP, TCP_QUICKACK, &flag, sizeof(flag));
+#endif
                 size_t pos = m_recvBuffer.find('\0');
                 if (pos != std::string::npos) {
                     std::string result = m_recvBuffer.substr(0, pos);

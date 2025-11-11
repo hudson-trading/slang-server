@@ -144,6 +144,11 @@ void waves::WcpClient::greet() {
         return;
     }
 
+#ifdef __linux__
+    int flag = 1;
+    setsockopt(m_clientFd, IPPROTO_TCP, TCP_QUICKACK, (char*)&flag, sizeof(int));
+#endif
+
     std::cerr << "WCP connection established" << std::endl;
 
     // Send greeting
