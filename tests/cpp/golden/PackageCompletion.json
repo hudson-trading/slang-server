@@ -76,7 +76,9 @@
         "kind": "markdown",
         "value": "````systemverilog\nfunction int get_value();\n    return 42;\nendfunction\n````"
       },
-      "filterText": "get_value"
+      "filterText": "get_value",
+      "insertText": "get_value()",
+      "insertTextFormat": "Snippet"
     },
     {
       "label": "global_var",

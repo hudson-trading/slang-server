@@ -143,7 +143,9 @@
           "kind": "markdown",
           "value": "````systemverilog\nfunction real calculate(real a, real b, operation_t op);\n    case (op)\n        ADD: return a + b;\n        SUBTRACT: return a - b;\n        MULTIPLY: return a * b;\n        default: return 0.0;\n    endcase\nendfunction\n````"
         },
-        "filterText": "calculate"
+        "filterText": "calculate",
+        "insertText": "calculate(${1:a /* real */}, ${2:b /* real */}, ${3:op /* math_pkg::operation_t */})",
+        "insertTextFormat": "Snippet"
       },
       {
         "label": "print_result",
@@ -156,7 +158,9 @@
           "kind": "markdown",
           "value": "````systemverilog\ntask print_result(real value);\n    $display(\"Result: %f\", value);\nendtask\n````"
         },
-        "filterText": "print_result"
+        "filterText": "print_result",
+        "insertText": "print_result(${1:value /* real */})",
+        "insertTextFormat": "Snippet"
       },
       {
         "label": "MAX_SIZE",
@@ -195,7 +199,9 @@
           "kind": "markdown",
           "value": "````systemverilog\nfunction int find_max(int array[], int size);\n    int max_val = array[0];\n    for (int i = 1; i < size; i++) begin\n        if (array[i] > max_val)\n            max_val = array[i];\n    end\n    return max_val;\nendfunction\n````"
         },
-        "filterText": "find_max"
+        "filterText": "find_max",
+        "insertText": "find_max(${1:array /* int\\$[] */}, ${2:size /* int */})",
+        "insertTextFormat": "Snippet"
       },
       {
         "label": "base_pkg",

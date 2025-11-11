@@ -256,7 +256,9 @@
           "kind": "markdown",
           "value": "````systemverilog\n// Local functions\nfunction logic [7:0] calc_parity(input logic [7:0] data);\n    return ^data;\nendfunction\n````"
         },
-        "filterText": "calc_parity"
+        "filterText": "calc_parity",
+        "insertText": "calc_parity(${1:data /* logic[7:0] */})",
+        "insertTextFormat": "Snippet"
       },
       {
         "label": "reset_signals",
@@ -268,7 +270,9 @@
           "kind": "markdown",
           "value": "````systemverilog\n// Task\ntask reset_signals();\n    internal_signal <= 1'b0;\n    wide_signal <= 16'h0;\nendtask\n````"
         },
-        "filterText": "reset_signals"
+        "filterText": "reset_signals",
+        "insertText": "reset_signals()",
+        "insertTextFormat": "Snippet"
       },
       {
         "label": "u_sub",
