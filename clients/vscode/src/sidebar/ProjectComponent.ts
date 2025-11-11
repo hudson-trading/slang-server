@@ -1166,6 +1166,12 @@ export class ProjectComponent
         return
       }
 
+      // Only show when slang view is visible.
+      // Users may put the instances view in another tab, so check that too.
+      if (!(this.treeView?.visible === true || this.instancesView.treeView?.visible === true)) {
+        return
+      }
+
       this.logger.info(
         'Active editor changed: ' + e.document.uri.toString(),
         'updating instances view'
