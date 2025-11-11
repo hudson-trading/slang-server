@@ -1,16 +1,8 @@
 # Configuration Settings
 
-- `slang.formatDirs`: array = []
+- `slang.formatters`: array = []
 
-  Directories to format
-
-- `slang.svFormat.command`: string = ""
-
-  Formatter Command. The file contents will be sent to stdin, and formatted code should be sent back on stdout. E.g. `path/to/verible-format --indentation_spaces=4 -
-
-- `slang.verilogFormat.command`: string = ""
-
-  Formatter Command. The file contents will be sent to stdin, and formatted code should be sent back on stdout. E.g. `path/to/verible-format --indentation_spaces=4 -
+  List of formatter configurations. Each entry specifies a command, directories to format, and language IDs. File input is sent to stdin, and formatted output is read from stdout.
 
 - `slang.rewriterPath`: string = ""
 

@@ -2,55 +2,96 @@
 
 import * as child_process from 'child_process'
 import * as vscode from 'vscode'
-import { ConfigObject, ExtensionComponent } from './lib/libconfig'
 import { getWorkspaceFolder } from './utils'
+import { ConfigObject, ExtensionComponent } from './lib/libconfig'
+import { Logger } from './lib/logger'
 
-export class ExternalFormatter
-  extends ExtensionComponent
-  implements vscode.DocumentFormattingEditProvider
-{
+export class DeprecatedExternalFormatter extends ExtensionComponent {
+  /// Here temporarily for backward compatibility
   command: ConfigObject<string> = new ConfigObject({
     description:
       'Formatter Command. The file contents will be sent to stdin, and formatted code should be sent back on stdout. E.g. `path/to/verible-format --indentation_spaces=4 -',
     default: '',
+    deprecationMessage: 'Use "verilog.formatters" instead.',
     type: 'string',
   })
+}
+
+export interface ExternalFormatterConfig {
+  command: string
+  dirs: string[]
+  languageIds: string[]
+}
+
+export class ExternalFormatter implements vscode.DocumentFormattingEditProvider {
+  private config: ExternalFormatterConfig
+  provider: vscode.Disposable
+  logger: Logger
+
+  constructor(config: ExternalFormatterConfig, logger: Logger) {
+    this.config = config
+    this.logger = logger
+
+    let selectors: vscode.DocumentFilter[]
+    if (config.dirs.length > 0) {
+      selectors = []
+      for (const language of config.languageIds) {
+        for (const dir of config.dirs) {
+          selectors.push({
+            scheme: 'file',
+            language: language,
+            pattern: `${getWorkspaceFolder()}/${dir}/**/*`,
+          })
+        }
+      }
+    } else {
+      selectors = config.languageIds.map((language) => ({
+        scheme: 'file',
+        language: language,
+      }))
+    }
+
+    this.provider = vscode.languages.registerDocumentFormattingEditProvider(selectors, this)
+  }
 
   provideDocumentFormattingEdits(
     document: vscode.TextDocument,
     _options: vscode.FormattingOptions,
     _token: vscode.CancellationToken
   ): vscode.ProviderResult<vscode.TextEdit[]> {
-    this.logger.info(`formatting ${document.uri.fsPath}`)
-    let command: string = this.command.getValue()
-    if (command.length === 0) {
+    if (this.config.command.length === 0) {
       return
     }
-    const split = command.split(' ')
+    const split = this.config.command.split(' ')
     const binPath = split[0]
-    const args = split.slice(1)
+    let args = split.slice(1).filter((arg) => arg !== '')
     if (binPath === undefined) {
-      this.logger.warn('No path specified for formatter')
       return []
     }
 
-    this.logger.info('Executing command: ' + binPath + ' ' + args.join(' '))
-
     try {
-      const result = child_process.spawnSync(binPath, args, {
-        input: document.getText(),
+      const options: child_process.SpawnSyncOptionsWithStringEncoding = {
         cwd: getWorkspaceFolder(),
         encoding: 'utf-8',
-        timeout: 2000,
-      })
-      if (result.stdout.length === 0) {
-        vscode.window.showErrorMessage('Verilog formatting failed: empty output')
+        timeout: 2000, // 2s
+        input: document.getText(),
+      }
+
+      this.logger.info(`Running external formatter: ${binPath} ${args.join(' ')}`)
+
+      const result = child_process.spawnSync(binPath, args, options)
+      if (result.error) {
+        this.logger.error(`External formatter execution failed: ${result.error.message}`)
+        vscode.window.showErrorMessage(`Verilog formatting failed: ${result.error.message}`)
         return []
       }
-      if (result.status === null) {
-        vscode.window.showErrorMessage('Verilog formatting failed: timed out')
+      if (result.stdout.length === 0 || result.status !== 0 || result.stderr.length > 0) {
+        const stderrLines = result.stderr.split('\n').slice(0, 5).join('\n')
+        this.logger.error(`External formatter failed:\n${stderrLines}`)
+        vscode.window.showErrorMessage(`Verilog formatting failed:\n${stderrLines}`)
         return []
       }
+      this.logger.info(`External formatter completed successfully.`)
       return [
         vscode.TextEdit.replace(
           new vscode.Range(
@@ -61,33 +102,9 @@ export class ExternalFormatter
         ),
       ]
     } catch (err) {
-      this.logger.error('Formatting failed: ' + (err as Error).toString())
+      vscode.window.showErrorMessage('Formatting failed: ' + (err as Error).toString())
     }
 
     return []
-  }
-
-  provider: vscode.Disposable | undefined
-
-  activateFormatter(formatDirs: string[], exts: string[], language: string): void {
-    if (this.provider !== undefined) {
-      this.provider.dispose()
-    }
-
-    let dirSel = undefined
-    if (formatDirs.length > 0) {
-      dirSel = formatDirs.length > 1 ? `{${formatDirs.join(',')}}` : formatDirs[0]
-    }
-
-    const sel: vscode.DocumentSelector = {
-      scheme: 'file',
-      language: language,
-      pattern:
-        formatDirs.length > 0
-          ? `${getWorkspaceFolder()}/${dirSel}/**/*.{${exts.join(',')}}`
-          : undefined,
-    }
-
-    this.provider = vscode.languages.registerDocumentFormattingEditProvider(sel, this)
   }
 }

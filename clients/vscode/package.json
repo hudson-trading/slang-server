@@ -268,19 +268,56 @@
         "slang.formatDirs": {
           "default": [],
           "description": "Directories to format",
+          "deprecationMessage": "Use `slang.formatters` instead.",
           "type": "array",
           "items": {
             "type": "string"
           }
         },
+        "slang.formatters": {
+          "default": [],
+          "description": "List of formatter configurations. Each entry specifies a command, directories to format, and language IDs. File input is sent to stdin, and formatted output is read from stdout.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "command": {
+                "type": "string",
+                "description": "Formatter command (file contents sent to stdin, formatted output from stdout)"
+              },
+              "dirs": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Directories to format"
+              },
+              "languageIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "verilog",
+                    "systemverilog",
+                    "systemverilogheader",
+                    "verilogheader"
+                  ]
+                },
+                "description": "Language IDs to format (e.g., \"systemverilog\", \"verilog\")"
+              }
+            }
+          },
+          "type": "array"
+        },
         "slang.svFormat.command": {
           "description": "Formatter Command. The file contents will be sent to stdin, and formatted code should be sent back on stdout. E.g. `path/to/verible-format --indentation_spaces=4 -",
           "default": "",
+          "deprecationMessage": "Use \"verilog.formatters\" instead.",
           "type": "string"
         },
         "slang.verilogFormat.command": {
           "description": "Formatter Command. The file contents will be sent to stdin, and formatted code should be sent back on stdout. E.g. `path/to/verible-format --indentation_spaces=4 -",
           "default": "",
+          "deprecationMessage": "Use \"verilog.formatters\" instead.",
           "type": "string"
         },
         "slang.rewriterPath": {

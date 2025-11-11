@@ -340,7 +340,7 @@ export abstract class ExtensionComponent extends ExtensionNode {
     this.preOrderConfigTraverse((obj: ConfigObject<any>) => {
       out += obj.getMarkdownString()
     })
-    return out
+    return out + '\n'
   }
 }
 
@@ -453,7 +453,9 @@ export class ViewButton extends ButtonNode<ViewButtonSpec> {
 
   getBindWhen() {
     return this.obj.keybindContainer
-      ? `sideBarFocus && activeViewlet == workbench.view.extension.${this._parentNode?.getRoot().configPath} && !inputFocus`
+      ? `sideBarFocus && activeViewlet == workbench.view.extension.${
+          this._parentNode?.getRoot().configPath
+        } && !inputFocus`
       : `focusedView == ${this._parentNode!.configPath} && !inputFocus`
   }
 }
@@ -586,23 +588,51 @@ export class ConfigObject<T extends JSONSchemaType> extends ExtensionNode {
     })
   }
 
-  getConfigJson(): any {
-    // TODO: use reflection to get the right type
-    // type Inspect<T> = T extends infer R ? { type: R } : never
-    if (this.obj['type'] === undefined) {
-      if (typeof this.default === 'string') {
-        this.obj['type'] = 'string'
-      } else if (typeof this.default === 'number') {
-        this.obj['type'] = 'number'
-      } else if (typeof this.default === 'boolean') {
-        this.obj['type'] = 'boolean'
-      } else if (Array.isArray(this.default)) {
-        this.obj['type'] = 'array'
-        this.obj['items'] = {
-          type: 'string',
+  private inferSchema(value: any): any {
+    if (typeof value === 'string') {
+      return { type: 'string' }
+    } else if (typeof value === 'number') {
+      return { type: 'number' }
+    } else if (typeof value === 'boolean') {
+      return { type: 'boolean' }
+    } else if (Array.isArray(value)) {
+      // Infer items schema from first element, or assume string if array is empty
+      const itemSchema = value.length > 0 ? this.inferSchema(value[0]) : { type: 'string' }
+      return {
+        type: 'array',
+        items: itemSchema,
+      }
+    } else if (typeof value === 'object' && value !== null) {
+      // Infer properties schema from object keys
+      const properties: any = {}
+      for (const key in value) {
+        if (Object.prototype.hasOwnProperty.call(value, key)) {
+          properties[key] = this.inferSchema(value[key])
         }
-      } else {
+      }
+      return {
+        type: 'object',
+        properties: properties,
+      }
+    } else {
+      return {}
+    }
+  }
+
+  getConfigJson(): any {
+    // Note: Can't use reflection since TypeScript types are erased at runtime
+    // Instead, we infer from default values and merge with any explicit schema properties
+    if (this.obj['type'] === undefined) {
+      const inferredSchema = this.inferSchema(this.default)
+      if (Object.keys(inferredSchema).length === 0) {
         throw Error(`Was not able to deduce type for ${this.configPath}`)
+      }
+      // Merge inferred schema, but preserve any explicitly provided properties
+      // (like 'items', 'properties', 'enum')
+      for (const key in inferredSchema) {
+        if (this.obj[key] === undefined) {
+          this.obj[key] = inferredSchema[key]
+        }
       }
     }
     return this.obj
@@ -610,6 +640,12 @@ export class ConfigObject<T extends JSONSchemaType> extends ExtensionNode {
 
   getMarkdownString(): string {
     let cfgjson = this.getConfigJson()
+
+    // Skip deprecated configs from documentation
+    if ('deprecationMessage' in cfgjson) {
+      return ''
+    }
+
     let out = `- \`${this.configPath}\`: ${cfgjson.type} = `
     if (cfgjson.type === 'string') {
       out += `"${this.default}"\n\n`
@@ -715,9 +751,7 @@ export class PathConfigObject extends ConfigObject<string> {
     let toolpath = await this.getValueAsync()
     if (toolpath === '') {
       await vscode.window.showErrorMessage(
-        `"${toolpath}" not found. Configure abs path at ${
-          this.configPath
-        }, add to PATH, or disable in config.`
+        `"${toolpath}" not found. Configure abs path at ${this.configPath}, add to PATH, or disable in config.`
       )
       return false
     }
@@ -733,6 +767,11 @@ export class PathConfigObject extends ConfigObject<string> {
   }
 
   getMarkdownString(): string {
+    // Skip deprecated configs from documentation
+    if ('deprecationMessage' in this.obj) {
+      return ''
+    }
+
     let out = `- \`${this.configPath}\`: path\n\n`
     out += `  Platform Defaults:\n\n`
     out += `    linux:   \`${this.platformDefaults.linux}\`\n\n`

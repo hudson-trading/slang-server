@@ -9,7 +9,11 @@ import * as semver from 'semver'
 
 import * as vscodelc from 'vscode-languageclient/node'
 import { LanguageClient, LanguageClientOptions, ServerOptions } from 'vscode-languageclient/node'
-import { ExternalFormatter } from './ExternalFormatter'
+import {
+  ExternalFormatter,
+  DeprecatedExternalFormatter,
+  ExternalFormatterConfig,
+} from './ExternalFormatter'
 import {
   ActivityBarComponent,
   CommandNode,
@@ -21,7 +25,7 @@ import {
 } from './lib/libconfig'
 import { ProjectComponent } from './sidebar/ProjectComponent'
 import * as slang from './SlangInterface'
-import { anyVerilogSelector, getWorkspaceFolder } from './utils'
+import { AnyVerilogLanguages, anyVerilogSelector, getWorkspaceFolder } from './utils'
 import { glob } from 'glob'
 
 export var ext: SlangExtension
@@ -34,14 +38,44 @@ export class SlangExtension extends ActivityBarComponent {
   formatDirs: ConfigObject<string[]> = new ConfigObject({
     default: [],
     description: 'Directories to format',
+    deprecationMessage: 'Use `slang.formatters` instead.',
+  })
+
+  formatters: ConfigObject<Array<ExternalFormatterConfig>> = new ConfigObject({
+    default: [],
+    description:
+      'List of formatter configurations. Each entry specifies a command, directories to format, and language IDs. File input is sent to stdin, and formatted output is read from stdout.',
+    items: {
+      type: 'object',
+      properties: {
+        command: {
+          type: 'string',
+          description:
+            'Formatter command (file contents sent to stdin, formatted output from stdout)',
+        },
+        dirs: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Directories to format',
+        },
+        languageIds: {
+          type: 'array',
+          items: { type: 'string', enum: AnyVerilogLanguages },
+          description: 'Language IDs to format (e.g., "systemverilog", "verilog")',
+        },
+      },
+    },
   })
 
   ////////////////////////////////////////////////
   /// extension subcomponents
   ////////////////////////////////////////////////
 
-  svFormat: ExternalFormatter = new ExternalFormatter()
-  verilogFormat: ExternalFormatter = new ExternalFormatter()
+  // Legacy formatter instances (deprecated, use formatters config instead)
+  svFormat: DeprecatedExternalFormatter = new DeprecatedExternalFormatter()
+  verilogFormat: DeprecatedExternalFormatter = new DeprecatedExternalFormatter()
+
+  private activeFormatters: ExternalFormatter[] = []
 
   // Side bar
   project: ProjectComponent = new ProjectComponent()
@@ -309,9 +343,48 @@ export class SlangExtension extends ActivityBarComponent {
   }
 
   private async checkFormatDirs() {
-    let dirs = this.formatDirs.getValue()
-    this.svFormat.activateFormatter(dirs, ['sv', 'svh'], 'systemverilog')
-    this.verilogFormat.activateFormatter(dirs, ['v', 'vh'], 'verilog')
+    // Dispose all existing formatters
+    for (const formatter of this.activeFormatters) {
+      formatter.provider.dispose()
+    }
+    this.activeFormatters = []
+
+    const configs = this.formatters.getValue()
+    for (let i = 0; i < configs.length; i++) {
+      const config = configs[i]
+      const formatter = new ExternalFormatter(config, this.logger)
+      this.activeFormatters.push(formatter)
+    }
+    if (configs.length === 0) {
+      // Legacy support
+      const svCommand = this.svFormat.command.getValue()
+      if (svCommand.length > 0) {
+        const svFormatter = new ExternalFormatter(
+          {
+            command: svCommand,
+            dirs: this.formatDirs.getValue(),
+            languageIds: ['systemverilog'],
+          },
+          this.logger
+        )
+        this.activeFormatters.push(svFormatter)
+      }
+
+      const verilogCommand = this.verilogFormat.command.getValue()
+      if (verilogCommand.length > 0) {
+        const verilogFormatter = new ExternalFormatter(
+          {
+            command: verilogCommand,
+            dirs: this.formatDirs.getValue(),
+            languageIds: ['verilog'],
+          },
+          this.logger
+        )
+        this.activeFormatters.push(verilogFormatter)
+      }
+    }
+
+    this.logger.info(`Registered ${this.activeFormatters.length} external formatter(s).`)
   }
 
   public async findFiles(globs: string[], useGlob = false): Promise<vscode.Uri[]> {
@@ -321,13 +394,14 @@ export class SlangExtension extends ActivityBarComponent {
     }
 
     // TODO: maybe use this.slangConfig.exclude.excludeDirs
+    // Or just wait for slang-format
 
     const find = async (str: string): Promise<vscode.Uri[]> => {
       let ret: vscode.Uri[]
       if (path.isAbsolute(str)) {
-        ret = (await glob(str)).map((p) => vscode.Uri.file(p))
+        ret = (await glob(str)).map((p: string) => vscode.Uri.file(p))
       } else if (useGlob) {
-        ret = (await glob(path.join(ws, str))).map((p) => vscode.Uri.file(p))
+        ret = (await glob(path.join(ws, str))).map((p: string) => vscode.Uri.file(p))
       } else {
         ret = await vscode.workspace.findFiles(new vscode.RelativePattern(ws, str))
       }
