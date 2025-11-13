@@ -8,13 +8,18 @@
 
 #include "document/SymbolIndexer.h"
 
+#include "util/Converters.h"
 #include "util/Logging.h"
+#include <variant>
 
 #include "slang/ast/Scope.h"
 #include "slang/ast/Symbol.h"
+#include "slang/ast/SystemSubroutine.h"
 #include "slang/ast/symbols/CompilationUnitSymbols.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
+#include "slang/ast/symbols/PortSymbols.h"
 #include "slang/ast/symbols/ValueSymbol.h"
+#include "slang/ast/symbols/VariableSymbols.h"
 #include "slang/syntax/AllSyntax.h"
 #include "slang/syntax/SyntaxKind.h"
 #include "slang/syntax/SyntaxNode.h"
@@ -99,16 +104,18 @@ void SymbolIndexer::indexInstanceSyntax(const slang::syntax::HierarchicalInstanc
             case slang::syntax::SyntaxKind::NamedPortConnection: {
                 auto& portSyntax = port->as<slang::syntax::NamedPortConnectionSyntax>();
                 auto name = portSyntax.name.valueText();
-                if (!name.empty()) {
-                    const slang::ast::Symbol* portSym = body.lookupName(
-                        portSyntax.name.valueText());
-                    if (portSym) {
-                        symdex[&portSyntax.name] = portSym;
-                    }
+                if (name.empty()) {
+                    continue;
                 }
+                const slang::ast::Symbol* maybePortSym = body.findPort(portSyntax.name.valueText());
+                if (!maybePortSym) {
+                    continue;
+                }
+
+                symdex[&portSyntax.name] = maybePortSym;
+
             } break;
             default:
-                WARN("Unknown port symbol kind: {}", toString(port->kind));
                 break;
         }
     }
@@ -145,7 +152,6 @@ void SymbolIndexer::indexInstanceSyntax(const slang::syntax::HierarchicalInstanc
                 }
             } break;
             default:
-                WARN("Unknown parameter kind: {}", toString(param->kind));
                 break;
         }
     }

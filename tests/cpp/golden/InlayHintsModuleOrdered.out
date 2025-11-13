@@ -1,0 +1,13 @@
+
+module adder(
+    input logic clk,
+    input logic [7:0] a,
+    input logic [7:0] b,
+    output logic [8:0] sum
+);
+endmodule
+
+module top;
+    logic clk, a, b, sum;
+    adder u_adder(/*clk:*/ clk, /*a:*/ a, /*b:*/ b, /*sum:*/ sum);
+endmodule

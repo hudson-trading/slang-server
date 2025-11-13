@@ -7,7 +7,10 @@
 //------------------------------------------------------------------------------
 #include "util/Converters.h"
 
+#include <cstdint>
 #include <fmt/format.h>
+
+#include "slang/text/SourceLocation.h"
 
 namespace server {
 

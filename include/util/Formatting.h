@@ -10,7 +10,16 @@
 #include "slang/syntax/SyntaxNode.h"
 
 namespace server {
+/**
+ * @brief Utility functions for formatting SystemVerilog code snippets.
+ * These utility functions help with formatting code snippets for LSP responses, as well as
+ * formatting the SystemVeriog itself. Eventually the SV Formatting will be superseded by a full SV
+ * formatter, but for now these provide decent formatting utility.
+ */
+
 using namespace slang;
+
+static const size_t FORMATTING_INDENT = 4;
 
 /// @brief Strip whitespace leading up to the first line with a non-whitespace character
 void stripBlankLines(std::string& s);

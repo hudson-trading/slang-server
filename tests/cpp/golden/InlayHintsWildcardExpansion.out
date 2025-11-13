@@ -1,0 +1,15 @@
+
+module receiver(
+    input logic clk,
+    input logic [7:0] data
+);
+endmodule
+
+module top;
+    logic clk;
+    logic [7:0] data;
+    receiver u_rx(
+        .clk,
+        .data
+    );
+endmodule

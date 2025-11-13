@@ -11,9 +11,9 @@
 #include <rfl/Result.hpp>
 /// A singleton to hold global configuration options.
 class SlangLspClient;
-class Config {
+
+struct Config {
     /// generate json schema from this by running with --config-schema
-public:
     // all fields must be optional
     rfl::Description<"Flags to pass to slang", std::string> flags;
     rfl::Description<
@@ -51,6 +51,17 @@ public:
                      "direct wcp connection with neovim and surfer.",
                      std::optional<std::string>>
         wcpCommand;
+
+    struct InlayHints {
+        rfl::Description<"Hints for port types", bool> portTypes = false;
+        rfl::Description<"Hints for names of ordered ports and params", bool> orderedInstanceNames =
+            true;
+        rfl::Description<"Hints for port names in wildcard (.*) ports", bool> wildcardNames = true;
+        rfl::Description<"Hints for function argument names", bool> funcArgNames = true;
+        rfl::Description<"Hints for macro argument names", bool> macroArgNames = true;
+    };
+
+    InlayHints inlayHints;
 
     static Config fromFiles(std::vector<std::string> confPaths, SlangLspClient& m_client);
 };
