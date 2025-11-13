@@ -195,12 +195,12 @@ module test;
     `DECLARE_INT(initial_state, STATE_IDLE)
     ^^^^^^^^^^^^ Ref -> ``define DECLARE_INT(name, val) localparam int name = val;`
                  ^^^^^^^^^^^^^ Ref -> `localparam int initial_state = STATE_IDLE`\n\ Expanded from\n\ ``DECLARE_INT(initial_state, STATE_IDLE)`
-                                ^^^^^^^^^^Exception occurred
+                                ^^^^^^^^^^ Ref -> `// In test.state_t`\n\\n\---\n\\n\`// Enum for testing macro with enum values\n\typedef enum {\n\    STATE_IDLE = 0,\n\    STATE_ACTIVE = 1,\n\    STATE_WAIT = 2,\n\    STATE_DONE = 3\n\} state_t;`
 
     `DECLARE_INT(active_state, STATE_ACTIVE)
     ^^^^^^^^^^^^ Ref -> ``define DECLARE_INT(name, val) localparam int name = val;`
                  ^^^^^^^^^^^^ Ref -> `localparam int active_state = STATE_ACTIVE`\n\ Expanded from\n\ ``DECLARE_INT(active_state, STATE_ACTIVE)`
-                               ^^^^^^^^^^^^Exception occurred
+                               ^^^^^^^^^^^^ Ref -> `// In test.state_t`\n\\n\---\n\\n\`// Enum for testing macro with enum values\n\typedef enum {\n\    STATE_IDLE = 0,\n\    STATE_ACTIVE = 1,\n\    STATE_WAIT = 2,\n\    STATE_DONE = 3\n\} state_t;`
 
 
 
