@@ -12,9 +12,11 @@
 #include "lsp/LspTypes.h"
 #include "lsp/SnippetString.h"
 #include <algorithm>
+#include <exception>
 #include <memory>
 #include <string>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "slang/parsing/Token.h"
@@ -242,12 +244,23 @@ public:
             bool newLine = line != sm.getLineNumber(prevLoc);
 
             // Get current element
-            auto currentElement = getElementAt(&hdl, offset);
+            std::optional<std::variant<ElementT, std::string>> currentElement;
+            try {
+                currentElement = getElementAt(&hdl, offset);
+            }
+            catch (...) {
+                currentElement = "Exception occurred";
+            }
             bool newElement = currentElement != prevElement;
 
             // Process element transition
             if (prevElement.has_value() && (newLine || newElement)) {
-                processElementTransition(&hdl, sm, offset - 1);
+                if (std::holds_alternative<std::string>(*prevElement)) {
+                    test.record(std::get<std::string>(*prevElement) + "\n");
+                }
+                else {
+                    processElementTransition(&hdl, sm, offset - 1);
+                }
             }
 
             // Handle new line
@@ -274,7 +287,7 @@ public:
 
 protected:
     GoldenTest test;
-    std::optional<ElementT> prevElement = std::nullopt;
+    std::optional<std::variant<ElementT, std::string>> prevElement;
 
     // These methods should be overridden by derived classes
     virtual std::optional<ElementT> getElementAt(DocumentHandle* hdl, lsp::uint offset) = 0;
@@ -297,7 +310,7 @@ protected:
     }
 
     void processElementTransition(DocumentHandle*, SourceManager&, lsp::uint) override {
-        test.record(fmt::format(" {}\n", toString(prevElement->kind)));
+        test.record(fmt::format(" {}\n", toString(std::get<parsing::Token>(*prevElement).kind)));
     }
 };
 
@@ -316,9 +329,10 @@ protected:
         auto doc = hdl->doc;
         auto tok = doc->getWordTokenAt(slang::SourceLocation(doc->getBuffer(), offset));
 
-        if (tok && prevElement->nameToken.location() == tok->location()) {
-            test.record(fmt::format(" Sym {} : {}\n", prevElement->nameToken.valueText(),
-                                    toString(prevElement->node->kind)));
+        auto pElem = std::get<server::DefinitionInfo>(*prevElement);
+        if (tok && pElem.nameToken.location() == tok->location()) {
+            test.record(fmt::format(" Sym {} : {}\n", pElem.nameToken.valueText(),
+                                    toString(pElem.node->kind)));
         }
         else {
             test.record(fmt::format(" Ref -> "));
