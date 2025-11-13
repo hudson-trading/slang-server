@@ -92,6 +92,7 @@ endif()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   add_compile_options(/utf-8 /bigobj /permissive-)
+  add_compile_options(/Zc:preprocessor)
 endif()
 
 if(CMAKE_SYSTEM_NAME MATCHES "WASI")
