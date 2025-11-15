@@ -141,7 +141,16 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     }
 
     if (m_workspaceFolder) {
-        INFO("Using workspace folder: {}", m_workspaceFolder->uri.getPath());
+        std::string decodedPath = URI::decodeURIComponent(m_workspaceFolder->uri.getPath());
+#ifdef _WIN32
+        // Remove leading '/' for Windows paths like "/D:/..."
+        if (!decodedPath.empty() && decodedPath[0] == '/' && decodedPath.size() > 2 &&
+            ((decodedPath[1] >= 'A' && decodedPath[1] <= 'Z') || (decodedPath[1] >= 'a' && decodedPath[1] <= 'z')) &&
+            decodedPath[2] == ':') {
+            decodedPath.erase(0, 1);
+        }
+#endif
+        INFO("Using workspace folder: {}", decodedPath);
     }
     else {
         WARN("No workspace folder or root provided");
@@ -481,7 +490,16 @@ void SlangServer::loadConfig() {
     // - home dir
     // - workspace local conf (untracked)
     if (m_workspaceFolder) {
-        auto fsPath = std::filesystem::path(m_workspaceFolder.value().uri.getPath());
+        std::string rawPath = URI::decodeURIComponent(m_workspaceFolder.value().uri.getPath());
+#ifdef _WIN32
+        if (!rawPath.empty() && rawPath[0] == '/' && rawPath.size() > 2 &&
+            ((rawPath[1] >= 'A' && rawPath[1] <= 'Z') || (rawPath[1] >= 'a' && rawPath[1] <= 'z')) &&
+            rawPath[2] == ':') {
+            // Normalize Windows file URI path: "/D:/..." -> "D:/..."
+            rawPath.erase(0, 1);
+        }
+#endif
+        auto fsPath = std::filesystem::path(rawPath);
         confPaths.push_back((fsPath / ".slang" / "server.json").string());
     }
     else {
@@ -494,7 +512,15 @@ void SlangServer::loadConfig() {
     }
     if (m_workspaceFolder) {
         // std::string workspacePath(m_workspaceFolder.value().uri.getPath());
-        auto fsPath = std::filesystem::path(m_workspaceFolder.value().uri.getPath());
+        std::string rawPath = URI::decodeURIComponent(m_workspaceFolder.value().uri.getPath());
+#ifdef _WIN32
+        if (!rawPath.empty() && rawPath[0] == '/' && rawPath.size() > 2 &&
+            ((rawPath[1] >= 'A' && rawPath[1] <= 'Z') || (rawPath[1] >= 'a' && rawPath[1] <= 'z')) &&
+            rawPath[2] == ':') {
+            rawPath.erase(0, 1);
+        }
+#endif
+        auto fsPath = std::filesystem::path(rawPath);
         confPaths.push_back((fsPath / ".slang" / "local" / "server.json").string());
     }
 

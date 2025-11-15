@@ -46,6 +46,27 @@ public:
         return std::string_view(underlying_).substr(7);
     }
 
+    /// Decode URL-encoded path (e.g., "%3A" -> ":")
+    static std::string decodeURIComponent(std::string_view encoded) {
+        std::string decoded;
+        decoded.reserve(encoded.size());
+        for (size_t i = 0; i < encoded.size(); ++i) {
+            if (encoded[i] == '%' && i + 2 < encoded.size()) {
+                // Decode %XX hex sequence
+                char hex[3] = {encoded[i + 1], encoded[i + 2], 0};
+                char* end;
+                long value = std::strtol(hex, &end, 16);
+                if (end == hex + 2) {
+                    decoded += static_cast<char>(value);
+                    i += 2;
+                    continue;
+                }
+            }
+            decoded += encoded[i];
+        }
+        return decoded;
+    }
+
     static URI fromFile(const std::filesystem::path& file) { return URI("file", file.string()); }
 
     static URI fromWeb(std::string_view path) { return URI("https", std::string(path)); }
