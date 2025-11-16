@@ -77,6 +77,8 @@ option(SLANG_SERVER_INCLUDE_TESTS "Include test targets in the build"
        ${SLANG_SERVER_MASTER_PROJECT})
 option(SLANG_SERVER_INCLUDE_INSTALL "Include installation targets"
        ${SLANG_SERVER_MASTER_PROJECT})
+option(SLANG_SERVER_STATIC_LINK_STDLIB
+       "Statically link C++ standard library (libstdc++/libc++) and libgcc" OFF)
 
 # Always require C++20 or later, no extensions.
 set(CMAKE_CXX_STANDARD 20)
@@ -132,6 +134,27 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   # Warn about potential portability issues add_compile_options(-Wconversion)
   # Warn about missing includes that might work on some platforms but not others
   add_compile_options(-Wmissing-include-dirs)
+endif()
+
+# Configure static linking of C++ standard library if requested
+if(SLANG_SERVER_STATIC_LINK_STDLIB)
+  if(CMAKE_SYSTEM_NAME MATCHES "Darwin")
+    # On macOS, statically link libc++ (compiler-rt is already static by
+    # default)
+    add_link_options(-static-libstdc++)
+    message(STATUS "Static linking enabled for C++ standard library (libc++)")
+  elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    # On Linux, statically link libstdc++/libc++ and libgcc for better
+    # portability
+    add_link_options(-static-libstdc++ -static-libgcc)
+    message(
+      STATUS
+        "Static linking enabled for C++ standard library (libstdc++/libgcc)")
+  elseif(MSVC)
+    # For MSVC, set the runtime library to static
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    message(STATUS "Static linking enabled for MSVC runtime library")
+  endif()
 endif()
 
 # Include GNUInstallDirs for standard installation directories

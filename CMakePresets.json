@@ -65,7 +65,8 @@
         "strategy": "external"
       },
       "cacheVariables": {
-        "SLANG_INCLUDE_THREADTEST": "ON"
+        "SLANG_INCLUDE_THREADTEST": "ON",
+        "SLANG_SERVER_STATIC_LINK_STDLIB": "ON"
       }
     },
     {
@@ -117,7 +118,8 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_CXX_COMPILER": "clang++-20",
-        "SLANG_INCLUDE_THREADTEST": "ON"
+        "SLANG_INCLUDE_THREADTEST": "ON",
+        "SLANG_SERVER_STATIC_LINK_STDLIB": "ON"
       }
     },
     {
@@ -147,7 +149,8 @@
       ],
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_CXX_COMPILER": "g++-14"
+        "CMAKE_CXX_COMPILER": "g++-14",
+        "SLANG_SERVER_STATIC_LINK_STDLIB": "ON"
       }
     },
     {
@@ -195,7 +198,8 @@
         "macos-base"
       ],
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
+        "CMAKE_BUILD_TYPE": "Release",
+        "SLANG_SERVER_STATIC_LINK_STDLIB": "ON"
       }
     }
   ]
