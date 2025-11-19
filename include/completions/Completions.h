@@ -30,7 +30,7 @@ void resolveMacro(const syntax::DefineDirectiveSyntax& macro, lsp::CompletionIte
 //------------------------------------------------------------------------------
 // Modules, Interfaces, Packages
 //------------------------------------------------------------------------------
-lsp::CompletionItem getModuleCompletion(std::string name, lsp::SymbolKind kind);
+lsp::CompletionItem getModuleCompletion(std::string name, const syntax::SyntaxKind& kind);
 
 void resolveModule(const slang::syntax::ModuleHeaderSyntax& header, lsp::CompletionItem& ret,
                    bool excludeName = false);

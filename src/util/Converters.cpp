@@ -84,6 +84,26 @@ lsp::Location toLocation(const SourceLocation& loc, const SourceManager& sourceM
                                              .end = toPosition(loc + 1, sourceManager)}};
 }
 
+lsp::SymbolKind toSymbolKind(const syntax::SyntaxKind& kind) {
+    switch (kind) {
+        case syntax::SyntaxKind::InterfaceDeclaration:
+            return lsp::SymbolKind::Interface;
+        case syntax::SyntaxKind::ModuleDeclaration:
+        case syntax::SyntaxKind::CheckerDeclaration:
+        case syntax::SyntaxKind::ProgramDeclaration:
+            return lsp::SymbolKind::Module;
+        case syntax::SyntaxKind::PackageDeclaration:
+            return lsp::SymbolKind::Package;
+        case syntax::SyntaxKind::ClassDeclaration:
+            return lsp::SymbolKind::Class;
+        case syntax::SyntaxKind::FunctionDeclaration:
+        case syntax::SyntaxKind::TaskDeclaration:
+            return lsp::SymbolKind::Function;
+        default:
+            return lsp::SymbolKind::Null;
+    }
+}
+
 lsp::MarkupContent markdown(std::string& md) {
     return lsp::MarkupContent{.kind = lsp::MarkupKind::make<"markdown">(), .value = md};
 }
