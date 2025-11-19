@@ -353,6 +353,12 @@ std::vector<lsp::CompletionItem> Cursor::getResolvedCompletions(
         resolvedItems.push_back(completion.m_item);
     }
 
+    // Sort for stable golden output
+    std::sort(resolvedItems.begin(), resolvedItems.end(),
+              [](const lsp::CompletionItem& a, const lsp::CompletionItem& b) {
+                  return a.label < b.label;
+              });
+
     return resolvedItems;
 }
 

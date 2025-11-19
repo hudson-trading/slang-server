@@ -14,19 +14,6 @@
       "filterText": "PKG_PARAM"
     },
     {
-      "label": "my_struct_t",
-      "labelDetails": {
-        "detail": " UnpackedStructType",
-        "description": "test_pkg"
-      },
-      "kind": "Struct",
-      "documentation": {
-        "kind": "markdown",
-        "value": "````systemverilog\ntypedef struct {\n    int field1;\n    logic field2;\n} my_struct_t;\n````"
-      },
-      "filterText": "my_struct_t"
-    },
-    {
       "label": "VALUE_A",
       "labelDetails": {
         "detail": " EnumValue",
@@ -53,17 +40,17 @@
       "filterText": "VALUE_B"
     },
     {
-      "label": "my_enum_t",
+      "label": "gen_block",
       "labelDetails": {
-        "detail": " EnumType",
+        "detail": " ",
         "description": "test_pkg"
       },
-      "kind": "Enum",
+      "kind": "Snippet",
       "documentation": {
         "kind": "markdown",
-        "value": "````systemverilog\ntypedef enum {\n    VALUE_A,\n    VALUE_B\n} my_enum_t;\n````"
+        "value": "````systemverilog\nfor (i = 0; i < 4; i++) begin : gen_block\n    logic [7:0] gen_var;\nend\n````"
       },
-      "filterText": "my_enum_t"
+      "filterText": "gen_block"
     },
     {
       "label": "get_value",
@@ -94,19 +81,6 @@
       "filterText": "global_var"
     },
     {
-      "label": "port_signal",
-      "labelDetails": {
-        "detail": " logic [7:0]",
-        "description": "test_pkg"
-      },
-      "kind": "Variable",
-      "documentation": {
-        "kind": "markdown",
-        "value": "````systemverilog\nlogic [7:0] port_signal;\n````"
-      },
-      "filterText": "port_signal"
-    },
-    {
       "label": "i",
       "labelDetails": {
         "detail": " ",
@@ -120,17 +94,43 @@
       "filterText": "i"
     },
     {
-      "label": "gen_block",
+      "label": "my_enum_t",
       "labelDetails": {
-        "detail": " ",
+        "detail": " EnumType",
         "description": "test_pkg"
       },
-      "kind": "Snippet",
+      "kind": "Enum",
       "documentation": {
         "kind": "markdown",
-        "value": "````systemverilog\nfor (i = 0; i < 4; i++) begin : gen_block\n    logic [7:0] gen_var;\nend\n````"
+        "value": "````systemverilog\ntypedef enum {\n    VALUE_A,\n    VALUE_B\n} my_enum_t;\n````"
       },
-      "filterText": "gen_block"
+      "filterText": "my_enum_t"
+    },
+    {
+      "label": "my_struct_t",
+      "labelDetails": {
+        "detail": " UnpackedStructType",
+        "description": "test_pkg"
+      },
+      "kind": "Struct",
+      "documentation": {
+        "kind": "markdown",
+        "value": "````systemverilog\ntypedef struct {\n    int field1;\n    logic field2;\n} my_struct_t;\n````"
+      },
+      "filterText": "my_struct_t"
+    },
+    {
+      "label": "port_signal",
+      "labelDetails": {
+        "detail": " logic [7:0]",
+        "description": "test_pkg"
+      },
+      "kind": "Variable",
+      "documentation": {
+        "kind": "markdown",
+        "value": "````systemverilog\nlogic [7:0] port_signal;\n````"
+      },
+      "filterText": "port_signal"
     }
   ]
 ]
