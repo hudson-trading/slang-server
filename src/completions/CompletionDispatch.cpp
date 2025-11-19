@@ -49,8 +49,10 @@ void CompletionDispatch::getInvokedCompletions(std::vector<lsp::CompletionItem>&
 
     if (isLhs) {
         // Add modules for lhs
-        for (auto& [name, info] : m_indexer.symbolToFiles.getAllEntries()) {
-            results.push_back(completions::getModuleCompletion(name, info.kind));
+        for (auto& [name, entries] : m_indexer.symbolToFiles) {
+            if (!entries.empty()) {
+                results.push_back(completions::getModuleCompletion(name, entries[0].kind));
+            }
         }
         INFO("Returning {} module completions", results.size());
     }
@@ -58,9 +60,10 @@ void CompletionDispatch::getInvokedCompletions(std::vector<lsp::CompletionItem>&
         // Add packages as completions, because we may grab a value from those
         // Add these after though, since local vars are the common case
         // TODO: add these when we can sort completions
-        for (auto& [name, info] : m_indexer.symbolToFiles.getAllEntries()) {
-            if (info.kind == lsp::SymbolKind::Package) {
-                results.push_back(completions::getModuleCompletion(name, info.kind));
+        for (auto& [name, entries] : m_indexer.symbolToFiles) {
+            if (!entries.empty() &&
+                entries[0].kind == slang::syntax::SyntaxKind::PackageDeclaration) {
+                results.push_back(completions::getModuleCompletion(name, entries[0].kind));
             }
         }
     }
@@ -81,19 +84,19 @@ void CompletionDispatch::getTriggerCompletions(char triggerChar, char prevChar,
             return;
         }
         auto name = moduleToken->valueText();
-        auto [start, end] = m_indexer.getEntriesForSymbol(name);
-        if (start == end) {
+        auto it = m_indexer.symbolToFiles.find(std::string(name));
+        if (it == m_indexer.symbolToFiles.end() || it->second.empty()) {
             ERROR("No module found for {}", name);
             WARN("With line {}", doc->getPrevText(toPosition(loc, m_sourceManager)));
             return;
         }
-        else if (std::distance(start, end) > 1) {
-            WARN("Multiple modules found for {}: {}", name, std::distance(start, end));
+        else if (it->second.size() > 1) {
+            WARN("Multiple modules found for {}: {}", name, it->second.size());
         }
 
-        auto& [_, entry] = *start;
+        auto& entry = it->second[0];
         auto completion = completions::getModuleCompletion(std::string{name}, entry.kind);
-        resolveModuleCompletion(completion, fs::path(entry.uri.getPath()), true);
+        resolveModuleCompletion(completion, fs::path(entry.uri->getPath()), true);
         results.push_back(completion);
     }
     else if (triggerChar == ':' && prevChar == ':') {
@@ -137,7 +140,7 @@ void CompletionDispatch::getTriggerCompletions(char triggerChar, char prevChar,
             results.push_back(completions::getMacroCompletion(*macro));
         }
         // Add global macros
-        for (auto& [name, _info] : m_indexer.macroToFiles.getAllEntries()) {
+        for (auto& [name, _info] : m_indexer.macroToFiles) {
             results.push_back(completions::getMacroCompletion(name));
         }
     }
