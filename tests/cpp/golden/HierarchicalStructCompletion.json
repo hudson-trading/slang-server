@@ -42,15 +42,6 @@
         "filterText": "inner"
       },
       {
-        "label": "tag",
-        "labelDetails": {
-          "detail": " logic[15:0]",
-          "description": "nested_struct_t"
-        },
-        "kind": "Property",
-        "filterText": "tag"
-      },
-      {
         "label": "ready",
         "labelDetails": {
           "detail": " logic",
@@ -58,19 +49,28 @@
         },
         "kind": "Property",
         "filterText": "ready"
+      },
+      {
+        "label": "tag",
+        "labelDetails": {
+          "detail": " logic[15:0]",
+          "description": "nested_struct_t"
+        },
+        "kind": "Property",
+        "filterText": "tag"
       }
     ]
   },
   {
     "very_complex_struct.": [
       {
-        "label": "level1",
+        "label": "enable",
         "labelDetails": {
-          "detail": " nested_struct_t",
+          "detail": " logic",
           "description": "deep_nested_struct_t"
         },
         "kind": "Property",
-        "filterText": "level1"
+        "filterText": "enable"
       },
       {
         "label": "id",
@@ -82,13 +82,13 @@
         "filterText": "id"
       },
       {
-        "label": "enable",
+        "label": "level1",
         "labelDetails": {
-          "detail": " logic",
+          "detail": " nested_struct_t",
           "description": "deep_nested_struct_t"
         },
         "kind": "Property",
-        "filterText": "enable"
+        "filterText": "level1"
       }
     ]
   },
@@ -135,15 +135,6 @@
         "filterText": "inner"
       },
       {
-        "label": "tag",
-        "labelDetails": {
-          "detail": " logic[15:0]",
-          "description": "nested_struct_t"
-        },
-        "kind": "Property",
-        "filterText": "tag"
-      },
-      {
         "label": "ready",
         "labelDetails": {
           "detail": " logic",
@@ -151,6 +142,15 @@
         },
         "kind": "Property",
         "filterText": "ready"
+      },
+      {
+        "label": "tag",
+        "labelDetails": {
+          "detail": " logic[15:0]",
+          "description": "nested_struct_t"
+        },
+        "kind": "Property",
+        "filterText": "tag"
       }
     ]
   },
