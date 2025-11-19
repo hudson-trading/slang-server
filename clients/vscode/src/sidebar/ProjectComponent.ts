@@ -1209,7 +1209,7 @@ export class ProjectComponent
     })
   }
 
-  static RE_INSTANCE_PATHS = /(?<!\/)[\w$]+(\[\d+\])?(\.[\w$]+(\[\d+\])?)+/g
+  static RE_INSTANCE_PATHS = /(?<![/\\])[\w$]+(\[\d+\])?(\.[\w$]+(\[\d+\])?)+(?![/\\])/g
 
   async provideTerminalLinks(
     context: vscode.TerminalLinkContext,
@@ -1217,6 +1217,7 @@ export class ProjectComponent
   ): Promise<InstanceLink[]> {
     let links = []
     for (let match of context.line.matchAll(ProjectComponent.RE_INSTANCE_PATHS)) {
+      this.logger.info('Potential instance path in terminal: ' + match[0])
       const line = context.line
       const startIndex = line.indexOf(match[0])
       const path = match[0]
