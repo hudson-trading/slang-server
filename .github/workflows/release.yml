@@ -1,17 +1,27 @@
 name: Release
 
 on:
-  release:
-    types: [published]
   workflow_dispatch:
+    inputs:
+      kind:
+        description: 'Update kind (major, minor, patch)'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: 'patch'
 
 permissions:
   contents: write
 
 jobs:
-  update-version:
-    if: github.event_name == 'release'
+  create-release:
     runs-on: ubuntu-latest
+    outputs:
+      tag_name: ${{ steps.create_tag.outputs.tag_name }}
+      version: ${{ steps.bump_version.outputs.version }}
     steps:
     - name: Checkout main branch
       uses: actions/checkout@v4
@@ -20,42 +30,84 @@ jobs:
         fetch-depth: 0
         token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Update VERSION file from release tag
+    - name: Bump version
+      id: bump_version
       run: |
-        TAG_NAME="${{ github.event.release.tag_name }}"
-        VERSION="${TAG_NAME#v}"  # Strip 'v' prefix
+        # Read current version
+        CURRENT_VERSION=$(cat VERSION)
+        echo "Current version: $CURRENT_VERSION"
+
+        # Parse version components
+        IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+
+        # Bump based on kind
+        case "${{ github.event.inputs.kind }}" in
+          major)
+            MAJOR=$((MAJOR + 1))
+            MINOR=0
+            PATCH=0
+            ;;
+          minor)
+            MINOR=$((MINOR + 1))
+            PATCH=0
+            ;;
+          patch)
+            PATCH=$((PATCH + 1))
+            ;;
+        esac
+
+        NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+        echo "New version: $NEW_VERSION"
+        echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+    - name: Update VERSION file
+      run: |
+        VERSION="${{ steps.bump_version.outputs.version }}"
         echo "$VERSION" > VERSION
         echo "Updated VERSION to: $VERSION"
         cat VERSION
 
-    - name: Commit and push VERSION update to main
+    - name: Commit VERSION update
       run: |
-        TAG_NAME="${{ github.event.release.tag_name }}"
-        VERSION="${TAG_NAME#v}"
+        VERSION="${{ steps.bump_version.outputs.version }}"
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
         git add VERSION
-        if git diff --staged --quiet; then
-          echo "VERSION file already up to date"
-        else
-          git commit -m "$(cat <<EOF
-        Update VERSION to $VERSION
-        EOF
-        )"
-          git push origin main
-        fi
+        git commit -m "Update VERSION to $VERSION"
+        git push origin main
+        echo "Committed VERSION update to main"
+
+    - name: Create and push tag
+      id: create_tag
+      run: |
+        VERSION="${{ steps.bump_version.outputs.version }}"
+        TAG_NAME="v$VERSION"
+        git tag "$TAG_NAME"
+        git push origin "$TAG_NAME"
+        echo "Created and pushed tag: $TAG_NAME"
+        echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+
+    - name: Create GitHub release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        TAG_NAME="${{ steps.create_tag.outputs.tag_name }}"
+        gh release create "$TAG_NAME" \
+          --title "$TAG_NAME" \
+          --generate-notes \
+          --draft=false \
+          --prerelease=false
+        echo "Created GitHub release: $TAG_NAME"
 
   build:
-    needs: update-version
-    if: always()  # Run even if update-version is skipped (workflow_dispatch)
+    needs: create-release
     uses: ./.github/workflows/build.yml
     with:
       upload_artifacts: true
       ref: main  # Build from main branch with updated VERSION
 
   add-release-assets:
-    needs: build
-    if: always() && github.event_name == 'release'
+    needs: [create-release, build]
     runs-on: ubuntu-latest
 
     steps:
@@ -91,7 +143,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        TAG_NAME="${{ github.event.release.tag_name }}"
+        TAG_NAME="${{ needs.create-release.outputs.tag_name }}"
         echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
 
         # Get existing release notes
