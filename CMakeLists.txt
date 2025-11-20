@@ -73,6 +73,18 @@ project(
   HOMEPAGE_URL https://github.com/hudson-trading/slang-server
   DESCRIPTION "SystemVerilog language server based on slang")
 
+if(CMAKE_SYSTEM_NAME MATCHES "Darwin")
+  # This ensures that *all* targets (including slang and reflect-cpp) use the
+  # default Apple C++ runtime, preventing dynamic link conflicts.
+  set(CMAKE_CXX_FLAGS
+      "${CMAKE_CXX_FLAGS} -stdlib=libc++"
+      CACHE STRING "" FORCE)
+  set(CMAKE_EXE_LINKER_FLAGS
+      "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++"
+      CACHE STRING "" FORCE)
+  message(STATUS "macOS build: Forcing use of libc++ standard library.")
+endif()
+
 option(SLANG_SERVER_INCLUDE_TESTS "Include test targets in the build"
        ${SLANG_SERVER_MASTER_PROJECT})
 option(SLANG_SERVER_INCLUDE_INSTALL "Include installation targets"
@@ -136,14 +148,12 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   add_compile_options(-Wmissing-include-dirs)
 endif()
 
-# Configure static linking of C++ standard library if requested
+# Configure static linking of C++ standard library if requested Note: macOS uses
+# system libc++ which can't be statically linked and is generally compatible
+# across versions
 if(SLANG_SERVER_STATIC_LINK_STDLIB)
-  if(CMAKE_SYSTEM_NAME MATCHES "Darwin")
-    # On macOS, statically link libc++ (compiler-rt is already static by
-    # default)
-    add_link_options(-static-libstdc++)
-    message(STATUS "Static linking enabled for C++ standard library (libc++)")
-  elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" AND NOT CMAKE_SYSTEM_NAME
+                                                   MATCHES "Darwin")
     # On Linux, statically link libstdc++/libc++ and libgcc for better
     # portability
     add_link_options(-static-libstdc++ -static-libgcc)

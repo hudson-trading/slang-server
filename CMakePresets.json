@@ -199,7 +199,9 @@
       ],
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "SLANG_SERVER_STATIC_LINK_STDLIB": "ON"
+        "CMAKE_OSX_ARCHITECTURES": "x86_64;arm64",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "13.0",
+        "CMAKE_CXX_COMPILER": "clang++"
       }
     }
   ]

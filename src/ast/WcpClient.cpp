@@ -8,13 +8,13 @@
 
 #include "ast/WcpClient.h"
 
+#include "fmt/format.h"
 #include "rfl/UnderlyingEnums.hpp"
 #include "rfl/to_generic.hpp"
 #include "wcp/WcpTypes.h"
 #include <chrono>
 #include <csignal>
 #include <cstdlib>
-#include <format>
 #include <sstream>
 
 #ifdef _WIN32
@@ -32,7 +32,7 @@ namespace fs = std::filesystem;
 
 void waves::WcpClient::runViewer() {
 #ifdef _WIN32
-    std::string cmdLine = std::vformat(m_command, std::make_format_args(m_port));
+    std::string cmdLine = fmt::format(fmt::runtime(m_command), m_port);
 
     auto stdoutLog = fs::temp_directory_path();
     stdoutLog /= "slang-server.wcp.stdout";
@@ -82,7 +82,7 @@ void waves::WcpClient::runViewer() {
         }
 
         std::vector<char*> args;
-        std::stringstream ss(std::vformat(m_command, std::make_format_args(m_port)));
+        std::stringstream ss(fmt::format(fmt::runtime(m_command), m_port));
         std::string token;
 
         while (ss >> token) {
