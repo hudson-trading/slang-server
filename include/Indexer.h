@@ -7,9 +7,9 @@
 //------------------------------------------------------------------------------
 #pragma once
 
+#include "Config.h"
 #include "lsp/URI.h"
 #include <condition_variable>
-#include <map>
 #include <mutex>
 #include <string>
 #include <unordered_map>
@@ -37,6 +37,8 @@ struct Indexer {
     // Primary indexing function, called on startup
     void startIndexing(const std::vector<std::string>& globs,
                        const std::vector<std::string>& excludeDirs, uint32_t numThreads = 0);
+    void startIndexing(const std::vector<Config::IndexConfig>& indexConfigs,
+                       std::optional<std::string_view> workspaceFolder, uint32_t numThreads = 0);
 
     // For workspace changes
     void addDocuments(const std::vector<std::filesystem::path>& paths, uint32_t numThreads = 0);
@@ -71,6 +73,7 @@ private:
     friend struct IndexGuard;
 
     void indexPath(IndexedPath& indexedFile);
+    void indexAndReport(std::vector<std::filesystem::path> pathsToIndex, uint32_t numThreads);
     void notifyIndexingComplete();
     void resetIndexingComplete();
 
