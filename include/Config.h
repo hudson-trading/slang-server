@@ -16,13 +16,22 @@ struct Config {
     /// generate json schema from this by running with --config-schema
     // all fields must be optional
     rfl::Description<"Flags to pass to slang", std::string> flags;
-    rfl::Description<
-        "Globs of what to index. By default will index all sv and svh files in the workspace.",
-        std::vector<std::string>>
+
+    // Legacy indexing globs, kept for backwards compatibility
+    rfl::Description<"Deprecated: use 'index' instead. Globs of what to index. By default will "
+                     "index all sv and svh files in the workspace.",
+                     std::vector<std::string>>
         indexGlobs;
 
-    // This can't be defaulted because of how we paint configs over each other and append lists
-    // together.
+    struct IndexConfig {
+        std::vector<std::string> dirs;
+        std::optional<std::vector<std::string>> excludeDirs;
+    };
+
+    rfl::Description<"Index configurations", std::vector<IndexConfig>> index = {};
+
+    // This can't be defaulted because of how we paint configs over each other and append
+    // lists together.
     std::vector<std::string> getIndexGlobs() {
         if (indexGlobs.value().size() == 0) {
             return std::vector<std::string>{"./.../*.sv*"};
@@ -36,7 +45,9 @@ struct Config {
         }
     }
 
-    rfl::Description<"Directories to exclude", std::vector<std::string>> excludeDirs;
+    rfl::Description<"Deprecated: use 'index' instead. Directories to exclude",
+                     std::vector<std::string>>
+        excludeDirs;
     rfl::Description<"Thread count to use for indexing", int> indexingThreads = 0;
     rfl::Description<"Thread count to use for parsing", int> parsingThreads = 8;
     rfl::Description<"Build file to use", std::optional<std::string>> build;

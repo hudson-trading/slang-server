@@ -120,8 +120,8 @@ async def stderr_readline(stop_event, reader):
 
 
 class SlangDoc:
-    def __init__(self, cliet: "SlangClient", uri: str, text: str):
-        self.client = cliet
+    def __init__(self, client: "SlangClient", uri: str, text: str):
+        self.client = client
         self.uri = uri
         self.text = text
         self.next_version = 1
@@ -168,7 +168,7 @@ class SlangClient(BaseLanguageClient):
     def __init__(
         self,
         protocol_cls: Type[LanguageClientProtocol] = LanguageClientProtocol,
-        workspace_root: str = "",
+        workspace_root: str | None = None,
         *args,
         **kwargs,
     ):
@@ -198,10 +198,16 @@ class SlangClient(BaseLanguageClient):
         print(f"Waiting for notification {method}")
         return await self.protocol.wait_for_notification_async(method)
 
-    def get_uri(self, rel_path: str) -> str:
+    def get_uri(self, rel_path: str) -> str | None:
+        if self.workspace_root is None:
+            raise ValueError(
+                "No workspace root set for client, can't get uri from relative"
+            )
         return uris.from_fs_path(pathlib.Path(self.workspace_root) / rel_path)
 
-    def get_root_uri(self) -> str:
+    def get_root_uri(self) -> str | None:
+        if self.workspace_root is None:
+            return None
         return uris.from_fs_path(self.workspace_root)
 
     async def start(self, options: Flags):
