@@ -40,18 +40,18 @@ jobs:
         include:
           - preset: clang-release
             os: ubuntu-latest
+            container: rockylinux:8
             artifact_name: slang-server-linux-x64-clang
-          - preset: clang-release
+            extra_flags: -DCMAKE_CXX_COMPILER=clang++
+          - preset: gcc-release
             os: ubuntu-latest
             container: rockylinux:8
-            artifact_name: slang-server-rockylinux-x64
-            extra_flags: -DCMAKE_CXX_COMPILER=clang++-19
-          - preset: gcc-release
-            os: ubuntu-24.04-arm
-            artifact_name: slang-server-linux-arm64
+            artifact_name: slang-server-linux-x64-gcc
+            extra_flags: -DCMAKE_CXX_COMPILER=/opt/rh/gcc-toolset-14/root/usr/bin/g++
           - preset: macos-release
-            os: macos-latest
+            os: macos-15
             artifact_name: slang-server-macos
+            extra_flags: -DCMAKE_CXX_COMPILER=clang++
           - preset: win64-release
             os: windows-latest
             artifact_name: slang-server-windows-x64
@@ -72,19 +72,10 @@ jobs:
         ref: ${{ inputs.ref || github.ref }}
         submodules: true
         fetch-depth: 0
-    - name: Install dependencies (Ubuntu x64 Clang)
-      if: matrix.os == 'ubuntu-latest' && matrix.container != 'rockylinux:8'
-      run: |
-        # Add LLVM repository using modern method
-        wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/llvm.asc
-        echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-20 main" | sudo tee /etc/apt/sources.list.d/llvm.list
-        sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        sudo apt-get update
-        sudo apt-get install -y g++-14 g++-11 clang-20 clang-tidy-20
     - uses: ilammy/msvc-dev-cmd@v1
-      if: matrix.os == 'windows-latest'
+      if: runner.os == 'Windows'
     - uses: maxim-lobanov/setup-xcode@v1
-      if: matrix.os == 'macos-latest'
+      if: runner.os == 'macOS'
       with:
         xcode-version: 'latest'
     - name: Configure
@@ -94,7 +85,7 @@ jobs:
     - name: Run ctest
       run: ctest --test-dir build/${{ matrix.preset }} --output-on-failure --no-tests=error -j8
       # Don't run tests on windows
-      if: matrix.os != 'windows-latest'
+      if: runner.os != 'Windows'
     - name: Set up uv
       uses: astral-sh/setup-uv@v6
     - name: Run pytest (not Windows)
@@ -114,8 +105,8 @@ jobs:
             #        pytest tests\system\ --binary build\${{ matrix.preset }}\bin\slang-server
 
     # Artifact creation for releases
-    - name: Strip binary (Linux/macOS)
-      if: inputs.upload_artifacts && runner.os != 'Windows'
+    - name: Strip binary (Linux)
+      if: inputs.upload_artifacts && runner.os == 'Linux'
       run: strip build/${{ matrix.preset }}/bin/slang-server
 
     - name: Create artifact directory
