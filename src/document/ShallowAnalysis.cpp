@@ -24,10 +24,11 @@
 #include "slang/syntax/SyntaxKind.h"
 #include "slang/syntax/SyntaxTree.h"
 #include "slang/text/SourceLocation.h"
+#include "slang/text/SourceManager.h"
 #include "slang/util/Util.h"
 namespace server {
 using namespace slang;
-ShallowAnalysis::ShallowAnalysis(const SourceManager& sourceManager, slang::BufferID buffer,
+ShallowAnalysis::ShallowAnalysis(SourceManager& sourceManager, slang::BufferID buffer,
                                  std::shared_ptr<SyntaxTree> tree, slang::Bag options,
                                  const std::vector<std::shared_ptr<SyntaxTree>>& dependentTrees) :
     syntaxes(*tree), m_sourceManager(sourceManager), m_buffer(buffer), m_tree(tree),
@@ -257,7 +258,9 @@ const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declT
 
         std::string_view macroArg{firstToken.rawText().data(), endOffset - startOffset};
 
-        tokTree = SyntaxTree::fromText(macroArg);
+        // These will overwrite the same assigned source, but it's ok since they are temporary,
+        // and the source manager should be thread safe (for when we do threaded async)
+        tokTree = SyntaxTree::fromText(macroArg, m_sourceManager);
         tokTree->root().parent = macroArgSyntax.parent;
         OffsetFinder visitor(declTok->location().offset() -
                              macroArgSyntax.getFirstToken().location().offset());

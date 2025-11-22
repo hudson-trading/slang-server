@@ -56,7 +56,7 @@ public:
     /// @param tree The syntax tree for the main document
     /// @param options Compilation options bag for semantic analysis
     /// @param trees Additional syntax trees that this document depends on
-    ShallowAnalysis(const SourceManager& sourceManager, slang::BufferID buffer,
+    ShallowAnalysis(SourceManager& sourceManager, slang::BufferID buffer,
                     std::shared_ptr<slang::syntax::SyntaxTree> tree, slang::Bag options,
                     const std::vector<std::shared_ptr<slang::syntax::SyntaxTree>>& trees = {});
 
@@ -125,8 +125,8 @@ public:
     static const slang::ast::Scope* getScopeFromSym(const slang::ast::Symbol* symbol);
 
 private:
-    /// Reference to the source manager
-    const SourceManager& m_sourceManager;
+    /// Reference to the source manager. Not const because we may need to parse macro args.
+    SourceManager& m_sourceManager;
 
     /// Buffer ID for this document
     slang::BufferID m_buffer;
