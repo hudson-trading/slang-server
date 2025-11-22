@@ -670,7 +670,7 @@
     "lint": "pnpm lint:ts",
     "pretest": "pnpm clean:light && pnpm build-tests && pnpm build && pnpm lint",
     "syntax": "js-yaml ./languages/sv/systemverilog.tmLanguage.yaml > ./languages/sv/systemverilog.tmLanguage.json",
-    "genconfig": "../../build/bin/slang-server --config-schema > resources/config.schema.json && npx json2ts -i resources/config.schema.json -o src/config.gen.ts"
+    "genconfig": "../../build/bin/slang-server --config-schema > resources/config.schema.json && node scripts/schema-to-ts.js"
   },
   "dependencies": {
     "js-yaml": "^4.1.0",
@@ -694,7 +694,6 @@
     "eslint-plugin-unused-imports": "^4.2.0",
     "glob": "^11.0.0",
     "jiti": "^2.6.1",
-    "json-schema-to-typescript": "^15.0.4",
     "prettier-plugin-organize-imports": "^4.1.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.3"

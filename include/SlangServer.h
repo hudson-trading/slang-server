@@ -185,6 +185,9 @@ public:
     rfl::Variant<std::vector<lsp::CompletionItem>, lsp::CompletionList, std::monostate>
     getDocCompletion(const lsp::CompletionParams&) override;
 
+    std::optional<std::vector<lsp::InlayHint>> getDocInlayHint(
+        const lsp::InlayHintParams&) override;
+
     /// Completions resolve (get docs and snippet string)
     lsp::CompletionItem getCompletionItemResolve(const lsp::CompletionItem&) override;
 

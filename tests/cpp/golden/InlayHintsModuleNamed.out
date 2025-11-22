@@ -1,0 +1,19 @@
+
+module counter(
+    input logic clk,
+    input logic rst,
+    output logic [7:0] count
+);
+endmodule
+
+module top;
+    logic clk, rst;
+    logic [7:0] cnt;
+    counter u_cnt(.clk(clk), .rst(rst), .count(cnt));
+
+    counter x_cnt(
+        .clk /*input logic      */   (clk),
+        .rst /*input logic      */   (rst),
+        .count /*output logic[7:0]*/ (cnt)
+    );
+endmodule
