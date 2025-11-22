@@ -45,6 +45,14 @@ module test;
         logic [7:0] data;
     } test_struct;
 
+    // Enum for testing macro with enum values
+    typedef enum {
+        STATE_IDLE = 0,
+        STATE_ACTIVE = 1,
+        STATE_WAIT = 2,
+        STATE_DONE = 3
+    } state_t;
+
     // Variables for testing - use macros from common_macros.svh
     int test_var;
     logic [`BUS_WIDTH-1:0] bus_signal;
@@ -69,6 +77,10 @@ module test;
 
     // test function calls in macro arguments
     `DECLARE_INT(log_int, $clog2(other_int))
+
+    // Test macro with enum value arguments
+    `DECLARE_INT(initial_state, STATE_IDLE)
+    `DECLARE_INT(active_state, STATE_ACTIVE)
 
     `INFO(some_int + other_int)
 

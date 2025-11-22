@@ -103,6 +103,23 @@ module test;
 
 
 
+    // Enum for testing macro with enum values
+
+    typedef enum {
+
+        STATE_IDLE = 0,
+
+        STATE_ACTIVE = 1,
+
+        STATE_WAIT = 2,
+
+        STATE_DONE = 3
+
+    } state_t;
+      ^^^^^^^ Sym state_t : TypedefDeclaration
+
+
+
     // Variables for testing - use macros from common_macros.svh
 
     int test_var;
@@ -170,6 +187,20 @@ module test;
     ^^^^^^^^^^^^ Ref -> ``define DECLARE_INT(name, val) localparam int name = val;`
                  ^^^^^^^ Ref -> `localparam int log_int = $clog2(other_int)`\n\ Expanded from\n\ ``DECLARE_INT(log_int, $clog2(other_int))`
                                  ^^^^^^^^^ Ref -> `localparam int other_int = 2`\n\ Expanded from\n\ ``DECLARE_INT(other_int, 2)`
+
+
+
+    // Test macro with enum value arguments
+
+    `DECLARE_INT(initial_state, STATE_IDLE)
+    ^^^^^^^^^^^^ Ref -> ``define DECLARE_INT(name, val) localparam int name = val;`
+                 ^^^^^^^^^^^^^ Ref -> `localparam int initial_state = STATE_IDLE`\n\ Expanded from\n\ ``DECLARE_INT(initial_state, STATE_IDLE)`
+                                ^^^^^^^^^^Exception occurred
+
+    `DECLARE_INT(active_state, STATE_ACTIVE)
+    ^^^^^^^^^^^^ Ref -> ``define DECLARE_INT(name, val) localparam int name = val;`
+                 ^^^^^^^^^^^^ Ref -> `localparam int active_state = STATE_ACTIVE`\n\ Expanded from\n\ ``DECLARE_INT(active_state, STATE_ACTIVE)`
+                               ^^^^^^^^^^^^Exception occurred
 
 
 
