@@ -138,7 +138,7 @@ void populateIndexForSingleFile(const fs::path& path, Indexer::IndexedPath& dest
 
 std::vector<Indexer::IndexedPath> indexPaths(const std::vector<fs::path>& paths,
                                              uint32_t numThreads) {
-    if (paths.size() < slang::driver::SourceLoader::MinFilesForThreading) {
+    if (paths.size() < Indexer::MinFilesForThreading) {
         numThreads = 1;
     }
 
