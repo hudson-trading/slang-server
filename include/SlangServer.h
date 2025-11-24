@@ -59,7 +59,7 @@ protected:
     // The workspace folder, if set
     std::optional<lsp::WorkspaceFolder> m_workspaceFolder = std::nullopt;
 
-    /// The config from .slang-server.json
+    /// The layered config from server.json files
     Config m_config;
 
     /// Indexes the workspace for top symbols and macros

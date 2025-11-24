@@ -7,6 +7,7 @@
 //------------------------------------------------------------------------------
 #pragma once
 
+#include "Config.h"
 #include "ServerDiagClient.h"
 #include "SlangLspClient.h"
 #include "ast/ServerCompilation.h"
@@ -37,7 +38,7 @@ enum FileUpdateType {
 class ServerDriver {
 public:
     static std::unique_ptr<ServerDriver> create(Indexer& indexer, SlangLspClient& client,
-                                                std::string_view flags,
+                                                const Config& config,
                                                 std::vector<std::string> buildfiles = {},
                                                 const ServerDriver* oldDriver = nullptr);
     /// Mapping of URI to SlangDoc, which may hold a shallow analysis of the document
@@ -123,15 +124,17 @@ public:
     /// internally
     /// @param indexer Reference to an indexer for symbol/macro indexing
     /// @param client Reference to the slang client for error reporting
-    /// @param flags Command line flags to parse
+    /// @param config Reference to the configuration object
     /// @param buildfiles List of build files to process
-    /// @param options Bag of options for configuration
-    ServerDriver(Indexer& indexer, SlangLspClient& client, std::string_view flags,
+    ServerDriver(Indexer& indexer, SlangLspClient& client, const Config& config,
                  std::vector<std::string> buildfiles);
 
 private:
     /// Reference to the indexer for module/macro indexing
     Indexer& m_indexer;
+
+    /// Reference to the config object
+    const Config& m_config;
 
     /// Set of URIs for documents that are explicitly opened by the client
     flat_hash_set<URI> m_openDocs;

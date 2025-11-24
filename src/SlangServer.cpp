@@ -220,8 +220,7 @@ void SlangServer::setExplore() {
     m_topFile = std::nullopt;
 
     // Move data into the Server Driver
-    m_driver = ServerDriver::create(m_indexer, m_client, m_config.flags.value(), {},
-                                    m_driver.get());
+    m_driver = ServerDriver::create(m_indexer, m_client, m_config, {}, m_driver.get());
     m_driver->diagClient->updateDiags();
 }
 
@@ -270,8 +269,8 @@ std::monostate SlangServer::setBuildFile(const std::string& path) {
     }
     m_buildfile = path;
 
-    m_driver = ServerDriver::create(m_indexer, m_client, m_config.flags.value(),
-                                    std::vector<std::string>{path}, m_driver.get());
+    m_driver = ServerDriver::create(m_indexer, m_client, m_config, std::vector<std::string>{path},
+                                    m_driver.get());
     m_driver->createCompilation();
     return std::monostate{};
 }
