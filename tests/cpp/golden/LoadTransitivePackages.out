@@ -7,7 +7,7 @@ import base_pkg::*;
 
 
 module cycle_test_module;
-       ^^^^^^^^^^^^^^^^^ Sym cycle_test_module : ModuleDeclaration
+       ^^^^^^^^^^^^^^^^^ Sym cycle_test_module : InstanceBody
 
 
 
@@ -16,17 +16,17 @@ module cycle_test_module;
     base_pkg::config_t system_config;
     ^^^^^^^^ Ref -> `package base_pkg;`
               ^^^^^^^^ Ref -> `// In base_pkg`\n\\n\---\n\\n\`typedef struct packed {\n\    logic [7:0] version;\n\    logic [15:0] features;\n\    data_width_t max_width;\n\} config_t;`
-                       ^^^^^^^^^^^^^ Sym system_config : Declarator
+                       ^^^^^^^^^^^^^ Sym system_config : Variable
 
     base_pkg::result_t operation_result;  // This should resolve via export
     ^^^^^^^^ Ref -> `package base_pkg;`
               ^^^^^^^^ Ref -> `// In util_pkg`\n\\n\---\n\\n\`typedef enum logic [1:0] {\n\    SUCCESS = 2'b00,\n\    FAILURE = 2'b01,\n\    PENDING = 2'b10,\n\    ERROR_CODE = 2'b11\n\} result_t;`
-                       ^^^^^^^^^^^^^^^^ Sym operation_result : Declarator
+                       ^^^^^^^^^^^^^^^^ Sym operation_result : Variable
 
     base_pkg::data_width_t bus_width;
     ^^^^^^^^ Ref -> `package base_pkg;`
               ^^^^^^^^^^^^ Ref -> `// In base_pkg`\n\\n\---\n\\n\`typedef logic [31:0] data_width_t;`
-                           ^^^^^^^^^ Sym bus_width : Declarator
+                           ^^^^^^^^^ Sym bus_width : Variable
 
 
 

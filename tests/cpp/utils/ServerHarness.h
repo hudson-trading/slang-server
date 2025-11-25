@@ -340,8 +340,8 @@ protected:
 
         auto pElem = std::get<server::DefinitionInfo>(*prevElement);
         if (tok && pElem.nameToken.location() == tok->location()) {
-            test.record(fmt::format(" Sym {} : {}\n", pElem.nameToken.valueText(),
-                                    toString(pElem.node->kind)));
+            auto kindStr = pElem.symbol ? toString(pElem.symbol->kind) : toString(pElem.node->kind);
+            test.record(fmt::format(" Sym {} : {}\n", pElem.nameToken.valueText(), kindStr));
         }
         else {
             test.record(fmt::format(" Ref -> "));

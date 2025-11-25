@@ -86,7 +86,7 @@
 
 
 module test;
-       ^^^^ Sym test : ModuleDeclaration
+       ^^^^ Sym test : InstanceBody
 
 
 
@@ -99,7 +99,7 @@ module test;
         logic [7:0] data;
 
     } test_struct;
-      ^^^^^^^^^^^ Sym test_struct : TypedefDeclaration
+      ^^^^^^^^^^^ Sym test_struct : TypeAlias
 
 
 
@@ -116,22 +116,22 @@ module test;
         STATE_DONE = 3
 
     } state_t;
-      ^^^^^^^ Sym state_t : TypedefDeclaration
+      ^^^^^^^ Sym state_t : TypeAlias
 
 
 
     // Variables for testing - use macros from common_macros.svh
 
     int test_var;
-        ^^^^^^^^ Sym test_var : Declarator
+        ^^^^^^^^ Sym test_var : Variable
 
     logic [`BUS_WIDTH-1:0] bus_signal;
            ^^^^^^^^^^ Ref -> `// Use macros from common_macros.svh\n\`define BUS_WIDTH `WIDTH`
-                           ^^^^^^^^^^ Sym bus_signal : Declarator
+                           ^^^^^^^^^^ Sym bus_signal : Variable
 
     logic [`ADDR_BITS-1:0] address;
            ^^^^^^^^^^ Ref -> ``define ADDR_BITS `ADDR_WIDTH`
-                           ^^^^^^^ Sym address : Declarator
+                           ^^^^^^^ Sym address : Variable
 
 
 
@@ -148,7 +148,7 @@ module test;
     // Test simple macro usage
 
     localparam int SIMPLE_VAL = `SIMPLE_MACRO;
-                   ^^^^^^^^^^ Sym SIMPLE_VAL : Declarator
+                   ^^^^^^^^^^ Sym SIMPLE_VAL : Parameter
                                 ^^^^^^^^^^^^^ Ref -> `// Basic macro definitions\n\`define SIMPLE_MACRO 42`
 
 
@@ -156,7 +156,7 @@ module test;
     // Test function macro
 
     localparam int FUNC_VAL = `FUNC_MACRO(10);
-                   ^^^^^^^^ Sym FUNC_VAL : Declarator
+                   ^^^^^^^^ Sym FUNC_VAL : Parameter
                               ^^^^^^^^^^^ Ref -> ``define FUNC_MACRO(x) (x + 1)`
 
 
@@ -164,7 +164,7 @@ module test;
     // Test two argument macro
 
     localparam int TWO_ARG_VAL = `TWO_ARG_MACRO(5, 7);
-                   ^^^^^^^^^^^ Sym TWO_ARG_VAL : Declarator
+                   ^^^^^^^^^^^ Sym TWO_ARG_VAL : Parameter
                                  ^^^^^^^^^^^^^^ Ref -> ``define TWO_ARG_MACRO(a, b) (a + b)`
 
 
@@ -209,7 +209,7 @@ module test;
 
 
     localparam int x = some_int;
-                   ^ Sym x : Declarator
+                   ^ Sym x : Parameter
                        ^^^^^^^^ Ref -> `localparam int some_int = 1`\n\ Expanded from\n\ ``DECLARE_INT(some_int, 1)`
 
 
@@ -219,7 +219,7 @@ module test;
     // Test macro in generate blocks
 
     genvar i;
-           ^ Sym i : IdentifierName
+           ^ Sym i : Genvar
 
     generate
 
@@ -227,11 +227,11 @@ module test;
                     ^ Ref -> `// In test`\n\\n\---\n\\n\`i`
                         ^^^^^^^^^^^^^ Ref -> `// Basic macro definitions\n\`define SIMPLE_MACRO 42`
                                        ^ Ref -> `// In test`\n\\n\---\n\\n\`i`
-                                                    ^^^^^^^^^ Sym gen_block : LoopGenerate
+                                                    ^^^^^^^^^ Sym gen_block : GenerateBlockArray
 
             logic [`FUNC_MACRO(7):0] gen_signal;
                    ^^^^^^^^^^^ Ref -> ``define FUNC_MACRO(x) (x + 1)`
-                                     ^^^^^^^^^^ Sym gen_signal : Declarator
+                                     ^^^^^^^^^^ Sym gen_signal : Variable
 
         end
 
@@ -266,13 +266,13 @@ module test;
     // Signals for memory instantiation
 
     logic clk, rst_n, write_enable;
-          ^^^ Sym clk : Declarator
-               ^^^^^ Sym rst_n : Declarator
-                      ^^^^^^^^^^^^ Sym write_enable : Declarator
+          ^^^ Sym clk : Variable
+               ^^^^^ Sym rst_n : Variable
+                      ^^^^^^^^^^^^ Sym write_enable : Variable
 
     logic [31:0] write_data, read_data;
-                 ^^^^^^^^^^ Sym write_data : Declarator
-                             ^^^^^^^^^ Sym read_data : Declarator
+                 ^^^^^^^^^^ Sym write_data : Variable
+                             ^^^^^^^^^ Sym read_data : Variable
 
 
 
@@ -290,7 +290,7 @@ module test;
 
     test_struct my_struct;
     ^^^^^^^^^^^ Ref -> `// Basic struct for testing member access\n\typedef struct {\n\    int i;\n\    logic [7:0] data;\n\} test_struct;`
-                ^^^^^^^^^ Sym my_struct : Declarator
+                ^^^^^^^^^ Sym my_struct : Variable
 
 `endif
 
