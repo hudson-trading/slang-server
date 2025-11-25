@@ -22,6 +22,11 @@
                     "ignoreFailures": true
                 }
             ],
+            "presentation": {
+                "hidden": false,
+                "group": "2_attach",
+                "order": 1
+            }
         },
         {
             "name": "Debug server_unittests",
@@ -41,24 +46,41 @@
                     "ignoreFailures": true
                 }
             ],
+            "presentation": {
+                "hidden": false,
+                "group": "Tests",
+                "order": 1
+            }
         },
         {
             "name": "Run slang-vscode",
             "type": "extensionHost",
             "request": "launch",
-            "args": ["--disable-extensions", "--extensionDevelopmentPath=${workspaceFolder}/clients/vscode/"],
-            "outFiles": ["${workspaceFolder}/clients/vscode/out/**"],
+            "args": [
+                "--extensionDevelopmentPath=${workspaceFolder}/clients/vscode/",
+                // "--disable-extensions"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/clients/vscode/out/**"
+            ],
             "cwd": "${workspaceFolder}/clients/vscode",
-            "resolveSourceMapLocations": ["${workspaceFolder}/clients/vscode/**", "!**/node_modules/**"],
+            "resolveSourceMapLocations": [
+                "${workspaceFolder}/clients/vscode/**",
+                "!**/node_modules/**"
+            ],
             "preLaunchTask": "build slang-vscode",
+            "presentation": {
+                "hidden": false,
+                "group": "1_vscode",
+                "order": 1
+            }
         },
         {
-            "name": "Attach to slang-server (auto-attach)",
+            "name": "Attach to slang-server (auto-attach: vscode)",
             "type": "cppdbg",
             "request": "attach",
             "program": "${workspaceFolder}/build/vscode/bin/slang-server",
-            "processId": "${input:slangServerPID}",
-
+            "processId": "${input:vscodePID}",
             "MIMode": "gdb",
             "setupCommands": [
                 {
@@ -71,44 +93,100 @@
                     "text": "catch throw",
                     "ignoreFailures": true
                 }
-            ]
+            ],
+            "presentation": {
+                "hidden": false,
+                "group": "2_attach",
+                "order": 1
+            }
         },
         {
-            "name": "Run slang-vscode with custom server",
+            "name": "Attach to slang-server (auto-attach: user)",
+            "type": "cppdbg",
+            "request": "attach",
+            "program": "${workspaceFolder}/build/bin/slang-server",
+            "processId": "${input:userPID}",
+            "MIMode": "gdb",
+            "logging": {
+                "engineLogging": true
+            },
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Enable break on all exceptions",
+                    "text": "catch throw",
+                    "ignoreFailures": true
+                }
+            ],
+            "presentation": {
+                "hidden": false,
+                "group": "2_attach",
+                "order": 0
+            }
+        },
+        {
+            "name": "Run slang-vscode with build/vscode server",
             "type": "extensionHost",
             "request": "launch",
-            "args": ["--disable-extensions", "--extensionDevelopmentPath=${workspaceFolder}/clients/vscode/"],
-            "outFiles": ["${workspaceFolder}/clients/vscode/out/**"],
+            "args": [
+                "--extensionDevelopmentPath=${workspaceFolder}/clients/vscode/",
+                "--disable-extensions"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/clients/vscode/out/**"
+            ],
             "cwd": "${workspaceFolder}/clients/vscode",
-            "resolveSourceMapLocations": ["${workspaceFolder}/clients/vscode/**", "!**/node_modules/**"],
+            "resolveSourceMapLocations": [
+                "${workspaceFolder}/clients/vscode/**",
+                "!**/node_modules/**"
+            ],
             "preLaunchTask": "build ext deps",
             "env": {
                 "SLANG_SERVER_PATH": "${workspaceFolder}/build/vscode/bin/slang-server"
             },
+            "presentation": {
+                "hidden": false,
+                "group": "1_vscode",
+                "order": 1
+            }
         }
     ],
     "compounds": [
         {
             "name": "Run slang-vscode and attach gdb",
             "configurations": [
-                "Run slang-vscode with custom server",
-                "Attach to slang-server (auto-attach)"
+                "Run slang-vscode with build/vscode server",
+                "Attach to slang-server (auto-attach: vscode)"
             ],
+            "presentation": {
+                "hidden": false,
+                "group": "0_compound",
+                "order": 0
+            }
         }
     ],
     "inputs": [
         {
-            "id": "slangServerPID",
+            "id": "vscodePID",
             "type": "command",
             "command": "shellCommand.execute",
             "args": {
-                "command": "${workspaceFolder}/.vscode/find-pid.sh",
-                "args": [
-                    "${workspaceFolder}"
-                ],
+                "command": "${workspaceFolder}/.vscode/find-pid.sh '${workspaceFolder}/build/vscode/bin/slang-server'",
                 "useFirstResult": true
             },
-
+        },
+        {
+            "id": "userPID",
+            "type": "command",
+            "command": "shellCommand.execute",
+            "args": {
+                "command": "${workspaceFolder}/.vscode/find-pid.sh '${workspaceFolder}/build/bin/slang-server'",
+                "useFirstResult": true
+            },
         }
     ]
 }
