@@ -228,6 +228,7 @@ macromodule m3;
            ^ Ref -> `I d(.a(), .b());`
 
         .e()
+         ^ Ref -> `// In m2`\n\\n\---\n\\n\`.e()`
 
     );
 

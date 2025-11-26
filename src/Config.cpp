@@ -13,6 +13,7 @@
 #include "rfl/Result.hpp"
 #include "rfl/from_generic.hpp"
 #include "util/Logging.h"
+#include <rfl/DefaultIfMissing.hpp>
 
 static int CONFIG_READ_FLAGS = YYJSON_READ_ALLOW_COMMENTS | YYJSON_READ_ALLOW_TRAILING_COMMAS;
 
@@ -73,7 +74,7 @@ Config Config::fromFiles(std::vector<std::string> confPaths, SlangLspClient& m_c
         }
     }
 
-    auto finalConfig = rfl::from_generic<Config>(config);
+    auto finalConfig = rfl::from_generic<Config, rfl::DefaultIfMissing>(config);
     if (!finalConfig) {
         m_client.showError(fmt::format("Failed to convert final config to Config: {}",
                                        finalConfig.error().what()));

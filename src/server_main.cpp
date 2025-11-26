@@ -52,6 +52,7 @@ int main(int argc, char** argv) {
                 // , "@generated from `include/Config.h`"
             );
             OS::print(schema);
+            OS::print("\n");
         }
         catch (const std::exception& e) {
             OS::print(fmt::format("Error generating config schema: {}\n", e.what()));

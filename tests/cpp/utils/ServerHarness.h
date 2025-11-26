@@ -143,6 +143,12 @@ public:
 
     std::optional<lsp::Hover> getHoverAt(lsp::uint offset);
 
+    /// @brief Get all inlay hints for the entire document
+    std::vector<lsp::InlayHint> getAllInlayHints();
+
+    /// @brief Apply text edits to the document and return the resulting text
+    std::string withTextEdits(std::vector<lsp::TextEdit> edits);
+
     std::string m_text;
     URI m_uri;
     ServerHarness& m_server;

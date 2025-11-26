@@ -1,0 +1,34 @@
+
+module dut(
+    input logic clk,
+    input logic rst,
+    input logic [7:0] data_in,
+    output logic [7:0] data_out
+);
+endmodule
+
+module top;
+    logic clk, rst;
+    logic [7:0] data_in, data_out;
+
+    dut u_dut1(
+        .clk,
+        .rst,
+        .data_in,
+        .data_out
+    );
+
+    dut u_dut2(
+        .clk,
+        .rst,
+        .data_in,
+        .data_out
+    );
+
+    dut u_dut3(
+        .clk,
+        .rst,
+        .data_in,
+        .data_out
+    );
+endmodule

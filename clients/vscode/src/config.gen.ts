@@ -25,4 +25,19 @@ export interface Config {
   wavesPattern?: string | null
   /** Waveform viewer command ({} will be replaced with the WCP port), used for direct wcp connection with neovim and surfer. */
   wcpCommand?: string | null
+  /** Inline hints for things like ordered arguments, wildcard ports, and others */
+  inlayHints?: Config__InlayHints
+}
+
+export interface Config__InlayHints {
+  /** Hints for port types */
+  portTypes?: boolean
+  /** Hints for names of ordered ports and params */
+  orderedInstanceNames?: boolean
+  /** Hints for port names in wildcard (.*) ports */
+  wildcardNames?: boolean
+  /** Function argument hints: 0=off, N=only calls with >=N args */
+  funcArgNames?: number
+  /** Macro argument hints: 0=off, N=only calls with >=N args */
+  macroArgNames?: number
 }

@@ -1,0 +1,13 @@
+
+module fifo #(
+    parameter int DEPTH = 16,
+    parameter int WIDTH = 8
+)(
+    input logic clk
+);
+endmodule
+
+module top;
+    logic clk;
+    fifo #(/*DEPTH:*/ 32, /*WIDTH:*/ 16) u_fifo(/*clk:*/ clk);
+endmodule

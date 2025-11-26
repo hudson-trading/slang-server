@@ -5,8 +5,9 @@
 
 file(GLOB SERVER_TESTS "*.cpp")
 
-add_executable(server_unittests utils/ServerHarness.cpp main.cpp
-                                ${SERVER_TESTS})
+file(GLOB TEST_UTILS "utils/*.cpp")
+
+add_executable(server_unittests ${TEST_UTILS} main.cpp ${SERVER_TESTS})
 
 target_link_libraries(server_unittests PRIVATE slang_server_obj_lib)
 

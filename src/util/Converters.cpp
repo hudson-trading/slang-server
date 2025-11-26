@@ -9,6 +9,8 @@
 
 #include <fmt/format.h>
 
+#include "slang/text/SourceLocation.h"
+
 namespace server {
 
 using namespace slang;
