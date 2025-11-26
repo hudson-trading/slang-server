@@ -195,6 +195,8 @@ struct Indexer {
     // Modules/Interfaces/Packages -> relevant files
     IndexStorage symbolToFiles;
 
+    static const int MinFilesForThreading = 4;
+
 private:
     mutable std::condition_variable indexingCondition;
     mutable std::mutex indexingMutex;
