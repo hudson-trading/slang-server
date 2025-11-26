@@ -310,6 +310,13 @@ target_link_libraries(slang_server PRIVATE reflectcpp)
 target_link_libraries(slang_server PRIVATE slang_server_obj_lib)
 set_target_properties(slang_server PROPERTIES OUTPUT_NAME "slang-server")
 
+# Build the gen_config_schema tool (standalone tool to generate config schema)
+add_executable(gen_config_schema src/gen_config_main.cpp)
+target_include_directories(gen_config_schema PRIVATE include)
+target_include_directories(gen_config_schema SYSTEM
+                           PRIVATE external/reflect-cpp/include)
+target_link_libraries(gen_config_schema PRIVATE reflectcpp)
+
 if(SLANG_SERVER_COVERAGE)
   include(cmake/coverage.cmake)
 endif()

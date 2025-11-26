@@ -669,8 +669,7 @@
     "lint:ts": "eslint src --ext ts --fix",
     "lint": "pnpm lint:ts",
     "pretest": "pnpm clean:light && pnpm build-tests && pnpm build && pnpm lint",
-    "syntax": "js-yaml ./languages/sv/systemverilog.tmLanguage.yaml > ./languages/sv/systemverilog.tmLanguage.json",
-    "genconfig": "../../build/bin/slang-server --config-schema > resources/config.schema.json && npx json2ts -i resources/config.schema.json -o src/config.gen.ts"
+    "syntax": "js-yaml ./languages/sv/systemverilog.tmLanguage.yaml > ./languages/sv/systemverilog.tmLanguage.json"
   },
   "dependencies": {
     "js-yaml": "^4.1.0",
