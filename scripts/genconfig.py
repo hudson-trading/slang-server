@@ -1,0 +1,189 @@
+#!/usr/bin/env python3
+"""
+genconfig.py
+Regenerate config schema and TypeScript types from Config.h
+
+This script:
+1. Builds the gen_config_schema tool
+2. Generates the JSON schema from Config.h
+3. Converts the JSON schema to TypeScript interfaces
+
+In the future this can be used to generate for other types for other client languages, or call libraries that do so.
+There was a node package that claimed to handle it for ts, but it didn't work well with nested types.
+
+SPDX-FileCopyrightText: Hudson River Trading
+SPDX-License-Identifier: MIT
+"""
+
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+
+def find_repo_root() -> Path:
+    """Find the repository root directory."""
+    script_dir = Path(__file__).parent.resolve()
+    repo_root = script_dir.parent
+    return repo_root
+
+
+def find_or_create_build_dir(repo_root: Path) -> Path:
+    """Find the build directory, or create one if it doesn't exist."""
+    build_dir = repo_root / "build"
+
+    # Check if build directory exists and is configured
+    if (build_dir / "CMakeCache.txt").exists():
+        return build_dir
+
+    # No configured build found, create one
+    print(f"No configured build directory found. Configuring cmake in {build_dir}...")
+    result = subprocess.run(
+        ["cmake", "-B", str(build_dir)],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    if result.returncode != 0:
+        print("Error configuring cmake:", file=sys.stderr)
+        print(result.stderr, file=sys.stderr)
+        sys.exit(1)
+
+    return build_dir
+
+
+def build_gen_config_schema(build_dir: Path) -> None:
+    """Build the gen_config_schema tool."""
+    print("Building gen_config_schema...")
+    result = subprocess.run(
+        ["cmake", "--build", str(build_dir), "-j8", "--target", "gen_config_schema"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    if result.returncode != 0:
+        print("Error building gen_config_schema:", file=sys.stderr)
+        print(result.stderr, file=sys.stderr)
+        sys.exit(1)
+
+
+def generate_schema(build_dir: Path, schema_path: Path) -> None:
+    """Generate the JSON schema using gen_config_schema."""
+    print("Generating config schema...")
+    gen_config_bin = build_dir / "bin" / "gen_config_schema"
+
+    if not gen_config_bin.exists():
+        print(f"Error: {gen_config_bin} not found", file=sys.stderr)
+        sys.exit(1)
+
+    result = subprocess.run(
+        [str(gen_config_bin)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    if result.returncode != 0:
+        print("Error generating schema:", file=sys.stderr)
+        print(result.stderr, file=sys.stderr)
+        sys.exit(1)
+
+    schema_path.parent.mkdir(parents=True, exist_ok=True)
+    schema_path.write_text(result.stdout)
+
+
+def type_from_schema(s: dict) -> str:
+    """Convert JSON schema type to TypeScript type."""
+    if "$ref" in s:
+        return s["$ref"].split("/")[-1]
+
+    if s.get("type") == "string":
+        return "string"
+    if s.get("type") in ("integer", "number"):
+        return "number"
+    if s.get("type") == "boolean":
+        return "boolean"
+    if s.get("type") == "null":
+        return "null"
+
+    if s.get("type") == "array":
+        items_type = type_from_schema(s.get("items", {})) if "items" in s else "unknown"
+        return f"{items_type}[]"
+
+    if "anyOf" in s:
+        return " | ".join(type_from_schema(t) for t in s["anyOf"])
+
+    if s.get("type") == "object" and "properties" in s:
+        props = []
+        for key, val in s["properties"].items():
+            prop_type = type_from_schema(val)
+            desc = val.get("description", "")
+            if desc:
+                props.append(f"\n  /** {desc} */")
+            props.append(f'\n  "{key}"?: {prop_type}')
+        return "{" + "".join(props) + "\n}"
+
+    return "unknown"
+
+
+def generate_interface(name: str, schema_def: dict) -> str:
+    """Generate a TypeScript interface from a schema definition."""
+    props = []
+    for key, val in schema_def.get("properties", {}).items():
+        prop_type = type_from_schema(val)
+        desc = val.get("description", "")
+        if desc:
+            props.append(f"/** {desc} */")
+        props.append(f"{key}?: {prop_type}")
+
+    props_str = "\n  ".join(props)
+    return f"export interface {name} {{\n  {props_str}\n}}"
+
+
+def generate_typescript(schema_path: Path, ts_path: Path) -> None:
+    """Generate TypeScript interfaces from JSON schema."""
+    print("Generating TypeScript types...")
+
+    schema = json.loads(schema_path.read_text())
+    definitions = schema.get("$defs") or schema.get("definitions") or {}
+
+    output = [
+        "/* tslint:disable */",
+        "/* prettier-ignore */",
+        "/* eslint-disable */",
+        "/**",
+        " * This file was automatically @generated by scripts/genconfig.py.",
+        " * DO NOT MODIFY IT BY HAND. Instead, modify Config.h and run scripts/genconfig.py",
+        " */\n",
+    ]
+
+    for name, def_schema in definitions.items():
+        output.append(generate_interface(name, def_schema))
+        output.append("")
+
+    ts_path.parent.mkdir(parents=True, exist_ok=True)
+    ts_path.write_text("\n".join(output))
+
+
+def main() -> None:
+    """Main entry point."""
+    repo_root = find_repo_root()
+    build_dir = find_or_create_build_dir(repo_root)
+
+    schema_path = repo_root / "clients" / "vscode" / "resources" / "config.schema.json"
+    ts_path = repo_root / "clients" / "vscode" / "src" / "config.gen.ts"
+
+    build_gen_config_schema(build_dir)
+    generate_schema(build_dir, schema_path)
+    generate_typescript(schema_path, ts_path)
+
+    print("✓ Config schema and TypeScript types regenerated successfully!")
+    print(f"  - {schema_path.relative_to(repo_root)}")
+    print(f"  - {ts_path.relative_to(repo_root)}")
+
+
+if __name__ == "__main__":
+    main()

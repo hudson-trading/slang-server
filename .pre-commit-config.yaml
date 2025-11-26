@@ -56,8 +56,8 @@ repos:
     rev: v4.0.0-alpha.8
     hooks:
       - id: prettier
-        files: ^.*\.(ts)$
-        exclude: tests/cpp/golden/|^external/.*
+        files: ^.*\.(ts|js)$
+        exclude: tests/cpp/golden/|^external/.*|clients/vscode/src/config\.gen\.ts
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
@@ -72,3 +72,13 @@ repos:
       - id: ruff-format
         files: ^.*\.py$
         exclude: ^external/.*
+
+  # Local hooks for config schema synchronization
+  - repo: local
+    hooks:
+      - id: config-schema-sync
+        name: Regenerate config schema if Config.h changed
+        entry: python3 scripts/genconfig.py
+        language: system
+        pass_filenames: false
+        files: ^include/Config\.h$
