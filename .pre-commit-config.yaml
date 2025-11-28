@@ -44,14 +44,15 @@ repos:
         files: (\.cmake|CMakeLists.txt)(.in)?$
         exclude: ^external/.*
 
-  # clang-format for cpp
+  # clang-format for cpp and json
   - repo: https://github.com/pre-commit/mirrors-clang-format
     rev: v20.1.8
     hooks:
       - id: clang-format
+        types_or: [c++, c, json]
         exclude: ^external/.*
 
-  # Prettier for typescript, json, and yaml
+  # Prettier for typescript and yaml
   - repo: https://github.com/pre-commit/mirrors-prettier
     rev: v4.0.0-alpha.8
     hooks:

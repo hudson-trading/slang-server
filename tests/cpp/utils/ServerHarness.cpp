@@ -429,6 +429,57 @@ std::optional<lsp::Hover> DocumentHandle::getHoverAt(lsp::uint offset) {
     return m_server.m_driver->getDocHover(m_uri, *loc);
 }
 
+std::vector<lsp::InlayHint> DocumentHandle::getAllInlayHints() {
+    // Create a range covering the entire document
+    lsp::Range fullRange = {.start = {.line = 0, .character = 0},
+                            .end = getPosition(m_text.size())};
+
+    // Create config with all inlay hint options enabled
+    Config::InlayHints config{.portTypes = true,
+                              .orderedInstanceNames = true,
+                              .wildcardNames = true,
+                              .funcArgNames = 0,
+                              .macroArgNames = 0};
+
+    return doc->getAnalysis().getInlayHints(fullRange, config);
+}
+
+std::string DocumentHandle::withTextEdits(std::vector<lsp::TextEdit> edits) {
+    // Compute line offsets upfront
+    std::vector<lsp::uint> lineOffsets;
+    lineOffsets.push_back(0);
+    for (size_t i = 0; i < m_text.size(); i++) {
+        if (m_text[i] == '\n') {
+            lineOffsets.push_back(i + 1);
+        }
+    }
+
+    // Helper to convert position to offset using precomputed line offsets
+    auto positionToOffset = [&lineOffsets](const lsp::Position& pos) -> lsp::uint {
+        if (pos.line >= lineOffsets.size()) {
+            return lineOffsets.back();
+        }
+        return lineOffsets[pos.line] + pos.character;
+    };
+
+    // Sort edits in reverse order (from end to start) by position
+    std::sort(edits.begin(), edits.end(), [](const lsp::TextEdit& a, const lsp::TextEdit& b) {
+        if (a.range.start.line != b.range.start.line)
+            return a.range.start.line > b.range.start.line;
+        return a.range.start.character > b.range.start.character;
+    });
+
+    // Apply edits in reverse order, computing offsets as we go
+    std::string result = m_text;
+    for (const auto& edit : edits) {
+        lsp::uint startOffset = positionToOffset(edit.range.start);
+        lsp::uint endOffset = positionToOffset(edit.range.end);
+        result.replace(startOffset, endOffset - startOffset, edit.newText);
+    }
+
+    return result;
+}
+
 Cursor Cursor::before(const std::string& before) {
     return m_doc.before(before, m_offset);
 }

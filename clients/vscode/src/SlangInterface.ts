@@ -1,15 +1,6 @@
 import * as vscode from 'vscode'
 
-import { ConfigSchema } from './config.gen'
-// enum class SlangKind {
-//   InstanceKind,
-//   ScopeKind,
-//   ParamKind,
-//   LogicKind,
-//   WireKind,
-// };
-
-export { ConfigSchema as Config }
+import { Config } from './config.gen'
 
 export enum SlangKind {
   Instance = 'Instance',

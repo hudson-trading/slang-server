@@ -273,6 +273,7 @@ add_library(
   src/document/ShallowAnalysis.cpp
   src/document/SlangDoc.cpp
   src/document/SymbolIndexer.cpp
+  src/document/InlayHintCollector.cpp
   src/document/SymbolTreeVisitor.cpp
   src/document/SyntaxIndexer.cpp
   src/completions/Completions.cpp

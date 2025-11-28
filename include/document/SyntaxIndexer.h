@@ -16,7 +16,8 @@
 #include "slang/text/SourceLocation.h"
 #include "slang/util/FlatMap.h"
 namespace server {
-/// A visitor class that finds the syntax node at a given location.
+
+/// Indexes the syntax nodes and tokens for an Analysis
 class SyntaxIndexer {
 private:
     slang::BufferID m_buffer;
@@ -24,10 +25,14 @@ private:
 public:
     // collected declared tokens in order (tokens in the actual file)
     std::vector<const slang::parsing::Token*> collected;
+
     // Mapping of tokens to their parent syntax node
     // For macro usages, this will map the
     slang::flat_hash_map<const slang::parsing::Token*, const slang::syntax::SyntaxNode*>
         tokenToParent;
+
+    /// Map from offset to collected syntax nodes
+    std::map<uint32_t, slang::not_null<const slang::syntax::SyntaxNode*>> collectedHints;
 
     // Mapping of tokens to their parent syntax node
     // slang::flat_hash_map<const slang::parsing::Token*, const slang::syntax::Token*>

@@ -12,6 +12,7 @@
 
 #include "slang/parsing/Token.h"
 #include "slang/parsing/TokenKind.h"
+#include "slang/syntax/SyntaxKind.h"
 #include "slang/syntax/SyntaxNode.h"
 #include "slang/syntax/SyntaxTree.h"
 #include "slang/text/SourceLocation.h"
@@ -27,6 +28,23 @@ SyntaxIndexer::SyntaxIndexer(const slang::syntax::SyntaxTree& tree) {
 }
 
 void SyntaxIndexer::visit(const slang::syntax::SyntaxNode& node) {
+    switch (node.kind) {
+        case syntax::SyntaxKind::MacroUsage: {
+            if (node.getFirstToken().location().buffer() == m_buffer) {
+                collectedHints.emplace(
+                    static_cast<uint32_t>(node.getFirstToken().location().offset()), &node);
+            }
+            break;
+        }
+        case syntax::SyntaxKind::InvocationExpression:
+        case syntax::SyntaxKind::HierarchyInstantiation:
+            collectedHints.emplace(static_cast<uint32_t>(node.getFirstToken().location().offset()),
+                                   &node);
+            break;
+        default:
+            break;
+    }
+
     for (uint32_t i = 0; i < node.getChildCount(); i++) {
         auto child = node.childNode(i);
         if (child)

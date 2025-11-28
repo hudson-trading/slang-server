@@ -8,19 +8,25 @@
 
 #include "document/ShallowAnalysis.h"
 
+#include "document/InlayHintCollector.h"
+#include "lsp/LspTypes.h"
 #include "util/Converters.h"
 #include "util/Logging.h"
+#include <fmt/format.h>
 #include <memory>
 #include <string_view>
 
 #include "slang/ast/ASTContext.h"
 #include "slang/ast/Compilation.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
+#include "slang/ast/symbols/MemberSymbols.h"
+#include "slang/ast/symbols/PortSymbols.h"
 #include "slang/ast/symbols/ValueSymbol.h"
 #include "slang/ast/types/AllTypes.h"
 #include "slang/ast/types/Type.h"
 #include "slang/driver/Driver.h"
 #include "slang/parsing/Token.h"
+#include "slang/syntax/AllSyntax.h"
 #include "slang/syntax/SyntaxKind.h"
 #include "slang/syntax/SyntaxTree.h"
 #include "slang/text/SourceLocation.h"
@@ -49,6 +55,7 @@ ShallowAnalysis::ShallowAnalysis(SourceManager& sourceManager, slang::BufferID b
     }
 
     // Index macros
+    // TODO: these should be tagged in the preprocessor instead, since users may `undef them
     for (auto& macro : m_tree->getDefinedMacros()) {
         macros[macro->name.valueText()] = macro;
     }
@@ -66,7 +73,9 @@ ShallowAnalysis::ShallowAnalysis(SourceManager& sourceManager, slang::BufferID b
         m_compilation->addSyntaxTree(depTree);
     }
 
-    // Elaborate and index token -> symbol defs, syntax -> scopes
+    // Elaborate and index
+    // - token -> symbol defs
+    // - syntax -> scopes
     m_compilation->getRoot().visit(m_symbolIndexer);
 }
 
@@ -311,7 +320,8 @@ const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declT
                 const slang::ast::Symbol* cur = result.found;
 
                 // Proper selector resolution is in
-                // Expression::bindLookupResult, however that modifies the compilation at the moment
+                // Expression::bindLookupResult, however that modifies the compilation at the
+                // moment
                 for (auto& sel : result.selectors) {
                     if (auto member = std::get_if<ast::LookupResult::MemberSelector>(&sel)) {
                         const ast::Scope* scope = getScopeFromSym(cur);
@@ -396,6 +406,14 @@ const ast::Scope* ShallowAnalysis::getScopeAt(SourceLocation loc) const {
         return nullptr;
     }
     return m_symbolIndexer.getScopeForSyntax(*syntax);
+}
+
+std::vector<lsp::InlayHint> ShallowAnalysis::getInlayHints(lsp::Range range,
+                                                           const Config::InlayHints& config) {
+    // query inlay hints within range
+    InlayHintCollector collector(*this, range, config);
+    collector.collectHints();
+    return collector.result;
 }
 
 std::vector<lsp::DocumentLink> ShallowAnalysis::getDocLinks() const {

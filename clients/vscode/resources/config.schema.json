@@ -74,6 +74,36 @@
               "type": "null"
             }
           ]
+        },
+        "inlayHints": {
+          "$ref": "#/$defs/Config__InlayHints",
+          "description": "Inline hints for things like ordered arguments, wildcard ports, and others"
+        }
+      },
+      "required": []
+    },
+    "Config__InlayHints": {
+      "type": "object",
+      "properties": {
+        "portTypes": {
+          "description": "Hints for port types",
+          "type": "boolean"
+        },
+        "orderedInstanceNames": {
+          "description": "Hints for names of ordered ports and params",
+          "type": "boolean"
+        },
+        "wildcardNames": {
+          "description": "Hints for port names in wildcard (.*) ports",
+          "type": "boolean"
+        },
+        "funcArgNames": {
+          "type": "integer",
+          "description": "Function argument hints: 0=off, N=only calls with >=N args"
+        },
+        "macroArgNames": {
+          "type": "integer",
+          "description": "Macro argument hints: 0=off, N=only calls with >=N args"
         }
       },
       "required": []

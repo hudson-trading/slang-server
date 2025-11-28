@@ -73,6 +73,8 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     registerDocCompletion();
     registerCompletionItemResolve();
 
+    registerDocInlayHint();
+
     // Cone tracing (drivers/loads)
     registerDocPrepareCallHierarchy();
     registerCallHierarchyIncomingCalls();
@@ -194,6 +196,11 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
                             .commands = getCommandList(),
                         },
                     .callHierarchyProvider = true,
+                    .inlayHintProvider =
+                        lsp::InlayHintOptions{
+                            .resolveProvider = false,
+                        },
+
                 },
             .serverInfo = lsp::ServerInfo{.name = "slang-server",
                                           .version = fmt::format(
@@ -638,6 +645,17 @@ lsp::CompletionItem SlangServer::getCompletionItemResolve(const lsp::CompletionI
     lsp::CompletionItem ret = item;
     m_driver->completions.getCompletionItemResolve(ret);
     return ret;
+}
+
+std::optional<std::vector<lsp::InlayHint>> SlangServer::getDocInlayHint(
+    const lsp::InlayHintParams& params) {
+    auto doc = m_driver->getDocument(params.textDocument.uri);
+    if (!doc) {
+        return {};
+    }
+    auto hints = doc->getAnalysis().getInlayHints(params.range, m_config.inlayHints.get());
+    INFO("Providing {} inlay hints for {}", hints.size(), params.textDocument.uri.getPath());
+    return hints;
 }
 
 SourceManager& SlangServer::sourceManager() {

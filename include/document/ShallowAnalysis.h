@@ -7,6 +7,7 @@
 //------------------------------------------------------------------------------
 #pragma once
 
+#include "Config.h"
 #include "document/SymbolIndexer.h"
 #include "document/SymbolTreeVisitor.h"
 #include "document/SyntaxIndexer.h"
@@ -51,9 +52,13 @@ class DocumentHandle;
 class ShallowAnalysis {
 public:
     /// @brief Constructs a DocumentAnalysis instance with syntax and symbol indexing
+    ///
+    /// An instance is created on every document open and change.
+    /// It's designed to provide index structures for performing lookups, and all the data that's
+    /// immediately queried by the client following an open or change.
     /// @param sourceManager Reference to the source manager for file operations
     /// @param buffer The source buffer containing the document to analyze
-    /// @param tree The syntax tree for the main document
+    /// @param tree The syntax tree for the document
     /// @param options Compilation options bag for semantic analysis
     /// @param trees Additional syntax trees that this document depends on
     ShallowAnalysis(SourceManager& sourceManager, slang::BufferID buffer,
@@ -104,6 +109,9 @@ public:
 
     const std::unique_ptr<slang::ast::Compilation>& getCompilation() const { return m_compilation; }
 
+    /// @brief Gets the source manager for this analysis
+    SourceManager& getSourceManager() const { return m_sourceManager; }
+
     /// @brief Generates debug hover information for a syntax node, traversing up the parent
     /// syntax pointers
     std::string getDebugHover(const slang::parsing::Token& node) const;
@@ -118,11 +126,15 @@ public:
     slang::flat_hash_map<std::string_view, const slang::syntax::DefineDirectiveSyntax*> macros;
 
     friend class DocumentHandle;
+    friend class InlayHintCollector;
 
     /// @brief Gets the appropriate scope from a symbol for member access traversal
     /// @param symbol The symbol to get the scope from
     /// @return Pointer to the scope, or nullptr if the symbol doesn't have an accessible scope
     static const slang::ast::Scope* getScopeFromSym(const slang::ast::Symbol* symbol);
+
+    std::vector<lsp::InlayHint> getInlayHints(lsp::Range range,
+                                              const struct Config::InlayHints& config);
 
 private:
     /// Reference to the source manager. Not const because we may need to parse macro args.
@@ -140,10 +152,12 @@ private:
     /// Compilation context for symbol resolution
     std::unique_ptr<slang::ast::Compilation> m_compilation;
 
-    /// Symbol tree visitor for document symbols
+    /// Symbol tree visitor for /documentSymbols
+    /// Currently this is relies on syntax, but we should switch it to use the shallow compilation
+    /// when symbols exist
     SymbolTreeVisitor m_symbolTreeVisitor;
 
-    /// Symbol indexer for syntax->symbol mapping
+    /// Symbol indexer for syntax->symbol mapping; Used for lookups
     SymbolIndexer m_symbolIndexer;
 
     /// @brief Helper method to check if a token is positioned over a selector

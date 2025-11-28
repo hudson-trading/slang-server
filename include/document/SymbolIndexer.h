@@ -18,6 +18,7 @@
 #include "slang/ast/symbols/InstanceSymbols.h"
 #include "slang/ast/symbols/ValueSymbol.h"
 #include "slang/syntax/SyntaxNode.h"
+#include "slang/text/SourceLocation.h"
 
 namespace server {
 
@@ -55,6 +56,9 @@ public:
     // These are not in the buffer, but should be visited
     void handle(const slang::ast::RootSymbol& sym);
     void handle(const slang::ast::CompilationUnitSymbol& sym);
+
+    // Index for inlay hints
+    void handle(const slang::ast::CallExpression& sym);
 
     /// Generic symbol handler with dispatch to specialized handlers
     template<typename T>
