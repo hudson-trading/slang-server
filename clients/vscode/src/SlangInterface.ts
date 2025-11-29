@@ -137,6 +137,14 @@ export async function getModulesInFile(fsPath: string): Promise<string[]> {
   return await vscode.commands.executeCommand('slang.getModulesInFile', fsPath)
 }
 
+export async function getDrivers(hierPath: string): Promise<string[]> {
+  return await vscode.commands.executeCommand('slang.getDrivers', hierPath)
+}
+
+export async function getLoads(hierPath: string): Promise<string[]> {
+  return await vscode.commands.executeCommand('slang.getLoads', hierPath)
+}
+
 interface ExpandMacroArgs {
   dst: string
   src: string
