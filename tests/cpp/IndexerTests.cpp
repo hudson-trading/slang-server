@@ -91,6 +91,28 @@ TEST_CASE("Don't index macros when modules present") {
     CHECK(files.size() == 1);
 }
 
+TEST_CASE("Index directory directly (no glob patterns)") {
+    ServerHarness server("indexer_test");
+    auto& indexer = server.m_indexer;
+
+    // Should find all symbols in the directory
+    auto files = indexer.getRelevantFilesForName("m1");
+    CHECK(files.size() == 1);
+
+    files = indexer.getRelevantFilesForName("m2");
+    CHECK(files.size() == 1);
+
+    files = indexer.getRelevantFilesForName("MyClass");
+    CHECK(files.size() == 1);
+
+    files = indexer.getRelevantFilesForName("outer");
+    CHECK(files.size() == 1);
+
+    // Should have found macros from macro-only files
+    files = indexer.getFilesForMacro("MY_MACRO");
+    CHECK(files.size() == 1);
+}
+
 // Document lifecycle tests using ServerHarness
 TEST_CASE("Index document lifecycle - open does not add to global index") {
     ServerHarness server;

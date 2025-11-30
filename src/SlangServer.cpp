@@ -459,21 +459,35 @@ void SlangServer::loadConfig(const Config& config, bool forceIndexing) {
         setExplore();
     }
 
-    auto indexGlobs = m_config.getIndexGlobs();
-    if (forceIndexing || (old_config.getIndexGlobs() != indexGlobs ||
-                          (old_config.excludeDirs.value() != m_config.excludeDirs.value()))) {
-        INFO("Updating index globs");
-        if (!m_workspaceFolder) {
-            // Filter to abs path globs if there's no workspace folder
-            std::vector<std::string> filtered;
-            std::copy_if(indexGlobs.begin(), indexGlobs.end(), std::back_inserter(filtered),
-                         [](const auto& glob) {
-                             return std::filesystem::path(glob).is_absolute();
-                         });
-            indexGlobs = std::move(filtered);
+    if (!m_config.indexGlobs.get().empty() || !m_config.excludeDirs.get().empty()) {
+        // Deprecated config globs
+        WARN("Using legacy indexGlobs or excludeDirs from config, please migrate to 'index' "
+             "field");
+        auto indexGlobs = m_config.getIndexGlobs();
+        if (forceIndexing || (old_config.getIndexGlobs() != indexGlobs ||
+                              (old_config.excludeDirs.value() != m_config.excludeDirs.value()))) {
+            INFO("Updating index globs");
+            if (!m_workspaceFolder) {
+                // Filter to abs path globs if there's no workspace folder
+                std::vector<std::string> filtered;
+                std::copy_if(indexGlobs.begin(), indexGlobs.end(), std::back_inserter(filtered),
+                             [](const auto& glob) {
+                                 return std::filesystem::path(glob).is_absolute();
+                             });
+                indexGlobs = std::move(filtered);
+            }
+            INFO("Indexing with globs: {}", fmt::join(indexGlobs, ", "));
+            m_indexer.startIndexing(indexGlobs, m_config.excludeDirs.value(),
+                                    m_config.indexingThreads.value());
         }
-        INFO("Indexing with globs: {}", fmt::join(indexGlobs, ", "));
-        m_indexer.startIndexing(indexGlobs, m_config.excludeDirs.value(),
+    }
+    else {
+
+        auto maybePath = m_workspaceFolder.has_value()
+                             ? std::optional<std::string_view>(m_workspaceFolder->uri.getPath())
+                             : std::nullopt;
+
+        m_indexer.startIndexing(m_config.index.value(), maybePath,
                                 m_config.indexingThreads.value());
     }
 
