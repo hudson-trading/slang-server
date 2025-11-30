@@ -815,18 +815,17 @@ export class ProjectComponent
     },
     async () => {
       // quick pick from the glob
-      const glob = ext.slangConfig.buildPattern
-      if (!glob) {
-        vscode.window.showErrorMessage('No buildPattern set in any .slang-server.json')
-        return
-      }
-      // can't use workspace findfiles bc the build.f files are probably generated and not in repo
+      const glob = ext.slangConfig.buildPattern ?? '**/*.f'
+
       this.logger.info('Looking for build files: ' + glob.replace('{}', '*'))
       const files = await ext.findFiles([glob.replace('{}', '*')], true)
       if (files.length === 0) {
-        vscode.window.showErrorMessage('No build files found')
+        vscode.window.showErrorMessage(
+          `No filelists (.f) files found with glob ${glob}. See [docs](https://hudson-trading.github.io/slang-server/start/config/#buildpattern) for more info.`
+        )
         return
       }
+      this.logger.info(`Found ${files.length} build files`)
 
       // trim off common prefixes
       const globPre = glob.substring(0, glob.indexOf('{}'))
