@@ -2,6 +2,14 @@
   {
     "instance_completions": [
       {
+        "label": "",
+        "labelDetails": {
+          "detail": " "
+        },
+        "kind": "Property",
+        "filterText": ""
+      },
+      {
         "label": "clk",
         "labelDetails": {
           "detail": " input logic"
@@ -16,22 +24,6 @@
         },
         "kind": "Variable",
         "filterText": "clk"
-      },
-      {
-        "label": "rst",
-        "labelDetails": {
-          "detail": " input logic"
-        },
-        "kind": "Interface",
-        "filterText": "rst"
-      },
-      {
-        "label": "rst",
-        "labelDetails": {
-          "detail": " logic"
-        },
-        "kind": "Variable",
-        "filterText": "rst"
       },
       {
         "label": "data_out",
@@ -50,6 +42,30 @@
         "filterText": "data_out"
       },
       {
+        "label": "internal_state",
+        "labelDetails": {
+          "detail": " logic"
+        },
+        "kind": "Variable",
+        "filterText": "internal_state"
+      },
+      {
+        "label": "rst",
+        "labelDetails": {
+          "detail": " input logic"
+        },
+        "kind": "Interface",
+        "filterText": "rst"
+      },
+      {
+        "label": "rst",
+        "labelDetails": {
+          "detail": " logic"
+        },
+        "kind": "Variable",
+        "filterText": "rst"
+      },
+      {
         "label": "valid",
         "labelDetails": {
           "detail": " output logic"
@@ -64,22 +80,6 @@
         },
         "kind": "Variable",
         "filterText": "valid"
-      },
-      {
-        "label": "internal_state",
-        "labelDetails": {
-          "detail": " logic"
-        },
-        "kind": "Variable",
-        "filterText": "internal_state"
-      },
-      {
-        "label": "",
-        "labelDetails": {
-          "detail": " "
-        },
-        "kind": "Property",
-        "filterText": ""
       }
     ]
   }
