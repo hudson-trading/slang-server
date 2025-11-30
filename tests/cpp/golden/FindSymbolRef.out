@@ -927,6 +927,21 @@ endmodule
 typedef enum { cover_none, cover_all } coverage_level;
                                        ^^^^^^^^^^^^^^ Sym coverage_level : TypeAlias
 
+
+
+typedef enum {
+
+    STATE_IDLE,
+
+    STATE_ACTIVE[4],
+
+    STATE_DONE
+
+} state_t;
+  ^^^^^^^ Sym state_t : TypeAlias
+
+
+
 checker assert_window1 (
         ^^^^^^^^^^^^^^ Sym assert_window1 : CheckerInstanceBody
 
