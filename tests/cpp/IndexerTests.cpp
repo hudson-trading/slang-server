@@ -1,218 +1,326 @@
 // SPDX-FileCopyrightText: Hudson River Trading
 // SPDX-License-Identifier: MIT
 
-// #include "document/SlangDoc.h"
 #include "Indexer.h"
 #include "catch2/catch_test_macros.hpp"
-#include "lsp/LspTypes.h"
-#include <atomic>
-#include <cstdio>
+#include "utils/ServerHarness.h"
+#include "utils/Utils.h"
 #include <filesystem>
-#include <fstream>
-#include <string>
 
-#include "slang/driver/SourceLoader.h"
-#include "slang/text/SourceManager.h"
+using namespace server;
 
-class TestIndexer {
-    struct FileHandle {
-        explicit FileHandle() {
-            static std::atomic<int> counter{0};
-            fileName = "slang_test_" + std::to_string(counter++) + ".tmp";
-            // Use canonical temp directory to handle macOS symlinks consistently
-            auto canonicalTempDir = std::filesystem::canonical(
-                std::filesystem::temp_directory_path());
-            filePath = canonicalTempDir / fileName;
-        }
+namespace {
+std::string getTestDataPath() {
+    return (findSlangRoot() / "tests" / "data" / "indexer_test").string();
+}
+} // namespace
 
-        ~FileHandle() { std::filesystem::remove(filePath); }
-
-        std::string name() const { return fileName; }
-
-        void writeContent(std::string content) {
-            std::ofstream file(filePath);
-            REQUIRE(file.is_open());
-            file << content;
-            file.close();
-        }
-
-        std::string getContent() const {
-            std::ifstream file(filePath);
-            REQUIRE(file.is_open());
-            return std::string((std::istreambuf_iterator<char>(file)),
-                               std::istreambuf_iterator<char>());
-        }
-
-        std::string fullPath() const {
-            // Use canonical path to resolve symlinks consistently on macOS
-            try {
-                return std::filesystem::canonical(filePath).string();
-            }
-            catch (const std::filesystem::filesystem_error&) {
-                // Fallback to the original path if canonical fails
-                return filePath.string();
-            }
-        }
-
-    private:
-        std::string fileName;
-        std::filesystem::path filePath;
-    };
-
-public:
-    FileHandle& addFile(const std::string& contents) {
-        openFiles.push_back(std::make_unique<FileHandle>());
-
-        openFiles.back()->writeContent(contents);
-        return *openFiles.back();
-    };
-
-protected:
-    slang::SourceManager sm;
-    slang::driver::SourceLoader sl{sm};
+TEST_CASE("Index module declarations") {
     Indexer indexer;
+    auto testPath = getTestDataPath();
+    indexer.startIndexing({testPath + "/modules.sv"}, {});
 
-    std::vector<std::unique_ptr<FileHandle>> openFiles;
-};
+    auto files = indexer.getRelevantFilesForName("m1");
+    CHECK(files.size() == 1);
 
-TEST_CASE_METHOD(TestIndexer, "BasicIndexing") {
-    const char* file1Content = R"(
-module automatic m1 import p::*; #(int i = 1)
-    (a, b, , .c({a, b[0]}));
-    input a;
-    output [1:0] b;
-endmodule
+    files = indexer.getRelevantFilesForName("m2");
+    CHECK(files.size() == 1);
 
-(* attr = 3.14 *) bind m3.m m1 #(1) bound('x, , , );
+    files = indexer.getRelevantFilesForName("Iface");
+    CHECK(files.size() == 1);
+}
 
-interface Iface;
-    extern function void foo(int i, real r);
-    extern forkjoin task t3();
+TEST_CASE("Don't index nested modules (they're private)") {
+    Indexer indexer;
+    auto testPath = getTestDataPath();
+    indexer.startIndexing({testPath + "/nested.sv"}, {});
 
-    modport m(export foo, function void bar(int, logic), task baz, export func);
-    modport n(import function void func(int), import task t2);
-    modport o(export t2);
-endinterface
+    // Should only have outer module, not inner (it's private)
+    CHECK(indexer.symbolToFiles.size() == 1);
 
-module n(Iface.m a);
-    initial begin
-        a.foo(42, 3.14);
-        a.bar(1, 1);
-        a.baz();
-    end
+    // Check we have "outer"
+    auto files = indexer.getRelevantFilesForName("outer");
+    CHECK(files.size() == 1);
 
-    function void a.bar(int i, logic l); endfunction
-    task a.baz; endtask
-    function void a.func(int i); endfunction
+    // Verify inner module is not in the index
+    files = indexer.getRelevantFilesForName("inner");
+    CHECK(files.empty());
+}
 
-    function void a.foo(int i, real r);
-    endfunction
-endmodule
+TEST_CASE("Index classes") {
+    Indexer indexer;
+    auto testPath = getTestDataPath();
+    indexer.startIndexing({testPath + "/classes.sv"}, {});
 
-module m4;
-    Iface i1();
-    n n1(i1);
+    auto files = indexer.getRelevantFilesForName("MyClass");
+    CHECK(files.size() == 1);
 
-    Iface i2();
-    n n2(i2.m);
+    CHECK(indexer.symbolToFiles.size() == 2);
 
-    localparam int baz = 3;
-    task i1.t2;
-        static int i = baz;
-    endtask
-
-    task i2.t2;
-        static int i = baz;
-    endtask
-endmodule
-)";
-
-    const char* file2Content = R"(
-module wire_module (input in, output out);
-  Iface i2();
-  n n2(i2.m);
-
-  assign out = in;
-
-
-  program driver;
-  default clocking cb @(posedge clk);
-  default input #1step output #1ns;
-  endclocking
-
-  initial begin
-  @(rstGen.done);
-  ##1;
-  data_in <= 8'hAF;
-  start <= '1;
-  read_mode <= '0;
-  $finish;
-  end
-  endprogram
-
-endmodule
-
-class C;
-    int i;
-    static int j;
-    extern function int foo(int bar, int baz = 1);
-endclass
-)";
-
-    const char* file3Content = R"(
-`define REQUIRED                                                \
-    input wire   cmc_clk_p,                                     \
-    input wire   cmc_clk_n,
-)";
-
-    std::string f1Path = addFile(file1Content).fullPath();
-    std::string f2Path = addFile(file2Content).fullPath();
-    std::string f3Path = addFile(file3Content).fullPath();
-
-    // Use the canonical temp directory path with the test file pattern to handle macOS symlinks
-    auto tempDir = std::filesystem::canonical(std::filesystem::temp_directory_path()).string();
-    indexer.startIndexing({tempDir + "/slang_test*"}, {});
-
-    using GoldenMap = Indexer::IndexMap;
-    const auto checkIndexedMap = [](const Indexer::IndexMap& map, const GoldenMap& goldenMap) {
-        CHECK(map.size() == goldenMap.size());
-        auto expectedIt = goldenMap.begin();
-        auto mapIt = map.begin();
-
-        while (expectedIt != goldenMap.end() && mapIt != map.end()) {
-            CHECK(expectedIt->first == mapIt->first);
-            CHECK(expectedIt->second.toString(expectedIt->first) ==
-                  mapIt->second.toString(mapIt->first));
-            ++expectedIt;
-            ++mapIt;
+    // Check both are classes
+    for (const auto& [name, entries] : indexer.symbolToFiles) {
+        for (const auto& entry : entries) {
+            CHECK(entry.kind == slang::syntax::SyntaxKind::ClassDeclaration);
         }
-    };
-
-    SECTION("Macros") {
-        GoldenMap expectedMap;
-        expectedMap.emplace("REQUIRED",
-                            Indexer::IndexMapEntry::fromMacroData(URI::fromFile(f3Path)));
-
-        checkIndexedMap(indexer.macroMap().getAllEntries(), expectedMap);
     }
+}
 
-    SECTION("Symbols") {
-        GoldenMap expectedMap;
-        expectedMap.emplace(
-            "driver", Indexer::IndexMapEntry::fromSymbolData(lsp::SymbolKind::Module, "wire_module",
-                                                             URI::fromFile(f2Path)));
-        expectedMap.emplace("C", Indexer::IndexMapEntry::fromSymbolData(lsp::SymbolKind::Class, "",
-                                                                        URI::fromFile(f2Path)));
-        expectedMap.emplace("Iface", Indexer::IndexMapEntry::fromSymbolData(
-                                         lsp::SymbolKind::Interface, "", URI::fromFile(f1Path)));
-        expectedMap.emplace("m1", Indexer::IndexMapEntry::fromSymbolData(
-                                      lsp::SymbolKind::Module, "", URI::fromFile(f1Path)));
-        expectedMap.emplace("m4", Indexer::IndexMapEntry::fromSymbolData(
-                                      lsp::SymbolKind::Module, "", URI::fromFile(f1Path)));
-        expectedMap.emplace("n", Indexer::IndexMapEntry::fromSymbolData(lsp::SymbolKind::Module, "",
-                                                                        URI::fromFile(f1Path)));
-        expectedMap.emplace("wire_module", Indexer::IndexMapEntry::fromSymbolData(
-                                               lsp::SymbolKind::Module, "", URI::fromFile(f2Path)));
-        checkIndexedMap(indexer.symbolMap().getAllEntries(), expectedMap);
-    }
+TEST_CASE("Index macros when no modules present") {
+    Indexer indexer;
+    auto testPath = getTestDataPath();
+    indexer.startIndexing({testPath + "/macros.sv"}, {});
+
+    auto files = indexer.getFilesForMacro("MY_MACRO");
+    CHECK(files.size() == 1);
+
+    files = indexer.getFilesForMacro("ANOTHER_MACRO");
+    CHECK(files.size() == 1);
+}
+
+TEST_CASE("Don't index macros when modules present") {
+    Indexer indexer;
+    auto testPath = getTestDataPath();
+    indexer.startIndexing({testPath + "/macros_with_module.sv"}, {});
+
+    // Macros should not be indexed when modules are present
+    auto files = indexer.getFilesForMacro("MY_MACRO");
+    CHECK(files.empty());
+
+    // But modules should be indexed
+    files = indexer.getRelevantFilesForName("m");
+    CHECK(files.size() == 1);
+}
+
+// Document lifecycle tests using ServerHarness
+TEST_CASE("Index document lifecycle - open does not add to global index") {
+    ServerHarness server;
+    auto& indexer = server.m_indexer;
+
+    // Open a document with a module
+    auto doc = server.openFile("test.sv", R"(
+module TestModule;
+    logic a;
+endmodule
+)");
+
+    // Module should NOT be in the global index yet (only in open documents)
+    auto files = indexer.getRelevantFilesForName("TestModule");
+    CHECK(files.empty());
+
+    doc.close();
+}
+
+TEST_CASE("Index document lifecycle - save adds to global index") {
+    ServerHarness server;
+    auto& indexer = server.m_indexer;
+
+    // Open a document with a module
+    auto doc = server.openFile("test.sv", R"(
+module TestModule;
+    logic a;
+endmodule
+)");
+
+    // Save the document - this should add symbols to the global index
+    doc.save();
+
+    // Now module should be in the global index
+    auto files = indexer.getRelevantFilesForName("TestModule");
+    CHECK(files.size() == 1);
+
+    doc.close();
+}
+
+TEST_CASE("Index document lifecycle - update changes symbols in global index") {
+    ServerHarness server;
+    auto& indexer = server.m_indexer;
+
+    // Open and save a document with one module
+    auto doc = server.openFile("test.sv", R"(
+module OldModule;
+    logic a;
+endmodule
+)");
+    doc.save();
+
+    // Verify the old module is indexed
+    auto files = indexer.getRelevantFilesForName("OldModule");
+    CHECK(files.size() == 1);
+
+    // Modify the document to have a different module
+    auto text = doc.getText();
+    auto pos = text.find("OldModule");
+    doc.erase(pos, pos + 9);
+    doc.insert(pos, "NewModule");
+    doc.publishChanges();
+    doc.save();
+
+    // Old module should be removed from index
+    files = indexer.getRelevantFilesForName("OldModule");
+    CHECK(files.empty());
+
+    // New module should be in index
+    files = indexer.getRelevantFilesForName("NewModule");
+    CHECK(files.size() == 1);
+
+    doc.close();
+}
+
+TEST_CASE("Index document lifecycle - close keeps saved content in index") {
+    ServerHarness server;
+    auto& indexer = server.m_indexer;
+
+    // Open, save, and close a document
+    auto doc = server.openFile("test.sv", R"(
+module TestModule;
+    logic a;
+endmodule
+)");
+    doc.save();
+    doc.close();
+
+    // Module should still be in the global index after close
+    auto files = indexer.getRelevantFilesForName("TestModule");
+    CHECK(files.size() == 1);
+}
+
+TEST_CASE("Index document lifecycle - adding symbols") {
+    ServerHarness server;
+    auto& indexer = server.m_indexer;
+
+    // Open with one module
+    auto doc = server.openFile("test.sv", R"(
+module Module1;
+    logic a;
+endmodule
+)");
+    doc.save();
+
+    // Verify first module is indexed
+    auto files = indexer.getRelevantFilesForName("Module1");
+    CHECK(files.size() == 1);
+
+    // Add another module
+    doc.after("endmodule").write(R"(
+
+module Module2;
+    logic b;
+endmodule
+)");
+    doc.publishChanges();
+    doc.save();
+
+    // Both modules should be in index
+    files = indexer.getRelevantFilesForName("Module1");
+    CHECK(files.size() == 1);
+
+    files = indexer.getRelevantFilesForName("Module2");
+    CHECK(files.size() == 1);
+
+    doc.close();
+}
+
+TEST_CASE("Index document lifecycle - removing symbols") {
+    ServerHarness server;
+    auto& indexer = server.m_indexer;
+
+    // Open with two modules
+    auto doc = server.openFile("test.sv", R"(
+module Module1;
+    logic a;
+endmodule
+
+module Module2;
+    logic b;
+endmodule
+)");
+    doc.save();
+
+    // Both should be indexed
+    auto files = indexer.getRelevantFilesForName("Module1");
+    CHECK(files.size() == 1);
+    files = indexer.getRelevantFilesForName("Module2");
+    CHECK(files.size() == 1);
+
+    // Remove Module2
+    auto text = doc.getText();
+    auto pos = text.find("module Module2");
+    auto endPos = text.find("endmodule", pos) + 9;
+    doc.erase(pos, endPos + 1); // +1 for newline
+    doc.publishChanges();
+    doc.save();
+
+    // Module1 should still be there
+    files = indexer.getRelevantFilesForName("Module1");
+    CHECK(files.size() == 1);
+
+    // Module2 should be removed
+    files = indexer.getRelevantFilesForName("Module2");
+    CHECK(files.empty());
+
+    doc.close();
+}
+
+TEST_CASE("Index document lifecycle - macros") {
+    ServerHarness server;
+    auto& indexer = server.m_indexer;
+
+    // Open file with only macros (no modules)
+    auto doc = server.openFile("test.sv", R"(
+`define MY_MACRO 42
+`define ANOTHER_MACRO "hello"
+)");
+    doc.save();
+
+    // Macros should be indexed
+    auto files = indexer.getFilesForMacro("MY_MACRO");
+    CHECK(files.size() == 1);
+
+    files = indexer.getFilesForMacro("ANOTHER_MACRO");
+    CHECK(files.size() == 1);
+
+    // Remove one macro
+    auto text = doc.getText();
+    auto pos = text.find("`define ANOTHER_MACRO");
+    auto endPos = text.find("\n", pos);
+    doc.erase(pos, endPos + 1);
+    doc.publishChanges();
+    doc.save();
+
+    // MY_MACRO should still be there
+    files = indexer.getFilesForMacro("MY_MACRO");
+    CHECK(files.size() == 1);
+
+    // ANOTHER_MACRO should be removed
+    files = indexer.getFilesForMacro("ANOTHER_MACRO");
+    CHECK(files.empty());
+
+    doc.close();
+}
+
+TEST_CASE("Index document lifecycle - URI interning") {
+    ServerHarness server;
+    auto& indexer = server.m_indexer;
+
+    // Open and save multiple documents
+    auto doc1 = server.openFile("test1.sv", "module M1; endmodule");
+    doc1.save();
+
+    auto doc2 = server.openFile("test2.sv", "module M2; endmodule");
+    doc2.save();
+
+    auto doc3 = server.openFile("test3.sv", "module M3; endmodule");
+    doc3.save();
+
+    // Verify all modules are indexed
+    CHECK(indexer.getRelevantFilesForName("M1").size() == 1);
+    CHECK(indexer.getRelevantFilesForName("M2").size() == 1);
+    CHECK(indexer.getRelevantFilesForName("M3").size() == 1);
+
+    // Verify we have 3 unique URIs
+    CHECK(indexer.uniqueUris.size() == 3);
+
+    doc1.close();
+    doc2.close();
+    doc3.close();
 }

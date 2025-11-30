@@ -35,6 +35,8 @@ lsp::Location toLocation(const SourceRange& range, const SourceManager& sourceMa
 
 lsp::Location toLocation(const SourceLocation& loc, const SourceManager& sourceManager);
 
+lsp::SymbolKind toSymbolKind(const slang::syntax::SyntaxKind& kind);
+
 lsp::MarkupContent markdown(std::string& md);
 
 std::string portString(ast::ArgumentDirection dir);

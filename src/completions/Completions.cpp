@@ -27,6 +27,7 @@
 #include "slang/ast/symbols/ValueSymbol.h"
 #include "slang/ast/symbols/VariableSymbols.h"
 #include "slang/ast/types/AllTypes.h"
+#include "slang/syntax/SyntaxKind.h"
 #include "slang/syntax/SyntaxNode.h"
 #include "slang/syntax/SyntaxPrinter.h"
 #include "slang/syntax/SyntaxTree.h"
@@ -80,25 +81,35 @@ void resolveMacro(const syntax::DefineDirectiveSyntax& macro, lsp::CompletionIte
 //------------------------------------------------------------------------------
 // Modules, Interfaces, Packages
 //------------------------------------------------------------------------------
-lsp::CompletionItem getModuleCompletion(std::string name, lsp::SymbolKind kind) {
-    auto kindStr = [kind]() -> std::string {
-        switch (kind) {
-            case lsp::SymbolKind::Module:
-                return " Module";
-            case lsp::SymbolKind::Package:
-                return " Package";
-            case lsp::SymbolKind::Interface:
-                return " Interface";
-            default:
-                return " Symbol";
-        }
-    }();
+lsp::CompletionItem getModuleCompletion(std::string name, const syntax::SyntaxKind& kind) {
+    // Convert SyntaxKind to user-friendly display string
+    std::string detail;
+    switch (kind) {
+        case syntax::SyntaxKind::ModuleDeclaration:
+            detail = " Module";
+            break;
+        case syntax::SyntaxKind::InterfaceDeclaration:
+            detail = " Interface";
+            break;
+        case syntax::SyntaxKind::PackageDeclaration:
+            detail = " Package";
+            break;
+        case syntax::SyntaxKind::ProgramDeclaration:
+            detail = " Program";
+            break;
+        case syntax::SyntaxKind::ClassDeclaration:
+            detail = " Class";
+            break;
+        default:
+            detail = std::string{toString(kind)};
+            break;
+    }
 
     return lsp::CompletionItem{
         .label = name,
         .labelDetails =
             lsp::CompletionItemLabelDetails{
-                .detail = kindStr,
+                .detail = detail,
             },
         .kind = lsp::CompletionItemKind::Module,
         .filterText = name,
