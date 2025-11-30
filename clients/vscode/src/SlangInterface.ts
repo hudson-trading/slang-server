@@ -145,6 +145,28 @@ export async function getLoads(hierPath: string): Promise<string[]> {
   return await vscode.commands.executeCommand('slang.getLoads', hierPath)
 }
 
+/// Cone tracing: Get drivers (incoming calls) of a given RTL path with full location info
+/// Returns CallHierarchyIncomingCall array which includes URI, range, and hierPath for navigation
+export async function getDriversWithLocation(
+  hierPath: string
+): Promise<vscode.CallHierarchyIncomingCall[] | undefined> {
+  return await vscode.commands.executeCommand(
+    'slang.getDriversWithLocation',
+    hierPath
+  )
+}
+
+/// Cone tracing: Get loads (outgoing calls) of a given RTL path with full location info
+/// Returns CallHierarchyOutgoingCall array which includes URI, range, and hierPath for navigation
+export async function getLoadsWithLocation(
+  hierPath: string
+): Promise<vscode.CallHierarchyOutgoingCall[] | undefined> {
+  return await vscode.commands.executeCommand(
+    'slang.getLoadsWithLocation',
+    hierPath
+  )
+}
+
 interface ExpandMacroArgs {
   dst: string
   src: string
