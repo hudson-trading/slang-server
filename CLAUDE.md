@@ -6,24 +6,24 @@ The Slang Server is a SystemVerilog language server written in C++20, and heavil
 
 ```bash
 # Build the project
-cmake -B build/claude
-cmake --build build/claude -j8
+cmake -B build
+cmake --build build -j8
 
 # Run tests
-ctest --test-dir build/claude --output-on-failure
+ctest --test-dir build --output-on-failure
 
 # Server tests only- this is the primary testing
-cmake --build build/claude -j8 --target server_unittests && build/bin/server_unittests
+cmake --build build -j8 --target server_unittests && build/bin/server_unittests
 # Add --update if updating the golden outputs which get stored in tests/cpp/golden
 
 # Build the server binary- this is used for pygls pytests and by clients (editors)
-cmake --build build/claude -j8 --target slang_server
+cmake --build build -j8 --target slang_server
 ```
 
 ## Testing Framework
 
 - **Unit Tests**: Uses Catch2 framework, located in `tests/cpp/`
-- **Test Command**: `ctest --test-dir build/claude --output-on-failure`
+- **Test Command**: `ctest --test-dir build --output-on-failure`
 
 ## Architecture Overview
 
@@ -46,6 +46,6 @@ We use `uv` for managing the python venv and requirements
 
 ## Development Workflow
 
-1. Build: `cmake -B build/claude && cmake --build build/claude -j8`
-2. Test: `ctest --test-dir build/claude --output-on-failure`
+1. Build: `cmake -B build && cmake --build build -j8`
+2. Test: `ctest --test-dir build --output-on-failure`
 3. Format: Automatic via pre-commit hooks
