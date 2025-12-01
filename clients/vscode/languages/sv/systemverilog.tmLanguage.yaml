@@ -95,6 +95,8 @@ repository:
       '0':
         name: punctuation.definition.typedef.end.systemverilog
     patterns:
+      - include: '#parameters'
+      - include: '#base-grammar'
       - include: '#identifiers'
       - include: '#selects'
     name: meta.typedef.systemverilog

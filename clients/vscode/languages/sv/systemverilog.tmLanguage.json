@@ -205,6 +205,12 @@
       },
       "patterns": [
         {
+          "include": "#parameters"
+        },
+        {
+          "include": "#base-grammar"
+        },
+        {
           "include": "#identifiers"
         },
         {
