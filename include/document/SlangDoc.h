@@ -24,14 +24,20 @@
 #include "slang/text/SourceManager.h"
 #include "slang/util/Bag.h"
 namespace server {
-/// Container around an open document, syntax tree, and shallow analysis. Isn't aware of broader
-/// compilation context.
+/// Container around an open document, syntax tree, and shallow analysis. Isn't aware of any broader
+/// compilation context at the moment. Creates a syntax tree at the minimum, and an analysis if
+/// required.
 
 using namespace slang;
 
 class DocumentHandle;
+class ServerDriver;
+
 class SlangDoc {
 private:
+    /// Reference to the server driver, for grabbing other dependent documents
+    ServerDriver& m_driver;
+
     /// Reference to the source manager
     slang::SourceManager& m_sourceManager;
 
@@ -42,7 +48,7 @@ private:
     URI m_uri;
 
     /// The buffer of the actual source text (no expansions)
-    slang::BufferID m_buffer;
+    slang::SourceBuffer m_buffer;
 
     /// The syntax tree for this document
     std::shared_ptr<slang::syntax::SyntaxTree> m_tree;
@@ -57,28 +63,21 @@ private:
     friend class DocumentHandle;
 
 public:
-    SlangDoc(URI uri, SourceManager& SourceManager, slang::Bag options,
-             std::shared_ptr<slang::syntax::SyntaxTree> tree);
-
-    SlangDoc(URI uri, SourceManager& SourceManager, slang::Bag options, std::string_view text);
-
-    SlangDoc(URI uri, SourceManager& SourceManager, slang::Bag options, slang::BufferID buffer);
+    SlangDoc(ServerDriver& driver, URI uri, slang::SourceBuffer buffer);
 
     // Open a Document from a syntax tree (parsed from slang Driver)
-    static std::shared_ptr<SlangDoc> fromTree(std::shared_ptr<slang::syntax::SyntaxTree> tree,
-                                              SourceManager& SourceManager,
-                                              const slang::Bag& options = {});
+    static std::shared_ptr<SlangDoc> fromTree(ServerDriver& driver,
+                                              std::shared_ptr<slang::syntax::SyntaxTree> tree);
 
     // Open a Document from text (LSP open)
-    static std::shared_ptr<SlangDoc> fromText(const URI& uri, SourceManager& SourceManager,
-                                              const slang::Bag& options, std::string_view text);
+    static std::shared_ptr<SlangDoc> fromText(ServerDriver& driver, const URI& uri,
+                                              std::string_view text);
 
     // Open a Document from file
-    static std::shared_ptr<SlangDoc> open(const URI& uri, SourceManager& SourceManager,
-                                          const slang::Bag& options);
+    static std::shared_ptr<SlangDoc> open(ServerDriver& driver, const URI& uri);
 
     SourceManager& getSourceManager() const { return m_sourceManager; }
-    const slang::BufferID getBuffer() const { return m_buffer; }
+    const slang::BufferID getBuffer() const { return m_buffer.id; }
     const std::string_view getText() const;
     const URI& getURI() { return m_uri; }
     std::string_view getPath() const { return m_uri.getPath(); }
@@ -86,8 +85,11 @@ public:
     /// @brief Get the syntax tree, creating it if necessary
     std::shared_ptr<slang::syntax::SyntaxTree> getSyntaxTree();
 
+    /// @brief Check if analysis exists without creating it
+    bool hasAnalysis() const { return m_analysis != nullptr && m_analysis->hasValidBuffers(); }
+
     /// @brief Get the analysis, creating it if necessary
-    ShallowAnalysis& getAnalysis();
+    ShallowAnalysis& getAnalysis(bool refreshDependencies = false);
 
     ////////////////////////////////////////////////
     /// Indexed Syntax Tree Methods
@@ -136,7 +138,7 @@ public:
     std::vector<lsp::DocumentSymbol> getSymbols() { return getAnalysis().getDocSymbols(); }
 
     std::optional<slang::SourceLocation> getLocation(const lsp::Position& position) {
-        return m_sourceManager.getSourceLocation(m_buffer, position.line, position.character);
+        return m_sourceManager.getSourceLocation(m_buffer.id, position.line, position.character);
     }
 
     // Previous text on and before a position
