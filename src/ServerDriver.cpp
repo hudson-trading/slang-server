@@ -31,11 +31,11 @@
 namespace server {
 using namespace slang;
 
-ServerDriver::ServerDriver(Indexer& indexer, SlangLspClient& client, std::string_view flags,
+ServerDriver::ServerDriver(Indexer& indexer, SlangLspClient& client, const Config& config,
                            std::vector<std::string> buildfiles) :
     sm(driver.sourceManager), diagEngine(driver.diagEngine), client(client),
     diagClient(std::make_shared<ServerDiagClient>(sm, client)), completions(indexer, sm, options),
-    m_indexer(indexer) {
+    m_indexer(indexer), m_config(config) {
     // Create and configure the driver with our source manager and diagnostic engine
     // SourceManager must not be moved, since diagEngine, syntax trees hold references to it
     driver.addStandardArgs();
@@ -47,15 +47,15 @@ ServerDriver::ServerDriver(Indexer& indexer, SlangLspClient& client, std::string
     parseOpts.supportComments = true;
     parseOpts.ignoreDuplicates = true;
 
-    bool ok = driver.parseCommandLine(flags, parseOpts);
+    bool ok = driver.parseCommandLine(m_config.flags.value(), parseOpts);
     driver.options.errorLimit = 0;
     ok &= driver.processOptions(false);
     if (!ok) {
-        client.showError(fmt::format("Failed to parse config flags: {}", flags));
+        client.showError(fmt::format("Failed to parse config flags: {}", m_config.flags.value()));
     }
 
     for (auto& buildfile : buildfiles) {
-        ok = driver.processCommandFiles(buildfile, false, false);
+        ok = driver.processCommandFiles(buildfile, m_config.buildRelativePaths.value(), false);
         if (ok) {
             INFO("Processed build file: {}", buildfile);
         }
@@ -114,10 +114,10 @@ void ServerDriver::updateDoc(SlangDoc& doc, FileUpdateType type) {
 }
 
 std::unique_ptr<ServerDriver> ServerDriver::create(Indexer& indexer, SlangLspClient& client,
-                                                   std::string_view flags,
+                                                   const Config& config,
                                                    std::vector<std::string> buildfiles,
                                                    const ServerDriver* oldDriver) {
-    auto newDriver = std::make_unique<ServerDriver>(indexer, client, flags, buildfiles);
+    auto newDriver = std::make_unique<ServerDriver>(indexer, client, config, buildfiles);
 
     // Copy only open documents from old driver if provided
     if (oldDriver) {

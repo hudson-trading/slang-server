@@ -53,6 +53,10 @@
             }
           ]
         },
+        "buildRelativePaths": {
+          "description": "Whether build files use paths relative to that file",
+          "type": "boolean"
+        },
         "wavesPattern": {
           "description": "Waveform file glob to open given a build. Name and top variables can be passed with {name}, {top})",
           "anyOf": [

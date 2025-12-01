@@ -21,6 +21,8 @@ export interface Config {
   build?: string | null
   /** Build file glob pattern, e.g. `builds/{}.f`. Used for selecting build files. */
   buildPattern?: string | null
+  /** Whether build files use paths relative to that file */
+  buildRelativePaths?: boolean
   /** Waveform file glob to open given a build. Name and top variables can be passed with {name}, {top}) */
   wavesPattern?: string | null
   /** Waveform viewer command ({} will be replaced with the WCP port), used for direct wcp connection with neovim and surfer. */
