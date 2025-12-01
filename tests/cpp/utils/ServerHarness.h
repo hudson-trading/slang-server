@@ -82,6 +82,9 @@ public:
     // For access to isWcpVariable
     // TODO -- remove once isWcpVariable is removed
     using SlangServer::m_driver;
+
+    // For access to indexer in tests
+    using SlangServer::m_indexer;
 };
 
 enum DocState {

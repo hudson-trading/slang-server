@@ -14,6 +14,7 @@
 #include "completions/CompletionDispatch.h"
 #include "lsp/LspTypes.h"
 #include "lsp/URI.h"
+#include "util/Converters.h"
 #include "util/Logging.h"
 #include <algorithm>
 #include <filesystem>
@@ -550,6 +551,12 @@ void SlangServer::onDocDidOpen(const lsp::DidOpenTextDocumentParams& params) {
     m_indexer.waitForIndexingCompletion();
     /// @brief Cache syntax tree of the document
     m_driver->openDocument(params.textDocument.uri, params.textDocument.text);
+
+    // Add document to index
+    auto doc = m_driver->getDocument(params.textDocument.uri);
+    if (doc) {
+        m_indexer.openDocument(params.textDocument.uri, *doc->getSyntaxTree());
+    }
 }
 
 void SlangServer::onDocDidChange(const lsp::DidChangeTextDocumentParams& params) {
@@ -578,10 +585,13 @@ void SlangServer::onDocDidSave(const lsp::DidSaveTextDocumentParams& params) {
     m_driver->updateDoc(*doc, FileUpdateType::SAVE);
 
     // Update the indexer with new symbols
-    m_indexer.indexTree(*doc->getSyntaxTree());
+    m_indexer.updateDocument(params.textDocument.uri, *doc->getSyntaxTree());
 }
 
 void SlangServer::onDocDidClose(const lsp::DidCloseTextDocumentParams& params) {
+    // Just remove from openDocuments tracking, but keep the saved content in the index
+    m_indexer.closeDocument(params.textDocument.uri);
+
     // TODO: Add method in ServerDriver to check that the rc of the document is 1 before
     // removing (non-compilation mode)
     m_driver->closeDocument(params.textDocument.uri);
@@ -591,7 +601,20 @@ rfl::Variant<std::vector<lsp::SymbolInformation>, std::vector<lsp::WorkspaceSymb
 SlangServer::getWorkspaceSymbol(const lsp::WorkspaceSymbolParams&) {
     slang::TimeTraceScope _timeScope("getWorkspaceSymbol", "");
 
-    return m_indexer.getAllWorkspaceSymbols();
+    // Convert from slang SyntaxKind to LSP SymbolKind
+
+    std::vector<lsp::WorkspaceSymbol> result;
+    result.reserve(m_indexer.symbolToFiles.size());
+
+    for (const auto& [name, entries] : m_indexer.symbolToFiles) {
+        for (const auto& entry : entries) {
+            result.emplace_back(lsp::WorkspaceSymbol{.location = lsp::LocationUriOnly{*entry.uri},
+                                                     .name = name,
+                                                     .kind = toSymbolKind(entry.kind)});
+        }
+    }
+
+    return result;
 }
 
 rfl::Variant<std::vector<lsp::CompletionItem>, lsp::CompletionList, std::monostate> SlangServer::
