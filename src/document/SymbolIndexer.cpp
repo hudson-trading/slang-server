@@ -218,6 +218,23 @@ void SymbolIndexer::handle(const slang::ast::InstanceSymbol& sym) {
         visitDefault(sym);
     }
 }
+void SymbolIndexer::handle(const slang::ast::TransparentMemberSymbol& sym) {
+    if (!sym.wrapped.getSyntax()) {
+        return;
+    }
+    if (sym.wrapped.kind == slang::ast::SymbolKind::EnumValue) {
+        auto& syntax = sym.wrapped.getSyntax()->as<slang::syntax::DeclaratorSyntax>();
+        if (syntax.dimensions.empty()) {
+            symdex[&syntax.name] = &sym.wrapped;
+        }
+        else {
+            // For enum span goto-refs, we need to associate with all of the enum values in that
+            // list; we can conveniently use the transparent member so that goto refs aren't
+            // confused by these
+            symdex[&syntax.name] = &sym;
+        }
+    }
+}
 
 /// Index ValueSymbol names
 void SymbolIndexer::handle(const slang::ast::ValueSymbol& sym) {

@@ -95,8 +95,10 @@ module test;
     typedef struct {
 
         int i;
+            ^ Sym i : Field
 
         logic [7:0] data;
+                    ^^^^ Sym data : Field
 
     } test_struct;
       ^^^^^^^^^^^ Sym test_struct : TypeAlias
@@ -108,12 +110,16 @@ module test;
     typedef enum {
 
         STATE_IDLE = 0,
+        ^^^^^^^^^^ Sym STATE_IDLE : EnumValue
 
         STATE_ACTIVE = 1,
+        ^^^^^^^^^^^^ Sym STATE_ACTIVE : EnumValue
 
         STATE_WAIT = 2,
+        ^^^^^^^^^^ Sym STATE_WAIT : EnumValue
 
         STATE_DONE = 3
+        ^^^^^^^^^^ Sym STATE_DONE : EnumValue
 
     } state_t;
       ^^^^^^^ Sym state_t : TypeAlias

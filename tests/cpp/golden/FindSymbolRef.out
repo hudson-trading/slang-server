@@ -43,8 +43,10 @@ package pkg1;
     typedef struct packed {
 
         logic [7:0] data;
+                    ^^^^ Sym data : Field
 
         logic valid;
+              ^^^^^ Sym valid : Field
 
     } packet_t;
       ^^^^^^^^ Sym packet_t : TypeAlias
@@ -374,8 +376,10 @@ macromodule m3;
         typedef union tagged {
 
             void Invalid;
+                 ^^^^^^^ Sym Invalid : Field
 
             int Valid;
+                ^^^^^ Sym Valid : Field
 
         } VInt;
           ^^^^ Sym VInt : TypeAlias
@@ -389,6 +393,7 @@ macromodule m3;
                 bit [4:0] reg1, reg2, regd;
 
             } Add;
+              ^^^ Sym Add : Field
 
             union tagged {
 
@@ -403,6 +408,7 @@ macromodule m3;
                 } JmpC;
 
             } Jmp;
+              ^^^ Sym Jmp : Field
 
         } Instr;
           ^^^^^ Sym Instr : TypeAlias
@@ -925,6 +931,8 @@ endmodule
 
 
 typedef enum { cover_none, cover_all } coverage_level;
+               ^^^^^^^^^^ Sym cover_none : EnumValue
+                           ^^^^^^^^^ Sym cover_all : EnumValue
                                        ^^^^^^^^^^^^^^ Sym coverage_level : TypeAlias
 
 
@@ -932,10 +940,12 @@ typedef enum { cover_none, cover_all } coverage_level;
 typedef enum {
 
     STATE_IDLE,
+    ^^^^^^^^^^ Sym STATE_IDLE : EnumValue
 
     STATE_ACTIVE[4],
 
     STATE_DONE
+    ^^^^^^^^^^ Sym STATE_DONE : EnumValue
 
 } state_t;
   ^^^^^^^ Sym state_t : TypeAlias
@@ -1489,6 +1499,9 @@ class C3;
       ^^ Sym C3 : ClassType
 
     enum {red, green, blue} color;
+          ^^^ Sym red : EnumValue
+               ^^^^^ Sym green : EnumValue
+                      ^^^^ Sym blue : EnumValue
                             ^^^^^ Sym color : ClassProperty
 
     bit [3:0] pixel_adr, pixel_offset, pixel_hue;
