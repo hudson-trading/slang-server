@@ -312,6 +312,13 @@ module m4;
 endmodule
 
 typedef enum { cover_none, cover_all } coverage_level;
+
+typedef enum {
+    STATE_IDLE,
+    STATE_ACTIVE[4],
+    STATE_DONE
+} state_t;
+
 checker assert_window1 (
     logic test_expr,
     untyped start_event,
