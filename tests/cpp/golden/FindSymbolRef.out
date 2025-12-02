@@ -6,27 +6,27 @@ timeprecision 1ps;
 
 
 (* foo = 1 *) package static p;
-                             ^ Sym p : PackageDeclaration
+                             ^ Sym p : Package
 
     timeunit 1ns;
 
     parameter int x = 1;
-                  ^ Sym x : Declarator
+                  ^ Sym x : Parameter
 
     parameter type y_t = logic[x:0];
-                   ^^^ Sym y_t : TypeAssignment
+                   ^^^ Sym y_t : TypeParameter
                                ^ Ref -> `parameter int x = 1`
 
     parameter int x2 = x + 1;
-                  ^^ Sym x2 : Declarator
+                  ^^ Sym x2 : Parameter
                        ^ Ref -> `parameter int x = 1`
 
     parameter type y = logic[x:0];
-                   ^ Sym y : TypeAssignment
+                   ^ Sym y : TypeParameter
                              ^ Ref -> `parameter int x = 1`
 
     parameter type y2 = logic[x2:0];
-                   ^^ Sym y2 : TypeAssignment
+                   ^^ Sym y2 : TypeParameter
                               ^^ Ref -> `parameter int x2 = x + 1`
 
     program; endprogram
@@ -38,7 +38,7 @@ endpackage
 
 
 package pkg1;
-        ^^^^ Sym pkg1 : PackageDeclaration
+        ^^^^ Sym pkg1 : Package
 
     typedef struct packed {
 
@@ -47,14 +47,14 @@ package pkg1;
         logic valid;
 
     } packet_t;
-      ^^^^^^^^ Sym packet_t : TypedefDeclaration
+      ^^^^^^^^ Sym packet_t : TypeAlias
 
 endpackage
 
 
 
 package pkg2;
-        ^^^^ Sym pkg2 : PackageDeclaration
+        ^^^^ Sym pkg2 : Package
 
     import pkg1::packet_t;
            ^^^^ Ref -> `package pkg1;`
@@ -69,42 +69,42 @@ endpackage
 
 
 module automatic m1 import p::*; #(int i = 1)
-                 ^^ Sym m1 : ModuleDeclaration
+                 ^^ Sym m1 : InstanceBody
                            ^ Ref -> `package static p;`
-                                       ^ Sym i : Declarator
+                                       ^ Sym i : Parameter
 
     (a, b, , .c({a, b[0]}));
-     ^ Sym a : PortReference
-        ^ Sym b : PortReference
+     ^ Sym a : Port
+        ^ Sym b : Port
 
     input a;
-          ^ Sym a : Declarator
+          ^ Sym a : Net
 
     output [1:0] b;
-                 ^ Sym b : Declarator
+                 ^ Sym b : Net
 
     localparam int c = p::x;
-                   ^ Sym c : Declarator
+                   ^ Sym c : Parameter
                        ^ Ref -> `package static p;`
                           ^ Ref -> `// In p`\n\\n\---\n\\n\`parameter int x = 1`
 
     localparam p::y d = {1'b0, 1'b1};
                ^ Ref -> `package static p;`
                   ^ Ref -> `// In p`\n\\n\---\n\\n\`parameter type y = logic[x:0]`
-                    ^ Sym d : Declarator
+                    ^ Sym d : Parameter
 
 endmodule
 
 
 
 module m2 #(
-       ^^ Sym m2 : ModuleDeclaration
+       ^^ Sym m2 : InstanceBody
 
     parameter i = 1,
-              ^ Sym i : Declarator
+              ^ Sym i : Parameter
 
     localparam j = i,
-               ^ Sym j : Declarator
+               ^ Sym j : Parameter
                    ^ Ref -> `parameter i = 1`
 
     parameter type x_t = bit
@@ -112,18 +112,18 @@ module m2 #(
 )
 
     (input int a[], (* bar = "asdf" *) output logic b = 1, ref c,
-               ^ Sym a : Declarator
-                                                    ^ Sym b : Declarator
-                                                               ^ Sym c : Declarator
+               ^ Sym a : Variable
+                                                    ^ Sym b : Variable
+                                                               ^ Sym c : Variable
 
     input p::y2 d2,
           ^ Ref -> `package static p;`
              ^^ Ref -> `// In p`\n\\n\---\n\\n\`parameter type y2 = logic[x2:0]`
-                ^^ Sym d2 : Declarator
+                ^^ Sym d2 : Variable
 
      interface.mod d, .e());
-                   ^ Sym d : Declarator
-                       ^ Sym e : ExplicitAnsiPort
+                   ^ Sym d : InterfacePort
+                       ^ Sym e : Port
 
 endmodule
 
@@ -131,17 +131,17 @@ endmodule
 
 extern interface I(input a, output b);
                  ^ Ref -> `interface I(.*);`
-                         ^ Sym a : Declarator
-                                   ^ Sym b : Declarator
+                         ^ Sym a : Net
+                                   ^ Sym b : Net
 
 
 
 interface I(.*);
-          ^ Sym I : InterfaceDeclaration
+          ^ Sym I : InstanceBody
 
     modport mod(input a);
-            ^^^ Sym mod : ModportDeclaration
-                      ^ Sym a : ModportSimplePortList
+            ^^^ Sym mod : Modport
+                      ^ Sym a : ModportPort
 
 endinterface
 
@@ -153,17 +153,17 @@ extern macromodule m3;
 
 
 macromodule m3;
-            ^^ Sym m3 : ModuleDeclaration
+            ^^ Sym m3 : InstanceBody
 
     wire b;
-         ^ Sym b : Declarator
+         ^ Sym b : Net
 
     logic c;
-          ^ Sym c : Declarator
+          ^ Sym c : Variable
 
     I d(.a(), .b());
     ^ Ref -> `interface I(.*);`
-      ^ Sym d : HierarchicalInstance
+      ^ Sym d : Instance
          ^ Ref -> `// In I`\n\\n\---\n\\n\`input a`
                ^ Ref -> `// In I`\n\\n\---\n\\n\`output b`
 
@@ -172,7 +172,7 @@ macromodule m3;
     typedef p::y_t y_t;
             ^ Ref -> `package static p;`
                ^^^ Ref -> `// In p`\n\\n\---\n\\n\`parameter type y_t = logic[x:0]`
-                   ^^^ Sym y_t : TypedefDeclaration
+                   ^^^ Sym y_t : TypeAlias
 
 
 
@@ -184,7 +184,7 @@ macromodule m3;
              ^^^ Ref -> `typedef p::y_t y_t;`
 
     ) m (, b, c, d, );
-      ^ Sym m : HierarchicalInstance
+      ^ Sym m : Instance
            ^ Ref -> `wire b;`
               ^ Ref -> `logic c;`
                  ^ Ref -> `I d(.a(), .b());`
@@ -196,7 +196,7 @@ macromodule m3;
     typedef p::y2 y2;
             ^ Ref -> `package static p;`
                ^^ Ref -> `// In p`\n\\n\---\n\\n\`parameter type y2 = logic[x2:0]`
-                  ^^ Sym y2 : TypedefDeclaration
+                  ^^ Sym y2 : TypeAlias
 
 
 
@@ -211,7 +211,7 @@ macromodule m3;
              ^^ Ref -> `typedef p::y2 y2;`
 
     ) m2_inst (
-      ^^^^^^^ Sym m2_inst : HierarchicalInstance
+      ^^^^^^^ Sym m2_inst : Instance
 
         .a({1, 2}),
          ^ Ref -> `// In m2`\n\\n\---\n\\n\`input int a[]`
@@ -239,7 +239,7 @@ macromodule m3;
 
 
     wor [1:0] w = 1;
-              ^ Sym w : Declarator
+              ^ Sym w : Net
 
     assign (supply0, weak1) #(1:0:1, 2:1:0) w = 2;
                                             ^ Ref -> `wor [1:0] w = 1;`
@@ -247,8 +247,8 @@ macromodule m3;
 
 
     wor u,v;
-        ^ Sym u : Declarator
-          ^ Sym v : Declarator
+        ^ Sym u : Net
+          ^ Sym v : Net
 
     alias {u,v} = w;
            ^ Ref -> `wor u,v;`
@@ -258,11 +258,11 @@ macromodule m3;
 
 
     logic f, z;
-          ^ Sym f : Declarator
-             ^ Sym z : Declarator
+          ^ Sym f : Variable
+             ^ Sym z : Variable
 
     event ev;
-          ^^ Sym ev : Declarator
+          ^^ Sym ev : Variable
 
     initial begin
 
@@ -283,10 +283,10 @@ macromodule m3;
 
 
         fork : fkb
-               ^^^ Sym fkb : ParallelBlockStatement
+               ^^^ Sym fkb : StatementBlock
 
             static int i = 1;
-                       ^ Sym i : Declarator
+                       ^ Sym i : Variable
 
             disable fork;
 
@@ -347,8 +347,8 @@ macromodule m3;
             ;
 
         for (int i = 0, j = i; i < 10; i += 2, j += i) begin end
-                 ^ Sym i : Declarator
-                        ^ Sym j : Declarator
+                 ^ Sym i : Variable
+                        ^ Sym j : Variable
                             ^ Ref -> `int i = 0`
                                ^ Ref -> `int i = 0`
                                        ^ Ref -> `int i = 0`
@@ -363,7 +363,7 @@ macromodule m3;
 
 
     always @* begin : foo
-                      ^^^ Sym foo : SequentialBlockStatement
+                      ^^^ Sym foo : StatementBlock
 
     end : foo
 
@@ -378,7 +378,7 @@ macromodule m3;
             int Valid;
 
         } VInt;
-          ^^^^ Sym VInt : TypedefDeclaration
+          ^^^^ Sym VInt : TypeAlias
 
 
 
@@ -405,23 +405,23 @@ macromodule m3;
             } Jmp;
 
         } Instr;
-          ^^^^^ Sym Instr : TypedefDeclaration
+          ^^^^^ Sym Instr : TypeAlias
 
 
 
         VInt v;
         ^^^^ Ref -> `typedef union tagged {\n\    void Invalid;\n\    int Valid;\n\} VInt;`
-             ^ Sym v : Declarator
+             ^ Sym v : Variable
 
         Instr instr;
         ^^^^^ Ref -> `typedef union tagged {\n\    struct {\n\        bit [4:0] reg1, reg2, regd;\n\    } Add;\n\    union tagged {\n\        bit [9:0] JmpU;\n\        struct {\n\            bit [1:0] cc;\n\            bit [9:0] addr;\n\        } JmpC;\n\    } Jmp;\n\} Instr;`
-              ^^^^^ Sym instr : Declarator
+              ^^^^^ Sym instr : Variable
 
         automatic int rf[] = new [3];
-                      ^^ Sym rf : Declarator
+                      ^^ Sym rf : Variable
 
         static longint pc = 'x;
-                       ^^ Sym pc : Declarator
+                       ^^ Sym pc : Variable
 
 
 
@@ -432,7 +432,7 @@ macromodule m3;
                                 ^ Ref -> `// In m3`\n\\n\---\n\\n\`wor [1:0] w = 1;`
 
             tagged Valid .n : $display ("v is Valid with value %d", n);
-                          ^ Sym n : VariablePattern
+                          ^ Sym n : PatternVar
                                                                     ^ Ref -> `.n`
 
         endcase
@@ -443,15 +443,15 @@ macromodule m3;
               ^^^^^ Ref -> `Instr instr;`
 
             tagged Add .s: case (s) matches
-                        ^ Sym s : VariablePattern
+                        ^ Sym s : PatternVar
                                  ^ Ref -> `.s`
 
                             '{.*, .*, 0} : ; // no op
 
                             '{.r1, .r2, .rd} : rf[rd] = rf[r1] + rf[r2];
-                               ^^ Sym r1 : VariablePattern
-                                    ^^ Sym r2 : VariablePattern
-                                         ^^ Sym rd : VariablePattern
+                               ^^ Sym r1 : PatternVar
+                                    ^^ Sym r2 : PatternVar
+                                         ^^ Sym rd : PatternVar
                                                ^^ Ref -> `// In m3`\n\\n\---\n\\n\`automatic int rf[] = new [3];`
                                                   ^^ Ref -> `.rd`
                                                         ^^ Ref -> `// In m3`\n\\n\---\n\\n\`automatic int rf[] = new [3];`
@@ -462,18 +462,18 @@ macromodule m3;
                           endcase
 
             tagged Jmp .j: case (j) matches
-                        ^ Sym j : VariablePattern
+                        ^ Sym j : PatternVar
                                  ^ Ref -> `.j`
 
                             tagged JmpU .a : pc = pc + a;
-                                         ^ Sym a : VariablePattern
+                                         ^ Sym a : PatternVar
                                              ^^ Ref -> `// In m3`\n\\n\---\n\\n\`static longint pc = 'x;`
                                                   ^^ Ref -> `// In m3`\n\\n\---\n\\n\`static longint pc = 'x;`
                                                        ^ Ref -> `.a`
 
                             tagged JmpC '{.c, .a} : if (rf[c]) pc = a;
-                                           ^ Sym c : VariablePattern
-                                               ^ Sym a : VariablePattern
+                                           ^ Sym c : PatternVar
+                                               ^ Sym a : PatternVar
                                                         ^^ Ref -> `// In m3`\n\\n\---\n\\n\`automatic int rf[] = new [3];`
                                                            ^ Ref -> `.c`
                                                                ^^ Ref -> `// In m3`\n\\n\---\n\\n\`static longint pc = 'x;`
@@ -487,12 +487,12 @@ macromodule m3;
 
         if (instr matches (tagged Jmp .j) &&&
             ^^^^^ Ref -> `// In m3`\n\\n\---\n\\n\`Instr instr;`
-                                       ^ Sym j : VariablePattern
+                                       ^ Sym j : PatternVar
 
             j matches (tagged JmpC '{cc:.c,addr:.a})) begin
             ^ Ref -> `// In m3`\n\\n\---\n\\n\`.j`
-                                         ^ Sym c : VariablePattern
-                                                 ^ Sym a : VariablePattern
+                                         ^ Sym c : PatternVar
+                                                 ^ Sym a : PatternVar
 
             pc = c[0] & a[0];
             ^^ Ref -> `// In m3`\n\\n\---\n\\n\`static longint pc = 'x;`
@@ -525,7 +525,7 @@ macromodule m3;
 
 
     genvar j;
-           ^ Sym j : IdentifierName
+           ^ Sym j : Genvar
 
     for (genvar i = 0; i < 10; i += 2)
                        ^ Ref -> `i`
@@ -560,29 +560,29 @@ macromodule m3;
 
 
     assertion0: assert #0 (1 == 1) else $display("Hello!");
-    ^^^^^^^^^^ Sym assertion0 : ImmediateAssertStatement
+    ^^^^^^^^^^ Sym assertion0 : StatementBlock
 
     assertion1: assume final (2 != 1) else $display("Hello!");
-    ^^^^^^^^^^ Sym assertion1 : ImmediateAssumeStatement
+    ^^^^^^^^^^ Sym assertion1 : StatementBlock
 
 
 
     if (1) begin
 
         logic a,b,c,d,e,f;
-              ^ Sym a : Declarator
-                ^ Sym b : Declarator
-                  ^ Sym c : Declarator
-                    ^ Sym d : Declarator
-                      ^ Sym e : Declarator
-                        ^ Sym f : Declarator
+              ^ Sym a : Variable
+                ^ Sym b : Variable
+                  ^ Sym c : Variable
+                    ^ Sym d : Variable
+                      ^ Sym e : Variable
+                        ^ Sym f : Variable
 
 
 
         property p1(x,y);
-                 ^^ Sym p1 : PropertyDeclaration
-                    ^ Sym x : AssertionItemPort
-                      ^ Sym y : AssertionItemPort
+                 ^^ Sym p1 : Property
+                    ^ Sym x : AssertionPort
+                      ^ Sym y : AssertionPort
 
             ##1 x |-> y;
                 ^ Ref -> `x`
@@ -593,10 +593,10 @@ macromodule m3;
 
 
         wire clk;
-             ^^^ Sym clk : Declarator
+             ^^^ Sym clk : Net
 
         property p2;
-                 ^^ Sym p2 : PropertyDeclaration
+                 ^^ Sym p2 : Property
 
             @(posedge clk)
                       ^^^ Ref -> `// In m3.genblk3`\n\\n\---\n\\n\`wire clk;`
@@ -631,15 +631,15 @@ macromodule m3;
 
     prim prim_inst(q, r);
     ^^^^ Ref -> `primitive prim(output reg a, input b);\n\    table\n\        0 : ? : 1;\n\        1 : 0 : x;\n\    endtable\n\endprimitive`
-         ^^^^^^^^^ Sym prim_inst : HierarchicalInstance
-                   ^ Sym q : IdentifierName
-                      ^ Sym r : IdentifierName
+         ^^^^^^^^^ Sym prim_inst : PrimitiveInstance
+                   ^ Sym q : Net
+                      ^ Sym r : Net
 
     rcmos #1step (q, r, s, t);
                   ^ Ref -> `q`
                      ^ Ref -> `r`
-                        ^ Sym s : IdentifierName
-                           ^ Sym t : IdentifierName
+                        ^ Sym s : Net
+                           ^ Sym t : Net
 
 
 
@@ -650,14 +650,14 @@ macromodule m3;
 
 
     clocking cb @(r or s);
-             ^^ Sym cb : ClockingDeclaration
+             ^^ Sym cb : ClockingBlock
                   ^ Ref -> `// In m3`\n\\n\---\n\\n\`r`
                        ^ Ref -> `// In m3`\n\\n\---\n\\n\`s`
 
         default input posedge #3ps;
 
         input a = t;
-              ^ Sym a : AttributeSpec
+              ^ Sym a : ClockVar
                   ^ Ref -> `// In m3`\n\\n\---\n\\n\`t`
 
     endclocking
@@ -665,7 +665,7 @@ macromodule m3;
 
 
     global clocking cb2 @t; endclocking
-                    ^^^ Sym cb2 : ClockingDeclaration
+                    ^^^ Sym cb2 : ClockingBlock
                          ^ Ref -> `// In m3`\n\\n\---\n\\n\`t`
 
 
@@ -687,13 +687,13 @@ extern program p(a, b);
 
 
 program p(a, b);
-        ^ Sym p : ProgramDeclaration
-          ^ Sym a : PortReference
-             ^ Sym b : PortReference
+        ^ Sym p : InstanceBody
+          ^ Sym a : Port
+             ^ Sym b : Port
 
     input a, b;
-          ^ Sym a : Declarator
-             ^ Sym b : Declarator
+          ^ Sym a : Net
+             ^ Sym b : Net
 
 endprogram : p
              ^ Ref -> `program p(a, b);`
@@ -706,9 +706,9 @@ extern primitive prim(output reg a, input b);
 
 
 primitive prim(output reg a, input b);
-          ^^^^ Sym prim : UdpDeclaration
-                          ^ Sym a : UdpOutputPortDecl
-                                   ^ Sym b : IdentifierName
+          ^^^^ Sym prim : Primitive
+                          ^ Sym a : PrimitivePort
+                                   ^ Sym b : PrimitivePort
 
     table
 
@@ -725,15 +725,15 @@ endprimitive
 (* attr = 3.14 *) bind m3.m m1 #(1) bound('x, , , );
                           ^ Ref -> `m2 #(\n\    .x_t(y_t)\n\) m (, b, c, d, );`
                             ^^ Ref -> `module automatic m1 import p::*; #(int i = 1)\n\(a, b, , .c({a, b[0]}));`
-                                    ^^^^^ Sym bound : HierarchicalInstance
+                                    ^^^^^ Sym bound : Instance
 
 
 
 config cfg;
-       ^^^ Sym cfg : ConfigDeclaration
+       ^^^ Sym cfg : ConfigBlock
 
     localparam i = 1;
-               ^ Sym i : Declarator
+               ^ Sym i : Parameter
 
     design work.m3;
                 ^^ Ref -> `macromodule m3;`
@@ -749,28 +749,28 @@ endconfig
 
 
 module ALU (o1, i1, i2, opcode);
-       ^^^ Sym ALU : ModuleDeclaration
-            ^^ Sym o1 : PortReference
-                ^^ Sym i1 : PortReference
-                    ^^ Sym i2 : PortReference
-                        ^^^^^^ Sym opcode : PortReference
+       ^^^ Sym ALU : InstanceBody
+            ^^ Sym o1 : Port
+                ^^ Sym i1 : Port
+                    ^^ Sym i2 : Port
+                        ^^^^^^ Sym opcode : Port
 
     input [7:0] i1, i2;
-                ^^ Sym i1 : Declarator
-                    ^^ Sym i2 : Declarator
+                ^^ Sym i1 : Net
+                    ^^ Sym i2 : Net
 
     input [2:1] opcode;
-                ^^^^^^ Sym opcode : Declarator
+                ^^^^^^ Sym opcode : Net
 
     output [7:0] o1;
-                 ^^ Sym o1 : Declarator
+                 ^^ Sym o1 : Net
 
 
 
     specify
 
         specparam s1 = 2;
-                  ^^ Sym s1 : SpecparamDeclarator
+                  ^^ Sym s1 : Specparam
 
         if (opcode == 2'b00) (i1,i2 *> o1) = (25.0, 25.0);
             ^^^^^^ Ref -> `// In ALU`\n\\n\---\n\\n\`input [2:1] opcode;`
@@ -800,43 +800,43 @@ endmodule
 
 
 interface Iface;
-          ^^^^^ Sym Iface : InterfaceDeclaration
+          ^^^^^ Sym Iface : InstanceBody
 
     extern function void foo(int i, real r);
-                         ^^^ Sym foo : ExternInterfaceMethod
-                                 ^ Sym i : Declarator
-                                         ^ Sym r : Declarator
+                         ^^^ Sym foo : MethodPrototype
+                                 ^ Sym i : FormalArgument
+                                         ^ Sym r : FormalArgument
 
     extern forkjoin task t3();
-                         ^^ Sym t3 : ExternInterfaceMethod
+                         ^^ Sym t3 : MethodPrototype
 
 
 
     modport m(export foo, function void bar(int, logic), task baz, export func);
-            ^ Sym m : ModportDeclaration
-                     ^^^ Sym foo : ModportNamedPort
-                                        ^^^ Sym bar : ModportSubroutinePort
-                                                              ^^^ Sym baz : ModportSubroutinePort
-                                                                          ^^^^ Sym func : ModportNamedPort
+            ^ Sym m : Modport
+                     ^^^ Sym foo : MethodPrototype
+                                        ^^^ Sym bar : MethodPrototype
+                                                              ^^^ Sym baz : MethodPrototype
+                                                                          ^^^^ Sym func : MethodPrototype
 
     modport n(import function void func(int), import task t2);
-            ^ Sym n : ModportDeclaration
-                                   ^^^^ Sym func : ModportSubroutinePort
-                                                          ^^ Sym t2 : ModportSubroutinePort
+            ^ Sym n : Modport
+                                   ^^^^ Sym func : MethodPrototype
+                                                          ^^ Sym t2 : MethodPrototype
 
     modport o(export t2);
-            ^ Sym o : ModportDeclaration
-                     ^^ Sym t2 : ModportNamedPort
+            ^ Sym o : Modport
+                     ^^ Sym t2 : MethodPrototype
 
 endinterface
 
 
 
 module n(Iface.m a);
-       ^ Sym n : ModuleDeclaration
+       ^ Sym n : InstanceBody
          ^^^^^ Ref -> `interface Iface;`
                ^ Ref -> `// In Iface`\n\\n\---\n\\n\`modport m(export foo, function void bar(int, logic), task baz, export func);`
-                 ^ Sym a : Declarator
+                 ^ Sym a : InterfacePort
 
     initial begin
 
@@ -874,33 +874,33 @@ endmodule
 
 
 module m4;
-       ^^ Sym m4 : ModuleDeclaration
+       ^^ Sym m4 : InstanceBody
 
     Iface i1();
     ^^^^^ Ref -> `interface Iface;`
-          ^^ Sym i1 : HierarchicalInstance
+          ^^ Sym i1 : Instance
 
     n n1(i1);
     ^ Ref -> `module n(Iface.m a);`
-      ^^ Sym n1 : HierarchicalInstance
+      ^^ Sym n1 : Instance
          ^^ Ref -> `Iface i1();`
 
 
 
     Iface i2();
     ^^^^^ Ref -> `interface Iface;`
-          ^^ Sym i2 : HierarchicalInstance
+          ^^ Sym i2 : Instance
 
     n n2(i2.m);
     ^ Ref -> `module n(Iface.m a);`
-      ^^ Sym n2 : HierarchicalInstance
+      ^^ Sym n2 : Instance
          ^^ Ref -> `Iface i2();`
             ^ Ref -> `// In Iface`\n\\n\---\n\\n\`modport m(export foo, function void bar(int, logic), task baz, export func);`
 
 
 
     localparam int baz = 3;
-                   ^^^ Sym baz : Declarator
+                   ^^^ Sym baz : Parameter
 
     task i1.t2;
          ^^ Ref -> `Iface i1();`
@@ -925,32 +925,32 @@ endmodule
 
 
 typedef enum { cover_none, cover_all } coverage_level;
-                                       ^^^^^^^^^^^^^^ Sym coverage_level : TypedefDeclaration
+                                       ^^^^^^^^^^^^^^ Sym coverage_level : TypeAlias
 
 checker assert_window1 (
-        ^^^^^^^^^^^^^^ Sym assert_window1 : CheckerDeclaration
+        ^^^^^^^^^^^^^^ Sym assert_window1 : CheckerInstanceBody
 
     logic test_expr,
-          ^^^^^^^^^ Sym test_expr : AssertionItemPort
+          ^^^^^^^^^ Sym test_expr : AssertionPort
 
     untyped start_event,
-            ^^^^^^^^^^^ Sym start_event : AssertionItemPort
+            ^^^^^^^^^^^ Sym start_event : AssertionPort
 
     untyped end_event,
-            ^^^^^^^^^ Sym end_event : AssertionItemPort
+            ^^^^^^^^^ Sym end_event : AssertionPort
 
     event clock = $inferred_clock,
-          ^^^^^ Sym clock : AssertionItemPort
+          ^^^^^ Sym clock : AssertionPort
 
     logic reset = $inferred_disable,
-          ^^^^^ Sym reset : AssertionItemPort
+          ^^^^^ Sym reset : AssertionPort
 
     string error_msg = "violation",
-           ^^^^^^^^^ Sym error_msg : AssertionItemPort
+           ^^^^^^^^^ Sym error_msg : AssertionPort
 
     coverage_level clevel = cover_all
     ^^^^^^^^^^^^^^ Ref -> `typedef enum { cover_none, cover_all } coverage_level;`
-                   ^^^^^^ Sym clevel : AssertionItemPort
+                   ^^^^^^ Sym clevel : AssertionPort
                             ^^^^^^^^^ Ref -> `// In coverage_level`\n\\n\---\n\\n\`typedef enum { cover_none, cover_all } coverage_level;`
 
 );
@@ -962,11 +962,11 @@ checker assert_window1 (
                         ^^^^^ Ref -> `logic reset = $inferred_disable`
 
     bit window = 1'b0, next_window = 1'b1;
-        ^^^^^^ Sym window : Declarator
-                       ^^^^^^^^^^^ Sym next_window : Declarator
+        ^^^^^^ Sym window : Variable
+                       ^^^^^^^^^^^ Sym next_window : Variable
 
     rand bit q;
-             ^ Sym q : Declarator
+             ^ Sym q : Variable
 
 
 
@@ -1007,7 +1007,7 @@ checker assert_window1 (
 
 
     property p_window;
-             ^^^^^^^^ Sym p_window : PropertyDeclaration
+             ^^^^^^^^ Sym p_window : Property
 
         start_event && !window |=> test_expr[+] ##0 end_event;
         ^^^^^^^^^^^ Ref -> `// In assert_window1`\n\\n\---\n\\n\`untyped start_event`
@@ -1020,7 +1020,7 @@ checker assert_window1 (
 
 
     a_window: assert property (p_window) else $error(error_msg);
-    ^^^^^^^^ Sym a_window : AssertPropertyStatement
+    ^^^^^^^^ Sym a_window : StatementBlock
                                ^^^^^^^^ Ref -> `// In assert_window1`\n\\n\---\n\\n\`property p_window;\n\    start_event && !window |=> test_expr[+] ##0 end_event;\n\endproperty`
                                                      ^^^^^^^^^ Ref -> `// In assert_window1`\n\\n\---\n\\n\`string error_msg = "violation"`
 
@@ -1032,14 +1032,14 @@ checker assert_window1 (
                                                ^^^^^^^ Sym cover_b : GenerateBlock
 
         cover_window_open: cover property (start_event && !window)
-        ^^^^^^^^^^^^^^^^^ Sym cover_window_open : CoverPropertyStatement
+        ^^^^^^^^^^^^^^^^^ Sym cover_window_open : StatementBlock
                                            ^^^^^^^^^^^ Ref -> `// In assert_window1`\n\\n\---\n\\n\`untyped start_event`
                                                            ^^^^^^ Ref -> `// In assert_window1`\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
 
         $display("window_open covered");
 
         cover_window: cover property (
-        ^^^^^^^^^^^^ Sym cover_window : CoverPropertyStatement
+        ^^^^^^^^^^^^ Sym cover_window : StatementBlock
 
             start_event && !window
             ^^^^^^^^^^^ Ref -> `// In assert_window1`\n\\n\---\n\\n\`untyped start_event`
@@ -1064,15 +1064,15 @@ endchecker : assert_window1
 
 
 module m5;
-       ^^ Sym m5 : ModuleDeclaration
+       ^^ Sym m5 : InstanceBody
 
     logic a, b, c, d, e, clk;
-          ^ Sym a : Declarator
-             ^ Sym b : Declarator
-                ^ Sym c : Declarator
-                   ^ Sym d : Declarator
-                      ^ Sym e : Declarator
-                         ^^^ Sym clk : Declarator
+          ^ Sym a : Variable
+             ^ Sym b : Variable
+                ^ Sym c : Variable
+                   ^ Sym d : Variable
+                      ^ Sym e : Variable
+                         ^^^ Sym clk : Variable
 
 
 
@@ -1082,7 +1082,7 @@ module m5;
 
 
     assert_window1 aw1(1 + 1, a, b);
-                   ^^^ Sym aw1 : HierarchicalInstance
+                   ^^^ Sym aw1 : CheckerInstance
                               ^ Ref -> `logic a, b, c, d, e, clk;`
                                  ^ Ref -> `logic a, b, c, d, e, clk;`
 
@@ -1092,7 +1092,7 @@ module m5;
 
         assert_window1 aw2(1 + 1, a, b);
         ^^^^^^^^^^^^^^ Ref -> `checker assert_window1 (\n\    logic test_expr,\n\    untyped start_event,\n\    untyped end_event,\n\    event clock = $inferred_clock,\n\    logic reset = $inferred_disable,\n\    string error_msg = "violation",\n\    coverage_level clevel = cover_all\n\);\n\    default clocking @clock; endclocking\n\    default disable iff reset;\n\    bit window = 1'b0, next_window = 1'b1;\n\    rand bit q;\n\    always_comb begin\n\        if (reset || window && end_event)\n\            next_window = 1'b0;\n\        else if (!window && start_event)\n\            next_window = 1'b1;\n\        else\n\            next_window = window;\n\    end\n\    always_ff @clock\n\        window <= next_window;\n\    property p_window;\n\        start_event && !window |=> test_expr[+] ##0 end_event;\n\    endproperty\n\    a_window: assert property (p_window) else $error(error_msg);\n\    generate if (clevel != cover_none) begin : cover_b\n\        cover_window_open: cover property (start_event && !window)\n\        $display("window_open covered");\n\        cover_window: cover property (\n\            start_event && !window\n\            ##1 (!end_event && window) [*]\n\            ##1 end_event && window\n\        ) $display("window covered");\n\    end : cover_b\n\    endgenerate\n\endchecker : assert_window1`
-                       ^^^ Sym aw2 : HierarchicalInstance
+                       ^^^ Sym aw2 : CheckerInstance
                                   ^ Ref -> `// In m5`\n\\n\---\n\\n\`logic a, b, c, d, e, clk;`
                                      ^ Ref -> `// In m5`\n\\n\---\n\\n\`logic a, b, c, d, e, clk;`
 
@@ -1101,7 +1101,7 @@ module m5;
 
 
     sequence abc;
-             ^^^ Sym abc : SequenceDeclaration
+             ^^^ Sym abc : Sequence
 
         @(posedge clk) a ##1 b ##1 c;
                   ^^^ Ref -> `// In m5`\n\\n\---\n\\n\`logic a, b, c, d, e, clk;`
@@ -1114,7 +1114,7 @@ module m5;
 
 
     sequence de;
-             ^^ Sym de : SequenceDeclaration
+             ^^ Sym de : Sequence
 
         @(negedge clk) d ##[2:5] e;
                   ^^^ Ref -> `// In m5`\n\\n\---\n\\n\`logic a, b, c, d, e, clk;`
@@ -1126,7 +1126,7 @@ module m5;
 
 
     program check;
-            ^^^^^ Sym check : ProgramDeclaration
+            ^^^^^ Sym check : InstanceBody
 
         initial begin
 
@@ -1153,35 +1153,35 @@ endmodule
 
 
 class C;
-      ^ Sym C : ClassDeclaration
+      ^ Sym C : ClassType
 
     int i;
-        ^ Sym i : Declarator
+        ^ Sym i : ClassProperty
 
     static int j;
-               ^ Sym j : Declarator
+               ^ Sym j : ClassProperty
 
     extern function int foo(int bar, int baz = 1);
-                        ^^^ Sym foo : ClassMethodPrototype
-                                ^^^ Sym bar : Declarator
-                                         ^^^ Sym baz : Declarator
+                        ^^^ Sym foo : MethodPrototype
+                                ^^^ Sym bar : FormalArgument
+                                         ^^^ Sym baz : FormalArgument
 
 endclass
 
 
 
 class D;
-      ^ Sym D : ClassDeclaration
+      ^ Sym D : ClassType
 
     extern static function real foo;
-                                ^^^ Sym foo : ClassMethodPrototype
+                                ^^^ Sym foo : MethodPrototype
 
 endclass
 
 
 
 localparam int k = 5;
-               ^ Sym k : Declarator
+               ^ Sym k : Parameter
 
 
 
@@ -1200,7 +1200,7 @@ endfunction
 
 
 class G #(type T);
-      ^ Sym G : ClassDeclaration
+      ^ Sym G : GenericClassDef
 
     extern function T foo;
 
@@ -1217,7 +1217,7 @@ endfunction
 
 
 class H #(int p);
-      ^ Sym H : ClassDeclaration
+      ^ Sym H : GenericClassDef
               ^ Ref -> `program p(a, b);`
 
     extern function int foo;
@@ -1233,25 +1233,25 @@ endfunction
 
 
 module m7;
-       ^^ Sym m7 : ModuleDeclaration
+       ^^ Sym m7 : InstanceBody
 
     G #(real) g1;
     ^ Ref -> `class G #(type T);\n\    extern function T foo;\n\endclass`
-              ^^ Sym g1 : Declarator
+              ^^ Sym g1 : Variable
 
     G #(int) g2;
     ^ Ref -> `class G #(type T);\n\    extern function T foo;\n\endclass`
-             ^^ Sym g2 : Declarator
+             ^^ Sym g2 : Variable
 
 
 
     int i = g2.foo();
-        ^ Sym i : Declarator
+        ^ Sym i : Variable
             ^^ Ref -> `G #(int) g2;`
                ^^^ Ref -> `// In G`\n\\n\---\n\\n\`function G::T G::foo;\n\    return 0;\n\endfunction`
 
     real r = D::foo();
-         ^ Sym r : Declarator
+         ^ Sym r : Variable
              ^ Ref -> `class D;\n\    extern static function real foo;\n\endclass`
                 ^^^ Ref -> `// In D`\n\\n\---\n\\n\`function real D::foo;\n\endfunction`
 
@@ -1260,16 +1260,16 @@ endmodule
 
 
 class A;
-      ^ Sym A : ClassDeclaration
+      ^ Sym A : ClassType
 
     integer i = 1;
-            ^ Sym i : Declarator
+            ^ Sym i : ClassProperty
 
     integer j = 2;
-            ^ Sym j : Declarator
+            ^ Sym j : ClassProperty
 
     function integer f();
-                     ^ Sym f : FunctionDeclaration
+                     ^ Sym f : Subroutine
 
         f = i;
             ^ Ref -> `// In A`\n\\n\---\n\\n\`integer i = 1;`
@@ -1281,14 +1281,14 @@ endclass
 
 
 class B extends A;
-      ^ Sym B : ClassDeclaration
+      ^ Sym B : ClassType
                 ^ Ref -> `class A;\n\    integer i = 1;\n\    integer j = 2;\n\    function integer f();\n\        f = i;\n\    endfunction\n\endclass`
 
     integer i = 2;
-            ^ Sym i : Declarator
+            ^ Sym i : ClassProperty
 
     function void f();
-                  ^ Sym f : FunctionDeclaration
+                  ^ Sym f : Subroutine
 
         i = j;
         ^ Ref -> `// In B`\n\\n\---\n\\n\`integer i = 2;`
@@ -1313,11 +1313,11 @@ endclass
 
 
 class C2 extends B;
-      ^^ Sym C2 : ClassDeclaration
+      ^^ Sym C2 : ClassType
                  ^ Ref -> `class B extends A;\n\    integer i = 2;\n\    function void f();\n\        i = j;\n\        super.i = super.j;\n\        j = super.f();\n\        j = this.super.f();\n\    endfunction\n\endclass`
 
     function void g();
-                  ^ Sym g : FunctionDeclaration
+                  ^ Sym g : Subroutine
 
         f();
         ^ Ref -> `// In B`\n\\n\---\n\\n\`function void f();\n\    i = j;\n\    super.i = super.j;\n\    j = super.f();\n\    j = this.super.f();\n\endfunction`
@@ -1335,13 +1335,13 @@ class C2 extends B;
 
 
     rand bit [63:0] value;
-                    ^^^^^ Sym value : Declarator
+                    ^^^^^ Sym value : ClassProperty
 
     rand logic q;
-               ^ Sym q : Declarator
+               ^ Sym q : ClassProperty
 
     constraint value_c {
-               ^^^^^^^ Sym value_c : ConstraintDeclaration
+               ^^^^^^^ Sym value_c : ConstraintBlock
 
         value[63] dist {0 :/ 70, 1 :/ 30};
         ^^^^^ Ref -> `// In C2`\n\\n\---\n\\n\`bit [63:0] value;`
@@ -1382,30 +1382,30 @@ endclass
 
 
 module m6;
-       ^^ Sym m6 : ModuleDeclaration
+       ^^ Sym m6 : InstanceBody
 
     A a = new;
     ^ Ref -> `class A;\n\    integer i = 1;\n\    integer j = 2;\n\    function integer f();\n\        f = i;\n\    endfunction\n\endclass`
-      ^ Sym a : Declarator
+      ^ Sym a : Variable
 
     A b1 = B::new;
     ^ Ref -> `class A;\n\    integer i = 1;\n\    integer j = 2;\n\    function integer f();\n\        f = i;\n\    endfunction\n\endclass`
-      ^^ Sym b1 : Declarator
+      ^^ Sym b1 : Variable
            ^ Ref -> `class B extends A;\n\    integer i = 2;\n\    function void f();\n\        i = j;\n\        super.i = super.j;\n\        j = super.f();\n\        j = this.super.f();\n\    endfunction\n\endclass`
 
     B b2 = new;
     ^ Ref -> `class B extends A;\n\    integer i = 2;\n\    function void f();\n\        i = j;\n\        super.i = super.j;\n\        j = super.f();\n\        j = this.super.f();\n\    endfunction\n\endclass`
-      ^^ Sym b2 : Declarator
+      ^^ Sym b2 : Variable
 
     C2 c = new;
     ^^ Ref -> `class C2 extends B;\n\    function void g();\n\        f();\n\        i = j + C::j + A::f();\n\    endfunction\n\    rand bit [63:0] value;\n\    rand logic q;\n\    constraint value_c {\n\        value[63] dist {0 :/ 70, 1 :/ 30};\n\        value[0] == 1'b0;\n\        value[15:8] inside {\n\            8'h0,\n\            8'hF\n\        };\n\        solve value before q;\n\        soft value[3:1] > 1;\n\        q -> { value[4] == 0; }\n\        if (q) { foreach (value[b]) { value[b] == 0; } } else { disable soft value; }\n\    }\n\endclass`
-       ^ Sym c : Declarator
+       ^ Sym c : Variable
 
     int depth;
-        ^^^^^ Sym depth : Declarator
+        ^^^^^ Sym depth : Variable
 
     integer i = b1.f();
-            ^ Sym i : Declarator
+            ^ Sym i : Variable
                 ^^ Ref -> `A b1 = B::new;`
                    ^ Ref -> `// In A`\n\\n\---\n\\n\`function integer f();\n\    f = i;\n\endfunction`
 
@@ -1430,20 +1430,20 @@ module m6;
         randsequence(main)
 
             main : first second;
-            ^^^^ Sym main : Production
+            ^^^^ Sym main : RandSeqProduction
 
             first : add | dec := (1 + 1);
-            ^^^^^ Sym first : Production
+            ^^^^^ Sym first : RandSeqProduction
 
             second : repeat($urandom_range(2, 6)) first;
-            ^^^^^^ Sym second : Production
+            ^^^^^^ Sym second : RandSeqProduction
 
             add : if (depth < 2) first else second;
-            ^^^ Sym add : Production
+            ^^^ Sym add : RandSeqProduction
                       ^^^^^ Ref -> `// In m6`\n\\n\---\n\\n\`int depth;`
 
             dec : case (depth & 7)
-            ^^^ Sym dec : Production
+            ^^^ Sym dec : RandSeqProduction
                         ^^^^^ Ref -> `// In m6`\n\\n\---\n\\n\`int depth;`
 
                 0 : add;
@@ -1455,11 +1455,11 @@ module m6;
             endcase;
 
             third : rand join first second;
-            ^^^^^ Sym third : Production
+            ^^^^^ Sym third : RandSeqProduction
 
             fourth(string s = "done") : { if (depth) break; };
-            ^^^^^^ Sym fourth : Production
-                          ^ Sym s : Declarator
+            ^^^^^^ Sym fourth : RandSeqProduction
+                          ^ Sym s : FormalArgument
                                               ^^^^^ Ref -> `// In m6`\n\\n\---\n\\n\`int depth;`
 
         endsequence
@@ -1471,26 +1471,26 @@ endmodule
 
 
 class C3;
-      ^^ Sym C3 : ClassDeclaration
+      ^^ Sym C3 : ClassType
 
     enum {red, green, blue} color;
-                            ^^^^^ Sym color : Declarator
+                            ^^^^^ Sym color : ClassProperty
 
     bit [3:0] pixel_adr, pixel_offset, pixel_hue;
-              ^^^^^^^^^ Sym pixel_adr : Declarator
-                         ^^^^^^^^^^^^ Sym pixel_offset : Declarator
-                                       ^^^^^^^^^ Sym pixel_hue : Declarator
+              ^^^^^^^^^ Sym pixel_adr : ClassProperty
+                         ^^^^^^^^^^^^ Sym pixel_offset : ClassProperty
+                                       ^^^^^^^^^ Sym pixel_hue : ClassProperty
 
     logic clk, x, y, c;
-          ^^^ Sym clk : Declarator
-               ^ Sym x : Declarator
-                  ^ Sym y : Declarator
-                     ^ Sym c : Declarator
+          ^^^ Sym clk : ClassProperty
+               ^ Sym x : ClassProperty
+                  ^ Sym y : ClassProperty
+                     ^ Sym c : ClassProperty
 
 
 
     covergroup g2 (string instComment) @(posedge clk);
-                          ^^^^^^^^^^^ Sym instComment : Declarator
+                          ^^^^^^^^^^^ Sym instComment : FormalArgument
                                                  ^^^ Ref -> `// In C3`\n\\n\---\n\\n\`logic clk, x, y, c;`
 
         Offset: coverpoint pixel_offset;
@@ -1524,33 +1524,33 @@ class C3;
             option.weight = 2;
 
             wildcard bins a = { [0:63],65 };
-                          ^ Sym a : CoverageBins
+                          ^ Sym a : CoverageBin
 
             bins b[] = { [127:150],[148:191] }; // note overlapping values
-                 ^ Sym b : CoverageBins
+                 ^ Sym b : CoverageBin
 
             bins c[] = { 200,201,202 };
-                 ^ Sym c : CoverageBins
+                 ^ Sym c : CoverageBin
 
             bins d = { [1000:$] };
-                 ^ Sym d : CoverageBins
+                 ^ Sym d : CoverageBin
 
             bins others[] = default;
-                 ^^^^^^ Sym others : CoverageBins
+                 ^^^^^^ Sym others : CoverageBin
 
 
 
             bins sa = (4 => 5 => 6), ([7:9],10 => 11,12);
-                 ^^ Sym sa : CoverageBins
+                 ^^ Sym sa : CoverageBin
 
             bins sb[] = (12 => 3 [* 1]);
-                 ^^ Sym sb : CoverageBins
+                 ^^ Sym sb : CoverageBin
 
             bins sc = (12 => 3 [-> 1]);
-                 ^^ Sym sc : CoverageBins
+                 ^^ Sym sc : CoverageBin
 
             bins sd = (12 => 3 [= 1:2]);
-                 ^^ Sym sd : CoverageBins
+                 ^^ Sym sd : CoverageBin
 
         }
 
@@ -1561,10 +1561,10 @@ class C3;
                             ^ Ref -> `// In C3`\n\\n\---\n\\n\`logic clk, x, y, c;`
 
             bins one = '{ '{1,2}, '{3,4}, '{5,6} };
-                 ^^^ Sym one : BinsSelection
+                 ^^^ Sym one : CoverageBin
 
             ignore_bins others = (!binsof(e.a) || !binsof(y) intersect {1}) with (e > 10);
-                        ^^^^^^ Sym others : BinsSelection
+                        ^^^^^^ Sym others : CoverageBin
                                           ^ Ref -> `// In C3`\n\\n\---\n\\n\`e: coverpoint x iff (clk) {\n\    option.weight = 2;\n\    wildcard bins a = { [0:63],65 };\n\    bins b[] = { [127:150],[148:191] }; // note overlapping values\n\    bins c[] = { 200,201,202 };\n\    bins d = { [1000:$] };\n\    bins others[] = default;\n\    bins sa = (4 => 5 => 6), ([7:9],10 => 11,12);\n\    bins sb[] = (12 => 3 [* 1]);\n\    bins sc = (12 => 3 [-> 1]);\n\    bins sd = (12 => 3 [= 1:2]);\n\}`
                                             ^ Ref -> `// In C3.e`\n\\n\---\n\\n\`wildcard bins a = { [0:63],65 };`
                                                                                   ^ Ref -> `// In C3`\n\\n\---\n\\n\`e: coverpoint x iff (clk) {\n\    option.weight = 2;\n\    wildcard bins a = { [0:63],65 };\n\    bins b[] = { [127:150],[148:191] }; // note overlapping values\n\    bins c[] = { 200,201,202 };\n\    bins d = { [1000:$] };\n\    bins others[] = default;\n\    bins sa = (4 => 5 => 6), ([7:9],10 => 11,12);\n\    bins sb[] = (12 => 3 [* 1]);\n\    bins sc = (12 => 3 [-> 1]);\n\    bins sd = (12 => 3 [= 1:2]);\n\}`
@@ -1581,44 +1581,44 @@ endclass
 
 
 module m9;
-       ^^ Sym m9 : ModuleDeclaration
+       ^^ Sym m9 : InstanceBody
 
     logic [3:0] a = {4 {1'b1}};
-                ^ Sym a : Declarator
+                ^ Sym a : Variable
 
 endmodule
 
 
 
 module m10;
-       ^^^ Sym m10 : ModuleDeclaration
+       ^^^ Sym m10 : InstanceBody
 
     byte stream[$];
-         ^^^^^^ Sym stream : Declarator
+         ^^^^^^ Sym stream : Variable
 
     class Packet;
-          ^^^^^^ Sym Packet : ClassDeclaration
+          ^^^^^^ Sym Packet : ClassType
 
         rand int header;
-                 ^^^^^^ Sym header : Declarator
+                 ^^^^^^ Sym header : ClassProperty
 
         rand int len;
-                 ^^^ Sym len : Declarator
+                 ^^^ Sym len : ClassProperty
 
         rand byte payload[];
-                  ^^^^^^^ Sym payload : Declarator
+                  ^^^^^^^ Sym payload : ClassProperty
 
         int crc;
-            ^^^ Sym crc : Declarator
+            ^^^ Sym crc : ClassProperty
 
         constraint G { len > 1; payload.size == len ; }
-                   ^ Sym G : ConstraintDeclaration
+                   ^ Sym G : ConstraintBlock
                        ^^^ Ref -> `// In m10.Packet`\n\\n\---\n\\n\`int len;`
                                 ^^^^^^^ Ref -> `// In m10.Packet`\n\\n\---\n\\n\`byte payload[];`
                                                 ^^^ Ref -> `// In m10.Packet`\n\\n\---\n\\n\`int len;`
 
         function void post_randomize; crc = payload.sum; endfunction
-                      ^^^^^^^^^^^^^^ Sym post_randomize : FunctionDeclaration
+                      ^^^^^^^^^^^^^^ Sym post_randomize : Subroutine
                                       ^^^ Ref -> `// In m10.Packet`\n\\n\---\n\\n\`int crc;`
                                             ^^^^^^^ Ref -> `// In m10.Packet`\n\\n\---\n\\n\`byte payload[];`
 
@@ -1629,11 +1629,11 @@ module m10;
     initial begin
 
         byte q[$];
-             ^ Sym q : Declarator
+             ^ Sym q : Variable
 
         automatic Packet p = new;
                   ^^^^^^ Ref -> `// In m10`\n\\n\---\n\\n\`class Packet;\n\    rand int header;\n\    rand int len;\n\    rand byte payload[];\n\    int crc;\n\    constraint G { len > 1; payload.size == len ; }\n\    function void post_randomize; crc = payload.sum; endfunction\n\endclass`
-                         ^ Sym p : Declarator
+                         ^ Sym p : Variable
 
         {<< byte{ p.header, p.len, p.payload with [0 +: p.len], p.crc }} = stream;
                   ^ Ref -> `automatic Packet p = new;`
