@@ -8,6 +8,7 @@
 
 #include "Indexer.h"
 
+#include "Config.h"
 #include "util/Logging.h"
 #include <BS_thread_pool.hpp>
 #include <cctype>
@@ -22,7 +23,6 @@
 #include "slang/syntax/SyntaxTree.h"
 #include "slang/text/SourceManager.h"
 #include "slang/util/Bag.h"
-#include "slang/util/TimeTrace.h"
 #include "slang/util/Util.h"
 
 namespace fs = std::filesystem;
@@ -248,7 +248,6 @@ void Indexer::indexPath(IndexedPath& indexedFile) {
 }
 
 void Indexer::addDocuments(const std::vector<std::filesystem::path>& paths, uint32_t numThreads) {
-    slang::TimeTraceScope timeScope("Indexer::addDocuments", "");
     IndexGuard guard(*this);
 
     auto indexedPaths = indexPaths(paths, numThreads);
@@ -258,7 +257,6 @@ void Indexer::addDocuments(const std::vector<std::filesystem::path>& paths, uint
 
 void Indexer::removeDocuments(const std::vector<std::filesystem::path>& paths,
                               uint32_t numThreads) {
-    slang::TimeTraceScope timeScope("Indexer::removeDocuments", "");
     IndexGuard guard(*this);
 
     auto indexedPaths = indexPaths(paths, numThreads);
@@ -327,6 +325,79 @@ std::vector<fs::path> Indexer::getFilesForMacro(std::string_view name) const {
     return result;
 }
 
+bool isSystemVerilogFile(const fs::path& path) {
+    auto ext = path.extension().string();
+    return ext == ".v" || ext == ".sv" || ext == ".svh" || ext == ".vh";
+}
+
+void collectFilesFromDirectory(const fs::path& dir, const std::vector<std::string>& excludeDirs,
+                               std::vector<fs::path>& outFiles) {
+
+    if (!fs::exists(dir) || !fs::is_directory(dir)) {
+        return;
+    }
+
+    ScopedTimer t_index(fmt::format("Crawling {}", dir.string()));
+    std::error_code ec;
+    for (auto it = fs::recursive_directory_iterator(
+             dir, fs::directory_options::skip_permission_denied, ec);
+         it != fs::recursive_directory_iterator(); ++it) {
+
+        // Check for exclude when entering a new directory
+        if (it->is_directory(ec)) {
+            // This map tends to be small; linear search is fine
+            if (isExcluded(it->path().string(), excludeDirs)) {
+                it.disable_recursion_pending();
+                continue;
+            }
+        }
+        else if (it->is_regular_file(ec) && isSystemVerilogFile(it->path())) {
+            // Add SystemVerilog files
+            outFiles.push_back(it->path());
+        }
+    }
+    // check ec
+    if (ec) {
+        ERROR("Error while indexing directory {}: {}", dir.string(), ec.message());
+    }
+}
+
+void Indexer::startIndexing(const std::vector<Config::IndexConfig>& indexConfigs,
+                            std::optional<std::string_view> workspaceFolder, uint32_t numThreads) {
+
+    resetIndexingComplete();
+
+    std::vector<fs::path> pathsToIndex;
+
+    if (indexConfigs.empty()) {
+        // No index configs - index entire workspace
+        if (workspaceFolder.has_value()) {
+            collectFilesFromDirectory(fs::path(*workspaceFolder), {}, pathsToIndex);
+        }
+    }
+    else {
+        for (const auto& cfg : indexConfigs) {
+            for (const auto& dir : cfg.dirs.value()) {
+                fs::path fullDirPath;
+                if (fs::path(dir).is_absolute()) {
+                    fullDirPath = fs::path(dir);
+                }
+                else if (workspaceFolder.has_value()) {
+                    fullDirPath = fs::path(*workspaceFolder) / fs::path(dir);
+                }
+                else {
+                    continue;
+                }
+                collectFilesFromDirectory(
+                    fullDirPath, cfg.excludeDirs.value().value_or(std::vector<std::string>{}),
+                    pathsToIndex);
+            }
+        }
+    }
+
+    indexAndReport(pathsToIndex, numThreads);
+}
+
 void Indexer::startIndexing(const std::vector<std::string>& globs,
                             const std::vector<std::string>& excludeDirs, uint32_t numThreads) {
     resetIndexingComplete();
@@ -352,6 +423,10 @@ void Indexer::startIndexing(const std::vector<std::string>& globs,
         INFO("Found {} files from pattern {}", pathsToIndex.size() - beginCount, pattern);
     }
 
+    indexAndReport(pathsToIndex, numThreads);
+}
+
+void Indexer::indexAndReport(std::vector<fs::path> pathsToIndex, uint32_t numThreads) {
     INFO("Indexing {} files", pathsToIndex.size());
 
     {

@@ -11,14 +11,21 @@
         },
         "indexGlobs": {
           "type": "array",
-          "description": "Globs of what to index. By default will index all sv and svh files in the workspace.",
+          "description": "Deprecated: use 'index' instead. Globs of what to index. By default will index all sv and svh files in the workspace.",
           "items": {
             "type": "string"
           }
         },
+        "index": {
+          "type": "array",
+          "description": "Index configurations; by default indexes all .sv, .svh, .v, and .vh files in the workspace.",
+          "items": {
+            "$ref": "#/$defs/Config__IndexConfig"
+          }
+        },
         "excludeDirs": {
           "type": "array",
-          "description": "Directories to exclude",
+          "description": "Deprecated: use 'index' instead. Directories to exclude",
           "items": {
             "type": "string"
           }
@@ -82,6 +89,33 @@
         "inlayHints": {
           "$ref": "#/$defs/Config__InlayHints",
           "description": "Inline hints for things like ordered arguments, wildcard ports, and others"
+        }
+      },
+      "required": []
+    },
+    "Config__IndexConfig": {
+      "type": "object",
+      "properties": {
+        "dirs": {
+          "type": "array",
+          "description": "Directories to index",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludeDirs": {
+          "description": "Directories to exclude; only supports single directory names and applies to all path levels",
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": []

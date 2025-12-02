@@ -9,9 +9,11 @@
 export interface Config {
   /** Flags to pass to slang */
   flags?: string
-  /** Globs of what to index. By default will index all sv and svh files in the workspace. */
+  /** Deprecated: use 'index' instead. Globs of what to index. By default will index all sv and svh files in the workspace. */
   indexGlobs?: string[]
-  /** Directories to exclude */
+  /** Index configurations; by default indexes all .sv, .svh, .v, and .vh files in the workspace. */
+  index?: Config__IndexConfig[]
+  /** Deprecated: use 'index' instead. Directories to exclude */
   excludeDirs?: string[]
   /** Thread count to use for indexing */
   indexingThreads?: number
@@ -29,6 +31,13 @@ export interface Config {
   wcpCommand?: string | null
   /** Inline hints for things like ordered arguments, wildcard ports, and others */
   inlayHints?: Config__InlayHints
+}
+
+export interface Config__IndexConfig {
+  /** Directories to index */
+  dirs?: string[]
+  /** Directories to exclude; only supports single directory names and applies to all path levels */
+  excludeDirs?: string[] | null
 }
 
 export interface Config__InlayHints {
