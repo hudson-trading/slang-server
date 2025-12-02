@@ -18,6 +18,7 @@
 #include <string_view>
 
 #include "slang/ast/Compilation.h"
+#include "slang/diagnostics/DeclarationsDiags.h"
 #include "slang/diagnostics/Diagnostics.h"
 #include "slang/diagnostics/ExpressionsDiags.h"
 #include "slang/diagnostics/LookupDiags.h"
@@ -188,13 +189,11 @@ void SlangDoc::onChange(const std::vector<lsp::TextDocumentContentChangeEvent>& 
 }
 
 bool isValidShallow(const DiagCode& code) {
-    switch (code.getCode()) {
-        case diag::IndexOOB.getCode():
-        case diag::ScopeIndexOutOfRange.getCode():
-            return false;
-        default:
-            return true;
+    if (code == diag::IndexOOB || code == diag::ScopeIndexOutOfRange || code == diag::ErrorTask ||
+        code == diag::WarningTask || code == diag::InfoTask || code == diag::FatalTask) {
+        return false;
     }
+    return true;
 }
 
 void SlangDoc::issueDiagnosticsTo(DiagnosticEngine& diagEngine) {
@@ -205,6 +204,7 @@ void SlangDoc::issueDiagnosticsTo(DiagnosticEngine& diagEngine) {
         }
         if (!isValidShallow(diag.code)) {
             // Some diagnostics are not valid for shallow analysis
+            // TODO: consider only suppressing some of these for untaken generate branches
             continue;
         }
         // Some diags should be ignored with the AllGenerates flag
