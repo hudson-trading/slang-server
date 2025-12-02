@@ -14,9 +14,11 @@ package test_pkg;
     typedef struct packed {
 
         id_t id;
-        ^^^^ Ref -> `typedef logic [WIDTH-1:0] id_t;`
+        ^^^^ Ref -> `// In test_pkg`\n\\n\---\n\\n\`typedef logic [WIDTH-1:0] id_t;`
+             ^^ Sym id : Field
 
         logic [15:0] data;
+                     ^^^^ Sym data : Field
 
     } packet_t;
       ^^^^^^^^ Sym packet_t : TypeAlias
@@ -26,10 +28,13 @@ package test_pkg;
     typedef enum logic [1:0] {
 
         STATE_A,
+        ^^^^^^^ Sym STATE_A : EnumValue
 
         STATE_B,
+        ^^^^^^^ Sym STATE_B : EnumValue
 
         STATE_C
+        ^^^^^^^ Sym STATE_C : EnumValue
 
     } state_t;
       ^^^^^^^ Sym state_t : TypeAlias
@@ -699,10 +704,13 @@ module StructAssignmentTest (
     typedef struct packed {
 
         logic [7:0] addr;
+                    ^^^^ Sym addr : Field
 
         logic [15:0] data;
+                     ^^^^ Sym data : Field
 
         logic valid;
+              ^^^^^ Sym valid : Field
 
     } simple_struct_t;
       ^^^^^^^^^^^^^^^ Sym simple_struct_t : TypeAlias
@@ -712,11 +720,14 @@ module StructAssignmentTest (
     typedef struct packed {
 
         simple_struct_t inner;
-        ^^^^^^^^^^^^^^^ Ref -> `// Struct definitions for testing\n\typedef struct packed {\n\    logic [7:0] addr;\n\    logic [15:0] data;\n\    logic valid;\n\} simple_struct_t;`
+        ^^^^^^^^^^^^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`// Struct definitions for testing\n\typedef struct packed {\n\    logic [7:0] addr;\n\    logic [15:0] data;\n\    logic valid;\n\} simple_struct_t;`
+                        ^^^^^ Sym inner : Field
 
         logic [3:0] tag;
+                    ^^^ Sym tag : Field
 
         logic enable;
+              ^^^^^^ Sym enable : Field
 
     } nested_struct_t;
       ^^^^^^^^^^^^^^^ Sym nested_struct_t : TypeAlias

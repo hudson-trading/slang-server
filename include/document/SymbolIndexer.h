@@ -16,7 +16,9 @@
 #include "slang/ast/Symbol.h"
 #include "slang/ast/symbols/CompilationUnitSymbols.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
+#include "slang/ast/symbols/MemberSymbols.h"
 #include "slang/ast/symbols/ValueSymbol.h"
+#include "slang/ast/types/AllTypes.h"
 #include "slang/syntax/SyntaxNode.h"
 #include "slang/text/SourceLocation.h"
 
@@ -60,6 +62,9 @@ public:
     // Index for inlay hints
     void handle(const slang::ast::CallExpression& sym);
 
+    // Need to unwrap enum transparent members.
+    void handle(const slang::ast::TransparentMemberSymbol& sym);
+
     /// Generic symbol handler with dispatch to specialized handlers
     template<typename T>
         requires std::is_base_of_v<slang::ast::Symbol, T>
@@ -82,8 +87,23 @@ public:
             }
         }
 
-        // Index symbol name for other symbol types
-        visitDefault(astNode);
+        // Recurse for symbols other than top level symbols
+        if constexpr (std::is_same_v<slang::ast::PackageSymbol, T>) {
+            if (astNode.getSyntax()->sourceRange().start().buffer() != m_buffer) {
+                return;
+            }
+        }
+
+        // unwrap enum type members to mark enum values
+        if constexpr (std::is_same_v<slang::ast::TypeAliasType, T>) {
+            auto& unwrapped = astNode.getCanonicalType();
+            if (unwrapped.kind != slang::ast::SymbolKind::ErrorType) {
+                unwrapped.visit(*this);
+            }
+        }
+        else {
+            visitDefault(astNode);
+        }
     }
 
 private:
