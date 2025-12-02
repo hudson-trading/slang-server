@@ -7,7 +7,7 @@ import base_pkg::*;
 
 
 module cycle_test_module;
-       ^^^^^^^^^^^^^^^^^ Sym cycle_test_module : InstanceBody
+       ^^^^^^^^^^^^^^^^^ Sym cycle_test_module : Definition
 
 
 

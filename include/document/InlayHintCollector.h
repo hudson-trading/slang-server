@@ -7,6 +7,7 @@
 #include "lsp/LspTypes.h"
 #include <vector>
 
+#include "slang/ast/Compilation.h"
 #include "slang/syntax/AllSyntax.h"
 #include "slang/syntax/SyntaxFwd.h"
 
@@ -38,6 +39,7 @@ public:
 private:
     const ShallowAnalysis& m_analysis;
     lsp::Range m_range;
+    slang::ast::Compilation tempComp;
 
     // Cached config values
     bool m_portTypes;
@@ -55,6 +57,8 @@ private:
 
     /// Handle macro usages- will show argument names for calls with more than one arg
     void handle(const slang::syntax::MacroUsageSyntax& syntax);
+
+    void handle(const slang::syntax::ClassNameSyntax& syntax);
 };
 
 } // namespace server

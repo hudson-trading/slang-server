@@ -208,3 +208,51 @@ endmodule
     GoldenTest test;
     test.record(result);
 }
+
+TEST_CASE("InlayHintsInstanceArray") {
+    /// Test inlay hints for module instance arrays with ordered ports
+    ServerHarness server("");
+    auto hdl = server.openFile("inlay_instance_array.sv", R"(
+module adder(
+    input logic clk,
+    input logic [7:0] a,
+    input logic [7:0] b,
+    output logic [8:0] sum
+);
+endmodule
+
+module top;
+    logic clk;
+    logic [7:0] a[0:3], b[0:3];
+    logic [8:0] sum[0:3];
+    adder u_adder[0:3](clk, a, b, sum);
+endmodule
+)");
+
+    InlayHintScanner scanner;
+    scanner.scanDocument(hdl);
+}
+
+TEST_CASE("InlayHintsClassTypedefOrdered") {
+    /// Test inlay hints for typedef'd class with parameter overrides and ordered constructor
+    /// parameters
+    ServerHarness server("");
+    auto hdl = server.openFile("inlay_class_typedef.sv", R"(
+class packet #(int WIDTH = 8, int MAX_SIZE = 512);
+    function new(int id, int size, bit[WIDTH-1:0] data);
+    endfunction
+endclass
+
+typedef packet #(16, 1024) my_packet_t;
+
+module top;
+    initial begin
+        my_packet_t pkt = new(42, 256, 16'hABCD);
+    end
+endmodule
+)");
+    // TODO: inlay hints and gotos on 'super' and 'new' keywords
+
+    InlayHintScanner scanner;
+    scanner.scanDocument(hdl);
+}

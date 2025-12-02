@@ -38,6 +38,7 @@ void SyntaxIndexer::visit(const slang::syntax::SyntaxNode& node) {
         }
         case syntax::SyntaxKind::InvocationExpression:
         case syntax::SyntaxKind::HierarchyInstantiation:
+        case syntax::SyntaxKind::ClassName:
             collectedHints.emplace(static_cast<uint32_t>(node.getFirstToken().location().offset()),
                                    &node);
             break;

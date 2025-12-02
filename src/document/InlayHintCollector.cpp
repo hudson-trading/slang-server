@@ -10,6 +10,9 @@
 #include "util/Logging.h"
 
 #include "slang/ast/Symbol.h"
+#include "slang/ast/symbols/ClassSymbols.h"
+#include "slang/ast/symbols/CompilationUnitSymbols.h"
+#include "slang/ast/symbols/InstanceSymbols.h"
 #include "slang/ast/symbols/MemberSymbols.h"
 #include "slang/ast/symbols/PortSymbols.h"
 #include "slang/syntax/AllSyntax.h"
@@ -59,29 +62,39 @@ void InlayHintCollector::handle(const HierarchyInstantiationSyntax& syntax) {
     }
 
     // Do ports on each instance
+
+    // Use one of the bodies if valid
+    const slang::ast::InstanceSymbol* inst = nullptr;
+    for (auto instanceSyntax : syntax.instances) {
+        auto sym = m_analysis.getSymbolAtToken(&instanceSyntax->decl->name);
+        if (sym && sym->kind == ast::SymbolKind::Instance) {
+            inst = &sym->as<slang::ast::InstanceSymbol>();
+            break;
+        }
+    }
+
+    // Invalid instance in case there is none
+    ast::RootSymbol root(tempComp);
+    if (inst == nullptr) {
+        inst = &ast::InstanceSymbol::createInvalid(tempComp, def);
+        root.addMember(*inst);
+    }
+    auto& body = inst->body;
+
+    auto ports = inst->body.getPortList();
+
     for (auto instanceSyntax : syntax.instances) {
         if (instanceSyntax->kind != SyntaxKind::HierarchicalInstance) {
             continue;
         }
 
         auto& hierInstSyntax = instanceSyntax->as<HierarchicalInstanceSyntax>();
-        auto inst = m_analysis.getSymbolAtToken(&hierInstSyntax.decl->name);
-        if (!inst) {
-            continue;
-        }
-        if (inst->kind != ast::SymbolKind::Instance) {
-            // TODO: handle instance arrays
-            continue;
-        }
-
-        auto& body = inst->as<ast::InstanceSymbol>().body;
 
         // Collect named port hints for alignment
         std::vector<lsp::InlayHint> namedPortHints;
         size_t maxLabelLen = 0;
         size_t portIndex = 0;
         size_t lastPortLine = -1;
-        auto ports = body.getPortList();
         for (auto portSyntax : hierInstSyntax.connections) {
             switch (portSyntax->kind) {
                 case SyntaxKind::OrderedPortConnection: {
@@ -107,22 +120,17 @@ void InlayHintCollector::handle(const HierarchyInstantiationSyntax& syntax) {
                     }
 
                     std::string label;
-                    if (port->kind == ast::SymbolKind::Port) {
-                        auto& portSym = port->as<ast::PortSymbol>();
-                        label = fmt::format("{} {}", portString(portSym.direction),
-                                            portSym.getType().toString());
-                    }
-                    else if (port->kind == ast::SymbolKind::InterfacePort) {
-                        auto& portSym = port->as<ast::InterfacePortSymbol>();
-                        if (!portSym.interfaceDef) {
-                            WARN("invalid modport: {}", portSym.name);
+                    auto portDecl = port->getSyntax()->parent;
+                    switch (portDecl->kind) {
+                        case slang::syntax::SyntaxKind::ImplicitAnsiPort:
+                            label = detailFormat(*portDecl->as<ImplicitAnsiPortSyntax>().header);
+                            break;
+                        case slang::syntax::SyntaxKind::PortDeclaration:
+                            label = detailFormat(*portDecl->as<PortDeclarationSyntax>().header);
+                            break;
+                        default:
+                            WARN("Unknown port syntax: {}", toString(portDecl->kind));
                             continue;
-                        }
-                        label = fmt::format("{}.{}", portSym.interfaceDef->name, portSym.modport);
-                    }
-                    else {
-                        WARN("Unknown port sym: {}", toString(port->kind));
-                        continue;
                     }
 
                     // Track max lengths to preserve alignment
@@ -283,6 +291,33 @@ void InlayHintCollector::handle(const InvocationExpressionSyntax& syntax) {
     }
 }
 
+void InlayHintCollector::handle(const ClassNameSyntax& syntax) {
+    if (!m_orderedInstanceNames || syntax.parameters->parameters.empty()) {
+        return;
+    }
+    auto clsSym = m_analysis.getSymbolAtToken(&syntax.identifier);
+    if (!clsSym || clsSym->kind != ast::SymbolKind::ClassType) {
+        return;
+    }
+    auto& cls = clsSym->as<ast::ClassType>();
+    if (!cls.genericClass) {
+        return;
+    }
+    size_t paramIndex = 0;
+    for (auto paramSyntax : syntax.parameters->parameters) {
+        if (paramSyntax->kind == SyntaxKind::OrderedParamAssignment &&
+            paramIndex < cls.genericClass->paramDecls.size()) {
+            result.push_back(lsp::InlayHint{
+                .position = toPosition(paramSyntax->getFirstToken().location(),
+                                       m_analysis.m_sourceManager),
+                .label = fmt::format("{}:", cls.genericClass->paramDecls[paramIndex++].name),
+                .kind = lsp::InlayHintKind::Parameter,
+                .paddingRight = true,
+            });
+        }
+    }
+}
+
 void InlayHintCollector::collectHints() {
 
     auto slangStart = m_analysis.m_sourceManager.getSourceLocation(m_analysis.m_buffer,
@@ -319,6 +354,8 @@ void InlayHintCollector::collectHints() {
             case syntax::SyntaxKind::InvocationExpression:
                 handle(it->second->as<InvocationExpressionSyntax>());
                 break;
+            case syntax::SyntaxKind::ClassName:
+                handle(it->second->as<ClassNameSyntax>());
             default:
                 break;
         }

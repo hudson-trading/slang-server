@@ -160,14 +160,12 @@ bool isSingleLine(const std::string& s) {
     return s.find('\n') == std::string::npos;
 }
 
+// Print compactly in a single line
 std::string detailFormat(const syntax::SyntaxNode& node) {
-    // print without comments, need one line
     auto res = syntax::SyntaxPrinter().setIncludeComments(false).print(node).str();
     stripBlankLines(res);
     squashSpaces(res);
-    if (!isSingleLine(res)) {
-        ERROR("Expected single line for detail string: {}", res);
-    }
+    ltrim(res);
     return res;
 }
 

@@ -71,7 +71,7 @@ endpackage
 
 
 module automatic m1 import p::*; #(int i = 1)
-                 ^^ Sym m1 : InstanceBody
+                 ^^ Sym m1 : Definition
                            ^ Ref -> `package static p;`
                                        ^ Sym i : Parameter
 
@@ -100,7 +100,7 @@ endmodule
 
 
 module m2 #(
-       ^^ Sym m2 : InstanceBody
+       ^^ Sym m2 : Definition
 
     parameter i = 1,
               ^ Sym i : Parameter
@@ -139,7 +139,7 @@ extern interface I(input a, output b);
 
 
 interface I(.*);
-          ^ Sym I : InstanceBody
+          ^ Sym I : Definition
 
     modport mod(input a);
             ^^^ Sym mod : Modport
@@ -155,7 +155,7 @@ extern macromodule m3;
 
 
 macromodule m3;
-            ^^ Sym m3 : InstanceBody
+            ^^ Sym m3 : Definition
 
     wire b;
          ^ Sym b : Net
@@ -693,7 +693,7 @@ extern program p(a, b);
 
 
 program p(a, b);
-        ^ Sym p : InstanceBody
+        ^ Sym p : Definition
           ^ Sym a : Port
              ^ Sym b : Port
 
@@ -755,7 +755,7 @@ endconfig
 
 
 module ALU (o1, i1, i2, opcode);
-       ^^^ Sym ALU : InstanceBody
+       ^^^ Sym ALU : Definition
             ^^ Sym o1 : Port
                 ^^ Sym i1 : Port
                     ^^ Sym i2 : Port
@@ -806,7 +806,7 @@ endmodule
 
 
 interface Iface;
-          ^^^^^ Sym Iface : InstanceBody
+          ^^^^^ Sym Iface : Definition
 
     extern function void foo(int i, real r);
                          ^^^ Sym foo : MethodPrototype
@@ -839,7 +839,7 @@ endinterface
 
 
 module n(Iface.m a);
-       ^ Sym n : InstanceBody
+       ^ Sym n : Definition
          ^^^^^ Ref -> `interface Iface;`
                ^ Ref -> `// In Iface`\n\\n\---\n\\n\`modport m(export foo, function void bar(int, logic), task baz, export func);`
                  ^ Sym a : InterfacePort
@@ -880,7 +880,7 @@ endmodule
 
 
 module m4;
-       ^^ Sym m4 : InstanceBody
+       ^^ Sym m4 : Definition
 
     Iface i1();
     ^^^^^ Ref -> `interface Iface;`
@@ -1089,7 +1089,7 @@ endchecker : assert_window1
 
 
 module m5;
-       ^^ Sym m5 : InstanceBody
+       ^^ Sym m5 : Definition
 
     logic a, b, c, d, e, clk;
           ^ Sym a : Variable
@@ -1151,7 +1151,7 @@ module m5;
 
 
     program check;
-            ^^^^^ Sym check : InstanceBody
+            ^^^^^ Sym check : Definition
 
         initial begin
 
@@ -1258,7 +1258,7 @@ endfunction
 
 
 module m7;
-       ^^ Sym m7 : InstanceBody
+       ^^ Sym m7 : Definition
 
     G #(real) g1;
     ^ Ref -> `class G #(type T);\n\    extern function T foo;\n\endclass`
@@ -1407,7 +1407,7 @@ endclass
 
 
 module m6;
-       ^^ Sym m6 : InstanceBody
+       ^^ Sym m6 : Definition
 
     A a = new;
     ^ Ref -> `class A;\n\    integer i = 1;\n\    integer j = 2;\n\    function integer f();\n\        f = i;\n\    endfunction\n\endclass`
@@ -1609,7 +1609,7 @@ endclass
 
 
 module m9;
-       ^^ Sym m9 : InstanceBody
+       ^^ Sym m9 : Definition
 
     logic [3:0] a = {4 {1'b1}};
                 ^ Sym a : Variable
@@ -1619,7 +1619,7 @@ endmodule
 
 
 module m10;
-       ^^^ Sym m10 : InstanceBody
+       ^^^ Sym m10 : Definition
 
     byte stream[$];
          ^^^^^^ Sym stream : Variable

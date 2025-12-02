@@ -68,11 +68,11 @@ macromodule m3;
         .i(1),
         .x_t(y2)
     ) m2_inst (
-        .a /*input int$[]*/ ({1, 2}),
-        .b /*output logic*/ (b),
-        .c /*ref logic   */ (),
-        .d(d),
-        .e /*inout void  */ ()
+        .a /*input int    */ ({1, 2}),
+        .b /*output logic */ (b),
+        .c /*ref          */ (),
+        .d /*interface.mod*/ (d),
+        .e()
     );
 
     $info("Hello %s", "world");
@@ -428,8 +428,8 @@ function int H::foo;
 endfunction
 
 module m7;
-    G #(real) g1;
-    G #(int) g2;
+    G #(/*T:*/ real) g1;
+    G #(/*T:*/ int) g2;
 
     int i = g2.foo();
     real r = D::foo();

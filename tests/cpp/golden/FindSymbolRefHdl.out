@@ -49,7 +49,7 @@ endpackage
 
 
 interface bus_if #(
-          ^^^^^^ Sym bus_if : InstanceBody
+          ^^^^^^ Sym bus_if : Definition
 
     parameter type data_t = bit,
                    ^^^^^^ Sym data_t : TypeParameter
@@ -210,7 +210,7 @@ endinterface
 
 
 module Sub #(
-       ^^^ Sym Sub : InstanceBody
+       ^^^ Sym Sub : Definition
 
     parameter int WIDTH = 16
                   ^^^^^ Sym WIDTH : Parameter
@@ -262,7 +262,7 @@ endmodule
 
 
 module TestModule #(
-       ^^^^^^^^^^ Sym TestModule : InstanceBody
+       ^^^^^^^^^^ Sym TestModule : Definition
 
     parameter int NUM_SUBS = 4
                   ^^^^^^^^ Sym NUM_SUBS : Parameter
@@ -513,7 +513,7 @@ endmodule
 
 
 module NoDefaults #(
-       ^^^^^^^^^^ Sym NoDefaults : InstanceBody
+       ^^^^^^^^^^ Sym NoDefaults : Definition
 
     parameter int WIDTH,
                   ^^^^^ Sym WIDTH : Parameter
@@ -687,7 +687,7 @@ endmodule
 
 
 module StructAssignmentTest (
-       ^^^^^^^^^^^^^^^^^^^^ Sym StructAssignmentTest : InstanceBody
+       ^^^^^^^^^^^^^^^^^^^^ Sym StructAssignmentTest : Definition
 
     input logic clk,
                 ^^^ Sym clk : Variable

@@ -12,8 +12,8 @@ module top;
     counter u_cnt(.clk(clk), .rst(rst), .count(cnt));
 
     counter x_cnt(
-        .clk /*input logic      */   (clk),
-        .rst /*input logic      */   (rst),
-        .count /*output logic[7:0]*/ (cnt)
+        .clk /*input logic       */   (clk),
+        .rst /*input logic       */   (rst),
+        .count /*output logic [7:0]*/ (cnt)
     );
 endmodule

@@ -86,7 +86,7 @@
 
 
 module test;
-       ^^^^ Sym test : InstanceBody
+       ^^^^ Sym test : Definition
 
 
 

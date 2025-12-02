@@ -295,8 +295,14 @@ const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declT
         return pkg->find(declTok->valueText());
     }
     else if (auto sym = m_symbolIndexer.getSymbol(declTok)) {
-        // Check for symbol declarations
-        return sym;
+        switch (sym->kind) {
+            case ast::SymbolKind::InstanceBody:
+                // Module declarations get indexed to their body. We do want to keep the body
+                // as the indexed sym for use in the future though with hdl features.
+                return &sym->as<ast::InstanceBodySymbol>().getDefinition();
+            default:
+                return sym;
+        }
     }
 
     auto scope = m_symbolIndexer.getScopeForSyntax(*syntax);
