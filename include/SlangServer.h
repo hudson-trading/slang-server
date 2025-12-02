@@ -188,6 +188,11 @@ public:
     std::optional<std::vector<lsp::InlayHint>> getDocInlayHint(
         const lsp::InlayHintParams&) override;
 
+    std::optional<std::vector<lsp::Location>> getDocReferences(
+        const lsp::ReferenceParams&) override;
+
+    std::optional<lsp::WorkspaceEdit> getDocRename(const lsp::RenameParams&) override;
+
     /// Completions resolve (get docs and snippet string)
     lsp::CompletionItem getCompletionItemResolve(const lsp::CompletionItem&) override;
 

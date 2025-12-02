@@ -1,0 +1,1713 @@
+
+timeunit 1ns / 1ps;
+
+timeprecision 1ps;
+
+
+
+(* foo = 1 *) package static p;
+                             ^ Refs[7]
+
+    timeunit 1ns;
+
+    parameter int x = 1;
+                  ^ Refs[5]
+
+    parameter type y_t = logic[x:0];
+                   ^^^ Refs[2]
+                               ^ Refs[5]
+
+    parameter int x2 = x + 1;
+                  ^^ Refs[2]
+                       ^ Refs[5]
+
+    parameter type y = logic[x:0];
+                   ^ Refs[2]
+                             ^ Refs[5]
+
+    parameter type y2 = logic[x2:0];
+                   ^^ Refs[3]
+                              ^^ Refs[2]
+
+    program; endprogram
+
+    export *::*;
+
+endpackage
+
+
+
+package pkg1;
+        ^^^^ Refs[3]
+
+    typedef struct packed {
+
+        logic [7:0] data;
+                    ^^^^ Refs[1]
+
+        logic valid;
+              ^^^^^ Refs[1]
+
+    } packet_t;
+      ^^^^^^^^ Refs[3]
+
+endpackage
+
+
+
+package pkg2;
+        ^^^^ Refs[1]
+
+    import pkg1::packet_t;
+           ^^^^ Refs[3]
+                 ^^^^^^^^ Refs[3]
+
+    export pkg1::packet_t;
+           ^^^^ Refs[3]
+                 ^^^^^^^^ Refs[3]
+
+endpackage
+
+
+
+module automatic m1 import p::*; #(int i = 1)
+                 ^^ Refs[2]
+                           ^ Refs[7]
+                                       ^ Refs[1]
+
+    (a, b, , .c({a, b[0]}));
+     ^ Refs[1]
+        ^ Refs[1]
+
+    input a;
+          ^ Refs[1]
+
+    output [1:0] b;
+                 ^ Refs[1]
+
+    localparam int c = p::x;
+                   ^ Refs[1]
+                       ^ Refs[7]
+                          ^ Refs[5]
+
+    localparam p::y d = {1'b0, 1'b1};
+               ^ Refs[7]
+                  ^ Refs[2]
+                    ^ Refs[1]
+
+endmodule
+
+
+
+module m2 #(
+       ^^ Refs[3]
+
+    parameter i = 1,
+              ^ Refs[3]
+
+    localparam j = i,
+               ^ Refs[1]
+                   ^ Refs[3]
+
+    parameter type x_t = bit
+                   ^^^ Refs[2]
+
+)
+
+    (input int a[], (* bar = "asdf" *) output logic b = 1, ref c,
+               ^ Refs[1]
+                                                    ^ Refs[1]
+                                                               ^ Refs[1]
+
+    input p::y2 d2,
+          ^ Refs[7]
+             ^^ Refs[3]
+                ^^ Refs[1]
+
+     interface.mod d, .e());
+                   ^ Refs[2]
+                       ^ Refs[2]
+
+endmodule
+
+
+
+extern interface I(input a, output b);
+                 ^ Refs[3]
+                         ^ Refs[1]
+                                   ^ Refs[1]
+
+
+
+interface I(.*);
+          ^ Refs[3]
+
+    modport mod(input a);
+            ^^^ Refs[1]
+                      ^ Refs[1]
+
+endinterface
+
+
+
+extern macromodule m3;
+                   ^^ Refs[6]
+
+
+
+macromodule m3;
+            ^^ Refs[6]
+
+    wire b;
+         ^ Refs[5]
+
+    logic c;
+          ^ Refs[2]
+
+    I d(.a(), .b());
+    ^ Refs[3]
+      ^ Refs[3]
+         ^ Refs[1]
+               ^ Refs[1]
+
+
+
+    typedef p::y_t y_t;
+            ^ Refs[7]
+               ^^^ Refs[2]
+                   ^^^ Refs[2]
+
+
+
+    m2 #(
+    ^^ Refs[3]
+
+        .x_t(y_t)
+         ^^^ Refs[2]
+             ^^^ Refs[2]
+
+    ) m (, b, c, d, );
+      ^ Refs[3]
+           ^ Refs[5]
+              ^ Refs[2]
+                 ^ Refs[3]
+
+
+
+
+
+    typedef p::y2 y2;
+            ^ Refs[7]
+               ^^ Refs[3]
+                  ^^ Refs[2]
+
+
+
+    m2 #(
+    ^^ Refs[3]
+
+        .i(1),
+         ^ Refs[3]
+
+        .x_t(y2)
+         ^^^ Refs[2]
+             ^^ Refs[2]
+
+    ) m2_inst (
+      ^^^^^^^ Refs[1]
+
+        .a({1, 2}),
+         ^ Refs[1]
+
+        .b(b),
+         ^ Refs[1]
+           ^ Refs[5]
+
+        .c(),
+         ^ Refs[1]
+
+        .d(d),
+         ^ Refs[2]
+           ^ Refs[3]
+
+        .e()
+         ^ Refs[2]
+
+    );
+
+
+
+    $info("Hello %s", "world");
+
+
+
+    wor [1:0] w = 1;
+              ^ Refs[8]
+
+    assign (supply0, weak1) #(1:0:1, 2:1:0) w = 2;
+                                            ^ Refs[8]
+
+
+
+    wor u,v;
+        ^ Refs[2]
+          ^ Refs[2]
+
+    alias {u,v} = w;
+           ^ Refs[2]
+             ^ Refs[2]
+                  ^ Refs[8]
+
+
+
+    logic f, z;
+          ^ Refs[7]
+             ^ Refs[3]
+
+    event ev;
+          ^^ Refs[2]
+
+    initial begin
+
+        repeat (3) @(negedge b) f = #2 1;
+                             ^ Refs[5]
+                                ^ Refs[7]
+
+        wait (f) ++f;
+              ^ Refs[7]
+                   ^ Refs[7]
+
+        wait fork;
+
+        wait_order (m3.ev) f++;
+                    ^^ Refs[6]
+                       ^^ Refs[2]
+                           ^ Refs[7]
+
+
+
+        fork : fkb
+               ^^^ Refs[1]
+
+            static int i = 1;
+                       ^ Refs[1]
+
+            disable fork;
+
+        join_none
+
+
+
+        disable m3.foo;
+                ^^ Refs[6]
+                   ^^^ Refs[2]
+
+
+
+        assign z = 1;
+               ^ Refs[3]
+
+        deassign z;
+                 ^ Refs[3]
+
+
+
+        if (1) begin end else begin end
+
+
+
+        unique0 casex (w)
+                       ^ Refs[8]
+
+            0, 1: ;
+
+            default ;
+
+        endcase
+
+
+
+        case (w) inside
+              ^ Refs[8]
+
+            [0: 3]: ;
+
+        endcase
+
+    end
+
+
+
+    always_ff @(posedge b iff f == 1) begin
+                        ^ Refs[5]
+                              ^ Refs[7]
+
+        forever break;
+
+        repeat (f + 2) continue;
+                ^ Refs[7]
+
+        while (1)
+
+            ;
+
+        for (int i = 0, j = i; i < 10; i += 2, j += i) begin end
+                 ^ Refs[5]
+                        ^ Refs[2]
+                            ^ Refs[5]
+                               ^ Refs[5]
+                                       ^ Refs[5]
+                                               ^ Refs[2]
+                                                    ^ Refs[5]
+
+        foreach (w[q]) begin end
+                 ^ Refs[8]
+                   ^ Refs[1]
+
+    end
+
+
+
+    always @* begin : foo
+                      ^^^ Refs[2]
+
+    end : foo
+
+
+
+    always_comb begin
+
+        typedef union tagged {
+
+            void Invalid;
+                 ^^^^^^^ Refs[1]
+
+            int Valid;
+                ^^^^^ Refs[1]
+
+        } VInt;
+          ^^^^ Refs[2]
+
+
+
+        typedef union tagged {
+
+            struct {
+
+                bit [4:0] reg1, reg2, regd;
+
+            } Add;
+              ^^^ Refs[1]
+
+            union tagged {
+
+                bit [9:0] JmpU;
+
+                struct {
+
+                    bit [1:0] cc;
+
+                    bit [9:0] addr;
+
+                } JmpC;
+
+            } Jmp;
+              ^^^ Refs[1]
+
+        } Instr;
+          ^^^^^ Refs[2]
+
+
+
+        VInt v;
+        ^^^^ Refs[2]
+             ^ Refs[2]
+
+        Instr instr;
+        ^^^^^ Refs[2]
+              ^^^^^ Refs[4]
+
+        automatic int rf[] = new [3];
+                      ^^ Refs[5]
+
+        static longint pc = 'x;
+                       ^^ Refs[6]
+
+
+
+        case (v) matches
+              ^ Refs[2]
+
+            tagged Invalid &&& ~w : $display ("v is Invalid");
+                                ^ Refs[8]
+
+            tagged Valid .n : $display ("v is Valid with value %d", n);
+                          ^ Refs[2]
+                                                                    ^ Refs[2]
+
+        endcase
+
+
+
+        case (instr) matches
+              ^^^^^ Refs[4]
+
+            tagged Add .s: case (s) matches
+                        ^ Refs[2]
+                                 ^ Refs[2]
+
+                            '{.*, .*, 0} : ; // no op
+
+                            '{.r1, .r2, .rd} : rf[rd] = rf[r1] + rf[r2];
+                               ^^ Refs[2]
+                                    ^^ Refs[2]
+                                         ^^ Refs[2]
+                                               ^^ Refs[5]
+                                                  ^^ Refs[2]
+                                                        ^^ Refs[5]
+                                                           ^^ Refs[2]
+                                                                 ^^ Refs[5]
+                                                                    ^^ Refs[2]
+
+                          endcase
+
+            tagged Jmp .j: case (j) matches
+                        ^ Refs[2]
+                                 ^ Refs[2]
+
+                            tagged JmpU .a : pc = pc + a;
+                                         ^ Refs[2]
+                                             ^^ Refs[6]
+                                                  ^^ Refs[6]
+                                                       ^ Refs[2]
+
+                            tagged JmpC '{.c, .a} : if (rf[c]) pc = a;
+                                           ^ Refs[2]
+                                               ^ Refs[2]
+                                                        ^^ Refs[5]
+                                                           ^ Refs[2]
+                                                               ^^ Refs[6]
+                                                                    ^ Refs[2]
+
+                           endcase
+
+        endcase
+
+
+
+        if (instr matches (tagged Jmp .j) &&&
+            ^^^^^ Refs[4]
+                                       ^ Refs[3]
+
+            j matches (tagged JmpC '{cc:.c,addr:.a})) begin
+            ^ Refs[3]
+                                         ^ Refs[3]
+                                                 ^ Refs[3]
+
+            pc = c[0] & a[0];
+            ^^ Refs[6]
+                 ^ Refs[3]
+                        ^ Refs[3]
+
+            pc = instr matches (tagged Jmp .j) &&&
+            ^^ Refs[6]
+                 ^^^^^ Refs[4]
+
+                  j matches (tagged JmpC '{cc:.c,addr:.a}) ? c[0] & a[0] : 0;
+                  ^ Refs[3]
+                                                             ^ Refs[3]
+                                                                    ^ Refs[3]
+
+        end
+
+        else begin
+
+        end
+
+    end
+
+
+
+    always_latch begin
+
+    end
+
+
+
+    genvar j;
+           ^ Refs[1]
+
+    for (genvar i = 0; i < 10; i += 2)
+                       ^ Refs[2]
+                               ^ Refs[2]
+
+        if (i == 7) begin
+            ^ Refs[2]
+
+        end
+
+
+
+    ;
+
+
+
+    generate
+
+        case ($bits(w))
+                    ^ Refs[8]
+
+            0, 1: begin end
+
+            2: begin end
+
+            default: begin end
+
+        endcase
+
+    endgenerate
+
+
+
+    assertion0: assert #0 (1 == 1) else $display("Hello!");
+    ^^^^^^^^^^ Refs[1]
+
+    assertion1: assume final (2 != 1) else $display("Hello!");
+    ^^^^^^^^^^ Refs[1]
+
+
+
+    if (1) begin
+
+        logic a,b,c,d,e,f;
+              ^ Refs[2]
+                ^ Refs[3]
+                  ^ Refs[2]
+                    ^ Refs[2]
+                      ^ Refs[2]
+                        ^ Refs[2]
+
+
+
+        property p1(x,y);
+                 ^^ Refs[2]
+                    ^ Refs[2]
+                      ^ Refs[2]
+
+            ##1 x |-> y;
+                ^ Refs[2]
+                      ^ Refs[2]
+
+        endproperty
+
+
+
+        wire clk;
+             ^^^ Refs[2]
+
+        property p2;
+                 ^^ Refs[3]
+
+            @(posedge clk)
+                      ^^^ Refs[2]
+
+            a ##1 (b || c)[->1] |->
+            ^ Refs[2]
+                   ^ Refs[3]
+                        ^ Refs[2]
+
+                if (b)
+                    ^ Refs[3]
+
+                    p1(d,e)
+                    ^^ Refs[2]
+                       ^ Refs[2]
+                         ^ Refs[2]
+
+                else
+
+                    f;
+                    ^ Refs[2]
+
+        endproperty
+
+        cover property (p2 and p2);
+                        ^^ Refs[3]
+                               ^^ Refs[3]
+
+    end
+
+
+
+    prim prim_inst(q, r);
+    ^^^^ Refs[3]
+         ^^^^^^^^^ Refs[1]
+                   ^ Refs[2]
+                      ^ Refs[3]
+
+    rcmos #1step (q, r, s, t);
+                  ^ Refs[2]
+                     ^ Refs[3]
+                        ^ Refs[2]
+                           ^ Refs[3]
+
+
+
+    defparam m3.m.i = 1:1:1;
+             ^^ Refs[6]
+                ^ Refs[3]
+                  ^ Refs[3]
+
+
+
+    clocking cb @(r or s);
+             ^^ Refs[1]
+                  ^ Refs[3]
+                       ^ Refs[2]
+
+        default input posedge #3ps;
+
+        input a = t;
+              ^ Refs[1]
+                  ^ Refs[3]
+
+    endclocking
+
+
+
+    global clocking cb2 @t; endclocking
+                    ^^^ Refs[1]
+                         ^ Refs[3]
+
+
+
+    default clocking cb;
+
+    default disable iff 1 dist { [1:2] :/ 3, 2 };
+
+
+
+endmodule : m3
+            ^^ Refs[6]
+
+
+
+extern program p(a, b);
+               ^ Refs[4]
+
+
+
+program p(a, b);
+        ^ Refs[4]
+          ^ Refs[1]
+             ^ Refs[1]
+
+    input a, b;
+          ^ Refs[1]
+             ^ Refs[1]
+
+endprogram : p
+             ^ Refs[4]
+
+
+
+extern primitive prim(output reg a, input b);
+                 ^^^^ Refs[3]
+
+
+
+primitive prim(output reg a, input b);
+          ^^^^ Refs[3]
+                          ^ Refs[1]
+                                   ^ Refs[1]
+
+    table
+
+        0 : ? : 1;
+
+        1 : 0 : x;
+
+    endtable
+
+endprimitive
+
+
+
+(* attr = 3.14 *) bind m3.m m1 #(1) bound('x, , , );
+                       ^^ Refs[6]
+                          ^ Refs[3]
+                            ^^ Refs[2]
+                                    ^^^^^ Refs[1]
+
+
+
+config cfg;
+       ^^^ Refs[1]
+
+    localparam i = 1;
+               ^ Refs[1]
+
+    design work.m3;
+                ^^ Refs[6]
+
+    default liblist a b;
+
+    cell m3 use work.m3;
+         ^^ Refs[6]
+                     ^^ Refs[6]
+
+endconfig
+
+
+
+module ALU (o1, i1, i2, opcode);
+       ^^^ Refs[1]
+            ^^ Refs[1]
+                ^^ Refs[1]
+                    ^^ Refs[1]
+                        ^^^^^^ Refs[1]
+
+    input [7:0] i1, i2;
+                ^^ Refs[1]
+                    ^^ Refs[1]
+
+    input [2:1] opcode;
+                ^^^^^^ Refs[1]
+
+    output [7:0] o1;
+                 ^^ Refs[1]
+
+
+
+    specify
+
+        specparam s1 = 2;
+                  ^^ Refs[2]
+
+        if (opcode == 2'b00) (i1,i2 *> o1) = (25.0, 25.0);
+            ^^^^^^ Refs[1]
+                              ^^ Refs[1]
+                                 ^^ Refs[1]
+                                       ^^ Refs[1]
+
+        if (opcode == 2'b01) (i1 => o1) = (5.6, 8.0);
+            ^^^^^^ Refs[1]
+                              ^^ Refs[1]
+                                    ^^ Refs[1]
+
+        if (opcode == s1) (i2 => o1) = (5.6, 8.0);
+            ^^^^^^ Refs[1]
+                      ^^ Refs[2]
+                           ^^ Refs[1]
+                                 ^^ Refs[1]
+
+        (opcode *> o1) = (6.1, 6.5);
+         ^^^^^^ Refs[1]
+                   ^^ Refs[1]
+
+    endspecify
+
+endmodule
+
+
+
+interface Iface;
+          ^^^^^ Refs[4]
+
+    extern function void foo(int i, real r);
+                         ^^^ Refs[1]
+                                 ^ Refs[1]
+                                         ^ Refs[1]
+
+    extern forkjoin task t3();
+                         ^^ Refs[1]
+
+
+
+    modport m(export foo, function void bar(int, logic), task baz, export func);
+            ^ Refs[2]
+                     ^^^ Refs[1]
+                                        ^^^ Refs[1]
+                                                              ^^^ Refs[1]
+                                                                          ^^^^ Refs[1]
+
+    modport n(import function void func(int), import task t2);
+            ^ Refs[1]
+                                   ^^^^ Refs[1]
+                                                          ^^ Refs[1]
+
+    modport o(export t2);
+            ^ Refs[1]
+                     ^^ Refs[1]
+
+endinterface
+
+
+
+module n(Iface.m a);
+       ^ Refs[3]
+         ^^^^^ Refs[4]
+               ^ Refs[2]
+                 ^ Refs[8]
+
+    initial begin
+
+        a.foo(42, 3.14);
+        ^ Refs[8]
+          ^^^ Refs[1]
+
+        a.bar(1, 1);
+        ^ Refs[8]
+          ^^^ Refs[1]
+
+        a.baz();
+        ^ Refs[8]
+          ^^^ Refs[1]
+
+    end
+
+
+
+    function void a.bar(int i, logic l); endfunction
+                  ^ Refs[8]
+                    ^^^ Refs[1]
+
+    task a.baz; endtask
+         ^ Refs[8]
+           ^^^ Refs[1]
+
+    function void a.func(int i); endfunction
+                  ^ Refs[8]
+                    ^^^^ Refs[1]
+
+
+
+    function void a.foo(int i, real r);
+                  ^ Refs[8]
+                    ^^^ Refs[1]
+
+    endfunction
+
+endmodule
+
+
+
+module m4;
+       ^^ Refs[1]
+
+    Iface i1();
+    ^^^^^ Refs[4]
+          ^^ Refs[3]
+
+    n n1(i1);
+    ^ Refs[3]
+      ^^ Refs[1]
+         ^^ Refs[3]
+
+
+
+    Iface i2();
+    ^^^^^ Refs[4]
+          ^^ Refs[3]
+
+    n n2(i2.m);
+    ^ Refs[3]
+      ^^ Refs[1]
+         ^^ Refs[3]
+            ^ Refs[2]
+
+
+
+    localparam int baz = 3;
+                   ^^^ Refs[3]
+
+    task i1.t2;
+         ^^ Refs[3]
+            ^^ Refs[1]
+
+        static int i = baz;
+                       ^^^ Refs[3]
+
+    endtask
+
+
+
+    task i2.t2;
+         ^^ Refs[3]
+            ^^ Refs[1]
+
+        static int i = baz;
+                       ^^^ Refs[3]
+
+    endtask
+
+endmodule
+
+
+
+typedef enum { cover_none, cover_all } coverage_level;
+               ^^^^^^^^^^ Refs[2]
+                           ^^^^^^^^^ Refs[2]
+                                       ^^^^^^^^^^^^^^ Refs[2]
+
+
+
+typedef enum {
+
+    STATE_IDLE,
+    ^^^^^^^^^^ Refs[1]
+
+    STATE_ACTIVE[4],
+
+    STATE_DONE
+    ^^^^^^^^^^ Refs[1]
+
+} state_t;
+  ^^^^^^^ Refs[1]
+
+
+
+checker assert_window1 (
+        ^^^^^^^^^^^^^^ Refs[1]
+
+    logic test_expr,
+          ^^^^^^^^^ Refs[2]
+
+    untyped start_event,
+            ^^^^^^^^^^^ Refs[5]
+
+    untyped end_event,
+            ^^^^^^^^^ Refs[5]
+
+    event clock = $inferred_clock,
+          ^^^^^ Refs[3]
+
+    logic reset = $inferred_disable,
+          ^^^^^ Refs[3]
+
+    string error_msg = "violation",
+           ^^^^^^^^^ Refs[2]
+
+    coverage_level clevel = cover_all
+    ^^^^^^^^^^^^^^ Refs[2]
+                   ^^^^^^ Refs[2]
+                            ^^^^^^^^^ Refs[2]
+
+);
+
+    default clocking @clock; endclocking
+                      ^^^^^ Refs[3]
+
+    default disable iff reset;
+                        ^^^^^ Refs[3]
+
+    bit window = 1'b0, next_window = 1'b1;
+        ^^^^^^ Refs[10]
+                       ^^^^^^^^^^^ Refs[5]
+
+    rand bit q;
+             ^ Refs[1]
+
+
+
+    always_comb begin
+
+        if (reset || window && end_event)
+            ^^^^^ Refs[3]
+                     ^^^^^^ Refs[10]
+                               ^^^^^^^^^ Refs[5]
+
+            next_window = 1'b0;
+            ^^^^^^^^^^^ Refs[5]
+
+        else if (!window && start_event)
+                  ^^^^^^ Refs[10]
+                            ^^^^^^^^^^^ Refs[5]
+
+            next_window = 1'b1;
+            ^^^^^^^^^^^ Refs[5]
+
+        else
+
+            next_window = window;
+            ^^^^^^^^^^^ Refs[5]
+                          ^^^^^^ Refs[10]
+
+    end
+
+
+
+    always_ff @clock
+               ^^^^^ Refs[3]
+
+        window <= next_window;
+        ^^^^^^ Refs[10]
+                  ^^^^^^^^^^^ Refs[5]
+
+
+
+    property p_window;
+             ^^^^^^^^ Refs[2]
+
+        start_event && !window |=> test_expr[+] ##0 end_event;
+        ^^^^^^^^^^^ Refs[5]
+                        ^^^^^^ Refs[10]
+                                   ^^^^^^^^^ Refs[2]
+                                                    ^^^^^^^^^ Refs[5]
+
+    endproperty
+
+
+
+    a_window: assert property (p_window) else $error(error_msg);
+    ^^^^^^^^ Refs[1]
+                               ^^^^^^^^ Refs[2]
+                                                     ^^^^^^^^^ Refs[2]
+
+
+
+    generate if (clevel != cover_none) begin : cover_b
+                 ^^^^^^ Refs[2]
+                           ^^^^^^^^^^ Refs[2]
+                                               ^^^^^^^ Refs[1]
+
+        cover_window_open: cover property (start_event && !window)
+        ^^^^^^^^^^^^^^^^^ Refs[1]
+                                           ^^^^^^^^^^^ Refs[5]
+                                                           ^^^^^^ Refs[10]
+
+        $display("window_open covered");
+
+        cover_window: cover property (
+        ^^^^^^^^^^^^ Refs[1]
+
+            start_event && !window
+            ^^^^^^^^^^^ Refs[5]
+                            ^^^^^^ Refs[10]
+
+            ##1 (!end_event && window) [*]
+                  ^^^^^^^^^ Refs[5]
+                               ^^^^^^ Refs[10]
+
+            ##1 end_event && window
+                ^^^^^^^^^ Refs[5]
+                             ^^^^^^ Refs[10]
+
+        ) $display("window covered");
+
+    end : cover_b
+
+    endgenerate
+
+endchecker : assert_window1
+
+
+
+module m5;
+       ^^ Refs[1]
+
+    logic a, b, c, d, e, clk;
+          ^ Refs[4]
+             ^ Refs[4]
+                ^ Refs[2]
+                   ^ Refs[2]
+                      ^ Refs[2]
+                         ^^^ Refs[4]
+
+
+
+    default clocking @(posedge clk); endclocking
+                               ^^^ Refs[4]
+
+
+
+    assert_window1 aw1(1 + 1, a, b);
+                   ^^^ Refs[1]
+                              ^ Refs[4]
+                                 ^ Refs[4]
+
+
+
+    initial begin
+
+        assert_window1 aw2(1 + 1, a, b);
+        ^^^^^^^^^^^^^^ Refs[1]
+                       ^^^ Refs[1]
+                                  ^ Refs[4]
+                                     ^ Refs[4]
+
+    end
+
+
+
+    sequence abc;
+             ^^^ Refs[3]
+
+        @(posedge clk) a ##1 b ##1 c;
+                  ^^^ Refs[4]
+                       ^ Refs[4]
+                             ^ Refs[4]
+                                   ^ Refs[2]
+
+    endsequence
+
+
+
+    sequence de;
+             ^^ Refs[3]
+
+        @(negedge clk) d ##[2:5] e;
+                  ^^^ Refs[4]
+                       ^ Refs[2]
+                                 ^ Refs[2]
+
+    endsequence
+
+
+
+    program check;
+            ^^^^^ Refs[1]
+
+        initial begin
+
+            wait( abc.triggered || de.triggered );
+                  ^^^ Refs[3]
+                                   ^^ Refs[3]
+
+            if( abc.triggered )
+                ^^^ Refs[3]
+
+                $display( "abc succeeded" );
+
+            if( de.triggered )
+                ^^ Refs[3]
+
+                $display( "de succeeded" );
+
+        end
+
+    endprogram
+
+endmodule
+
+
+
+class C;
+      ^ Refs[2]
+
+    int i;
+        ^ Refs[1]
+
+    static int j;
+               ^ Refs[2]
+
+    extern function int foo(int bar, int baz = 1);
+                        ^^^ Refs[1]
+                                ^^^ Refs[1]
+                                         ^^^ Refs[1]
+
+endclass
+
+
+
+class D;
+      ^ Refs[2]
+
+    extern static function real foo;
+                                ^^^ Refs[1]
+
+endclass
+
+
+
+localparam int k = 5;
+               ^ Refs[1]
+
+
+
+function int C::foo(int bar, int baz = 1);
+
+    i = j + k + bar + baz;
+
+endfunction
+
+
+
+function real D::foo;
+
+endfunction
+
+
+
+class G #(type T);
+      ^ Refs[1]
+
+    extern function T foo;
+
+endclass
+
+
+
+function G::T G::foo;
+
+    return 0;
+
+endfunction
+
+
+
+class H #(int p);
+      ^ Refs[1]
+              ^ Refs[4]
+
+    extern function int foo;
+
+endclass
+
+
+
+function int H::foo;
+
+endfunction
+
+
+
+module m7;
+       ^^ Refs[1]
+
+    G #(real) g1;
+    ^ Refs[1]
+              ^^ Refs[1]
+
+    G #(int) g2;
+    ^ Refs[1]
+             ^^ Refs[2]
+
+
+
+    int i = g2.foo();
+        ^ Refs[1]
+            ^^ Refs[2]
+               ^^^ Refs[1]
+
+    real r = D::foo();
+         ^ Refs[1]
+             ^ Refs[2]
+                ^^^ Refs[1]
+
+endmodule
+
+
+
+class A;
+      ^ Refs[5]
+
+    integer i = 1;
+            ^ Refs[3]
+
+    integer j = 2;
+            ^ Refs[7]
+
+    function integer f();
+                     ^ Refs[5]
+
+        f = i;
+        ^ Refs[5]
+            ^ Refs[3]
+
+    endfunction
+
+endclass
+
+
+
+class B extends A;
+      ^ Refs[4]
+                ^ Refs[5]
+
+    integer i = 2;
+            ^ Refs[4]
+
+    function void f();
+                  ^ Refs[3]
+
+        i = j;
+        ^ Refs[4]
+            ^ Refs[7]
+
+        super.i = super.j;
+              ^ Refs[3]
+                        ^ Refs[7]
+
+        j = super.f();
+        ^ Refs[7]
+                  ^ Refs[5]
+
+        j = this.super.f();
+        ^ Refs[7]
+                       ^ Refs[5]
+
+    endfunction
+
+endclass
+
+
+
+class C2 extends B;
+      ^^ Refs[2]
+                 ^ Refs[4]
+
+    function void g();
+                  ^ Refs[1]
+
+        f();
+        ^ Refs[3]
+
+        i = j + C::j + A::f();
+        ^ Refs[4]
+            ^ Refs[7]
+                ^ Refs[2]
+                   ^ Refs[2]
+                       ^ Refs[5]
+                          ^ Refs[5]
+
+    endfunction
+
+
+
+    rand bit [63:0] value;
+                    ^^^^^ Refs[10]
+
+    rand logic q;
+               ^ Refs[4]
+
+    constraint value_c {
+               ^^^^^^^ Refs[1]
+
+        value[63] dist {0 :/ 70, 1 :/ 30};
+        ^^^^^ Refs[10]
+
+        value[0] == 1'b0;
+        ^^^^^ Refs[10]
+
+        value[15:8] inside {
+        ^^^^^ Refs[10]
+
+            8'h0,
+
+            8'hF
+
+        };
+
+        solve value before q;
+              ^^^^^ Refs[10]
+                           ^ Refs[4]
+
+        soft value[3:1] > 1;
+             ^^^^^ Refs[10]
+
+        q -> { value[4] == 0; }
+        ^ Refs[4]
+               ^^^^^ Refs[10]
+
+        if (q) { foreach (value[b]) { value[b] == 0; } } else { disable soft value; }
+            ^ Refs[4]
+                          ^^^^^ Refs[10]
+                                      ^^^^^ Refs[10]
+                                                                             ^^^^^ Refs[10]
+
+    }
+
+endclass
+
+
+
+module m6;
+       ^^ Refs[1]
+
+    A a = new;
+    ^ Refs[5]
+      ^ Refs[2]
+
+    A b1 = B::new;
+    ^ Refs[5]
+      ^^ Refs[2]
+           ^ Refs[4]
+
+    B b2 = new;
+    ^ Refs[4]
+      ^^ Refs[3]
+
+    C2 c = new;
+    ^^ Refs[2]
+       ^ Refs[3]
+
+    int depth;
+        ^^^^^ Refs[4]
+
+    integer i = b1.f();
+            ^ Refs[1]
+                ^^ Refs[2]
+                   ^ Refs[5]
+
+    initial begin
+
+        b2.f();
+        ^^ Refs[3]
+           ^ Refs[3]
+
+        a = b2;
+        ^ Refs[2]
+            ^^ Refs[3]
+
+        c.i = c.j;
+        ^ Refs[3]
+          ^ Refs[4]
+              ^ Refs[3]
+                ^ Refs[7]
+
+
+
+        randsequence(main)
+
+            main : first second;
+            ^^^^ Refs[1]
+
+            first : add | dec := (1 + 1);
+            ^^^^^ Refs[1]
+
+            second : repeat($urandom_range(2, 6)) first;
+            ^^^^^^ Refs[1]
+
+            add : if (depth < 2) first else second;
+            ^^^ Refs[1]
+                      ^^^^^ Refs[4]
+
+            dec : case (depth & 7)
+            ^^^ Refs[1]
+                        ^^^^^ Refs[4]
+
+                0 : add;
+
+                1, 2 : dec;
+
+                default : first;
+
+            endcase;
+
+            third : rand join first second;
+            ^^^^^ Refs[1]
+
+            fourth(string s = "done") : { if (depth) break; };
+            ^^^^^^ Refs[1]
+                          ^ Refs[1]
+                                              ^^^^^ Refs[4]
+
+        endsequence
+
+    end
+
+endmodule
+
+
+
+class C3;
+      ^^ Refs[1]
+
+    enum {red, green, blue} color;
+          ^^^ Refs[1]
+               ^^^^^ Refs[1]
+                      ^^^^ Refs[1]
+                            ^^^^^ Refs[1]
+
+    bit [3:0] pixel_adr, pixel_offset, pixel_hue;
+              ^^^^^^^^^ Refs[1]
+                         ^^^^^^^^^^^^ Refs[2]
+                                       ^^^^^^^^^ Refs[2]
+
+    logic clk, x, y, c;
+          ^^^ Refs[3]
+               ^ Refs[2]
+                  ^ Refs[1]
+                     ^ Refs[2]
+
+
+
+    covergroup g2 (string instComment) @(posedge clk);
+                          ^^^^^^^^^^^ Refs[2]
+                                                 ^^^ Refs[3]
+
+        Offset: coverpoint pixel_offset;
+        ^^^^^^ Refs[2]
+                           ^^^^^^^^^^^^ Refs[2]
+
+        Hue: coverpoint pixel_hue;
+        ^^^ Refs[2]
+                        ^^^^^^^^^ Refs[2]
+
+        AxC: cross color, pixel_adr;
+        ^^^ Refs[1]
+                   ^^^^^ Refs[2]
+                          ^^^^^^^^^ Refs[1]
+
+        all: cross color, Hue, Offset;
+        ^^^ Refs[1]
+                   ^^^^^ Refs[2]
+                          ^^^ Refs[2]
+                               ^^^^^^ Refs[2]
+
+
+
+        option.comment = instComment;
+                         ^^^^^^^^^^^ Refs[2]
+
+
+
+        e: coverpoint x iff (clk) {
+        ^ Refs[4]
+                      ^ Refs[2]
+                             ^^^ Refs[3]
+
+            option.weight = 2;
+            ^^^^^^Exception occurred
+                   ^^^^^^Exception occurred
+
+            wildcard bins a = { [0:63],65 };
+                          ^ Refs[2]
+
+            bins b[] = { [127:150],[148:191] }; // note overlapping values
+                 ^ Refs[1]
+
+            bins c[] = { 200,201,202 };
+                 ^ Refs[1]
+
+            bins d = { [1000:$] };
+                 ^ Refs[1]
+
+            bins others[] = default;
+                 ^^^^^^ Refs[1]
+
+
+
+            bins sa = (4 => 5 => 6), ([7:9],10 => 11,12);
+                 ^^ Refs[1]
+
+            bins sb[] = (12 => 3 [* 1]);
+                 ^^ Refs[1]
+
+            bins sc = (12 => 3 [-> 1]);
+                 ^^ Refs[1]
+
+            bins sd = (12 => 3 [= 1:2]);
+                 ^^ Refs[1]
+
+        }
+
+        cross e, y {
+              ^ Refs[4]
+                 ^ Refs[3]
+
+            option.weight = c;
+            ^^^^^^Exception occurred
+                   ^^^^^^Exception occurred
+                            ^ Refs[2]
+
+            bins one = '{ '{1,2}, '{3,4}, '{5,6} };
+                 ^^^ Refs[1]
+
+            ignore_bins others = (!binsof(e.a) || !binsof(y) intersect {1}) with (e > 10);
+                        ^^^^^^ Refs[1]
+                                          ^ Refs[4]
+                                            ^ Refs[2]
+                                                          ^ Refs[3]
+                                                                                  ^ Refs[4]
+
+        }
+
+        b: cross y, x;
+        ^ Refs[1]
+                 ^ Refs[3]
+                    ^ Refs[1]
+
+    endgroup
+
+endclass
+
+
+
+module m9;
+       ^^ Refs[1]
+
+    logic [3:0] a = {4 {1'b1}};
+                ^ Refs[1]
+
+endmodule
+
+
+
+module m10;
+       ^^^ Refs[1]
+
+    byte stream[$];
+         ^^^^^^ Refs[4]
+
+    class Packet;
+          ^^^^^^ Refs[2]
+
+        rand int header;
+                 ^^^^^^ Refs[2]
+
+        rand int len;
+                 ^^^ Refs[5]
+
+        rand byte payload[];
+                  ^^^^^^^ Refs[4]
+
+        int crc;
+            ^^^ Refs[3]
+
+        constraint G { len > 1; payload.size == len ; }
+                   ^ Refs[1]
+                       ^^^ Refs[5]
+                                ^^^^^^^ Refs[4]
+                                                ^^^ Refs[5]
+
+        function void post_randomize; crc = payload.sum; endfunction
+                      ^^^^^^^^^^^^^^ Refs[1]
+                                      ^^^ Refs[3]
+                                            ^^^^^^^ Refs[4]
+
+    endclass
+
+
+
+    initial begin
+
+        byte q[$];
+             ^ Refs[1]
+
+        automatic Packet p = new;
+                  ^^^^^^ Refs[2]
+                         ^ Refs[7]
+
+        {<< byte{ p.header, p.len, p.payload with [0 +: p.len], p.crc }} = stream;
+                  ^ Refs[7]
+                    ^^^^^^ Refs[2]
+                            ^ Refs[7]
+                              ^^^ Refs[5]
+                                   ^ Refs[7]
+                                     ^^^^^^^ Refs[4]
+                                                        ^ Refs[7]
+                                                          ^^^ Refs[5]
+                                                                ^ Refs[7]
+                                                                  ^^^ Refs[3]
+                                                                           ^^^^^^ Refs[4]
+
+        stream = stream[ $bits(p) / 8 : $ ];
+        ^^^^^^ Refs[4]
+                 ^^^^^^ Refs[4]
+                               ^ Refs[7]
+
+    end
+
+endmodule

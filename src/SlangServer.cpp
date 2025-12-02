@@ -75,6 +75,8 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     registerCompletionItemResolve();
 
     registerDocInlayHint();
+    registerDocReferences();
+    registerDocRename();
 
     // Cone tracing (drivers/loads)
     registerDocPrepareCallHierarchy();
@@ -185,6 +187,7 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
                                 }},
                     .hoverProvider = true,
                     .definitionProvider = true,
+                    .referencesProvider = true,
                     .documentSymbolProvider = true,
                     .documentLinkProvider =
                         lsp::DocumentLinkOptions{
@@ -192,6 +195,7 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
                             .workDoneProgress = false,
                         },
                     .workspaceSymbolProvider = true,
+                    .renameProvider = true,
                     .executeCommandProvider =
                         lsp::ExecuteCommandOptions{
                             .commands = getCommandList(),
@@ -692,6 +696,16 @@ std::optional<std::vector<lsp::InlayHint>> SlangServer::getDocInlayHint(
     auto hints = doc->getAnalysis().getInlayHints(params.range, m_config.inlayHints.get());
     INFO("Providing {} inlay hints for {}", hints.size(), params.textDocument.uri.getPath());
     return hints;
+}
+
+std::optional<std::vector<lsp::Location>> SlangServer::getDocReferences(
+    const lsp::ReferenceParams& params) {
+    return m_driver->getDocReferences(params.textDocument.uri, params.position,
+                                      params.context.includeDeclaration);
+}
+
+std::optional<lsp::WorkspaceEdit> SlangServer::getDocRename(const lsp::RenameParams& params) {
+    return m_driver->getDocRename(params.textDocument.uri, params.position, params.newName);
 }
 
 SourceManager& SlangServer::sourceManager() {

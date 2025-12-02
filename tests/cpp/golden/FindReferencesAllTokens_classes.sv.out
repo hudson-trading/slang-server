@@ -1,0 +1,15 @@
+
+class MyClass;
+      ^^^^^^^ Refs[1]
+
+    int x;
+        ^ Refs[1]
+
+endclass
+
+
+
+class AnotherClass;
+      ^^^^^^^^^^^^ Refs[1]
+
+endclass

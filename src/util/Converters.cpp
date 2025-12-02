@@ -50,6 +50,11 @@ lsp::Range toRange(const SourceRange& range, const SourceManager& sourceManager)
                       .end = toPosition(range.end(), sourceManager)};
 }
 
+lsp::Range toOriginalRange(const SourceRange& range, const SourceManager& sourceManager) {
+    auto origRange = sourceManager.getFullyOriginalRange(range);
+    return toRange(origRange, sourceManager);
+}
+
 lsp::Range toRange(const SourceLocation& loc, const SourceManager& sourceManager,
                    const size_t length) {
 

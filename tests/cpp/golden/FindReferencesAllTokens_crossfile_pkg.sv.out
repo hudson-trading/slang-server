@@ -1,0 +1,38 @@
+
+// Package for cross-file reference testing
+
+package crossfile_pkg;
+        ^^^^^^^^^^^^^ Refs[4]
+
+    typedef struct packed {
+
+        logic [7:0] addr;
+                    ^^^^ Refs[1]
+
+        logic [31:0] data;
+                     ^^^^ Refs[1]
+
+    } transaction_t;
+      ^^^^^^^^^^^^^ Refs[5]
+
+
+
+    parameter int FIFO_DEPTH = 16;
+                  ^^^^^^^^^^ Refs[3]
+
+    parameter int DATA_WIDTH = 32;
+                  ^^^^^^^^^^ Refs[2]
+
+
+
+    function automatic int calculate_size(int depth);
+                           ^^^^^^^^^^^^^^ Refs[2]
+                                              ^^^^^ Refs[2]
+
+        return depth * DATA_WIDTH;
+               ^^^^^ Refs[2]
+                       ^^^^^^^^^^ Refs[2]
+
+    endfunction
+
+endpackage

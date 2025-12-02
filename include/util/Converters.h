@@ -28,6 +28,8 @@ lsp::Position toPosition(const SourceLocation& loc, const SourceManager& sourceM
 
 lsp::Range toRange(const SourceRange& range, const SourceManager& sourceManager);
 
+lsp::Range toOriginalRange(const SourceRange& range, const SourceManager& sourceManager);
+
 lsp::Range toRange(const SourceLocation& loc, const SourceManager& sourceManager,
                    const size_t length);
 

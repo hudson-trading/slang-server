@@ -1,0 +1,77 @@
+
+// Test file for cross-file macro references
+
+
+
+`include "macro_refs.sv"
+
+
+
+module macro_user;
+       ^^^^^^^^^^ Refs[1]
+
+    logic clk, rst;
+          ^^^ Refs[2]
+               ^^^ Refs[2]
+
+    logic [7:0] data_in, data_out;
+                ^^^^^^^ Refs[2]
+                         ^^^^^^^^ Refs[3]
+
+    logic [7:0] my_counter;
+                ^^^^^^^^^^ Refs[4]
+
+    logic [7:0] storage;
+                ^^^^^^^ Refs[3]
+
+
+
+    macro_test dut (
+    ^^^^^^^^^^ Refs[1]
+               ^^^ Refs[1]
+
+        .clk(clk),
+         ^^^ Refs[1]
+             ^^^ Refs[2]
+
+        .rst(rst),
+         ^^^ Refs[1]
+             ^^^ Refs[2]
+
+        .din(data_in),
+         ^^^ Refs[1]
+             ^^^^^^^ Refs[2]
+
+        .dout(data_out)
+         ^^^^ Refs[1]
+              ^^^^^^^^ Refs[3]
+
+    );
+
+
+
+    initial begin
+
+        `ASSIGN_ZERO(my_counter);
+                     ^^^^^^^^^^ Refs[4]
+
+        `ASSIGN_VALUE(storage, data_out);
+                      ^^^^^^^ Refs[3]
+                               ^^^^^^^^ Refs[3]
+
+
+
+        if (`COMPARE(my_counter, storage)) begin
+                     ^^^^^^^^^^ Refs[4]
+                                 ^^^^^^^ Refs[3]
+
+            `INCREMENT(my_counter);
+                       ^^^^^^^^^^ Refs[4]
+
+        end
+
+    end
+
+
+
+endmodule

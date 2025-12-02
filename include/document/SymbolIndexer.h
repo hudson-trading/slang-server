@@ -48,22 +48,27 @@ public:
 
     const slang::ast::Scope* getScopeForSyntax(const slang::syntax::SyntaxNode& syntax) const;
 
-    /// Module instances- module name, parameters, ports
     void handle(const slang::ast::InstanceArraySymbol& sym);
-    void handle(const slang::ast::InstanceSymbol& sym);
 
-    /// Index ValueSymbol names
-    void handle(const slang::ast::ValueSymbol& sym);
+    // Called via generic handle()
+    void handleSym(const slang::ast::InstanceSymbol& sym);
+    void handleSym(const slang::ast::ValueSymbol& sym);
+    void handleSym(const slang::ast::TypeAliasType& value);
 
     // These are not in the buffer, but should be visited
     void handle(const slang::ast::RootSymbol& sym);
     void handle(const slang::ast::CompilationUnitSymbol& sym);
 
+    void handle(const slang::ast::TypeParameterSymbol& sym) { sym.getTypeAlias().visit(*this); }
+
     // Index for inlay hints
     void handle(const slang::ast::CallExpression& sym);
 
-    // Need to unwrap enum transparent members.
-    void handle(const slang::ast::TransparentMemberSymbol& sym);
+    // Anonymous types (no typedef)
+    void handle(const slang::ast::TransparentMemberSymbol& sym) { sym.wrapped.visit(*this); }
+
+    // Special case for enum values, since name may not map
+    void handle(const slang::ast::EnumValueSymbol& sym);
 
     /// Generic symbol handler with dispatch to specialized handlers
     template<typename T>
@@ -73,8 +78,11 @@ public:
             syntex[astNode.getSyntax()] = &astNode;
         }
 
-        if constexpr (std::is_base_of_v<slang::ast::ValueSymbol, T>) {
-            handle(static_cast<const slang::ast::ValueSymbol&>(astNode));
+        if constexpr (std::is_same_v<slang::ast::InstanceSymbol, T>) {
+            handleSym(static_cast<const slang::ast::InstanceSymbol&>(astNode));
+        }
+        else if constexpr (std::is_base_of_v<slang::ast::ValueSymbol, T>) {
+            handleSym(static_cast<const slang::ast::ValueSymbol&>(astNode));
         }
 
         if (astNode.getSyntax() != nullptr) {
@@ -89,17 +97,14 @@ public:
 
         // Recurse for symbols other than top level symbols
         if constexpr (std::is_same_v<slang::ast::PackageSymbol, T>) {
-            if (astNode.getSyntax()->sourceRange().start().buffer() != m_buffer) {
+            if (astNode.location.buffer() != m_buffer) {
                 return;
             }
         }
 
-        // unwrap enum type members to mark enum values
+        // unwrap typedefs (structs, enums, unions)
         if constexpr (std::is_same_v<slang::ast::TypeAliasType, T>) {
-            auto& unwrapped = astNode.getCanonicalType();
-            if (unwrapped.kind != slang::ast::SymbolKind::ErrorType) {
-                unwrapped.visit(*this);
-            }
+            handleSym(static_cast<const slang::ast::TypeAliasType&>(astNode));
         }
         else {
             visitDefault(astNode);

@@ -1,0 +1,19 @@
+
+module m1;
+       ^^ Refs[1]
+
+endmodule
+
+
+
+module m2;
+       ^^ Refs[1]
+
+endmodule
+
+
+
+interface Iface;
+          ^^^^^ Refs[1]
+
+endinterface
