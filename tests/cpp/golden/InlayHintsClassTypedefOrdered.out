@@ -1,0 +1,13 @@
+
+class packet #(int WIDTH = 8, int MAX_SIZE = 512);
+    function new(int id, int size, bit[WIDTH-1:0] data);
+    endfunction
+endclass
+
+typedef packet #(/*WIDTH:*/ 16, /*MAX_SIZE:*/ 1024) my_packet_t;
+
+module top;
+    initial begin
+        my_packet_t pkt = new(42, 256, 16'hABCD);
+    end
+endmodule
