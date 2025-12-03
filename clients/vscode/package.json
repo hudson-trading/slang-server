@@ -2,7 +2,7 @@
   "name": "vscode-slang",
   "displayName": "slang-server: Verilog/SystemVerilog LSP",
   "description": "Verilog and SystemVerilog support via the slang language server.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "Hudson-River-Trading",
   "keywords": [
     "verilog",
