@@ -26,6 +26,7 @@
 #include "slang/ast/types/Type.h"
 #include "slang/driver/Driver.h"
 #include "slang/parsing/Token.h"
+#include "slang/parsing/TokenKind.h"
 #include "slang/syntax/AllSyntax.h"
 #include "slang/syntax/SyntaxKind.h"
 #include "slang/syntax/SyntaxTree.h"
@@ -36,10 +37,9 @@ namespace server {
 using namespace slang;
 ShallowAnalysis::ShallowAnalysis(SourceManager& sourceManager, slang::BufferID buffer,
                                  std::shared_ptr<SyntaxTree> tree, slang::Bag options,
-                                 const std::vector<std::shared_ptr<SyntaxTree>>& dependentTrees) :
+                                 const std::vector<std::shared_ptr<SyntaxTree>>& allTrees) :
     syntaxes(*tree), m_sourceManager(sourceManager), m_buffer(buffer), m_tree(tree),
-    m_dependentTrees(dependentTrees), m_symbolTreeVisitor(m_sourceManager),
-    m_symbolIndexer(buffer) {
+    m_allTrees(allTrees), m_symbolTreeVisitor(m_sourceManager), m_symbolIndexer(buffer) {
 
     if (!m_tree) {
         ERROR("DocumentAnalysis initialized with null syntax tree");
@@ -69,7 +69,7 @@ ShallowAnalysis::ShallowAnalysis(SourceManager& sourceManager, slang::BufferID b
     // Add definitions from this tree (even if they aren't valid tops)
     cOptions.topModules.clear();
     m_compilation = std::make_unique<ast::Compilation>(cOptions);
-    for (auto& depTree : m_dependentTrees) {
+    for (auto& depTree : m_allTrees) {
         m_compilation->addSyntaxTree(depTree);
     }
 
@@ -363,17 +363,12 @@ const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declT
         if (auto scopedResult = handleScopedNameLookup(nameSyntax, context, scope)) {
             return scopedResult;
         }
-
-        ERROR("No symbol found for name syntax {} in scope {}", syntax->toString(),
-              scope->asSymbol().getHierarchicalPath());
     }
 
     if (declTok->kind != parsing::TokenKind::Identifier ||
         syntax->kind == syntax::SyntaxKind::AttributeSpec) {
         return nullptr;
     }
-    WARN("No sym found for token {} in scope {}", declTok->valueText(),
-         scope->asSymbol().getHierarchicalPath());
 
     if (syntax->kind == syntax::SyntaxKind::DotMemberClause) {
         return handleInterfacePortHeader(declTok, syntax, scope);
@@ -432,16 +427,11 @@ std::vector<lsp::DocumentLink> ShallowAnalysis::getDocLinks() const {
 }
 
 bool ShallowAnalysis::hasValidBuffers() {
-    for (auto& tree : m_dependentTrees) {
+    for (auto& tree : m_allTrees) {
         for (auto& buffer : tree->getSourceBufferIds()) {
             if (!m_sourceManager.isValid(buffer)) {
                 return false;
             }
-        }
-    }
-    for (auto& buffer : m_tree->getSourceBufferIds()) {
-        if (!m_sourceManager.isValid(buffer)) {
-            return false;
         }
     }
     return true;

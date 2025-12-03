@@ -76,14 +76,8 @@ ServerDriver::ServerDriver(Indexer& indexer, SlangLspClient& client, const Confi
     INFO("Creating ServerDriver with {} trees", driver.syntaxTrees.size());
     for (auto& tree : driver.syntaxTrees) {
         auto uri = URI::fromFile(sm.getFullPath(tree->getSourceBufferIds()[0]));
-        auto doc = SlangDoc::fromTree(std::move(tree), sm, options);
+        auto doc = SlangDoc::fromTree(*this, std::move(tree));
         docs[uri] = doc;
-    }
-
-    // Set dependent documents for all documents after they're all created
-    for (auto& [uri, doc] : docs) {
-        auto dependentDocs = getDependentDocs(doc->getSyntaxTree());
-        doc->setDependentDocuments(dependentDocs);
     }
 }
 
@@ -91,10 +85,6 @@ ServerDriver::ServerDriver(Indexer& indexer, SlangLspClient& client, const Confi
 void ServerDriver::updateDoc(SlangDoc& doc, FileUpdateType type) {
     m_indexer.waitForIndexingCompletion();
     diagClient->clear(doc.getURI());
-    // Grab dependent documents
-    doc.setDependentDocuments(getDependentDocs(doc.getSyntaxTree()));
-    // send out parse and shallow compilation diagnostics
-    // TODO: Send parse, then shallow compilation?
     doc.issueDiagnosticsTo(diagEngine);
     diagClient->updateDiags();
     INFO("Published diags for {}", doc.getURI().getPath());
@@ -148,12 +138,24 @@ std::unique_ptr<ServerDriver> ServerDriver::create(Indexer& indexer, SlangLspCli
 }
 
 SlangDoc& ServerDriver::openDocument(const URI& uri, const std::string_view text) {
-    auto doc = SlangDoc::fromText(uri, sm, this->options, text);
+    auto doc = SlangDoc::fromText(*this, uri, text);
     docs[uri] = doc;
     // Track this as an open document
     m_openDocs.insert(uri);
     updateDoc(*doc, FileUpdateType::OPEN);
     return *doc;
+}
+
+std::shared_ptr<SlangDoc> ServerDriver::getDocument(const URI& uri) {
+    auto it = docs.find(uri);
+    if (it != docs.end())
+        return it->second;
+
+    auto doc = SlangDoc::open(*this, uri);
+    if (doc) {
+        docs[uri] = doc;
+    }
+    return doc;
 }
 
 void ServerDriver::onDocDidChange(const lsp::DidChangeTextDocumentParams& params) {
@@ -201,9 +203,13 @@ std::vector<std::shared_ptr<SlangDoc>> ServerDriver::getDependentDocs(
 
             // Don't try multiple times
             knownNames.emplace(name);
-            auto paths = m_indexer.getRelevantFilesForName(name);
+            auto data = m_indexer.symbolToFiles.find(std::string{name});
+            if (data == m_indexer.symbolToFiles.end())
+                return;
+
+            auto paths = data->second;
             if (!paths.empty()) {
-                auto filePath = paths[0].string();
+                std::string filePath = std::string{paths[0].uri->getPath()};
 
                 // Check if we've already processed this file to avoid cycles
                 if (processedFiles.find(filePath) != processedFiles.end())
@@ -291,7 +297,7 @@ bool ServerDriver::createCompilation(const URI& uri, std::string_view top) {
     std::vector<std::shared_ptr<SlangDoc>> documents;
     documents.reserve(syntaxTrees.size());
     for (const auto& tree : syntaxTrees) {
-        documents.push_back(SlangDoc::fromTree(tree, sm, this->options));
+        documents.push_back(SlangDoc::fromTree(*this, tree));
     }
     // insert the documents into the driver
     for (const auto& doc : documents) {

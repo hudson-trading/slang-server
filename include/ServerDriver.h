@@ -77,15 +77,7 @@ public:
 
     void updateDoc(SlangDoc& doc, FileUpdateType type);
 
-    std::shared_ptr<SlangDoc> getDocument(const URI& uri) {
-        auto it = docs.find(uri);
-        if (it != docs.end())
-            return it->second;
-        auto doc = SlangDoc::open(uri, sm, this->options);
-        if (doc)
-            docs[uri] = doc;
-        return doc;
-    }
+    std::shared_ptr<SlangDoc> getDocument(const URI& uri);
 
     std::vector<std::shared_ptr<SlangDoc>> getDependentDocs(std::shared_ptr<SyntaxTree> tree);
 

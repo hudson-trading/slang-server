@@ -63,7 +63,7 @@ public:
     /// @param trees Additional syntax trees that this document depends on
     ShallowAnalysis(SourceManager& sourceManager, slang::BufferID buffer,
                     std::shared_ptr<slang::syntax::SyntaxTree> tree, slang::Bag options,
-                    const std::vector<std::shared_ptr<slang::syntax::SyntaxTree>>& trees = {});
+                    const std::vector<std::shared_ptr<slang::syntax::SyntaxTree>>& allTrees = {});
 
     /// @brief Retrieves document symbols for LSP outline view, called right after open
     /// @return Vector of LSP document symbols representing the document structure
@@ -146,8 +146,8 @@ private:
     /// The syntax tree being analyzed
     std::shared_ptr<slang::syntax::SyntaxTree> m_tree;
 
-    /// Dependent syntax trees for cross-file analysis
-    std::vector<std::shared_ptr<slang::syntax::SyntaxTree>> m_dependentTrees;
+    /// All syntax trees needed for the shallow compilation
+    std::vector<std::shared_ptr<slang::syntax::SyntaxTree>> m_allTrees;
 
     /// Compilation context for symbol resolution
     std::unique_ptr<slang::ast::Compilation> m_compilation;
@@ -157,7 +157,7 @@ private:
     /// when symbols exist
     SymbolTreeVisitor m_symbolTreeVisitor;
 
-    /// Symbol indexer for syntax->symbol mapping; Used for lookups
+    /// Symbol indexer for syntax->symbol mappings of definitions; Used for lookups
     SymbolIndexer m_symbolIndexer;
 
     /// @brief Helper method to check if a token is positioned over a selector
