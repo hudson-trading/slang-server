@@ -16,6 +16,7 @@
 #include "slang/ast/symbols/InstanceSymbols.h"
 #include "slang/ast/symbols/PortSymbols.h"
 #include "slang/ast/symbols/ValueSymbol.h"
+#include "slang/ast/types/AllTypes.h"
 #include "slang/syntax/AllSyntax.h"
 #include "slang/syntax/SyntaxKind.h"
 #include "slang/syntax/SyntaxNode.h"
@@ -155,7 +156,7 @@ void SymbolIndexer::indexInstanceSyntax(const slang::syntax::HierarchicalInstanc
 
 void SymbolIndexer::handle(const slang::ast::InstanceArraySymbol& sym) {
     // Index based on syntax, looking up definition from parent scope if needed
-    if (sym.getSyntax() == nullptr || sym.getSyntax()->sourceRange().start().buffer() != m_buffer ||
+    if (sym.getSyntax() == nullptr || sym.location.buffer() != m_buffer ||
         sym.getSyntax()->kind != slang::syntax::SyntaxKind::HierarchicalInstance) {
         return;
     }
@@ -190,7 +191,7 @@ void SymbolIndexer::handle(const slang::ast::InstanceArraySymbol& sym) {
 }
 
 /// Module instances- module name, parameters, ports
-void SymbolIndexer::handle(const slang::ast::InstanceSymbol& sym) {
+void SymbolIndexer::handleSym(const slang::ast::InstanceSymbol& sym) {
     if (sym.getSyntax() == nullptr) {
         // This means it's the top level- just index the module name
         auto& modName =
@@ -199,7 +200,7 @@ void SymbolIndexer::handle(const slang::ast::InstanceSymbol& sym) {
         visitDefault(sym);
         return;
     }
-    else if (sym.getSyntax()->sourceRange().start().buffer() != m_buffer) {
+    else if (sym.location.buffer() != m_buffer) {
         return;
     }
 
@@ -213,31 +214,27 @@ void SymbolIndexer::handle(const slang::ast::InstanceSymbol& sym) {
             WARN("Unknown instance symbol kind: {}", toString(sym.getSyntax()->kind));
         }
     }
-    auto defSyn = sym.getDefinition().getSyntax();
-    if (defSyn && defSyn->sourceRange().start().buffer() == m_buffer) {
+    if (sym.getDefinition().location.buffer() == m_buffer) {
         visitDefault(sym);
     }
 }
-void SymbolIndexer::handle(const slang::ast::TransparentMemberSymbol& sym) {
-    if (!sym.wrapped.getSyntax()) {
-        return;
-    }
-    if (sym.wrapped.kind == slang::ast::SymbolKind::EnumValue) {
-        auto& syntax = sym.wrapped.getSyntax()->as<slang::syntax::DeclaratorSyntax>();
-        if (syntax.dimensions.empty()) {
-            symdex[&syntax.name] = &sym.wrapped;
-        }
-        else {
-            // For enum span goto-refs, we need to associate with all of the enum values in that
-            // list; we can conveniently use the transparent member so that goto refs aren't
-            // confused by these
-            symdex[&syntax.name] = &sym;
-        }
+
+void SymbolIndexer::handle(const slang::ast::EnumValueSymbol& sym) {
+    auto& syntax = sym.getSyntax()->as<slang::syntax::DeclaratorSyntax>();
+    if (syntax.dimensions.empty()) {
+        symdex[&syntax.name] = &sym;
     }
 }
 
+void SymbolIndexer::handleSym(const slang::ast::TypeAliasType& value) {
+    if (value.location.buffer() != m_buffer) {
+        return;
+    }
+    value.getDeclaredType()->getType().visit(*this);
+}
+
 /// Index ValueSymbol names
-void SymbolIndexer::handle(const slang::ast::ValueSymbol& sym) {
+void SymbolIndexer::handleSym(const slang::ast::ValueSymbol& sym) {
     if (!sym.getSyntax()) {
         return;
     }

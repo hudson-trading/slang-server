@@ -14,7 +14,7 @@ timeprecision 1ps;
                   ^ Sym x : Parameter
 
     parameter type y_t = logic[x:0];
-                   ^^^ Sym y_t : TypeParameter
+                   ^^^ Sym y_t : TypeAlias
                                ^ Ref -> `parameter int x = 1`
 
     parameter int x2 = x + 1;
@@ -22,11 +22,11 @@ timeprecision 1ps;
                        ^ Ref -> `parameter int x = 1`
 
     parameter type y = logic[x:0];
-                   ^ Sym y : TypeParameter
+                   ^ Sym y : TypeAlias
                              ^ Ref -> `parameter int x = 1`
 
     parameter type y2 = logic[x2:0];
-                   ^^ Sym y2 : TypeParameter
+                   ^^ Sym y2 : TypeAlias
                               ^^ Ref -> `parameter int x2 = x + 1`
 
     program; endprogram
@@ -110,6 +110,7 @@ module m2 #(
                    ^ Ref -> `parameter i = 1`
 
     parameter type x_t = bit
+                   ^^^ Sym x_t : TypeAlias
 
 )
 

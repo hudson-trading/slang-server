@@ -1,0 +1,151 @@
+
+// Module that uses definitions from crossfile_pkg
+
+module crossfile_user
+       ^^^^^^^^^^^^^^ Refs[2]
+
+    import crossfile_pkg::*;
+           ^^^^^^^^^^^^^ Refs[4]
+
+#(
+
+    parameter int DEPTH = FIFO_DEPTH
+                  ^^^^^ Refs[6]
+                          ^^^^^^^^^^ Refs[3]
+
+)(
+
+    input logic clk,
+                ^^^ Refs[2]
+
+    input logic rst,
+                ^^^ Refs[2]
+
+    input transaction_t trans_in,
+          ^^^^^^^^^^^^^ Refs[5]
+                        ^^^^^^^^ Refs[2]
+
+    output transaction_t trans_out
+           ^^^^^^^^^^^^^ Refs[5]
+                         ^^^^^^^^^ Refs[2]
+
+);
+
+    transaction_t buffer[DEPTH];
+    ^^^^^^^^^^^^^ Refs[5]
+                  ^^^^^^ Refs[3]
+                         ^^^^^ Refs[6]
+
+    logic [$clog2(DEPTH)-1:0] wr_ptr;
+                  ^^^^^ Refs[6]
+                              ^^^^^^ Refs[5]
+
+    logic [$clog2(DEPTH)-1:0] rd_ptr;
+                  ^^^^^ Refs[6]
+                              ^^^^^^ Refs[5]
+
+
+
+    int total_size;
+        ^^^^^^^^^^ Refs[2]
+
+
+
+    initial begin
+
+        total_size = calculate_size(DEPTH);
+        ^^^^^^^^^^ Refs[2]
+                     ^^^^^^^^^^^^^^ Refs[2]
+                                    ^^^^^ Refs[6]
+
+    end
+
+
+
+    always_ff @(posedge clk) begin
+                        ^^^ Refs[2]
+
+        if (rst) begin
+            ^^^ Refs[2]
+
+            wr_ptr <= '0;
+            ^^^^^^ Refs[5]
+
+            rd_ptr <= '0;
+            ^^^^^^ Refs[5]
+
+        end else begin
+
+            buffer[wr_ptr] <= trans_in;
+            ^^^^^^ Refs[3]
+                   ^^^^^^ Refs[5]
+                              ^^^^^^^^ Refs[2]
+
+            trans_out <= buffer[rd_ptr];
+            ^^^^^^^^^ Refs[2]
+                         ^^^^^^ Refs[3]
+                                ^^^^^^ Refs[5]
+
+            wr_ptr <= wr_ptr + 1;
+            ^^^^^^ Refs[5]
+                      ^^^^^^ Refs[5]
+
+            rd_ptr <= rd_ptr + 1;
+            ^^^^^^ Refs[5]
+                      ^^^^^^ Refs[5]
+
+        end
+
+    end
+
+endmodule
+
+
+
+module crossfile_top;
+       ^^^^^^^^^^^^^ Refs[1]
+
+    logic clk;
+          ^^^ Refs[2]
+
+    logic rst;
+          ^^^ Refs[2]
+
+    crossfile_pkg::transaction_t t1, t2;
+    ^^^^^^^^^^^^^ Refs[4]
+                   ^^^^^^^^^^^^^ Refs[5]
+                                 ^^ Refs[2]
+                                     ^^ Refs[2]
+
+
+
+    crossfile_user #(
+    ^^^^^^^^^^^^^^ Refs[2]
+
+        .DEPTH(crossfile_pkg::FIFO_DEPTH)
+         ^^^^^ Refs[6]
+               ^^^^^^^^^^^^^ Refs[4]
+                              ^^^^^^^^^^ Refs[3]
+
+    ) u_user (
+      ^^^^^^ Refs[1]
+
+        .clk(clk),
+         ^^^ Refs[2]
+             ^^^ Refs[2]
+
+        .rst(rst),
+         ^^^ Refs[2]
+             ^^^ Refs[2]
+
+        .trans_in(t1),
+         ^^^^^^^^ Refs[2]
+                  ^^ Refs[2]
+
+        .trans_out(t2)
+         ^^^^^^^^^ Refs[2]
+                   ^^ Refs[2]
+
+    );
+
+endmodule

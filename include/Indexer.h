@@ -30,6 +30,7 @@ struct Indexer {
         std::string path;
         std::vector<GlobalSymbol> symbols;
         std::vector<std::string> macros;
+        std::vector<std::string> referencedSymbols;
     };
 
     Indexer();
@@ -61,11 +62,15 @@ struct Indexer {
     std::unordered_map<std::string, slang::SmallVector<GlobalSymbolLoc, 2>> symbolToFiles;
     std::unordered_map<std::string, slang::SmallVector<const URI*, 2>> macroToFiles;
 
+    // Top level references; References tend to have more entries
+    std::unordered_map<std::string, std::vector<const URI*>> symbolReferences;
+
     // Storage for unique URIs (all pointers in the index point here)
     std::unordered_set<URI> uniqueUris;
 
     std::vector<std::filesystem::path> getRelevantFilesForName(std::string_view name) const;
     std::vector<std::filesystem::path> getFilesForMacro(std::string_view name) const;
+    std::vector<std::filesystem::path> getFilesReferencingSymbol(std::string_view name) const;
 
     static const int MinFilesForThreading = 4;
 

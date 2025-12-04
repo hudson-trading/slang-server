@@ -13,6 +13,8 @@
 #include "ast/ServerCompilation.h"
 #include "completions/CompletionDispatch.h"
 #include "document/SlangDoc.h"
+#include "lsp/LspTypes.h"
+#include "lsp/URI.h"
 #include "util/Converters.h"
 #include "util/Formatting.h"
 #include "util/Logging.h"
@@ -21,10 +23,17 @@
 #include <string_view>
 
 #include "slang/ast/Compilation.h"
+#include "slang/ast/Symbol.h"
+#include "slang/ast/symbols/CompilationUnitSymbols.h"
+#include "slang/ast/symbols/InstanceSymbols.h"
+#include "slang/ast/types/Type.h"
 #include "slang/diagnostics/DiagnosticEngine.h"
 #include "slang/driver/Driver.h"
 #include "slang/driver/SourceLoader.h"
+#include "slang/parsing/ParserMetadata.h"
+#include "slang/syntax/AllSyntax.h"
 #include "slang/syntax/SyntaxTree.h"
+#include "slang/syntax/SyntaxVisitor.h"
 #include "slang/text/SourceLocation.h"
 #include "slang/text/SourceManager.h"
 
@@ -559,6 +568,243 @@ std::vector<lsp::LocationLink> ServerDriver::getDocDefinition(const URI& uri,
         .targetRange = lspRange,
         .targetSelectionRange = lspRange,
     }};
+}
+
+void ServerDriver::addMemberReferences(std::vector<lsp::Location>& references,
+                                       const ast::Symbol& parentSymbol,
+                                       const ast::Symbol& targetSymbol, bool isTypeMember) {
+
+    auto targetBuffer = sm.getFullyOriginalLoc(targetSymbol.location).buffer();
+    auto targetDoc = getDocument(URI::fromFile(sm.getFullPath(targetBuffer)));
+    auto targetName = targetSymbol.name;
+
+    auto referencingFiles = m_indexer.getFilesReferencingSymbol(parentSymbol.name);
+    for (auto& filePath : referencingFiles) {
+        URI fileUri = URI::fromFile(filePath.string());
+
+        // Skip the file where targetSymbol is defined to avoid duplicates
+        if (fileUri == targetDoc->getURI()) {
+            continue;
+        }
+
+        auto fileDoc = getDocument(fileUri);
+        if (!fileDoc) {
+            continue;
+        }
+
+        // if a package, check if we can just use the package ref syntaxes to save on
+        // making analysis
+        if (!isTypeMember && parentSymbol.kind == ast::SymbolKind::Package) {
+            auto& meta = fileDoc->getSyntaxTree()->getMetadata();
+            bool hasWildcard = false;
+            for (auto ref : meta.packageImports) {
+                for (auto item : ref->items) {
+                    if (item->package.valueText() == parentSymbol.name) {
+                        if (item->item.kind == parsing::TokenKind::Star) {
+                            hasWildcard = true;
+                            break;
+                        }
+                    }
+                }
+                if (hasWildcard) {
+                    break;
+                }
+            }
+            if (!hasWildcard) {
+                // no wildcard, just check cases of pkg::<targetName>
+                for (auto ref : meta.classPackageNames) {
+                    auto tok = ref->parent->as<ScopedNameSyntax>().right->getFirstToken();
+                    if (tok.valueText() == targetName) {
+                        references.push_back(lsp::Location{
+                            .uri = fileUri,
+                            .range = toOriginalRange(tok.range(), sm),
+                        });
+                    }
+                }
+                continue;
+            }
+        }
+
+        auto& fileAnalysis = fileDoc->getAnalysis();
+        fileAnalysis.addLocalReferences(references, targetSymbol.location, targetName);
+    }
+}
+
+std::optional<std::vector<lsp::Location>> ServerDriver::getDocReferences(
+    const URI& srcUri, const lsp::Position& position, bool includeDeclaration) {
+    auto doc = getDocument(srcUri);
+    if (!doc) {
+        return std::nullopt;
+    }
+
+    // Get the symbol at the position
+    auto& analysis = doc->getAnalysis();
+    auto loc = sm.getSourceLocation(doc->getBuffer(), position.line, position.character);
+    if (!loc) {
+        return std::nullopt;
+    }
+
+    const parsing::Token* declTok = analysis.syntaxes.getWordTokenAt(loc.value());
+    if (!declTok) {
+        return std::nullopt;
+    }
+
+    const ast::Symbol* targetSymbol = analysis.getSymbolAtToken(declTok);
+    if (!targetSymbol) {
+        return std::nullopt;
+    }
+
+    // A top level of a shallow compilation is an instance body; get the definition instead
+    if (targetSymbol->kind == ast::SymbolKind::InstanceBody) {
+        targetSymbol = &targetSymbol->as<ast::InstanceBodySymbol>().getDefinition();
+    }
+
+    std::vector<lsp::Location> references;
+
+    auto targetName = declTok->rawText();
+
+    auto findPkgReferencesInDocument = [&](const parsing::ParserMetadata& meta, const URI& uri) {
+        for (auto ref : meta.packageImports) {
+            for (auto item : ref->items) {
+                if (item->package.valueText() == targetName) {
+                    references.push_back(lsp::Location{
+                        .uri = uri,
+                        .range = toRange(item->package.range(), sm),
+                    });
+                }
+            }
+        }
+        for (auto ref : meta.classPackageNames) {
+            if (ref->identifier.valueText() == targetName) {
+                references.push_back(lsp::Location{
+                    .uri = uri,
+                    .range = toRange(ref->identifier.range(), sm),
+                });
+            }
+        }
+    };
+
+    auto findModuleReferencesInDocument = [&](const parsing::ParserMetadata& meta,
+                                              const URI& fileUri) {
+        for (auto inst : meta.globalInstances) {
+            if (inst->type.valueText() == targetName) {
+                references.push_back(lsp::Location{
+                    .uri = fileUri,
+                    .range = toRange(inst->type.range(), sm),
+                });
+            }
+        }
+    };
+
+    auto targetLoc = sm.getFullyOriginalLoc(targetSymbol->location);
+    auto targetDoc = getDocument(URI::fromFile(sm.getFullPath(targetLoc.buffer())));
+
+    // Helper to process referencing files with a given finder function
+    auto processReferencingFiles = [&](std::string_view name, auto&& finder) {
+        for (const auto& filePath : m_indexer.getFilesReferencingSymbol(name)) {
+            if (filePath == targetDoc->getURI().getPath()) {
+                continue;
+            }
+            URI fileUri = URI::fromFile(filePath.string());
+            auto fileDoc = getDocument(fileUri);
+            if (fileDoc) {
+                finder(fileDoc->getSyntaxTree()->getMetadata(), fileUri);
+            }
+            else {
+                ERROR("No doc found for {}", filePath.string());
+            }
+        }
+    };
+
+    // Add refs in declaration file, and remove declaration if requested
+    if (targetDoc) {
+        auto& analysis = targetDoc->getAnalysis();
+        analysis.addLocalReferences(references, targetSymbol->location, targetName);
+        if (!includeDeclaration) {
+            auto targetLspLoc = lsp::Location{
+                .uri = URI::fromFile(sm.getFullPath(targetLoc.buffer())),
+                .range = toRange(SourceRange(targetLoc, targetLoc + targetSymbol->name.size()), sm),
+            };
+            references.erase(std::remove_if(references.begin(), references.end(),
+                                            [&](const lsp::Location& loc) {
+                                                return loc.uri == targetLspLoc.uri &&
+                                                       loc.range == targetLspLoc.range;
+                                            }),
+                             references.end());
+        }
+    }
+
+    // Add global references
+    switch (targetSymbol->kind) {
+        case ast::SymbolKind::Instance: {
+            processReferencingFiles(targetSymbol->as<ast::InstanceSymbol>().getDefinition().name,
+                                    findModuleReferencesInDocument);
+        } break;
+        case ast::SymbolKind::InstanceBody: {
+            processReferencingFiles(
+                targetSymbol->as<ast::InstanceBodySymbol>().getDefinition().name,
+                findModuleReferencesInDocument);
+        } break;
+        case ast::SymbolKind::Definition: {
+            processReferencingFiles(targetSymbol->as<ast::DefinitionSymbol>().name,
+                                    findModuleReferencesInDocument);
+        } break;
+        case ast::SymbolKind::Package: {
+            processReferencingFiles(targetName, findPkgReferencesInDocument);
+        } break;
+        default: {
+            if (targetSymbol->getParentScope() == nullptr ||
+                targetSymbol->getParentScope()->asSymbol().getParentScope() == nullptr) {
+                ERROR("Target symbol {}: {} has no parent scope, missed kind case for global "
+                      "symbol",
+                      targetName, toString(targetSymbol->kind));
+                break;
+            }
+            auto& parentSymbol = targetSymbol->getParentScope()->asSymbol();
+            auto& gParentSymbol = parentSymbol.getParentScope()->asSymbol();
+            if (gParentSymbol.kind == ast::SymbolKind::CompilationUnit) {
+                // Package and module members
+                addMemberReferences(references, parentSymbol, *targetSymbol);
+            }
+            else if (gParentSymbol.kind == ast::SymbolKind::Package &&
+                     ast::Type::isKind(parentSymbol.kind)) {
+                // submembers in the case of structs and enums
+                addMemberReferences(references, gParentSymbol, *targetSymbol, true);
+            }
+            else {
+                WARN("Skipping global refs for symbol {}: {} with parent {}: {}", targetName,
+                     toString(targetSymbol->kind), parentSymbol.name, toString(parentSymbol.kind));
+                if (targetLoc.buffer() != doc->getBuffer()) {
+                    analysis.addLocalReferences(references, targetSymbol->location, targetName);
+                }
+            }
+        }
+    }
+
+    return references.empty() ? std::nullopt : std::make_optional(std::move(references));
+}
+
+std::optional<lsp::WorkspaceEdit> ServerDriver::getDocRename(const URI& uri,
+                                                             const lsp::Position& position,
+                                                             std::string_view newName) {
+    // Reuse getDocReferences to find all locations (including declaration)
+    auto references = getDocReferences(uri, position, /* includeDeclaration */ true);
+    if (!references || references->empty()) {
+        return std::nullopt;
+    }
+
+    // Group edits by URI
+    std::unordered_map<std::string, std::vector<lsp::TextEdit>> changes;
+
+    for (const auto& loc : *references) {
+        lsp::TextEdit edit{
+            .range = loc.range,
+            .newText = std::string(newName),
+        };
+        changes[loc.uri.str()].push_back(edit);
+    }
+
+    return lsp::WorkspaceEdit{.changes = changes};
 }
 
 } // namespace server

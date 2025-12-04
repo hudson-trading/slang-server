@@ -103,6 +103,23 @@ public:
     /// @return Optional hover information, or nullopt if none available
     std::optional<lsp::Hover> getDocHover(const URI& uri, const lsp::Position& position);
 
+    /// @brief Gets all references to a symbol in a document
+    /// @param uri The URI of the document
+    /// @param position The LSP position to query
+    /// @param includeDeclaration Whether to include the declaration in results
+    /// @return Optional vector of locations, or nullopt if no symbol found
+    std::optional<std::vector<lsp::Location>> getDocReferences(const URI& uri,
+                                                               const lsp::Position& position,
+                                                               bool includeDeclaration);
+
+    /// @brief Renames a symbol in a document
+    /// @param uri The URI of the document
+    /// @param position The LSP position to query
+    /// @param newName The new name for the symbol
+    /// @return Optional workspace edit with all rename changes, or nullopt if no symbol found
+    std::optional<lsp::WorkspaceEdit> getDocRename(const URI& uri, const lsp::Position& position,
+                                                   std::string_view newName);
+
     /// @brief Creates a compilation from the given URI and top module name.
     /// @return True if the compilation was created successfully
     bool createCompilation(const URI& uri, std::string_view top);
@@ -130,5 +147,10 @@ private:
 
     /// Set of URIs for documents that are explicitly opened by the client
     flat_hash_set<URI> m_openDocs;
+
+    /// Helper to add member references to the references vector
+    void addMemberReferences(std::vector<lsp::Location>& references,
+                             const ast::Symbol& parentSymbol, const ast::Symbol& targetSymbol,
+                             bool isTypeMember = false);
 };
 } // namespace server

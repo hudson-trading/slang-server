@@ -1,0 +1,297 @@
+
+// Test file for struct and enum member references
+
+
+
+typedef struct packed {
+
+    logic [7:0] addr;
+                ^^^^ Refs[7]
+
+    logic [31:0] data;
+                 ^^^^ Refs[7]
+
+    logic valid;
+          ^^^^^ Refs[4]
+
+    logic ready;
+          ^^^^^ Refs[4]
+
+} transaction_s;
+  ^^^^^^^^^^^^^ Refs[4]
+
+
+
+typedef struct packed {
+
+    transaction_s request;
+    ^^^^^^^^^^^^^ Refs[4]
+                  ^^^^^^^ Refs[6]
+
+    transaction_s response;
+    ^^^^^^^^^^^^^ Refs[4]
+                  ^^^^^^^^ Refs[4]
+
+    logic [3:0] id;
+                ^^ Refs[2]
+
+} bus_packet_s;
+  ^^^^^^^^^^^^ Refs[2]
+
+
+
+typedef enum logic [1:0] {
+
+    IDLE = 2'b00,
+    ^^^^ Refs[5]
+
+    ACTIVE = 2'b01,
+    ^^^^^^ Refs[3]
+
+    WAIT = 2'b10,
+    ^^^^ Refs[3]
+
+    ERROR = 2'b11
+    ^^^^^ Refs[3]
+
+} state_e;
+  ^^^^^^^ Refs[2]
+
+
+
+typedef enum logic [2:0] {
+
+    CMD_READ = 3'b000,
+    ^^^^^^^^ Refs[2]
+
+    CMD_WRITE = 3'b001,
+    ^^^^^^^^^ Refs[2]
+
+    CMD_ERASE = 3'b010,
+    ^^^^^^^^^ Refs[2]
+
+    CMD_FLUSH = 3'b011
+    ^^^^^^^^^ Refs[2]
+
+} command_e;
+  ^^^^^^^^^ Refs[2]
+
+
+
+module struct_enum_test(
+       ^^^^^^^^^^^^^^^^ Refs[2]
+
+    input logic clk,
+                ^^^ Refs[3]
+
+    input logic rst
+                ^^^ Refs[3]
+
+);
+
+    transaction_s tx1, tx2;
+    ^^^^^^^^^^^^^ Refs[4]
+                  ^^^ Refs[8]
+                       ^^^ Refs[4]
+
+    bus_packet_s packet;
+    ^^^^^^^^^^^^ Refs[2]
+                 ^^^^^^ Refs[10]
+
+    state_e current_state, next_state;
+    ^^^^^^^ Refs[2]
+            ^^^^^^^^^^^^^ Refs[8]
+                           ^^^^^^^^^^ Refs[1]
+
+    command_e cmd;
+    ^^^^^^^^^ Refs[2]
+              ^^^ Refs[5]
+
+
+
+    // Struct member accesses
+
+    always_comb begin
+
+        tx1.addr = 8'h00;
+        ^^^ Refs[8]
+            ^^^^ Refs[7]
+
+        tx1.data = 32'h00000000;
+        ^^^ Refs[8]
+            ^^^^ Refs[7]
+
+        tx1.valid = 1'b0;
+        ^^^ Refs[8]
+            ^^^^^ Refs[4]
+
+        tx1.ready = 1'b1;
+        ^^^ Refs[8]
+            ^^^^^ Refs[4]
+
+    end
+
+
+
+    // Nested struct member accesses
+
+    always_ff @(posedge clk) begin
+                        ^^^ Refs[3]
+
+        if (rst) begin
+            ^^^ Refs[3]
+
+            packet.request.addr <= 8'h00;
+            ^^^^^^ Refs[10]
+                   ^^^^^^^ Refs[6]
+                           ^^^^ Refs[7]
+
+            packet.request.data <= 32'h00000000;
+            ^^^^^^ Refs[10]
+                   ^^^^^^^ Refs[6]
+                           ^^^^ Refs[7]
+
+            packet.response.valid <= 1'b0;
+            ^^^^^^ Refs[10]
+                   ^^^^^^^^ Refs[4]
+                            ^^^^^ Refs[4]
+
+            packet.id <= 4'h0;
+            ^^^^^^ Refs[10]
+                   ^^ Refs[2]
+
+        end else begin
+
+            packet.request.addr <= tx1.addr;
+            ^^^^^^ Refs[10]
+                   ^^^^^^^ Refs[6]
+                           ^^^^ Refs[7]
+                                   ^^^ Refs[8]
+                                       ^^^^ Refs[7]
+
+            packet.request.data <= tx1.data;
+            ^^^^^^ Refs[10]
+                   ^^^^^^^ Refs[6]
+                           ^^^^ Refs[7]
+                                   ^^^ Refs[8]
+                                       ^^^^ Refs[7]
+
+            packet.response.ready <= tx2.ready;
+            ^^^^^^ Refs[10]
+                   ^^^^^^^^ Refs[4]
+                            ^^^^^ Refs[4]
+                                     ^^^ Refs[4]
+                                         ^^^^^ Refs[4]
+
+        end
+
+    end
+
+
+
+    // Enum member usage
+
+    always_ff @(posedge clk) begin
+                        ^^^ Refs[3]
+
+        if (rst) begin
+            ^^^ Refs[3]
+
+            current_state <= IDLE;
+            ^^^^^^^^^^^^^ Refs[8]
+                             ^^^^ Refs[5]
+
+            cmd <= CMD_READ;
+            ^^^ Refs[5]
+                   ^^^^^^^^ Refs[2]
+
+        end else begin
+
+            case (current_state)
+                  ^^^^^^^^^^^^^ Refs[8]
+
+                IDLE: begin
+                ^^^^ Refs[5]
+
+                    current_state <= ACTIVE;
+                    ^^^^^^^^^^^^^ Refs[8]
+                                     ^^^^^^ Refs[3]
+
+                    cmd <= CMD_WRITE;
+                    ^^^ Refs[5]
+                           ^^^^^^^^^ Refs[2]
+
+                end
+
+                ACTIVE: begin
+                ^^^^^^ Refs[3]
+
+                    if (tx1.valid)
+                        ^^^ Refs[8]
+                            ^^^^^ Refs[4]
+
+                        current_state <= WAIT;
+                        ^^^^^^^^^^^^^ Refs[8]
+                                         ^^^^ Refs[3]
+
+                    else
+
+                        current_state <= ERROR;
+                        ^^^^^^^^^^^^^ Refs[8]
+                                         ^^^^^ Refs[3]
+
+                end
+
+                WAIT: begin
+                ^^^^ Refs[3]
+
+                    current_state <= IDLE;
+                    ^^^^^^^^^^^^^ Refs[8]
+                                     ^^^^ Refs[5]
+
+                    cmd <= CMD_FLUSH;
+                    ^^^ Refs[5]
+                           ^^^^^^^^^ Refs[2]
+
+                end
+
+                ERROR: begin
+                ^^^^^ Refs[3]
+
+                    current_state <= IDLE;
+                    ^^^^^^^^^^^^^ Refs[8]
+                                     ^^^^ Refs[5]
+
+                    cmd <= CMD_ERASE;
+                    ^^^ Refs[5]
+                           ^^^^^^^^^ Refs[2]
+
+                end
+
+            endcase
+
+        end
+
+    end
+
+
+
+    // Reading from struct members
+
+    assign tx2.addr = packet.request.addr;
+           ^^^ Refs[4]
+               ^^^^ Refs[7]
+                      ^^^^^^ Refs[10]
+                             ^^^^^^^ Refs[6]
+                                     ^^^^ Refs[7]
+
+    assign tx2.data = packet.response.data;
+           ^^^ Refs[4]
+               ^^^^ Refs[7]
+                      ^^^^^^ Refs[10]
+                             ^^^^^^^^ Refs[4]
+                                      ^^^^ Refs[7]
+
+
+
+endmodule

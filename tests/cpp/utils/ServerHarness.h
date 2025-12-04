@@ -378,6 +378,77 @@ protected:
     }
 };
 
+struct ReferenceInfo {
+    size_t count;
+    std::string tokenText;
+    size_t uniqueCount;
+
+    bool operator==(const ReferenceInfo& other) const {
+        return count == other.count && tokenText == other.tokenText &&
+               uniqueCount == other.uniqueCount;
+    }
+    bool operator!=(const ReferenceInfo& other) const { return !(*this == other); }
+};
+
+class ReferencesScanner : public DocumentScanner<ReferenceInfo> {
+public:
+    ReferencesScanner(ServerHarness& server) : DocumentScanner<ReferenceInfo>(), m_server(server) {}
+
+protected:
+    ServerHarness& m_server;
+
+    std::optional<ReferenceInfo> getElementAt(DocumentHandle* hdl, lsp::uint offset) override {
+        auto pos = hdl->getLspLocation(offset);
+        if (!pos.has_value()) {
+            return std::nullopt;
+        }
+
+        auto refs = m_server.getDocReferences(lsp::ReferenceParams{
+            .context = {.includeDeclaration = true},
+            .textDocument = {.uri = hdl->m_uri},
+            .position = *pos,
+        });
+
+        if (!refs.has_value() || refs->empty()) {
+            return std::nullopt;
+        }
+
+        // Get the token at this location for context
+        auto doc = hdl->doc;
+        auto tok = doc->getWordTokenAt(slang::SourceLocation(doc->getBuffer(), offset));
+        std::string tokenText = tok ? std::string(tok->valueText()) : "";
+
+        // This sanity check is tempting, but will break down on things like enum arrays
+        // CHECK(tokenText == tok->valueText());
+
+        // Check for duplicates
+        std::set<std::pair<std::string, lsp::Position>> uniqueRefs{};
+        for (const auto& ref : *refs) {
+            uniqueRefs.insert({ref.uri.str(), ref.range.start});
+        }
+
+        return ReferenceInfo{.count = refs->size(),
+                             .tokenText = tokenText,
+                             .uniqueCount = uniqueRefs.size()};
+    }
+
+    void processElementTransition(DocumentHandle*, SourceManager&, lsp::uint) override {
+        if (std::holds_alternative<std::string>(*prevElement)) {
+            test.record(std::get<std::string>(*prevElement) + "\n");
+        }
+        else {
+            auto refInfo = std::get<ReferenceInfo>(*prevElement);
+            if (refInfo.count != refInfo.uniqueCount) {
+                test.record(fmt::format(" Refs[{}:{}uniq]\n", refInfo.count, refInfo.uniqueCount));
+                CHECK(refInfo.count == refInfo.uniqueCount);
+            }
+            else {
+                test.record(fmt::format(" Refs[{}]\n", refInfo.count));
+            }
+        }
+    }
+};
+
 struct ExpectedStart {
     std::string name;
     std::string uri;

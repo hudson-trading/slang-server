@@ -417,6 +417,84 @@ std::vector<lsp::InlayHint> ShallowAnalysis::getInlayHints(lsp::Range range,
     return collector.result;
 }
 
+void ShallowAnalysis::addLocalReferences(std::vector<lsp::Location>& references,
+                                         SourceLocation targetLocation,
+                                         std::string_view targetName) const {
+    // Get the token and symbol at the target location (may be in a different buffer)
+
+    auto it = syntaxes.collected.begin();
+    auto end = syntaxes.collected.end();
+
+    const ast::Symbol* targetSymbol = nullptr;
+    // First loop: find the target symbol by matching the token location
+    for (; it != end; ++it) {
+        const auto* token = *it;
+        if (token->valueText() != targetName) {
+            continue;
+        }
+
+        // Check if this is the token at the target location
+        const ast::Symbol* tokenSymbol = getSymbolAtToken(token);
+        if (!tokenSymbol) {
+            continue;
+        }
+
+        if (tokenSymbol->location == targetLocation) {
+            targetSymbol = tokenSymbol;
+            break;
+        }
+    }
+
+    if (!targetSymbol) {
+        return;
+    }
+
+    // Second loop: continue from where we left off to find all references
+    auto path = m_sourceManager.getFullPath(m_buffer);
+    for (; it != end; ++it) {
+        const auto* token = *it;
+        if (token->valueText() != targetName) {
+            continue;
+        }
+
+        const ast::Symbol* tokenSymbol = getSymbolAtToken(token);
+        if (tokenSymbol != targetSymbol) {
+            continue;
+        }
+
+        references.push_back(lsp::Location{
+            .uri = URI::fromFile(path),
+            .range = toRange(token->range(), m_sourceManager),
+        });
+    }
+}
+
+void ShallowAnalysis::addLocalReferences(std::vector<lsp::Location>& references,
+                                         const ast::Symbol* targetSymbol,
+                                         std::string_view targetName) const {
+
+    auto path = m_sourceManager.getFullPath(m_buffer);
+
+    // Iterate through all tokens in the document
+    for (const auto* token : syntaxes.collected) {
+        // Check if token name matches
+        if (token->kind != parsing::TokenKind::Identifier || token->valueText() != targetName) {
+            continue;
+        }
+
+        // Check if token refers to the same symbol
+        const ast::Symbol* tokenSymbol = getSymbolAtToken(token);
+        if (tokenSymbol != targetSymbol) {
+            continue;
+        }
+
+        references.push_back(lsp::Location{
+            .uri = URI::fromFile(path),
+            .range = toRange(token->range(), m_sourceManager),
+        });
+    }
+}
+
 std::vector<lsp::DocumentLink> ShallowAnalysis::getDocLinks() const {
     std::vector<lsp::DocumentLink> links;
     for (auto& inc : m_tree->getIncludeDirectives()) {

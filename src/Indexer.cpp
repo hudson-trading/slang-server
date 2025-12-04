@@ -69,6 +69,12 @@ void extractDataFromTree(const slang::syntax::SyntaxTree& tree, Indexer::Indexed
         }
     }
 
+    // Extract referenced symbols
+    for (auto ref : meta.getReferencedSymbols()) {
+        if (!ref.empty())
+            dest.referencedSymbols.push_back(std::string(ref));
+    }
+
     // Extract macros (only if no global symbols were found)
     if (meta.classDecls.empty() && meta.nodeMeta.empty()) {
         const auto& macros = tree.getDefinedMacros();
@@ -183,6 +189,9 @@ void Indexer::updateDocument(const URI& uri, const slang::syntax::SyntaxTree& tr
         for (const auto& name : newPath.macros)
             macroToFiles[name].push_back(uriPtr);
 
+        for (const auto& ref : newPath.referencedSymbols)
+            symbolReferences[ref].push_back(uriPtr);
+
         openDocuments[uri] = std::move(newPath);
         return;
     }
@@ -215,6 +224,16 @@ void Indexer::updateDocument(const URI& uri, const slang::syntax::SyntaxTree& tr
         }
     }
 
+    for (const auto& oldRef : oldPath.referencedSymbols) {
+        auto mapIt = symbolReferences.find(oldRef);
+        if (mapIt != symbolReferences.end()) {
+            auto& vec = mapIt->second;
+            vec.erase(std::remove(vec.begin(), vec.end(), uriPtr), vec.end());
+            if (vec.empty())
+                symbolReferences.erase(mapIt);
+        }
+    }
+
     // Add all new entries to the global index
     for (const auto& newItem : newPath.symbols) {
         symbolToFiles[newItem.name].push_back(GlobalSymbolLoc{.uri = uriPtr, .kind = newItem.kind});
@@ -222,6 +241,10 @@ void Indexer::updateDocument(const URI& uri, const slang::syntax::SyntaxTree& tr
 
     for (const auto& newMacro : newPath.macros) {
         macroToFiles[newMacro].push_back(uriPtr);
+    }
+
+    for (const auto& newRef : newPath.referencedSymbols) {
+        symbolReferences[newRef].push_back(uriPtr);
     }
 
     // Replace the stored indexed path
@@ -245,6 +268,9 @@ void Indexer::indexPath(IndexedPath& indexedFile) {
 
     for (const auto& name : indexedFile.macros)
         macroToFiles[name].push_back(uriPtr);
+
+    for (const auto& ref : indexedFile.referencedSymbols)
+        symbolReferences[ref].push_back(uriPtr);
 }
 
 void Indexer::addDocuments(const std::vector<std::filesystem::path>& paths, uint32_t numThreads) {
@@ -289,6 +315,17 @@ void Indexer::removeDocuments(const std::vector<std::filesystem::path>& paths,
                     macroToFiles.erase(mapIt);
             }
         }
+
+        // Remove references
+        for (const auto& ref : entry.referencedSymbols) {
+            auto mapIt = symbolReferences.find(ref);
+            if (mapIt != symbolReferences.end()) {
+                auto& vec = mapIt->second;
+                vec.erase(std::remove(vec.begin(), vec.end(), uriPtr), vec.end());
+                if (vec.empty())
+                    symbolReferences.erase(mapIt);
+            }
+        }
     }
 }
 
@@ -325,6 +362,18 @@ std::vector<fs::path> Indexer::getFilesForMacro(std::string_view name) const {
     return result;
 }
 
+std::vector<fs::path> Indexer::getFilesReferencingSymbol(std::string_view name) const {
+    auto it = symbolReferences.find(std::string(name));
+
+    std::vector<fs::path> result;
+    if (it != symbolReferences.end()) {
+        for (const auto& uri : it->second)
+            result.push_back(fs::path(uri->getPath()));
+    }
+
+    return result;
+}
+
 bool isSystemVerilogFile(const fs::path& path) {
     auto ext = path.extension().string();
     return ext == ".v" || ext == ".sv" || ext == ".svh" || ext == ".vh";
@@ -336,6 +385,7 @@ void collectFilesFromDirectory(const fs::path& dir, const std::vector<std::strin
     if (!fs::exists(dir) || !fs::is_directory(dir)) {
         return;
     }
+    auto startSize = outFiles.size();
 
     ScopedTimer t_index(fmt::format("Crawling {}", dir.string()));
     std::error_code ec;
@@ -360,6 +410,7 @@ void collectFilesFromDirectory(const fs::path& dir, const std::vector<std::strin
     if (ec) {
         ERROR("Error while indexing directory {}: {}", dir.string(), ec.message());
     }
+    INFO("Found {} files", outFiles.size() - startSize);
 }
 
 void Indexer::startIndexing(const std::vector<Config::IndexConfig>& indexConfigs,
@@ -450,15 +501,23 @@ void Indexer::indexAndReport(std::vector<fs::path> pathsToIndex, uint32_t numThr
         macrosSize += uris.size() * sizeof(const URI*);
     }
 
+    size_t refsSize = 0;
+    for (const auto& [name, uris] : symbolReferences) {
+        refsSize += sizeof(std::pair<const std::string, slang::SmallVector<const URI*, 2>>) +
+                    name.capacity();
+        refsSize += uris.size() * sizeof(const URI*);
+    }
+
     // Count unique URIs storage
     size_t urisSize = 0;
     for (const auto& uri : uniqueUris) {
         urisSize += sizeof(URI) + uri.str().capacity();
     }
 
-    INFO("Indexing complete: {} symbols (~{} KB), {} macros (~{} KB), {} unique URIs (~{} KB)",
+    INFO("Indexing complete: {} symbols (~{} KB), {} macros (~{} KB), {} references (~{} KB), {} "
+         "unique URIs (~{} KB)",
          symbolToFiles.size(), symbolsSize / 1024, macroToFiles.size(), macrosSize / 1024,
-         uniqueUris.size(), urisSize / 1024);
+         symbolReferences.size(), refsSize / 1024, uniqueUris.size(), urisSize / 1024);
 
     notifyIndexingComplete();
 }

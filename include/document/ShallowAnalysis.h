@@ -136,6 +136,18 @@ public:
     std::vector<lsp::InlayHint> getInlayHints(lsp::Range range,
                                               const struct Config::InlayHints& config);
 
+    void addLocalReferences(std::vector<lsp::Location>& references,
+                            slang::SourceLocation targetLocation,
+                            std::string_view targetName) const;
+
+    /// @brief Finds all references to a symbol in this document and adds them to the vector
+    /// @param references Vector to append references to
+    /// @param targetSymbol The symbol to find references to
+    /// @param targetName The name of the symbol to match
+    void addLocalReferences(std::vector<lsp::Location>& references,
+                            const slang::ast::Symbol* targetSymbol,
+                            std::string_view targetName) const;
+
 private:
     /// Reference to the source manager. Not const because we may need to parse macro args.
     SourceManager& m_sourceManager;

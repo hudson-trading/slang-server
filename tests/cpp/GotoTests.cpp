@@ -50,3 +50,75 @@ TEST_CASE("LoadTransitivePackages") {
     SymbolRefScanner scanner;
     scanner.scanDocument(hdl);
 }
+
+TEST_CASE("FindReferencesAllTokens_all.sv") {
+    /// Find references at each location in all.sv
+    ServerHarness server("");
+    auto hdl = server.openFile("all.sv");
+
+    ReferencesScanner scanner(server);
+    scanner.scanDocument(hdl);
+}
+
+TEST_CASE("FindReferencesAllTokens_references_test.sv") {
+    /// Find references at each location in references_test.sv
+    ServerHarness server("indexer_test");
+    auto hdl = server.openFile("references_test.sv");
+
+    ReferencesScanner scanner(server);
+    scanner.scanDocument(hdl);
+}
+
+TEST_CASE("FindReferencesAllTokens_modules.sv") {
+    /// Find references at each location in modules.sv
+    ServerHarness server("indexer_test");
+    auto hdl = server.openFile("modules.sv");
+
+    ReferencesScanner scanner(server);
+    scanner.scanDocument(hdl);
+}
+
+TEST_CASE("FindReferencesAllTokens_classes.sv") {
+    /// Find references at each location in classes.sv
+    ServerHarness server("indexer_test");
+    auto hdl = server.openFile("classes.sv");
+
+    ReferencesScanner scanner(server);
+    scanner.scanDocument(hdl);
+}
+
+TEST_CASE("FindReferencesModuleCrossfile.sv") {
+    /// Find references at each location in classes.sv
+    ServerHarness server("indexer_test");
+    auto hdl = server.openFile("macro_crossfile.sv");
+
+    ReferencesScanner scanner(server);
+    scanner.scanDocument(hdl);
+}
+
+TEST_CASE("FindReferencesAllTokens_struct_enum_refs.sv") {
+    /// Find references at each location in struct_enum_refs.sv
+    ServerHarness server("indexer_test");
+    auto hdl = server.openFile("struct_enum_refs.sv");
+
+    ReferencesScanner scanner(server);
+    scanner.scanDocument(hdl);
+}
+
+TEST_CASE("FindReferencesAllTokens_crossfile_pkg.sv") {
+    /// Find references at each location in crossfile_pkg.sv
+    ServerHarness server("indexer_test");
+    auto hdl = server.openFile("crossfile_pkg.sv");
+
+    ReferencesScanner scanner(server);
+    scanner.scanDocument(hdl);
+}
+
+TEST_CASE("FindReferencesAllTokens_crossfile_module.sv") {
+    /// Find references at each location in crossfile_module.sv
+    ServerHarness server("indexer_test");
+    auto hdl = server.openFile("crossfile_module.sv");
+
+    ReferencesScanner scanner(server);
+    scanner.scanDocument(hdl);
+}
