@@ -1002,6 +1002,11 @@ git<span class="w"> </span>submodule<span class="w"> </span>update<span class="w
 cmake<span class="w"> </span>-B<span class="w"> </span>build<span class="w"> </span>-DCMAKE_BUILD_TYPE<span class="o">=</span>Release
 cmake<span class="w"> </span>--build<span class="w"> </span>build<span class="w"> </span>-j<span class="w"> </span>--target<span class="w"> </span>slang_server
 </code></pre></div>
+<p>On certain systems (Arch, etc), you may need to have the project use its vendored copy of the <code>fmt</code> library,
+rather than the one on your system. This can be achieved by appending <code>-DCMAKE_DISABLE_FIND_PACKAGE_fmt=TRUE</code>
+to the CMake configuration step, e.g.:</p>
+<div class="language-bash highlight"><pre><span></span><code>cmake<span class="w"> </span>-B<span class="w"> </span>build<span class="w"> </span>-DCMAKE_BUILD_TYPE<span class="o">=</span>Release<span class="w"> </span>-DCMAKE_DISABLE_FIND_PACKAGE_fmt<span class="o">=</span>TRUE
+</code></pre></div>
 <p>In the future there will be pre-built binaries released for common platforms. The editor clients will auto-install these, similar to what clangd and others do.</p>
 <h3 id="vscode">Vscode<a class="headerlink" href="#vscode" title="Permanent link">&para;</a></h3>
 <p>Install the extension <a href="https://marketplace.visualstudio.com/items?itemName=Hudson-River-Trading.vscode-slang">here</a>, then set <code>slang.path</code> to the slang-server binary. (at <code>build/bin/slang-server</code>)</p>
