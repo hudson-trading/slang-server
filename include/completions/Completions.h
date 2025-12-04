@@ -60,4 +60,7 @@ void resolveMemberCompletion(const slang::ast::Scope& scope, lsp::CompletionItem
 lsp::CompletionItem getHierarchicalCompletion(const slang::ast::Symbol& parentSymbol,
                                               const slang::ast::Symbol& symbol);
 
+/// Add completions for declared types
+void getKeywordCompletions(std::vector<lsp::CompletionItem>& results);
+
 } // namespace server::completions
