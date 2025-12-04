@@ -62,7 +62,7 @@ TEST_CASE("ModuleCompletion") {
     doc.save();
     auto comps = cursor.getCompletions();
     // Other completions from the workspace
-    CHECK(comps.size() == 6);
+    CHECK(comps.size() == 13);
 
     auto it = std::find_if(comps.begin(), comps.end(),
                            [](const CompletionHandle& item) { return item.m_item.label == "Dut"; });
