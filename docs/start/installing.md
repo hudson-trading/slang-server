@@ -15,6 +15,14 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j --target slang_server
 ```
 
+On certain systems (Arch, etc), you may need to have the project use its vendored copy of the `fmt` library,
+rather than the one on your system. This can be achieved by appending `-DCMAKE_DISABLE_FIND_PACKAGE_fmt=TRUE`
+to the CMake configuration step, e.g.:
+
+```bash
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_DISABLE_FIND_PACKAGE_fmt=TRUE
+```
+
 In the future there will be pre-built binaries released for common platforms. The editor clients will auto-install these, similar to what clangd and others do.
 
 ### Vscode
