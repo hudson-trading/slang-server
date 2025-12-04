@@ -250,6 +250,32 @@
         "insertTextFormat": "Snippet"
       },
       {
+        "label": "always_comb",
+        "kind": "Snippet",
+        "filterText": "always_comb",
+        "insertText": "always_comb begin\n$0\nend",
+        "insertTextFormat": "Snippet"
+      },
+      {
+        "label": "always_ff",
+        "kind": "Snippet",
+        "filterText": "always_ff",
+        "insertText": "always_ff @($0) begin\n\nend",
+        "insertTextFormat": "Snippet"
+      },
+      {
+        "label": "always_latch",
+        "kind": "Snippet",
+        "filterText": "always_latch",
+        "insertText": "always_latch begin\n$0\nend",
+        "insertTextFormat": "Snippet"
+      },
+      {
+        "label": "assign",
+        "kind": "Keyword",
+        "filterText": "assign"
+      },
+      {
         "label": "base_pkg",
         "labelDetails": {
           "detail": " Package"
@@ -291,6 +317,11 @@
         "insertTextFormat": "Snippet"
       },
       {
+        "label": "logic",
+        "kind": "Keyword",
+        "filterText": "logic"
+      },
+      {
         "label": "operation_t",
         "labelDetails": {
           "detail": " EnumType",
@@ -315,6 +346,11 @@
           "value": "````systemverilog\ntypedef struct {\n    real x;\n    real y;\n} point_t;\n````"
         },
         "filterText": "point_t"
+      },
+      {
+        "label": "reg",
+        "kind": "Keyword",
+        "filterText": "reg"
       },
       {
         "label": "tb",
@@ -343,6 +379,11 @@
         "filterText": "util_pkg",
         "insertText": "util_pkg",
         "insertTextFormat": "PlainText"
+      },
+      {
+        "label": "wire",
+        "kind": "Keyword",
+        "filterText": "wire"
       }
     ]
   }
