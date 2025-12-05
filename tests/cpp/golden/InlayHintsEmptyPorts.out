@@ -1,0 +1,17 @@
+
+module no_ports;
+    // Module with no ports
+endmodule
+
+module has_ports(input logic clk);
+endmodule
+
+module top;
+    logic clk;
+
+    // Instance with no ports - should handle empty port list
+    no_ports u_empty();
+
+    // Instance with too many connections to a 1-port module
+    has_ports u_ports(/*clk:*/ clk, clk, clk);
+endmodule

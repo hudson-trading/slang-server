@@ -1,0 +1,18 @@
+
+module broken;
+    // This will have parse errors but shouldn't crash
+    logic clk;
+
+    // Missing module definition
+    undefined_mod inst();
+
+    // Function with missing args
+    function int broken_func();
+        return 0;
+    endfunction
+
+    initial begin
+        // Function call - tests null left expression handling
+        int x = broken_func();
+    end
+endmodule

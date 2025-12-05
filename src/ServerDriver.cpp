@@ -483,6 +483,7 @@ std::optional<lsp::Hover> ServerDriver::getDocHover(const URI& uri, const lsp::P
     if (!maybeInfo) {
 #ifdef SLANG_DEBUG
         // Shows debug info for the token under cursor when debugging
+        auto& analysis = doc->getAnalysis();
         auto tok = analysis.getTokenAt(loc.value());
         if (tok == nullptr) {
             return {};
