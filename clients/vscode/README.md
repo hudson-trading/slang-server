@@ -1,6 +1,6 @@
 # Slang Server: SystemVerilog Language Server
 
-*Slang Server is a new SystemVerilog language server implemented in C++*
+*Slang Server is a performant SystemVerilog language server implemented in C++, using the Slang library.*
 
 See [the docs](https://hudson-trading.github.io/slang-server) for instructions on [installing](https://hudson-trading.github.io/slang-server/start/installing/) and [configuring](https://hudson-trading.github.io/slang-server/start/config/).
 
