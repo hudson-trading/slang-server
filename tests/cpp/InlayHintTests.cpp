@@ -256,3 +256,28 @@ endmodule
     InlayHintScanner scanner;
     scanner.scanDocument(hdl);
 }
+
+TEST_CASE("InlayHintsTooManyArgs") {
+    /// Test inlay hints for function calls and macro calls with too many arguments
+    ServerHarness server("");
+    auto hdl = server.openFile("inlay_too_many_args.sv", R"(
+`define MY_MACRO(a, b) (a + b)
+
+module test;
+    function int add(int a, int b);
+        return a + b;
+    endfunction
+
+    initial begin
+        // Function call with too many arguments
+        int x = add(5, 10, 15);
+
+        // Macro call with too many arguments
+        int y = `MY_MACRO(3, 4, 5);
+    end
+endmodule
+)");
+
+    InlayHintScanner scanner;
+    scanner.scanDocument(hdl);
+}

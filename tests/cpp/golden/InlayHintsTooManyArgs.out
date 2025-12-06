@@ -1,0 +1,16 @@
+
+`define MY_MACRO(a, b) (a + b)
+
+module test;
+    function int add(int a, int b);
+        return a + b;
+    endfunction
+
+    initial begin
+        // Function call with too many arguments
+        int x = add(/*a:*/ 5, /*b:*/ 10, 15);
+
+        // Macro call with too many arguments
+        int y = `MY_MACRO(/*a:*/ 3, /*b:*/ 4, 5);
+    end
+endmodule

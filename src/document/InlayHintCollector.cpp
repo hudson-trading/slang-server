@@ -246,12 +246,14 @@ void InlayHintCollector::handle(const MacroUsageSyntax& syntax) {
         return;
     }
 
-    size_t argIndex = 0;
-    for (auto param : syntax.args->args) {
+    // Iterate through minimum of actual and formal arguments
+    size_t numArgs = std::min(syntax.args->args.size(),
+                              defInfo->second->formalArguments->args.size());
+    for (size_t i = 0; i < numArgs; i++) {
         result.push_back(lsp::InlayHint{
-            .position = toPosition(param->getFirstToken().location(), m_analysis.m_sourceManager),
-            .label = fmt::format(
-                "{}:", defInfo->second->formalArguments->args[argIndex++]->name.rawText()),
+            .position = toPosition(syntax.args->args[i]->getFirstToken().location(),
+                                   m_analysis.m_sourceManager),
+            .label = fmt::format("{}:", defInfo->second->formalArguments->args[i]->name.rawText()),
             .kind = lsp::InlayHintKind::Parameter,
             .paddingRight = true,
         });
@@ -273,12 +275,14 @@ void InlayHintCollector::handle(const InvocationExpressionSyntax& syntax) {
     }
 
     auto argNames = maybeSub->as<ast::SubroutineSymbol>().getArguments();
-    size_t argIndex = 0;
-    for (auto arg : syntax.arguments->parameters) {
+    // Iterate through minimum of actual and formal arguments
+    size_t numArgs = std::min(syntax.arguments->parameters.size(), argNames.size());
+    for (size_t i = 0; i < numArgs; i++) {
+        auto arg = syntax.arguments->parameters[i];
         if (arg->kind != slang::syntax::SyntaxKind::OrderedArgument) {
             break;
         }
-        auto name = argNames[argIndex++]->name;
+        auto name = argNames[i]->name;
         if (name.empty()) {
             continue;
         }
