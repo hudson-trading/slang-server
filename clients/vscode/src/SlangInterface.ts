@@ -2,7 +2,7 @@ import * as vscode from 'vscode'
 
 import { Config } from './config.gen'
 
-export type { Config };
+export type { Config }
 
 export enum SlangKind {
   Instance = 'Instance',
