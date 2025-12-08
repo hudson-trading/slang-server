@@ -1008,16 +1008,18 @@ to the CMake configuration step, e.g.:</p>
 <div class="language-bash highlight"><pre><span></span><code>cmake<span class="w"> </span>-B<span class="w"> </span>build<span class="w"> </span>-DCMAKE_BUILD_TYPE<span class="o">=</span>Release<span class="w"> </span>-DCMAKE_DISABLE_FIND_PACKAGE_fmt<span class="o">=</span>TRUE
 </code></pre></div>
 <p>In the future there will be pre-built binaries released for common platforms. The editor clients will auto-install these, similar to what clangd and others do.</p>
+<blockquote>
+<p>Windows: At the moment there are issues running on windows; See
+<a href="https://github.com/hudson-trading/slang-server/issues/115">#115</a> and related issues.</p>
+</blockquote>
 <h3 id="vscode">Vscode<a class="headerlink" href="#vscode" title="Permanent link">&para;</a></h3>
 <p>Install the extension <a href="https://marketplace.visualstudio.com/items?itemName=Hudson-River-Trading.vscode-slang">here</a>, then set <code>slang.path</code> to the slang-server binary. (at <code>build/bin/slang-server</code>)</p>
 <p>See <a href="https://github.com/hudson-trading/slang-server/blob/main/clients/vscode/CONFIG.md">VSCode Options</a></p>
 <p>An OpenVSX release is coming soon, but in the meantime it's possible to run <code>cd clients/vscode &amp;&amp; pnpm install &amp;&amp; pnpm run prepublishOnly</code> to create an installable vsix. OpenVSX is used by the Vscode forks.</p>
 <h3 id="neovim">Neovim<a class="headerlink" href="#neovim" title="Permanent link">&para;</a></h3>
 <blockquote>
-<p>[!NOTE]
-Once Slang Server is more actively used (you can help by starring <a href="https://github.com/hudson-trading/slang-server">the project</a>!), it will be added to <a href="https://github.com/neovim/nvim-lspconfig">nvim-lspconfig</a> and <a href="https://github.com/mason-org/mason.nvim">mason.nvim</a> and no additional configuration will be required. Until then, follow one of the methods below to manually add the server configuration.</p>
+<p>Once Slang Server is more actively used (you can help by starring <a href="https://github.com/hudson-trading/slang-server">the project</a>!), it will be added to <a href="https://github.com/neovim/nvim-lspconfig">nvim-lspconfig</a> and <a href="https://github.com/mason-org/mason.nvim">mason.nvim</a> and no additional configuration will be required. Until then, follow one of the methods below to manually add the server configuration.</p>
 </blockquote>
-<p>There are many ways to configure a language server in Neovim.</p>
 <p>For newer versions of Neovim (≥ v0.11), the new <a href="https://neovim.io/doc/user/lsp.html#vim.lsp.start()">vim.lsp API</a> is the preferred, simpler way to configure language servers:
 <div class="language-lua highlight"><pre><span></span><code><span class="nv">vim</span><span class="p">.</span><span class="py">lsp</span><span class="p">.</span><span class="nf">config</span><span class="p">(</span><span class="s2">&quot;slang-server&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nv">cmd</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s2">&quot;slang-server&quot;</span><span class="w"> </span><span class="p">},</span>
@@ -1089,11 +1091,10 @@ Once Slang Server is more actively used (you can help by starring <a href="https
 <span class="w">  </span><span class="p">},</span>
 <span class="p">}</span>
 </code></pre></div></p>
-<p>Neovim natively handles the LSP. No additional plugin is required to use Slang Server for standard LSP actions (e.g. <a href="https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_definition">Go to Definition</a>.</p>
-<p>However, a plugin is provided to enable use of some enhanced client-side features which extend the LSP (e.g. hierarchical compilation). The plugin can be found in <code>clients/neovim/</code> and is also mirrored in <a href="https://github.com/hudson-trading/slang-server.nvim">slang-server.nvim</a> for ease of use with Neovim plugin managers.</p>
+<p>Pointing at the binary is all you need for standard language features, however a plugin is provided to enable some client-side features which extend the LSP (e.g. the hierarchy view, waveform integration). The plugin can be found in <code>clients/neovim/</code> and is also mirrored in <a href="https://github.com/hudson-trading/slang-server.nvim">slang-server.nvim</a> for ease of use with Neovim plugin managers.</p>
 <h3 id="other-editors">Other editors<a class="headerlink" href="#other-editors" title="Permanent link">&para;</a></h3>
-<p>Most modern editors can at least point to a language server binary for specific file types, which provides standard LSP features, but not HDL specific frontend features like the hierarchy view.</p>
-<p>If the editor also allows for executing LSP commands, HDL features like setting a compilation should be available, although the process may not be as smooth.</p>
+<p>Most modern editors can at least point to a language server binary for specific file types. This will provide standard LSP features, but not HDL specific  features.</p>
+<p>If the editor also allows for executing LSP commands, HDL features like setting a compilation should be available.</p>
 
 
 
