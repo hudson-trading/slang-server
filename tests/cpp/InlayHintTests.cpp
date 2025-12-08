@@ -256,3 +256,149 @@ endmodule
     InlayHintScanner scanner;
     scanner.scanDocument(hdl);
 }
+
+TEST_CASE("InlayHintsTooManyArgs") {
+    /// Test inlay hints for function calls and macro calls with too many arguments
+    ServerHarness server("");
+    auto hdl = server.openFile("inlay_too_many_args.sv", R"(
+`define MY_MACRO(a, b) (a + b)
+
+module test;
+    function int add(int a, int b);
+        return a + b;
+    endfunction
+
+    initial begin
+        // Function call with too many arguments
+        int x = add(5, 10, 15);
+
+        // Macro call with too many arguments
+        int y = `MY_MACRO(3, 4, 5);
+    end
+endmodule
+)");
+
+    InlayHintScanner scanner;
+    scanner.scanDocument(hdl);
+}
+
+TEST_CASE("InlayHintsNullPtrEdgeCases") {
+    /// Test inlay hints with various edge cases that could trigger null pointer issues
+    ServerHarness server("");
+    auto hdl = server.openFile("inlay_null_ptr_edge_cases.sv", R"(
+module adder #(
+    parameter int WIDTH = 8,
+    parameter int DEPTH = 16
+)(
+    input logic clk,
+    input logic [WIDTH-1:0] a,
+    input logic [WIDTH-1:0] b,
+    output logic [WIDTH:0] sum
+);
+endmodule
+
+module top;
+    logic clk, a, b, sum;
+
+    // Too many parameters - tests bounds checking
+    adder #(8, 16, 32, 64) u_adder1(clk, a, b, sum);
+
+    // Too many ports - tests bounds checking
+    adder u_adder2(clk, a, b, sum, 1'b0, 1'b1);
+
+    // Named ports with potential null syntax
+    adder u_adder3(
+        .clk(clk),
+        .a(a),
+        .b(b),
+        .sum(sum)
+    );
+endmodule
+)");
+
+    InlayHintScanner scanner;
+    scanner.scanDocument(hdl);
+}
+
+TEST_CASE("InlayHintsMalformedSyntax") {
+    /// Test inlay hints with malformed syntax that has parse errors
+    ServerHarness server("");
+    auto hdl = server.openFile("inlay_malformed.sv", R"(
+module broken;
+    // This will have parse errors but shouldn't crash
+    logic clk;
+
+    // Missing module definition
+    undefined_mod inst();
+
+    // Function with missing args
+    function int broken_func();
+        return 0;
+    endfunction
+
+    initial begin
+        // Function call - tests null left expression handling
+        int x = broken_func();
+    end
+endmodule
+)");
+
+    InlayHintScanner scanner;
+    scanner.scanDocument(hdl);
+}
+
+TEST_CASE("InlayHintsClassParameterEdgeCases") {
+    /// Test inlay hints for classes with edge cases
+    ServerHarness server("");
+    auto hdl = server.openFile("inlay_class_edge_cases.sv", R"(
+class packet #(int WIDTH = 8);
+    function new(int id);
+    endfunction
+endclass
+
+// Non-generic class (no parameters)
+class simple_packet;
+    function new(int id);
+    endfunction
+endclass
+
+module top;
+    initial begin
+        // Too many parameters - tests bounds checking
+        packet #(8, 16, 32) pkt1 = new(1);
+
+        // Simple class without parameters - tests null parameters check
+        simple_packet pkt2 = new(2);
+    end
+endmodule
+)");
+
+    InlayHintScanner scanner;
+    scanner.scanDocument(hdl);
+}
+
+TEST_CASE("InlayHintsEmptyPorts") {
+    /// Test inlay hints with modules that have no ports
+    ServerHarness server("");
+    auto hdl = server.openFile("inlay_empty_ports.sv", R"(
+module no_ports;
+    // Module with no ports
+endmodule
+
+module has_ports(input logic clk);
+endmodule
+
+module top;
+    logic clk;
+
+    // Instance with no ports - should handle empty port list
+    no_ports u_empty();
+
+    // Instance with too many connections to a 1-port module
+    has_ports u_ports(clk, clk, clk);
+endmodule
+)");
+
+    InlayHintScanner scanner;
+    scanner.scanDocument(hdl);
+}

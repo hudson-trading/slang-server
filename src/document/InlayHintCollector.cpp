@@ -48,8 +48,13 @@ void InlayHintCollector::handle(const HierarchyInstantiationSyntax& syntax) {
     // Do params
     if (m_orderedInstanceNames && syntax.parameters) {
         size_t paramIndex = 0;
-        for (auto paramSyntax : syntax.parameters->parameters) {
+        size_t paramCount = std::min(syntax.parameters->parameters.size(), def.parameters.size());
+        for (size_t i = 0; i < paramCount; i++) {
+            auto paramSyntax = syntax.parameters->parameters[i];
             if (paramSyntax->kind == SyntaxKind::OrderedParamAssignment) {
+                if (paramIndex >= def.parameters.size()) {
+                    break;
+                }
                 result.push_back(lsp::InlayHint{
                     .position = toPosition(paramSyntax->getFirstToken().location(),
                                            m_analysis.m_sourceManager),
@@ -66,6 +71,9 @@ void InlayHintCollector::handle(const HierarchyInstantiationSyntax& syntax) {
     // Use one of the bodies if valid
     const slang::ast::InstanceSymbol* inst = nullptr;
     for (auto instanceSyntax : syntax.instances) {
+        if (!instanceSyntax->decl) {
+            continue;
+        }
         auto sym = m_analysis.getSymbolAtToken(&instanceSyntax->decl->name);
         if (sym && sym->kind == ast::SymbolKind::Instance) {
             inst = &sym->as<slang::ast::InstanceSymbol>();
@@ -101,6 +109,9 @@ void InlayHintCollector::handle(const HierarchyInstantiationSyntax& syntax) {
                     if (!m_orderedInstanceNames) {
                         continue;
                     }
+                    if (portIndex >= ports.size()) {
+                        break;
+                    }
                     result.push_back(lsp::InlayHint{
                         .position = toPosition(portSyntax->getFirstToken().location(),
                                                m_analysis.m_sourceManager),
@@ -120,7 +131,11 @@ void InlayHintCollector::handle(const HierarchyInstantiationSyntax& syntax) {
                     }
 
                     std::string label;
-                    auto portDecl = port->getSyntax()->parent;
+                    auto portSyntax = port->getSyntax();
+                    if (!portSyntax || !portSyntax->parent) {
+                        continue;
+                    }
+                    auto portDecl = portSyntax->parent;
                     switch (portDecl->kind) {
                         case slang::syntax::SyntaxKind::ImplicitAnsiPort:
                             label = detailFormat(*portDecl->as<ImplicitAnsiPortSyntax>().header);
@@ -246,12 +261,14 @@ void InlayHintCollector::handle(const MacroUsageSyntax& syntax) {
         return;
     }
 
-    size_t argIndex = 0;
-    for (auto param : syntax.args->args) {
+    // Iterate through minimum of actual and formal arguments
+    size_t numArgs = std::min(syntax.args->args.size(),
+                              defInfo->second->formalArguments->args.size());
+    for (size_t i = 0; i < numArgs; i++) {
         result.push_back(lsp::InlayHint{
-            .position = toPosition(param->getFirstToken().location(), m_analysis.m_sourceManager),
-            .label = fmt::format(
-                "{}:", defInfo->second->formalArguments->args[argIndex++]->name.rawText()),
+            .position = toPosition(syntax.args->args[i]->getFirstToken().location(),
+                                   m_analysis.m_sourceManager),
+            .label = fmt::format("{}:", defInfo->second->formalArguments->args[i]->name.rawText()),
             .kind = lsp::InlayHintKind::Parameter,
             .paddingRight = true,
         });
@@ -261,7 +278,11 @@ void InlayHintCollector::handle(const MacroUsageSyntax& syntax) {
 void InlayHintCollector::handle(const InvocationExpressionSyntax& syntax) {
     if (m_funcArgNames <= 0 || !syntax.arguments)
         return;
-    auto maybeSub = m_analysis.getSymbolAtToken(syntax.left->getLastTokenPtr());
+    auto lastToken = syntax.left->getLastTokenPtr();
+    if (!lastToken) {
+        return;
+    }
+    auto maybeSub = m_analysis.getSymbolAtToken(lastToken);
     if (!maybeSub || maybeSub->kind != ast::SymbolKind::Subroutine) {
         // TODO: Implement for system names
         return;
@@ -273,12 +294,14 @@ void InlayHintCollector::handle(const InvocationExpressionSyntax& syntax) {
     }
 
     auto argNames = maybeSub->as<ast::SubroutineSymbol>().getArguments();
-    size_t argIndex = 0;
-    for (auto arg : syntax.arguments->parameters) {
+    // Iterate through minimum of actual and formal arguments
+    size_t numArgs = std::min(syntax.arguments->parameters.size(), argNames.size());
+    for (size_t i = 0; i < numArgs; i++) {
+        auto arg = syntax.arguments->parameters[i];
         if (arg->kind != slang::syntax::SyntaxKind::OrderedArgument) {
             break;
         }
-        auto name = argNames[argIndex++]->name;
+        auto name = argNames[i]->name;
         if (name.empty()) {
             continue;
         }

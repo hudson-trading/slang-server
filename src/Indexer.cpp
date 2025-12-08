@@ -40,9 +40,8 @@ struct IndexGuard {
 
 namespace {
 
-bool isNestedModule(const slang::syntax::SyntaxNode* node) {
-    return node && node->parent &&
-           slang::syntax::ModuleDeclarationSyntax::isKind(node->parent->kind);
+bool isNestedModule(const slang::syntax::SyntaxNode& node) {
+    return node.parent && slang::syntax::ModuleDeclarationSyntax::isKind(node.parent->kind);
 }
 
 void extractDataFromTree(const slang::syntax::SyntaxTree& tree, Indexer::IndexedPath& dest) {
@@ -51,19 +50,17 @@ void extractDataFromTree(const slang::syntax::SyntaxTree& tree, Indexer::Indexed
 
     // Extract symbols: modules, interfaces, packages, programs (skip nested ones - they're private)
     for (auto& [node, _] : meta.nodeMeta) {
-        if (auto module = node->as_if<slang::syntax::ModuleDeclarationSyntax>()) {
-            std::string_view name = module->header->name.valueText();
-            if (!name.empty() && !isNestedModule(module)) {
-                dest.symbols.push_back(
-                    Indexer::GlobalSymbol{.name = std::string(name), .kind = module->kind});
-            }
+        std::string_view name = node->header->name.valueText();
+        if (!name.empty() && !isNestedModule(*node)) {
+            dest.symbols.push_back(
+                Indexer::GlobalSymbol{.name = std::string(name), .kind = node->kind});
         }
     }
 
     // Extract classes (skip nested ones - they're private)
     for (const auto& classDecl : meta.classDecls) {
         std::string_view name = classDecl->name.valueText();
-        if (!name.empty() && !isNestedModule(classDecl)) {
+        if (!name.empty() && !isNestedModule(*classDecl)) {
             dest.symbols.push_back(Indexer::GlobalSymbol{
                 .name = std::string(name), .kind = slang::syntax::SyntaxKind::ClassDeclaration});
         }

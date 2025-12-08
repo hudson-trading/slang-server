@@ -1,0 +1,21 @@
+
+class packet #(int WIDTH = 8);
+    function new(int id);
+    endfunction
+endclass
+
+// Non-generic class (no parameters)
+class simple_packet;
+    function new(int id);
+    endfunction
+endclass
+
+module top;
+    initial begin
+        // Too many parameters - tests bounds checking
+        packet #(/*WIDTH:*/ 8, 16, 32) pkt1 = new(1);
+
+        // Simple class without parameters - tests null parameters check
+        simple_packet pkt2 = new(2);
+    end
+endmodule

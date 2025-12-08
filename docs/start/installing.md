@@ -25,6 +25,10 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_DISABLE_FIND_PACKAGE_fmt=TRUE
 
 In the future there will be pre-built binaries released for common platforms. The editor clients will auto-install these, similar to what clangd and others do.
 
+
+> Windows: At the moment there are issues running on windows; See
+[#115](https://github.com/hudson-trading/slang-server/issues/115) and related issues.
+
 ### Vscode
 
 Install the extension [here](https://marketplace.visualstudio.com/items?itemName=Hudson-River-Trading.vscode-slang), then set `slang.path` to the slang-server binary. (at `build/bin/slang-server`)
@@ -35,10 +39,8 @@ An OpenVSX release is coming soon, but in the meantime it's possible to run `cd 
 
 ### Neovim
 
-> [!NOTE]
 > Once Slang Server is more actively used (you can help by starring [the project](https://github.com/hudson-trading/slang-server)!), it will be added to [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig) and [mason.nvim](https://github.com/mason-org/mason.nvim) and no additional configuration will be required. Until then, follow one of the methods below to manually add the server configuration.
 
-There are many ways to configure a language server in Neovim.
 
 For newer versions of Neovim (≥ v0.11), the new [vim.lsp API](https://neovim.io/doc/user/lsp.html#vim.lsp.start()) is the preferred, simpler way to configure language servers:
 ```lua
@@ -117,12 +119,10 @@ return {
 }
 ```
 
-Neovim natively handles the LSP. No additional plugin is required to use Slang Server for standard LSP actions (e.g. [Go to Definition](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_definition).
-
-However, a plugin is provided to enable use of some enhanced client-side features which extend the LSP (e.g. hierarchical compilation). The plugin can be found in `clients/neovim/` and is also mirrored in [slang-server.nvim](https://github.com/hudson-trading/slang-server.nvim) for ease of use with Neovim plugin managers.
+Pointing at the binary is all you need for standard language features, however a plugin is provided to enable some client-side features which extend the LSP (e.g. the hierarchy view, waveform integration). The plugin can be found in `clients/neovim/` and is also mirrored in [slang-server.nvim](https://github.com/hudson-trading/slang-server.nvim) for ease of use with Neovim plugin managers.
 
 ### Other editors
 
-Most modern editors can at least point to a language server binary for specific file types, which provides standard LSP features, but not HDL specific frontend features like the hierarchy view.
+Most modern editors can at least point to a language server binary for specific file types. This will provide standard LSP features, but not HDL specific  features.
 
-If the editor also allows for executing LSP commands, HDL features like setting a compilation should be available, although the process may not be as smooth.
+If the editor also allows for executing LSP commands, HDL features like setting a compilation should be available.

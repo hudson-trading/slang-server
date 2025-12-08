@@ -9,6 +9,7 @@
   },
   "search.exclude": {
     "external/reflect-cpp": true,
+    "external/slang/bindings/": true,
     // set this to false to include "out" folder in search results
     "clients/vscode/out": true,
     // set this to false to include "dist" folder in search results

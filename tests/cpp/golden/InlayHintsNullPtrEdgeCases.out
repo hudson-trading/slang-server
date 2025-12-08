@@ -1,0 +1,29 @@
+
+module adder #(
+    parameter int WIDTH = 8,
+    parameter int DEPTH = 16
+)(
+    input logic clk,
+    input logic [WIDTH-1:0] a,
+    input logic [WIDTH-1:0] b,
+    output logic [WIDTH:0] sum
+);
+endmodule
+
+module top;
+    logic clk, a, b, sum;
+
+    // Too many parameters - tests bounds checking
+    adder #(/*WIDTH:*/ 8, /*DEPTH:*/ 16, 32, 64) u_adder1(/*clk:*/ clk, /*a:*/ a, /*b:*/ b, /*sum:*/ sum);
+
+    // Too many ports - tests bounds checking
+    adder u_adder2(/*clk:*/ clk, /*a:*/ a, /*b:*/ b, /*sum:*/ sum, 1'b0, 1'b1);
+
+    // Named ports with potential null syntax
+    adder u_adder3(
+        .clk /*input logic            */ (clk),
+        .a /*input logic [WIDTH-1:0]*/ (a),
+        .b /*input logic [WIDTH-1:0]*/ (b),
+        .sum /*output logic [WIDTH:0] */ (sum)
+    );
+endmodule
