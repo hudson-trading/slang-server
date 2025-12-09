@@ -253,21 +253,21 @@
         "label": "always_comb",
         "kind": "Snippet",
         "filterText": "always_comb",
-        "insertText": "always_comb begin\n$0\nend",
+        "insertText": "always_comb begin\n    $0\nend",
         "insertTextFormat": "Snippet"
       },
       {
         "label": "always_ff",
         "kind": "Snippet",
         "filterText": "always_ff",
-        "insertText": "always_ff @($0) begin\n\nend",
+        "insertText": "always_ff @($0) begin\n    \nend",
         "insertTextFormat": "Snippet"
       },
       {
         "label": "always_latch",
         "kind": "Snippet",
         "filterText": "always_latch",
-        "insertText": "always_latch begin\n$0\nend",
+        "insertText": "always_latch begin\n    $0\nend",
         "insertTextFormat": "Snippet"
       },
       {
