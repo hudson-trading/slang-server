@@ -57,6 +57,8 @@ public:
             std::isalpha((unsigned char)decodedPath_[1])) {
             decodedPath_.erase(0, 1);
         }
+
+        std::replace(decodedPath_.begin(), decodedPath_.end(), '/', '\\');
 #endif
 
         return std::string_view(decodedPath_);
