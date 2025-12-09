@@ -576,7 +576,7 @@ void getKeywordCompletions(std::vector<lsp::CompletionItem>& results) {
         .kind = lsp::CompletionItemKind::Snippet,
         .documentation = std::nullopt,
         .filterText = "always_ff",
-        .insertText = "always_ff @($0) begin\n\nend",
+        .insertText = "always_ff @($0) begin\n\t\nend",
         .insertTextFormat = lsp::InsertTextFormat::Snippet,
     });
     results.emplace_back(lsp::CompletionItem{
@@ -584,7 +584,7 @@ void getKeywordCompletions(std::vector<lsp::CompletionItem>& results) {
         .kind = lsp::CompletionItemKind::Snippet,
         .documentation = std::nullopt,
         .filterText = "always_comb",
-        .insertText = "always_comb begin\n$0\nend",
+        .insertText = "always_comb begin\n\t$0\nend",
         .insertTextFormat = lsp::InsertTextFormat::Snippet,
     });
     results.emplace_back(lsp::CompletionItem{
@@ -592,7 +592,7 @@ void getKeywordCompletions(std::vector<lsp::CompletionItem>& results) {
         .kind = lsp::CompletionItemKind::Snippet,
         .documentation = std::nullopt,
         .filterText = "always_latch",
-        .insertText = "always_latch begin\n$0\nend",
+        .insertText = "always_latch begin\n\t$0\nend",
         .insertTextFormat = lsp::InsertTextFormat::Snippet,
     });
 }
