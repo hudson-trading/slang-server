@@ -51,6 +51,12 @@ public:
 
 #ifdef _WIN32
         normalizeDriveLetter(decodedPath_);
+
+        // Remove leading slash in "/C:/path"
+        if (decodedPath_.size() >= 3 && decodedPath_[0] == '/' && decodedPath_[2] == ':' &&
+            std::isalpha((unsigned char)decodedPath_[1])) {
+            decodedPath_.erase(0, 1);
+        }
 #endif
 
         return std::string_view(decodedPath_);
