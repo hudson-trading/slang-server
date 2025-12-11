@@ -278,6 +278,7 @@ add_library(
   src/document/SyntaxIndexer.cpp
   src/completions/Completions.cpp
   src/completions/CompletionDispatch.cpp
+  src/lsp/URI.cpp
   src/util/Converters.cpp
   src/util/Formatting.cpp
   src/Config.cpp
