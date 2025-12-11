@@ -9,7 +9,6 @@
 #pragma once
 #include <filesystem>
 #include <fmt/format.h>
-#include <iostream>
 #include <string>
 
 class URI {
@@ -19,131 +18,52 @@ public:
     using ReflectionType = std::string;
 
     URI() = default;
-
-    URI(const char* _str) : URI("file", std::string(_str)) {}
-
-    URI(const std::string& _str) { underlying_ = _str; }
-
-    URI(const std::string& protocol, const std::string& path) {
-        underlying_ = protocol + "://" + path;
-    }
-
     ~URI() = default;
 
-    // Equality operator (needed for unordered_map)
-    bool operator==(const URI& other) const { return underlying_ == other.underlying_; }
+    URI(const std::string& uri_str);
 
     /// Necessary for the serialization to work.
-    ReflectionType reflection() const { return underlying_; }
+    ReflectionType reflection() const;
 
     /// Expresses the underlying URI as a string.
-    std::string str() const { return reflection(); }
+    std::string str() const;
 
-    std::string_view getPath() const {
-        constexpr std::string_view prefix = "file://";
-        if (!underlying_.starts_with(prefix)) {
-            return underlying_;
-        }
+    // Constructor from components
+    URI(std::string scheme, std::string authority, std::string path, std::string query = "",
+        std::string fragment = "");
 
-        std::string_view raw = std::string_view(underlying_).substr(prefix.size());
+    static URI fromFile(const std::filesystem::path& file);
 
-        decodedPath_ = decodePercentEncoding(raw);
+    static URI fromWeb(const std::string& url);
 
-#ifdef _WIN32
-        normalizeDriveLetter(decodedPath_);
+    std::string_view getPath() const;
 
-        // Remove leading slash in `/C:/some/path/to/somewhere`
-        if (decodedPath_.size() >= 3 && decodedPath_[0] == '/' && decodedPath_[2] == ':' &&
-            std::isalpha((unsigned char)decodedPath_[1])) {
-            decodedPath_.erase(0, 1);
-        }
-
-        std::replace(decodedPath_.begin(), decodedPath_.end(), '/', '\\');
-#endif
-
-        return std::string_view(decodedPath_);
-    }
-
-    static URI fromFile(const std::filesystem::path& file) {
-        std::string path = file.generic_string();
-        std::string decoded = decodePercentEncoding(path);
-
-#ifdef _WIN32
-        normalizeDriveLetter(decoded);
-#endif
-
-        return URI("file", decoded);
-    }
-
-    static URI fromWeb(std::string_view path) { return URI("https", std::string(path)); }
-
-    bool empty() const { return underlying_.empty(); }
-
-    friend std::ostream& operator<<(std::ostream& os, const URI& uri) {
-        os << uri.str();
-        return os;
-    }
-
-    // allow appending to strings
-    friend std::string operator+(const std::string& str, const URI& uri) { return str + uri.str(); }
-    friend std::string operator+(const URI& uri, const std::string& str) { return uri.str() + str; }
+    // Equality operator (needed for unordered_map)
+    bool operator==(URI const& other) const;
 
 private:
-    /// The underlying string
-    std::string underlying_;
+    std::string scheme;
+    std::string authority;
+    std::string path;
+    std::string query;
+    std::string fragment;
 
-    /// this is created so that getPath() can return a `string_view`
     mutable std::string decodedPath_;
+    mutable std::string underlying_;
 
-    static std::string decodePercentEncoding(std::string_view s) {
-        std::string out;
-        out.reserve(s.size());
+    void parse(const std::string& uri_str);
 
-        for (size_t i = 0; i < s.size(); i++) {
-            if (s[i] == '%' && i + 2 < s.size()) {
-                char hex[3] = {(char)s[i + 1], (char)s[i + 2], 0};
-                char* end = nullptr;
-                long val = std::strtol(hex, &end, 16);
-                if (end != hex + 2) {
-                    out.push_back('%');
-                }
-                else {
-                    out.push_back((char)val);
-                    i += 2;
-                }
-            }
-            else {
-                out.push_back(s[i]);
-            }
-        }
-        return out;
-    }
+    // Decode a percent-encoded string
+    static std::string decode(const std::string& s);
 
-#ifdef _WIN32
-    /// Normalize Windows drive letter (C:, D:, etc, etc)
-    static inline void normalizeDriveLetter(std::string& path) {
-        size_t i = 0;
+    static std::string encode(const std::string& s);
 
-        if (path.size() >= 3 && path[1] == ':') {
-            i = 0;
-        }
+    /// Converts a char to hexadecimal
+    static std::string to_hex(unsigned char c);
 
-        else if (path.size() >= 4 && path[0] == '/' && path[2] == ':') {
-            i = 1;
-        }
-
-        else {
-            return; // no drive letter pattern found
-        }
-
-        // Uppercase if necessary
-        char& ch = path[i];
-        if (ch >= 'a' && ch <= 'z') {
-            ch = static_cast<char>(ch - 'a' + 'A');
-        }
-    }
-#endif
+    std::string to_path(std::string decodedPath) const;
 };
+
 template<>
 struct fmt::formatter<URI> {
     constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
@@ -161,5 +81,4 @@ struct hash<URI> {
         return std::hash<std::string>{}(uri.str());
     }
 };
-
 } // namespace std
