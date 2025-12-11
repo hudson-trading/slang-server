@@ -81,4 +81,5 @@ struct hash<URI> {
         return std::hash<std::string>{}(uri.str());
     }
 };
+
 } // namespace std
