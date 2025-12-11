@@ -85,7 +85,7 @@ jobs:
     - name: Run ctest
       run: ctest --test-dir build/${{ matrix.preset }} --output-on-failure --no-tests=error -j8
       # Don't run tests on windows
-      if: runner.os != 'Windows'
+      # if: runner.os != 'Windows'
     - name: Set up uv
       uses: astral-sh/setup-uv@v6
     - name: Run pytest (not Windows)
