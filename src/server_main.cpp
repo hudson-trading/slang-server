@@ -22,6 +22,7 @@ using namespace slang;
 using namespace server;
 
 int main(int argc, char** argv) {
+
 #ifdef _WIN32
     // By default windows accesses streams in text mode. This mostly means that
     // line feeds are converted to carriage return-line feed (CRLF), this messes
@@ -30,6 +31,7 @@ int main(int argc, char** argv) {
     _setmode(_fileno(stdin), _O_BINARY);
     _setmode(_fileno(stdout), _O_BINARY);
 #endif
+
     OS::setupConsole();
 
     CommandLine cmdline;
