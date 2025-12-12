@@ -1,0 +1,17 @@
+[
+  {
+    "cpu_modules": [
+      "cpu"
+    ]
+  },
+  {
+    "alu_modules": [
+      "alu"
+    ]
+  },
+  {
+    "memory_controller_modules": [
+      "memory_controller"
+    ]
+  }
+]

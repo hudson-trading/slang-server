@@ -1,0 +1,174 @@
+[
+  {
+    "alu_instances": [
+      {
+        "instPath": "cpu_testbench.dut.alu_inst",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 30,
+              "character": 6
+            },
+            "end": {
+              "line": 37,
+              "character": 5
+            }
+          }
+        }
+      },
+      {
+        "instPath": "cpu_testbench.dut.alu_inst_array[0]",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 67,
+              "character": 6
+            },
+            "end": {
+              "line": 74,
+              "character": 5
+            }
+          }
+        }
+      },
+      {
+        "instPath": "cpu_testbench.dut.alu_inst_array[1]",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 67,
+              "character": 6
+            },
+            "end": {
+              "line": 74,
+              "character": 5
+            }
+          }
+        }
+      },
+      {
+        "instPath": "cpu_testbench.dut.alu_inst_array[2]",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 67,
+              "character": 6
+            },
+            "end": {
+              "line": 74,
+              "character": 5
+            }
+          }
+        }
+      },
+      {
+        "instPath": "cpu_testbench.dut.alu_inst_array[3]",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 67,
+              "character": 6
+            },
+            "end": {
+              "line": 74,
+              "character": 5
+            }
+          }
+        }
+      },
+      {
+        "instPath": "cpu_testbench.dut.gen_alu_array[0].gen_alu_inst",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 99,
+              "character": 14
+            },
+            "end": {
+              "line": 106,
+              "character": 13
+            }
+          }
+        }
+      },
+      {
+        "instPath": "cpu_testbench.dut.gen_alu_array[1].gen_alu_inst",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 99,
+              "character": 14
+            },
+            "end": {
+              "line": 106,
+              "character": 13
+            }
+          }
+        }
+      },
+      {
+        "instPath": "cpu_testbench.dut.gen_alu_array[2].gen_alu_inst",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 99,
+              "character": 14
+            },
+            "end": {
+              "line": 106,
+              "character": 13
+            }
+          }
+        }
+      }
+    ]
+  },
+  {
+    "memory_controller_instances": [
+      {
+        "instPath": "cpu_testbench.dut.mem_ctrl",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 43,
+              "character": 6
+            },
+            "end": {
+              "line": 52,
+              "character": 5
+            }
+          }
+        }
+      }
+    ]
+  },
+  {
+    "cpu_instances": [
+      {
+        "instPath": "cpu_testbench.dut",
+        "instLoc": {
+          "uri": "file://cpu_testbench.sv",
+          "range": {
+            "start": {
+              "line": 38,
+              "character": 6
+            },
+            "end": {
+              "line": 49,
+              "character": 5
+            }
+          }
+        }
+      }
+    ]
+  }
+]
