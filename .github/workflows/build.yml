@@ -98,8 +98,8 @@ jobs:
         source .venv/bin/activate
         uv sync
         pytest tests/system/ --binary build/${{ matrix.preset }}/bin/slang-server
-    
-        # Pytests start but hang on Windows, needs further research
+
+    # Pytests start but hang on Windows, needs further research
     - name: Run pytest (Windows)
       if: runner.os == 'Windows'
       run: |
