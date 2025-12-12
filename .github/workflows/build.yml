@@ -78,7 +78,7 @@ jobs:
       if: runner.os == 'macOS'
       with:
         xcode-version: 'latest'
-        
+
     - name: Configure
       run: cmake --preset ${{ matrix.preset }} -DSLANG_CI_BUILD=ON ${{ matrix.extra_flags }}
 
@@ -98,14 +98,15 @@ jobs:
         source .venv/bin/activate
         uv sync
         pytest tests/system/ --binary build/${{ matrix.preset }}/bin/slang-server
-    # Pytests start but hang on Windows, needs further research
-            #    - name: Run pytest (Windows)
-            #      if: runner.os == 'Windows'
-            #      run: |
-            #        uv venv
-            #        .venv\Scripts\activate
-            #        uv sync
-            #        pytest tests\system\ --binary build\${{ matrix.preset }}\bin\slang-server
+    
+        # Pytests start but hang on Windows, needs further research
+    - name: Run pytest (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        uv venv
+        .venv\Scripts\activate
+        uv sync
+        pytest tests\system\ --binary build\${{ matrix.preset }}\bin\slang-server.exe
 
     # Artifact creation for releases
     - name: Strip binary (Linux)
