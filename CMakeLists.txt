@@ -23,6 +23,10 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
                 "'CMakeCache.txt' and 'CMakeFiles/' before building again.")
 endif()
 
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+endif()
+
 # Read version from VERSION file
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" SLANG_SERVER_VERSION_STRING)
 string(STRIP "${SLANG_SERVER_VERSION_STRING}" SLANG_SERVER_VERSION_STRING)
