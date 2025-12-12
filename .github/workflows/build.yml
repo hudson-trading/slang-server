@@ -78,16 +78,19 @@ jobs:
       if: runner.os == 'macOS'
       with:
         xcode-version: 'latest'
+        
     - name: Configure
       run: cmake --preset ${{ matrix.preset }} -DSLANG_CI_BUILD=ON ${{ matrix.extra_flags }}
+
     - name: Build
       run: cmake --build build/${{ matrix.preset }} -j8
+
     - name: Run ctest
       run: ctest --test-dir build/${{ matrix.preset }} --output-on-failure --no-tests=error -j8
-      # Don't run tests on windows
-      # if: runner.os != 'Windows'
+
     - name: Set up uv
       uses: astral-sh/setup-uv@v6
+
     - name: Run pytest (not Windows)
       if: runner.os != 'Windows'
       run: |
