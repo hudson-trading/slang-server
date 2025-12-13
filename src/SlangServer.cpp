@@ -650,7 +650,7 @@ rfl::Variant<std::vector<lsp::CompletionItem>, lsp::CompletionList, std::monosta
 
     // Prev text including the char that was just written
     auto prevText = doc->getPrevText(params.position);
-    char prevChar = prevText.empty() ? ' ' : prevText[prevText.size() - 2];
+    char prevChar = prevText.size() >= 2 ? prevText[prevText.size() - 2] : ' ';
     INFO("Completion triggered by: ['{}','{}']", prevChar, triggerChar);
     auto maybeLoc = doc->getLocation(params.position);
 
