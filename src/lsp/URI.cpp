@@ -19,20 +19,33 @@ URI::URI(const std::string& input) {
     }
 
     std::string scheme = m.get<2>().to_string();
-    std::string authority = m.get<4>().to_string();
+    std::string authority = decode(m.get<4>().to_string());
     std::string path = decode(m.get<5>().to_string());
     std::string query = decode(m.get<7>().to_string());
-    std::string fragment = m.get<9>().to_string();
+    std::string fragment = decode(m.get<9>().to_string());
 
     init(std::move(scheme), std::move(authority), std::move(path), std::move(query),
          std::move(fragment));
 }
 
-URI::URI(std::string scheme, std::string authority, std::string path, std::string query,
-         std::string fragment) {
+std::string_view URI::scheme() const {
+    return std::string_view(underlying_.data() + scheme_.first, scheme_.second);
+}
 
-    init(std::move(scheme), std::move(authority), std::move(path), std::move(query),
-         std::move(fragment));
+std::string_view URI::authority() const {
+    return std::string_view(underlying_.data() + authority_.first, authority_.second);
+}
+
+std::string_view URI::path() const {
+    return std::string_view(underlying_.data() + path_.first, path_.second);
+}
+
+std::string_view URI::query() const {
+    return std::string_view(underlying_.data() + query_.first, query_.second);
+}
+
+std::string_view URI::fragment() const {
+    return std::string_view(underlying_.data() + fragment_.first, fragment_.second);
 }
 
 void URI::init(std::string scheme, std::string authority, std::string path, std::string query,
@@ -54,56 +67,66 @@ void URI::init(std::string scheme, std::string authority, std::string path, std:
     underlying_.reserve(scheme.size() + authority.size() + path.size() + query.size() +
                         fragment.size() + 10);
 
-    std::size_t posScheme = std::string::npos;
-    std::size_t posAuthority = std::string::npos;
-    std::size_t posPath = std::string::npos;
-    std::size_t posQuery = std::string::npos;
-    std::size_t posFragment = std::string::npos;
+    std::size_t pos = 0;
 
+    // scheme
     if (!scheme.empty()) {
-        posScheme = underlying_.size();
         underlying_ += scheme;
+        scheme_ = {pos, scheme.size()};
+        pos += scheme.size();
+
         underlying_ += ':';
+        ++pos;
+    }
+    else {
+        scheme_ = {};
     }
 
+    // authority
     if (!authority.empty() || scheme == "file") {
         underlying_ += "//";
-        posAuthority = underlying_.size();
-        underlying_ += authority;
+        pos += 2;
     }
 
-    posPath = underlying_.size();
-    underlying_ += path;
+    if (!authority.empty()) {
+        underlying_ += authority;
+        authority_ = {pos, authority.size()};
+        pos += authority.size();
+    }
+    else {
+        authority_ = {};
+    }
 
+    // path
+    underlying_ += path;
+    path_ = {pos, path.size()};
+    pos += path.size();
+
+    // query
     if (!query.empty()) {
         underlying_ += '?';
-        posQuery = underlying_.size();
+        ++pos;
+
         underlying_ += query;
+        query_ = {pos, query.size()};
+        pos += query.size();
+    }
+    else {
+        query_ = {};
     }
 
+    // fragment
     if (!fragment.empty()) {
         underlying_ += '#';
-        posFragment = underlying_.size();
+        ++pos;
+
         underlying_ += fragment;
+        fragment_ = {pos, fragment.size()};
+        pos += fragment.size();
     }
-
-    scheme_ = (posScheme == std::string::npos)
-                  ? std::string_view{}
-                  : std::string_view(underlying_).substr(posScheme, scheme.size());
-
-    authority_ = (posAuthority == std::string::npos)
-                     ? std::string_view{}
-                     : std::string_view(underlying_).substr(posAuthority, authority.size());
-
-    path_ = std::string_view(underlying_).substr(posPath, path.size());
-
-    query_ = (posQuery == std::string::npos)
-                 ? std::string_view{}
-                 : std::string_view(underlying_).substr(posQuery, query.size());
-
-    fragment_ = (posFragment == std::string::npos)
-                    ? std::string_view{}
-                    : std::string_view(underlying_).substr(posFragment, fragment.size());
+    else {
+        fragment_ = {};
+    }
 }
 
 /// Necessary for the serialization to work.
@@ -116,9 +139,15 @@ std::string URI::str() const {
     return underlying_;
 }
 
+// Constructor from components
+URI::URI(std::string scheme, std::string authority, std::string path, std::string query,
+         std::string fragment) {
+    init(scheme, authority, path, query, fragment);
+}
+
 URI URI::fromFile(const std::filesystem::path& file) {
     std::string path = file.generic_string();
-    std::string authority;
+    std::string authority = "";
 
 #ifdef _WIN32
     // UNC: \\server\path\to\file.txt
@@ -144,39 +173,39 @@ URI URI::fromFile(const std::filesystem::path& file) {
 }
 
 URI URI::fromWeb(const std::string& url) {
-    return URI("https", "", "/" + url, "", "");
+    // URLs are valid URIs
+    return URI("https://" + url);
 }
 
 std::string_view URI::getPath() const {
-    // use cached decoded path if available
-    if (!decodedPath_.empty())
-        return decodedPath_;
+    // Use cached decoded path if available
+    if (!fsPath_.empty())
+        return fsPath_;
 
-    decodedPath_ = std::string(path_);
+    fsPath_ = std::string(path());
 
 #ifdef _WIN32
     // Convert drive letter: /c:/ -> C:/
-    if (decodedPath_.size() >= 3 && decodedPath_[0] == '/' && std::isalpha(decodedPath_[1]) &&
-        decodedPath_[2] == ':') {
-        decodedPath_[1] = static_cast<char>(std::toupper(decodedPath_[1]));
-        decodedPath_.erase(0, 1); // remove leading slash
+    if (fsPath_.size() >= 3 && fsPath_[0] == '/' && std::isalpha(fsPath_[1]) &&
+        fsPath_[2] == ':') {
+        fsPath_[1] = static_cast<char>(std::toupper(fsPath_[1]));
+        fsPath_.erase(0, 1); // remove leading slash
     }
 
     // Convert forward slashes to backslashes
-    std::replace(decodedPath_.begin(), decodedPath_.end(), '/', '\\');
+    std::replace(fsPath_.begin(), fsPath_.end(), '/', '\\');
 
     // UNC path: file://server/share/file -> \\server\share\file
-    if (!authority_.empty() && scheme_ == "file") {
-        decodedPath_ = "\\\\" + std::string(authority_) + decodedPath_;
+    if (!authority().empty() && scheme() == "file") {
+        fsPath_ = "\\\\" + std::string(authority()) + fsPath_;
     }
 #endif
 
-    return decodedPath_;
+    return fsPath_;
 }
 
 bool URI::operator==(URI const& other) const {
-    return scheme_ == other.scheme_ && authority_ == other.authority_ && path_ == other.path_ &&
-           query_ == other.query_ && fragment_ == other.fragment_;
+    return underlying_ == other.underlying_;
 }
 
 std::string URI::decode(const std::string& s) {

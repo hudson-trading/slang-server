@@ -54,15 +54,24 @@ public:
 
     bool operator==(URI const& other) const;
 
-private:
-    std::string_view scheme_;
-    std::string_view authority_;
-    std::string_view path_;
-    std::string_view query_;
-    std::string_view fragment_;
+    std::string_view scheme() const;
+    std::string_view authority() const;
+    std::string_view path() const;
+    std::string_view query() const;
+    std::string_view fragment() const;
 
-    mutable std::string decodedPath_;
-    mutable std::string underlying_;
+private:
+    // Storing these as std::string_view is great...until URI is moved for whatever reason,
+    // which moves `underlying_`. Then using these as string_views gives at best a bunch of 
+    // gibberish, and at worst segfault.
+    std::pair<std::size_t, std::size_t> scheme_;
+    std::pair<std::size_t, std::size_t> authority_;
+    std::pair<std::size_t, std::size_t> path_;
+    std::pair<std::size_t, std::size_t> query_;
+    std::pair<std::size_t, std::size_t> fragment_;
+
+    mutable std::string fsPath_;
+    std::string underlying_;
 
     /// Decode a percent-encoded string
     static std::string decode(const std::string& s);
