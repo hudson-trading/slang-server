@@ -91,7 +91,7 @@ jobs:
     - name: Set up uv
       uses: astral-sh/setup-uv@v6
 
-    - name: Run pytest (not Windows)
+    - name: Run pytest (Linux/macOS)
       if: runner.os != 'Windows'
       run: |
         uv venv
@@ -99,7 +99,6 @@ jobs:
         uv sync
         pytest tests/system/ --binary build/${{ matrix.preset }}/bin/slang-server
 
-    # Pytests start but hang on Windows, needs further research
     - name: Run pytest (Windows)
       if: runner.os == 'Windows'
       run: |
@@ -186,6 +185,7 @@ jobs:
         mv ${{ github.workspace }} ${{ runner.temp }}/slang-server-checkout
         mv ${{ runner.temp }}/neovim-plugin ${{ github.workspace }}
       working-directory: ${{ runner.temp }}
+    
     - name: Run Neovim plugin tests
       # This should work on Windows as well, but there's some linker error
       # that I don't feel like debugging via GH
