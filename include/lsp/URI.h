@@ -6,14 +6,26 @@
 // SPDX-License-Identifier: MIT
 //------------------------------------------------------------------------------
 
+/*  URI format
+ *  From RFC 3986
+ *  https://www.rfc-editor.org/rfc/rfc3986#section-3
+ *
+ *      foo://example.com:8042/over/there?name=ferret#nose
+ *      \_/   \______________/\_________/ \_________/ \__/
+ *       |           |            |            |        |
+ *    scheme     authority       path        query   fragment
+ *       |   _____________________|__
+ *      / \ /                        \
+ *      urn:example:animal:ferret:nose
+ */
+
 #pragma once
 #include <filesystem>
 #include <fmt/format.h>
 #include <string>
+#include <string_view>
 
 class URI {
-    /// File URIs- assumes file:// prefix
-
 public:
     using ReflectionType = std::string;
 
@@ -22,46 +34,48 @@ public:
 
     URI(const std::string& uri_str);
 
-    /// Necessary for the serialization to work.
-    ReflectionType reflection() const;
-
-    /// Expresses the underlying URI as a string.
-    std::string str() const;
-
     // Constructor from components
     URI(std::string scheme, std::string authority, std::string path, std::string query = "",
         std::string fragment = "");
+
+    /// Necessary for the serialization to work.
+    ReflectionType reflection() const;
+
+    /// Returns the underlying URI as a string.
+    /// Note that this string is percent decoded.
+    std::string str() const;
 
     static URI fromFile(const std::filesystem::path& file);
 
     static URI fromWeb(const std::string& url);
 
+    /// Returns the path component, decoded and in platform format
     std::string_view getPath() const;
 
-    // Equality operator (needed for unordered_map)
     bool operator==(URI const& other) const;
 
 private:
-    std::string scheme;
-    std::string authority;
-    std::string path;
-    std::string query;
-    std::string fragment;
+    std::string_view scheme_;
+    std::string_view authority_;
+    std::string_view path_;
+    std::string_view query_;
+    std::string_view fragment_;
 
     mutable std::string decodedPath_;
     mutable std::string underlying_;
 
-    void parse(const std::string& uri_str);
-
-    // Decode a percent-encoded string
+    /// Decode a percent-encoded string
     static std::string decode(const std::string& s);
 
+    /// Encode a string into percent-encoding.
+    /// This isn't used anywhere currently, but is provided for completeness.
     static std::string encode(const std::string& s);
 
     /// Converts a char to hexadecimal
     static std::string to_hex(unsigned char c);
 
-    std::string to_path(std::string decodedPath) const;
+    void init(std::string scheme, std::string authority, std::string path, std::string query,
+              std::string fragment);
 };
 
 template<>
