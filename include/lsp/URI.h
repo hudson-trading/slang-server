@@ -62,7 +62,7 @@ public:
 
 private:
     // Storing these as std::string_view is great...until URI is moved for whatever reason,
-    // which moves `underlying_`. Then using these as string_views gives at best a bunch of 
+    // which moves `underlying_`. Then using these as string_views gives at best a bunch of
     // gibberish, and at worst segfault.
     std::pair<std::size_t, std::size_t> scheme_;
     std::pair<std::size_t, std::size_t> authority_;
