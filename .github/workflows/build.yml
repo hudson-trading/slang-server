@@ -15,7 +15,7 @@ on:
         type: string
         default: ''
   push:
-    branches: [ main ]
+    branches: [main]
     paths-ignore:
       - 'docs/**'
       - 'clients/**'
@@ -59,136 +59,136 @@ jobs:
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     steps:
-    - name: Install dependencies (Rocky Linux 8)
-      if: matrix.container == 'rockylinux:8'
-      run: |
-        dnf -y update
-        dnf -y install 'dnf-command(config-manager)'
-        dnf config-manager --set-enabled powertools
-        dnf -y install epel-release
-        dnf -y install gcc-c++ clang cmake git make gcc-toolset-14-libatomic-devel
-    - uses: actions/checkout@v4
-      with:
-        ref: ${{ inputs.ref || github.ref }}
-        submodules: true
-        fetch-depth: 0
-    - uses: ilammy/msvc-dev-cmd@v1
-      if: runner.os == 'Windows'
-    - uses: maxim-lobanov/setup-xcode@v1
-      if: runner.os == 'macOS'
-      with:
-        xcode-version: 'latest'
+      - name: Install dependencies (Rocky Linux 8)
+        if: matrix.container == 'rockylinux:8'
+        run: |
+          dnf -y update
+          dnf -y install 'dnf-command(config-manager)'
+          dnf config-manager --set-enabled powertools
+          dnf -y install epel-release
+          dnf -y install gcc-c++ clang cmake git make gcc-toolset-14-libatomic-devel
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          submodules: true
+          fetch-depth: 0
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+      - uses: maxim-lobanov/setup-xcode@v1
+        if: runner.os == 'macOS'
+        with:
+          xcode-version: 'latest'
 
-    - name: Configure
-      run: cmake --preset ${{ matrix.preset }} -DSLANG_CI_BUILD=ON ${{ matrix.extra_flags }}
+      - name: Configure
+        run: cmake --preset ${{ matrix.preset }} -DSLANG_CI_BUILD=ON ${{ matrix.extra_flags }}
 
-    - name: Build
-      run: cmake --build build/${{ matrix.preset }} -j8
+      - name: Build
+        run: cmake --build build/${{ matrix.preset }} -j8
 
-    - name: Run ctest
-      run: ctest --test-dir build/${{ matrix.preset }} --output-on-failure --no-tests=error -j8
+      - name: Run ctest
+        run: ctest --test-dir build/${{ matrix.preset }} --output-on-failure --no-tests=error -j8
 
-    - name: Set up uv
-      uses: astral-sh/setup-uv@v6
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
 
-    - name: Run pytest (Linux/macOS)
-      if: runner.os != 'Windows'
-      run: |
-        uv venv
-        source .venv/bin/activate
-        uv sync
-        pytest tests/system/ --binary build/${{ matrix.preset }}/bin/slang-server
+      - name: Run pytest (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          uv venv
+          source .venv/bin/activate
+          uv sync
+          pytest tests/system/ --binary build/${{ matrix.preset }}/bin/slang-server
 
-    - name: Run pytest (Windows)
-      if: runner.os == 'Windows'
-      run: |
-        uv venv
-        .venv\Scripts\activate
-        uv sync
-        pytest tests\system\ --binary build\${{ matrix.preset }}\bin\slang-server.exe
+      - name: Run pytest (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          uv venv
+          .venv\Scripts\activate
+          uv sync
+          pytest tests\system\ --binary build\${{ matrix.preset }}\bin\slang-server.exe
 
-    # Artifact creation for releases
-    - name: Strip binary (Linux)
-      if: inputs.upload_artifacts && runner.os == 'Linux'
-      run: strip build/${{ matrix.preset }}/bin/slang-server
+      # Artifact creation for releases
+      - name: Strip binary (Linux)
+        if: inputs.upload_artifacts && runner.os == 'Linux'
+        run: strip build/${{ matrix.preset }}/bin/slang-server
 
-    - name: Create artifact directory
-      if: inputs.upload_artifacts
-      run: mkdir -p release-artifacts
+      - name: Create artifact directory
+        if: inputs.upload_artifacts
+        run: mkdir -p release-artifacts
 
-    - name: Copy binary (Linux/macOS)
-      if: inputs.upload_artifacts && runner.os != 'Windows'
-      run: |
-        cp build/${{ matrix.preset }}/bin/slang-server release-artifacts/slang-server
-        chmod +x release-artifacts/slang-server
+      - name: Copy binary (Linux/macOS)
+        if: inputs.upload_artifacts && runner.os != 'Windows'
+        run: |
+          cp build/${{ matrix.preset }}/bin/slang-server release-artifacts/slang-server
+          chmod +x release-artifacts/slang-server
 
-    - name: Copy binary (Windows)
-      if: inputs.upload_artifacts && runner.os == 'Windows'
-      shell: bash
-      run: cp build/${{ matrix.preset }}/bin/slang-server.exe release-artifacts/slang-server.exe
+      - name: Copy binary (Windows)
+        if: inputs.upload_artifacts && runner.os == 'Windows'
+        shell: bash
+        run: cp build/${{ matrix.preset }}/bin/slang-server.exe release-artifacts/slang-server.exe
 
-    - name: Create README
-      if: inputs.upload_artifacts
-      shell: bash
-      run: |
-        cat > release-artifacts/README.txt << 'EOF'
-        Slang Server - SystemVerilog Language Server
+      - name: Create README
+        if: inputs.upload_artifacts
+        shell: bash
+        run: |
+          cat > release-artifacts/README.txt << 'EOF'
+          Slang Server - SystemVerilog Language Server
 
-        This is a pre-built binary of slang-server.
+          This is a pre-built binary of slang-server.
 
-        Installation:
-        1. Extract this archive
-        2. Add the binary to your PATH, or
-        3. Configure your editor to use the absolute path to this binary
+          Installation:
+          1. Extract this archive
+          2. Add the binary to your PATH, or
+          3. Configure your editor to use the absolute path to this binary
 
-        For more information, visit:
-        https://github.com/hudson-trading/slang-server
+          For more information, visit:
+          https://github.com/hudson-trading/slang-server
 
-        Platform: ${{ matrix.artifact_name }}
-        Build date: $(date -u +%Y-%m-%d)
-        EOF
+          Platform: ${{ matrix.artifact_name }}
+          Build date: $(date -u +%Y-%m-%d)
+          EOF
 
-    - name: Create tarball (Linux/macOS)
-      if: inputs.upload_artifacts && runner.os != 'Windows'
-      run: |
-        cd release-artifacts
-        tar -czf ../${{ matrix.artifact_name }}.tar.gz *
-        cd ..
+      - name: Create tarball (Linux/macOS)
+        if: inputs.upload_artifacts && runner.os != 'Windows'
+        run: |
+          cd release-artifacts
+          tar -czf ../${{ matrix.artifact_name }}.tar.gz *
+          cd ..
 
-    - name: Create zip (Windows)
-      if: inputs.upload_artifacts && runner.os == 'Windows'
-      shell: bash
-      run: |
-        cd release-artifacts
-        7z a ../${{ matrix.artifact_name }}.zip *
-        cd ..
+      - name: Create zip (Windows)
+        if: inputs.upload_artifacts && runner.os == 'Windows'
+        shell: bash
+        run: |
+          cd release-artifacts
+          7z a ../${{ matrix.artifact_name }}.zip *
+          cd ..
 
-    - name: Upload artifact
-      if: inputs.upload_artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ matrix.artifact_name }}
-        path: |
-          ${{ matrix.artifact_name }}.tar.gz
-          ${{ matrix.artifact_name }}.zip
-        retention-days: 7
+      - name: Upload artifact
+        if: inputs.upload_artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: |
+            ${{ matrix.artifact_name }}.tar.gz
+            ${{ matrix.artifact_name }}.zip
+          retention-days: 7
 
-    # Making the neovim plugin the top-level dir below this point for busted action
-    # Moving the old checkout is easier than doing some Windows-portable rm -rf thing
-    - name: Move build
-      # Skip for container builds (Rocky Linux) as paths don't work the same way
-      if: matrix.container == ''
-      run: |
-        echo ${{ runner.temp }}/slang-build/bin >> $GITHUB_PATH
-        mv ${{ github.workspace }}/build/${{ matrix.preset }} ${{ runner.temp }}/slang-build
-        mv ${{ github.workspace }}/clients/neovim ${{ runner.temp }}/neovim-plugin
-        mv ${{ github.workspace }} ${{ runner.temp }}/slang-server-checkout
-        mv ${{ runner.temp }}/neovim-plugin ${{ github.workspace }}
-      working-directory: ${{ runner.temp }}
-    
-    - name: Run Neovim plugin tests
-      # This should work on Windows as well, but there's some linker error
-      # that I don't feel like debugging via GH
-      # Skip for container builds (Rocky Linux) as paths don't work the same way
-      if: runner.os != 'Windows' && matrix.container == ''
-      uses: nvim-neorocks/nvim-busted-action@v1
+      # Making the neovim plugin the top-level dir below this point for busted action
+      # Moving the old checkout is easier than doing some Windows-portable rm -rf thing
+      - name: Move build
+        # Skip for container builds (Rocky Linux) as paths don't work the same way
+        if: matrix.container == ''
+        run: |
+          echo ${{ runner.temp }}/slang-build/bin >> $GITHUB_PATH
+          mv ${{ github.workspace }}/build/${{ matrix.preset }} ${{ runner.temp }}/slang-build
+          mv ${{ github.workspace }}/clients/neovim ${{ runner.temp }}/neovim-plugin
+          mv ${{ github.workspace }} ${{ runner.temp }}/slang-server-checkout
+          mv ${{ runner.temp }}/neovim-plugin ${{ github.workspace }}
+        working-directory: ${{ runner.temp }}
+
+      - name: Run Neovim plugin tests
+        # This should work on Windows as well, but there's some linker error
+        # that I don't feel like debugging via GH
+        # Skip for container builds (Rocky Linux) as paths don't work the same way
+        if: runner.os != 'Windows' && matrix.container == ''
+        uses: nvim-neorocks/nvim-busted-action@v1
