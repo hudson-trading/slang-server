@@ -17,6 +17,10 @@ DocumentHandle ServerHarness::openFile(std::string fileName) {
     if (file) {
         std::string line;
         while (std::getline(file, line)) {
+            // Remove trailing Carriage Return
+            if (!line.empty() && line.back() == '\r')
+                line.pop_back();
+
             text += line + "\n";
         }
     }

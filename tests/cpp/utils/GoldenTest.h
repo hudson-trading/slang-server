@@ -78,8 +78,14 @@ public:
                 tmpFile << actual_str;
             }
             // Run diff tool
+#ifdef _WIN32
+            std::string cmd = "fc \"" + m_goldenFilePath.string() + "\" \"" + tmpPath.string() +
+                              "\"";
+#else
             std::string cmd = "diff -u \"" + m_goldenFilePath.string() + "\" \"" +
                               tmpPath.string() + "\"";
+#endif
+
             int ret = std::system(cmd.c_str());
             if (ret == 0) {
                 std::cout << "No differences found by diff, but strings did not match.\n";
