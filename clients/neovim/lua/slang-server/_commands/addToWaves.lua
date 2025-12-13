@@ -13,6 +13,9 @@ M.addToWaves = {
 
       local bufnr = vim.api.nvim_get_current_buf()
 
+      local first_client = vim.lsp.get_clients({ bufnr = vim.api.nvim_get_current_buf() })[1]
+      local position_encoding = first_client and first_client.offset_encoding or 'utf-16'
+
       client.getInstances(bufnr, {
          on_success = function(resp)
             if resp == nil or next(resp) == nil then
@@ -36,7 +39,7 @@ M.addToWaves = {
             end
          end,
          on_failure = handlers.defaultOnFailure,
-      }, { position = vim.lsp.util.make_position_params() })
+      }, { position = vim.lsp.util.make_position_params(0, position_encoding) })
    end,
 }
 
