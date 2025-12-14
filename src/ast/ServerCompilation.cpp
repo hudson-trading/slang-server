@@ -56,7 +56,7 @@ std::vector<hier::InstanceSet> ServerCompilation::getScopesByModule() {
 
         std::optional<hier::QualifiedInstance> instance;
         if (it.second.size() == 1) {
-            if (instance->instPath.starts_with("$unit")) {
+            if (instance.has_value() && instance->instPath.starts_with("$unit")) {
                 // don't return $unit instances, these are invalid and should probably be fixed in
                 // slang, it's returned sometimes by a non-unit symbol
                 continue;
