@@ -17,6 +17,10 @@ struct InstanceIndexer : public slang::ast::ASTVisitor<InstanceIndexer, false, f
 public:
     std::map<std::string, std::vector<const slang::ast::InstanceSymbol*>> moduleToInstances;
     void handle(const slang::ast::InstanceSymbol& symbol) {
+        // $unit modules- unused top modules
+        if (symbol.body.flags.has(slang::ast::InstanceFlags::Uninstantiated)) {
+            return;
+        }
         moduleToInstances[std::string{symbol.getDefinition().name}].push_back(&symbol);
         visitDefault(symbol.body);
     }
