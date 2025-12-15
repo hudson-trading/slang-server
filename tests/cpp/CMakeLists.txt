@@ -22,6 +22,10 @@ target_include_directories(
 
 add_test(NAME server_unittests COMMAND server_unittests)
 
+set_tests_properties(server_unittests PROPERTIES
+  WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+)
+
 add_custom_command(
   TARGET server_unittests
   POST_BUILD
