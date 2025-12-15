@@ -217,6 +217,9 @@ std::string stripDocComment(std::string_view input) {
              */
             if (!line.empty() && line.front() == '*')
                 line.remove_prefix(1);
+
+            // Everything else if ignored, including single line comments. Single
+            // line comments are displayed as is in the doc comment.
         }
 
         fmt::format_to(fmt::appender(out), "{}\n", line);
