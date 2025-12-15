@@ -92,7 +92,7 @@ void waves::WcpClient::runViewer() {
 
         // TODO -- make this persist even if slang-server goes down, maybe a switch for that
         // behavior?
-        execv(args[0], args.data());
+        execvp(args[0], args.data());
         std::cerr << "Problem launching waveform viewer: " << strerror(errno) << std::endl;
         exit(0);
     }

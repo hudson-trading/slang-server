@@ -49,27 +49,21 @@ void ServerCompilation::refresh() {
 
 std::vector<hier::InstanceSet> ServerCompilation::getScopesByModule() {
     std::vector<hier::InstanceSet> result;
-    for (auto& it : m_instances.moduleToInstances) {
-        if (it.second.size() == 0) {
+    for (auto& [_name, instances] : m_instances.moduleToInstances) {
+        if (instances.size() == 0) {
             continue;
         }
 
-        std::optional<hier::QualifiedInstance> instance;
-        if (it.second.size() == 1) {
-            if (instance->instPath.starts_with("$unit")) {
-                // don't return $unit instances, these are invalid and should probably be fixed in
-                // slang, it's returned sometimes by a non-unit symbol
-                continue;
-            }
-            instance.emplace(hier::toQualifiedInstance(*it.second[0], m_sourceManager));
-        }
-        auto& definition = it.second[0]->getDefinition();
-        result.push_back(hier::InstanceSet{
+        auto& definition = instances[0]->getDefinition();
+        auto instSet = hier::InstanceSet{
             .declName = std::string(definition.name),
             .declLoc = toLocation(definition.getSyntax()->sourceRange(), m_sourceManager),
-            .instCount = it.second.size(),
-            .inst = instance,
-        });
+            .instCount = instances.size(),
+        };
+        if (instances.size() == 1) {
+            instSet.inst = hier::toQualifiedInstance(*instances[0], m_sourceManager);
+        }
+        result.push_back(instSet);
     }
     return result;
 }

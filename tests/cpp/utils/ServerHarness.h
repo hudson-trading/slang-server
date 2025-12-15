@@ -79,6 +79,9 @@ public:
 
     std::shared_ptr<server::SlangDoc> getDoc(const URI& uri);
 
+    // Wrapper for getModulesInFile that handles relative paths
+    std::vector<std::string> getModulesInFile(const std::string& fileName);
+
     // For access to isWcpVariable
     // TODO -- remove once isWcpVariable is removed
     using SlangServer::m_driver;

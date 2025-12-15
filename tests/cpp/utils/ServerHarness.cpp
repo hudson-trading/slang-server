@@ -179,6 +179,14 @@ std::shared_ptr<server::SlangDoc> ServerHarness::getDoc(const URI& uri) {
     return doc->second;
 }
 
+std::vector<std::string> ServerHarness::getModulesInFile(const std::string& fileName) {
+    // Convert relative test path to absolute path using workspace root
+    auto root = m_workspaceFolder ? (m_workspaceFolder->uri.getPath()) : findSlangRoot();
+    auto absolutePath = root / fileName;
+    // Call the parent SlangServer method with absolute path
+    return SlangServer::getModulesInFile(absolutePath.string());
+}
+
 // ------------------- DocumentHandle -------------------
 
 DocumentHandle::DocumentHandle(ServerHarness& server, URI uri, std::string text) :

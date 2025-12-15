@@ -55,6 +55,59 @@ module cpu #(
     logic [DATA_WIDTH-1:0] alu_result;
     logic alu_zero, alu_overflow;
 
+    // Instance array - array of 4 ALU instances
+    logic [DATA_WIDTH-1:0] alu_array_a [4];
+    logic [DATA_WIDTH-1:0] alu_array_b [4];
+    logic [DATA_WIDTH-1:0] alu_array_result [4];
+    alu_op_t alu_array_op [4];
+    logic alu_array_zero [4];
+    logic alu_array_overflow [4];
+
+    alu #(
+        .WIDTH(DATA_WIDTH)
+    ) alu_inst_array [3:0] (
+        .a(alu_array_a),
+        .b(alu_array_b),
+        .op(alu_array_op),
+        .result(alu_array_result),
+        .zero(alu_array_zero),
+        .overflow(alu_array_overflow)
+    );
+
+    // Instance array of length 1 - using simple_counter module
+    logic counter_enable [1];
+    logic [7:0] counter_count [1];
+
+    simple_counter #(
+        .WIDTH(8)
+    ) counter_inst [0:0] (
+        .clk(clk),
+        .rst_n(rst_n),
+        .enable(counter_enable),
+        .count(counter_count)
+    );
+
+    // Generate block with generate array
+    genvar i;
+    generate
+        for (i = 0; i < 3; i++) begin : gen_alu_array
+            logic [DATA_WIDTH-1:0] gen_alu_a, gen_alu_b, gen_alu_result;
+            alu_op_t gen_alu_op;
+            logic gen_alu_zero, gen_alu_overflow;
+
+            alu #(
+                .WIDTH(DATA_WIDTH)
+            ) gen_alu_inst (
+                .a(gen_alu_a),
+                .b(gen_alu_b),
+                .op(gen_alu_op),
+                .result(gen_alu_result),
+                .zero(gen_alu_zero),
+                .overflow(gen_alu_overflow)
+            );
+        end
+    endgenerate
+
     // State machine
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
