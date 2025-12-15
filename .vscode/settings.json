@@ -16,16 +16,12 @@
     "clients/vscode/dist": true,
     "clients/vscode/node_modules/": true,
     "clients/vscode/package-lock.json": true,
-    ".venv/": true,
+    ".venv/": true
   },
   // Turn off tsc task auto detection since we have the necessary tasks as npm scripts
   "typescript.tsc.autoDetect": "off",
   "[typescript]": {
     "editor.formatOnSave": true,
     "editor.defaultFormatter": "esbenp.prettier-vscode"
-  },
-  "[cpp]": {
-    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
-    "editor.formatOnSave": true,
-  },
+  }
 }
