@@ -655,7 +655,7 @@ rfl::Variant<std::vector<lsp::CompletionItem>, lsp::CompletionList, std::monosta
     auto maybeLoc = doc->getLocation(params.position);
 
     // TODO: be more precise with this, this is just a heuristic atm
-    bool isLhs = std::all_of(prevText.begin(), prevText.end() - 1, isspace);
+    bool isLhs = prevText.size() >= 2 && std::all_of(prevText.begin(), prevText.end() - 1, isspace);
     if (!maybeLoc) {
         WARN("No location found for position {},{}", params.position.line,
              params.position.character);
