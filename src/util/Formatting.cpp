@@ -174,6 +174,9 @@ std::string detailFormat(const syntax::SyntaxNode& node) {
 // display the documentation nicely (and depending on the ide
 // render markdown)
 std::string stripDocComment(std::string_view input) {
+    if (input.empty())
+        return {};
+    
     fmt::memory_buffer out;
     bool inBlock = false;
 
@@ -226,11 +229,7 @@ std::string stripDocComment(std::string_view input) {
         pos = end + 1;
     }
 
-    auto result = fmt::to_string(out);
-    if (result == "\n") {
-        return {};
-    }
-    return result;
+    return fmt::to_string(out);
 }
 
 std::string svCodeBlockString(std::string_view code, bool shiftIndentation) {
