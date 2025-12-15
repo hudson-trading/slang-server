@@ -223,7 +223,11 @@ std::string stripDocComment(std::string_view input) {
         pos = end + 1;
     }
 
-    return fmt::to_string(out);
+    auto result = fmt::to_string(out);
+    if (result == "\n") {
+        return {};
+    }
+    return result;
 }
 
 std::string svCodeBlockString(std::string_view code, bool shiftIndentation) {
