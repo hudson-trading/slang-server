@@ -1,0 +1,1553 @@
+[
+  {
+    "testbench_children": [
+      {
+        "kind": "Logic",
+        "instName": "clk",
+        "instLoc": {
+          "uri": "file://cpu_testbench.sv",
+          "range": {
+            "start": {
+              "line": 6,
+              "character": 10
+            },
+            "end": {
+              "line": 6,
+              "character": 13
+            }
+          }
+        },
+        "type": "logic"
+      },
+      {
+        "kind": "Logic",
+        "instName": "rst_n",
+        "instLoc": {
+          "uri": "file://cpu_testbench.sv",
+          "range": {
+            "start": {
+              "line": 7,
+              "character": 10
+            },
+            "end": {
+              "line": 7,
+              "character": 15
+            }
+          }
+        },
+        "type": "logic"
+      },
+      {
+        "kind": "Logic",
+        "instName": "mem_addr",
+        "instLoc": {
+          "uri": "file://cpu_testbench.sv",
+          "range": {
+            "start": {
+              "line": 10,
+              "character": 17
+            },
+            "end": {
+              "line": 10,
+              "character": 25
+            }
+          }
+        },
+        "type": "logic[31:0]"
+      },
+      {
+        "kind": "Logic",
+        "instName": "mem_wdata",
+        "instLoc": {
+          "uri": "file://cpu_testbench.sv",
+          "range": {
+            "start": {
+              "line": 11,
+              "character": 17
+            },
+            "end": {
+              "line": 11,
+              "character": 26
+            }
+          }
+        },
+        "type": "logic[31:0]"
+      },
+      {
+        "kind": "Logic",
+        "instName": "mem_rdata",
+        "instLoc": {
+          "uri": "file://cpu_testbench.sv",
+          "range": {
+            "start": {
+              "line": 12,
+              "character": 17
+            },
+            "end": {
+              "line": 12,
+              "character": 26
+            }
+          }
+        },
+        "type": "logic[31:0]"
+      },
+      {
+        "kind": "Logic",
+        "instName": "mem_we",
+        "instLoc": {
+          "uri": "file://cpu_testbench.sv",
+          "range": {
+            "start": {
+              "line": 13,
+              "character": 17
+            },
+            "end": {
+              "line": 13,
+              "character": 23
+            }
+          }
+        },
+        "type": "logic"
+      },
+      {
+        "kind": "Logic",
+        "instName": "mem_req",
+        "instLoc": {
+          "uri": "file://cpu_testbench.sv",
+          "range": {
+            "start": {
+              "line": 14,
+              "character": 17
+            },
+            "end": {
+              "line": 14,
+              "character": 24
+            }
+          }
+        },
+        "type": "logic"
+      },
+      {
+        "kind": "Logic",
+        "instName": "mem_ack",
+        "instLoc": {
+          "uri": "file://cpu_testbench.sv",
+          "range": {
+            "start": {
+              "line": 15,
+              "character": 17
+            },
+            "end": {
+              "line": 15,
+              "character": 24
+            }
+          }
+        },
+        "type": "logic"
+      },
+      {
+        "kind": "Logic",
+        "instName": "cpu_state",
+        "instLoc": {
+          "uri": "file://cpu_testbench.sv",
+          "range": {
+            "start": {
+              "line": 16,
+              "character": 17
+            },
+            "end": {
+              "line": 16,
+              "character": 26
+            }
+          }
+        },
+        "type": "cpu_state_t / enum"
+      },
+      {
+        "kind": "Logic",
+        "instName": "halted",
+        "instLoc": {
+          "uri": "file://cpu_testbench.sv",
+          "range": {
+            "start": {
+              "line": 17,
+              "character": 17
+            },
+            "end": {
+              "line": 17,
+              "character": 23
+            }
+          }
+        },
+        "type": "logic"
+      },
+      {
+        "kind": "Instance",
+        "instName": "dut",
+        "instLoc": {
+          "uri": "file://cpu_testbench.sv",
+          "range": {
+            "start": {
+              "line": 38,
+              "character": 6
+            },
+            "end": {
+              "line": 49,
+              "character": 5
+            }
+          }
+        },
+        "declName": "cpu",
+        "declLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 2,
+              "character": 0
+            },
+            "end": {
+              "line": 151,
+              "character": 9
+            }
+          }
+        },
+        "children": []
+      },
+      {
+        "kind": "Logic",
+        "instName": "test_memory",
+        "instLoc": {
+          "uri": "file://cpu_testbench.sv",
+          "range": {
+            "start": {
+              "line": 52,
+              "character": 17
+            },
+            "end": {
+              "line": 52,
+              "character": 36
+            }
+          }
+        },
+        "type": "logic[31:0]$[0:255]"
+      }
+    ]
+  },
+  {
+    "cpu_children": [
+      {
+        "kind": "Param",
+        "instName": "DATA_WIDTH",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 3,
+              "character": 18
+            },
+            "end": {
+              "line": 3,
+              "character": 33
+            }
+          }
+        },
+        "type": "int",
+        "value": "32"
+      },
+      {
+        "kind": "Param",
+        "instName": "ADDR_WIDTH",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 4,
+              "character": 18
+            },
+            "end": {
+              "line": 4,
+              "character": 33
+            }
+          }
+        },
+        "type": "int",
+        "value": "32"
+      },
+      {
+        "kind": "Port",
+        "instName": "clk",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 6,
+              "character": 36
+            },
+            "end": {
+              "line": 6,
+              "character": 39
+            }
+          }
+        },
+        "type": "input logic"
+      },
+      {
+        "kind": "Port",
+        "instName": "rst_n",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 7,
+              "character": 36
+            },
+            "end": {
+              "line": 7,
+              "character": 41
+            }
+          }
+        },
+        "type": "input logic"
+      },
+      {
+        "kind": "Port",
+        "instName": "mem_addr",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 10,
+              "character": 35
+            },
+            "end": {
+              "line": 10,
+              "character": 43
+            }
+          }
+        },
+        "type": "output logic[31:0]"
+      },
+      {
+        "kind": "Port",
+        "instName": "mem_wdata",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 11,
+              "character": 35
+            },
+            "end": {
+              "line": 11,
+              "character": 44
+            }
+          }
+        },
+        "type": "output logic[31:0]"
+      },
+      {
+        "kind": "Port",
+        "instName": "mem_rdata",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 12,
+              "character": 35
+            },
+            "end": {
+              "line": 12,
+              "character": 44
+            }
+          }
+        },
+        "type": "input logic[31:0]"
+      },
+      {
+        "kind": "Port",
+        "instName": "mem_we",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 13,
+              "character": 36
+            },
+            "end": {
+              "line": 13,
+              "character": 42
+            }
+          }
+        },
+        "type": "output logic"
+      },
+      {
+        "kind": "Port",
+        "instName": "mem_req",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 14,
+              "character": 36
+            },
+            "end": {
+              "line": 14,
+              "character": 43
+            }
+          }
+        },
+        "type": "output logic"
+      },
+      {
+        "kind": "Port",
+        "instName": "mem_ack",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 15,
+              "character": 36
+            },
+            "end": {
+              "line": 15,
+              "character": 43
+            }
+          }
+        },
+        "type": "input logic"
+      },
+      {
+        "kind": "Port",
+        "instName": "state",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 18,
+              "character": 36
+            },
+            "end": {
+              "line": 18,
+              "character": 41
+            }
+          }
+        },
+        "type": "output cpu_state_t / enum"
+      },
+      {
+        "kind": "Port",
+        "instName": "halted",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 19,
+              "character": 36
+            },
+            "end": {
+              "line": 19,
+              "character": 42
+            }
+          }
+        },
+        "type": "output logic"
+      },
+      {
+        "kind": "Logic",
+        "instName": "pc",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 23,
+              "character": 27
+            },
+            "end": {
+              "line": 23,
+              "character": 29
+            }
+          }
+        },
+        "type": "logic[31:0]"
+      },
+      {
+        "kind": "Logic",
+        "instName": "instruction",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 24,
+              "character": 27
+            },
+            "end": {
+              "line": 24,
+              "character": 38
+            }
+          }
+        },
+        "type": "logic[31:0]"
+      },
+      {
+        "kind": "Logic",
+        "instName": "register_file",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 25,
+              "character": 27
+            },
+            "end": {
+              "line": 25,
+              "character": 47
+            }
+          }
+        },
+        "type": "logic[31:0]$[0:31]"
+      },
+      {
+        "kind": "Instance",
+        "instName": "alu_inst",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 30,
+              "character": 6
+            },
+            "end": {
+              "line": 37,
+              "character": 5
+            }
+          }
+        },
+        "declName": "alu",
+        "declLoc": {
+          "uri": "file://alu.sv",
+          "range": {
+            "start": {
+              "line": 2,
+              "character": 0
+            },
+            "end": {
+              "line": 55,
+              "character": 9
+            }
+          }
+        },
+        "children": []
+      },
+      {
+        "kind": "Instance",
+        "instName": "mem_ctrl",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 43,
+              "character": 6
+            },
+            "end": {
+              "line": 52,
+              "character": 5
+            }
+          }
+        },
+        "declName": "memory_controller",
+        "declLoc": {
+          "uri": "file://memory_controller.sv",
+          "range": {
+            "start": {
+              "line": 2,
+              "character": 0
+            },
+            "end": {
+              "line": 70,
+              "character": 9
+            }
+          }
+        },
+        "children": []
+      },
+      {
+        "kind": "Logic",
+        "instName": "alu_result",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 54,
+              "character": 27
+            },
+            "end": {
+              "line": 54,
+              "character": 37
+            }
+          }
+        },
+        "type": "logic[31:0]"
+      },
+      {
+        "kind": "Logic",
+        "instName": "alu_zero",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 55,
+              "character": 10
+            },
+            "end": {
+              "line": 55,
+              "character": 18
+            }
+          }
+        },
+        "type": "logic"
+      },
+      {
+        "kind": "Logic",
+        "instName": "alu_overflow",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 55,
+              "character": 20
+            },
+            "end": {
+              "line": 55,
+              "character": 32
+            }
+          }
+        },
+        "type": "logic"
+      },
+      {
+        "kind": "Logic",
+        "instName": "alu_array_a",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 58,
+              "character": 27
+            },
+            "end": {
+              "line": 58,
+              "character": 42
+            }
+          }
+        },
+        "type": "logic[31:0]$[0:3]"
+      },
+      {
+        "kind": "Logic",
+        "instName": "alu_array_b",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 59,
+              "character": 27
+            },
+            "end": {
+              "line": 59,
+              "character": 42
+            }
+          }
+        },
+        "type": "logic[31:0]$[0:3]"
+      },
+      {
+        "kind": "Logic",
+        "instName": "alu_array_result",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 60,
+              "character": 27
+            },
+            "end": {
+              "line": 60,
+              "character": 47
+            }
+          }
+        },
+        "type": "logic[31:0]$[0:3]"
+      },
+      {
+        "kind": "Logic",
+        "instName": "alu_array_op",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 61,
+              "character": 13
+            },
+            "end": {
+              "line": 61,
+              "character": 29
+            }
+          }
+        },
+        "type": "alu_op_t$[0:3]"
+      },
+      {
+        "kind": "Logic",
+        "instName": "alu_array_zero",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 62,
+              "character": 10
+            },
+            "end": {
+              "line": 62,
+              "character": 28
+            }
+          }
+        },
+        "type": "logic$[0:3]"
+      },
+      {
+        "kind": "Logic",
+        "instName": "alu_array_overflow",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 63,
+              "character": 10
+            },
+            "end": {
+              "line": 63,
+              "character": 32
+            }
+          }
+        },
+        "type": "logic$[0:3]"
+      },
+      {
+        "kind": "InstanceArray",
+        "instName": "alu_inst_array",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 67,
+              "character": 6
+            },
+            "end": {
+              "line": 74,
+              "character": 5
+            }
+          }
+        },
+        "declName": "alu[3:0]",
+        "declLoc": {
+          "uri": "file://alu.sv",
+          "range": {
+            "start": {
+              "line": 2,
+              "character": 0
+            },
+            "end": {
+              "line": 55,
+              "character": 9
+            }
+          }
+        },
+        "children": [
+          {
+            "kind": "Instance",
+            "instName": "[3]",
+            "instLoc": {
+              "uri": "file://cpu.sv",
+              "range": {
+                "start": {
+                  "line": 67,
+                  "character": 6
+                },
+                "end": {
+                  "line": 74,
+                  "character": 5
+                }
+              }
+            },
+            "declName": "alu",
+            "declLoc": {
+              "uri": "file://alu.sv",
+              "range": {
+                "start": {
+                  "line": 2,
+                  "character": 0
+                },
+                "end": {
+                  "line": 55,
+                  "character": 9
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "kind": "Instance",
+            "instName": "[2]",
+            "instLoc": {
+              "uri": "file://cpu.sv",
+              "range": {
+                "start": {
+                  "line": 67,
+                  "character": 6
+                },
+                "end": {
+                  "line": 74,
+                  "character": 5
+                }
+              }
+            },
+            "declName": "alu",
+            "declLoc": {
+              "uri": "file://alu.sv",
+              "range": {
+                "start": {
+                  "line": 2,
+                  "character": 0
+                },
+                "end": {
+                  "line": 55,
+                  "character": 9
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "kind": "Instance",
+            "instName": "[1]",
+            "instLoc": {
+              "uri": "file://cpu.sv",
+              "range": {
+                "start": {
+                  "line": 67,
+                  "character": 6
+                },
+                "end": {
+                  "line": 74,
+                  "character": 5
+                }
+              }
+            },
+            "declName": "alu",
+            "declLoc": {
+              "uri": "file://alu.sv",
+              "range": {
+                "start": {
+                  "line": 2,
+                  "character": 0
+                },
+                "end": {
+                  "line": 55,
+                  "character": 9
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "kind": "Instance",
+            "instName": "[0]",
+            "instLoc": {
+              "uri": "file://cpu.sv",
+              "range": {
+                "start": {
+                  "line": 67,
+                  "character": 6
+                },
+                "end": {
+                  "line": 74,
+                  "character": 5
+                }
+              }
+            },
+            "declName": "alu",
+            "declLoc": {
+              "uri": "file://alu.sv",
+              "range": {
+                "start": {
+                  "line": 2,
+                  "character": 0
+                },
+                "end": {
+                  "line": 55,
+                  "character": 9
+                }
+              }
+            },
+            "children": []
+          }
+        ]
+      },
+      {
+        "kind": "Logic",
+        "instName": "counter_enable",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 77,
+              "character": 10
+            },
+            "end": {
+              "line": 77,
+              "character": 28
+            }
+          }
+        },
+        "type": "logic$[0:0]"
+      },
+      {
+        "kind": "Logic",
+        "instName": "counter_count",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 78,
+              "character": 16
+            },
+            "end": {
+              "line": 78,
+              "character": 33
+            }
+          }
+        },
+        "type": "logic[7:0]$[0:0]"
+      },
+      {
+        "kind": "InstanceArray",
+        "instName": "counter_inst",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 82,
+              "character": 6
+            },
+            "end": {
+              "line": 87,
+              "character": 5
+            }
+          }
+        },
+        "declName": "simple_counter[0:0]",
+        "declLoc": {
+          "uri": "file://simple_counter.sv",
+          "range": {
+            "start": {
+              "line": 3,
+              "character": 0
+            },
+            "end": {
+              "line": 19,
+              "character": 9
+            }
+          }
+        },
+        "children": [
+          {
+            "kind": "Instance",
+            "instName": "[0]",
+            "instLoc": {
+              "uri": "file://cpu.sv",
+              "range": {
+                "start": {
+                  "line": 82,
+                  "character": 6
+                },
+                "end": {
+                  "line": 87,
+                  "character": 5
+                }
+              }
+            },
+            "declName": "simple_counter",
+            "declLoc": {
+              "uri": "file://simple_counter.sv",
+              "range": {
+                "start": {
+                  "line": 3,
+                  "character": 0
+                },
+                "end": {
+                  "line": 19,
+                  "character": 9
+                }
+              }
+            },
+            "children": []
+          }
+        ]
+      },
+      {
+        "kind": "ScopeArray",
+        "instName": "gen_alu_array",
+        "instLoc": {
+          "uri": "file://cpu.sv",
+          "range": {
+            "start": {
+              "line": 92,
+              "character": 8
+            },
+            "end": {
+              "line": 107,
+              "character": 11
+            }
+          }
+        },
+        "children": [
+          {
+            "kind": "Scope",
+            "instName": "[0]",
+            "instLoc": {
+              "uri": "file://cpu.sv",
+              "range": {
+                "start": {
+                  "line": 92,
+                  "character": 32
+                },
+                "end": {
+                  "line": 107,
+                  "character": 11
+                }
+              }
+            },
+            "children": [
+              {
+                "kind": "Param",
+                "instName": "i",
+                "instLoc": {
+                  "uri": "file://cpu.sv",
+                  "range": {
+                    "start": {
+                      "line": 92,
+                      "character": 13
+                    },
+                    "end": {
+                      "line": 92,
+                      "character": 14
+                    }
+                  }
+                },
+                "type": "integer",
+                "value": "0"
+              },
+              {
+                "kind": "Logic",
+                "instName": "gen_alu_a",
+                "instLoc": {
+                  "uri": "file://cpu.sv",
+                  "range": {
+                    "start": {
+                      "line": 93,
+                      "character": 35
+                    },
+                    "end": {
+                      "line": 93,
+                      "character": 44
+                    }
+                  }
+                },
+                "type": "logic[31:0]"
+              },
+              {
+                "kind": "Logic",
+                "instName": "gen_alu_b",
+                "instLoc": {
+                  "uri": "file://cpu.sv",
+                  "range": {
+                    "start": {
+                      "line": 93,
+                      "character": 46
+                    },
+                    "end": {
+                      "line": 93,
+                      "character": 55
+                    }
+                  }
+                },
+                "type": "logic[31:0]"
+              },
+              {
+                "kind": "Logic",
+                "instName": "gen_alu_result",
+                "instLoc": {
+                  "uri": "file://cpu.sv",
+                  "range": {
+                    "start": {
+                      "line": 93,
+                      "character": 57
+                    },
+                    "end": {
+                      "line": 93,
+                      "character": 71
+                    }
+                  }
+                },
+                "type": "logic[31:0]"
+              },
+              {
+                "kind": "Logic",
+                "instName": "gen_alu_op",
+                "instLoc": {
+                  "uri": "file://cpu.sv",
+                  "range": {
+                    "start": {
+                      "line": 94,
+                      "character": 21
+                    },
+                    "end": {
+                      "line": 94,
+                      "character": 31
+                    }
+                  }
+                },
+                "type": "alu_op_t / enum"
+              },
+              {
+                "kind": "Logic",
+                "instName": "gen_alu_zero",
+                "instLoc": {
+                  "uri": "file://cpu.sv",
+                  "range": {
+                    "start": {
+                      "line": 95,
+                      "character": 18
+                    },
+                    "end": {
+                      "line": 95,
+                      "character": 30
+                    }
+                  }
+                },
+                "type": "logic"
+              },
+              {
+                "kind": "Logic",
+                "instName": "gen_alu_overflow",
+                "instLoc": {
+                  "uri": "file://cpu.sv",
+                  "range": {
+                    "start": {
+                      "line": 95,
+                      "character": 32
+                    },
+                    "end": {
+                      "line": 95,
+                      "character": 48
+                    }
+                  }
+                },
+                "type": "logic"
+              },
+              {
+                "kind": "Instance",
+                "instName": "gen_alu_inst",
+                "instLoc": {
+                  "uri": "file://cpu.sv",
+                  "range": {
+                    "start": {
+                      "line": 99,
+                      "character": 14
+                    },
+                    "end": {
+                      "line": 106,
+                      "character": 13
+                    }
+                  }
+                },
+                "declName": "alu",
+                "declLoc": {
+                  "uri": "file://alu.sv",
+                  "range": {
+                    "start": {
+                      "line": 2,
+                      "character": 0
+                    },
+                    "end": {
+                      "line": 55,
+                      "character": 9
+                    }
+                  }
+                },
+                "children": []
+              }
+            ]
+          },
+          {
+            "kind": "Scope",
+            "instName": "[1]",
+            "instLoc": {
+              "uri": "file://cpu.sv",
+              "range": {
+                "start": {
+                  "line": 92,
+                  "character": 32
+                },
+                "end": {
+                  "line": 107,
+                  "character": 11
+                }
+              }
+            },
+            "children": [
+              {
+                "kind": "Param",
+                "instName": "i",
+                "instLoc": {
+                  "uri": "file://cpu.sv",
+                  "range": {
+                    "start": {
+                      "line": 92,
+                      "character": 13
+                    },
+                    "end": {
+                      "line": 92,
+                      "character": 14
+                    }
+                  }
+                },
+                "type": "integer",
+                "value": "1"
+              },
+              {
+                "kind": "Logic",
+                "instName": "gen_alu_a",
+                "instLoc": {
+                  "uri": "file://cpu.sv",
+                  "range": {
+                    "start": {
+                      "line": 93,
+                      "character": 35
+                    },
+                    "end": {
+                      "line": 93,
+                      "character": 44
+                    }
+                  }
+                },
+                "type": "logic[31:0]"
+              },
+              {
+                "kind": "Logic",
+                "instName": "gen_alu_b",
+                "instLoc": {
+                  "uri": "file://cpu.sv",
+                  "range": {
+                    "start": {
+                      "line": 93,
+                      "character": 46
+                    },
+                    "end": {
+                      "line": 93,
+                      "character": 55
+                    }
+                  }
+                },
+                "type": "logic[31:0]"
+              },
+              {
+                "kind": "Logic",
+                "instName": "gen_alu_result",
+                "instLoc": {
+                  "uri": "file://cpu.sv",
+                  "range": {
+                    "start": {
+                      "line": 93,
+                      "character": 57
+                    },
+                    "end": {
+                      "line": 93,
+                      "character": 71
+                    }
+                  }
+                },
+                "type": "logic[31:0]"
+              },
+              {
+                "kind": "Logic",
+                "instName": "gen_alu_op",
+                "instLoc": {
+                  "uri": "file://cpu.sv",
+                  "range": {
+                    "start": {
+                      "line": 94,
+                      "character": 21
+                    },
+                    "end": {
+                      "line": 94,
+                      "character": 31
+                    }
+                  }
+                },
+                "type": "alu_op_t / enum"
+              },
+              {
+                "kind": "Logic",
+                "instName": "gen_alu_zero",
+                "instLoc": {
+                  "uri": "file://cpu.sv",
+                  "range": {
+                    "start": {
+                      "line": 95,
+                      "character": 18
+                    },
+                    "end": {
+                      "line": 95,
+                      "character": 30
+                    }
+                  }
+                },
+                "type": "logic"
+              },
+              {
+                "kind": "Logic",
+                "instName": "gen_alu_overflow",
+                "instLoc": {
+                  "uri": "file://cpu.sv",
+                  "range": {
+                    "start": {
+                      "line": 95,
+                      "character": 32
+                    },
+                    "end": {
+                      "line": 95,
+                      "character": 48
+                    }
+                  }
+                },
+                "type": "logic"
+              },
+              {
+                "kind": "Instance",
+                "instName": "gen_alu_inst",
+                "instLoc": {
+                  "uri": "file://cpu.sv",
+                  "range": {
+                    "start": {
+                      "line": 99,
+                      "character": 14
+                    },
+                    "end": {
+                      "line": 106,
+                      "character": 13
+                    }
+                  }
+                },
+                "declName": "alu",
+                "declLoc": {
+                  "uri": "file://alu.sv",
+                  "range": {
+                    "start": {
+                      "line": 2,
+                      "character": 0
+                    },
+                    "end": {
+                      "line": 55,
+                      "character": 9
+                    }
+                  }
+                },
+                "children": []
+              }
+            ]
+          },
+          {
+            "kind": "Scope",
+            "instName": "[2]",
+            "instLoc": {
+              "uri": "file://cpu.sv",
+              "range": {
+                "start": {
+                  "line": 92,
+                  "character": 32
+                },
+                "end": {
+                  "line": 107,
+                  "character": 11
+                }
+              }
+            },
+            "children": [
+              {
+                "kind": "Param",
+                "instName": "i",
+                "instLoc": {
+                  "uri": "file://cpu.sv",
+                  "range": {
+                    "start": {
+                      "line": 92,
+                      "character": 13
+                    },
+                    "end": {
+                      "line": 92,
+                      "character": 14
+                    }
+                  }
+                },
+                "type": "integer",
+                "value": "2"
+              },
+              {
+                "kind": "Logic",
+                "instName": "gen_alu_a",
+                "instLoc": {
+                  "uri": "file://cpu.sv",
+                  "range": {
+                    "start": {
+                      "line": 93,
+                      "character": 35
+                    },
+                    "end": {
+                      "line": 93,
+                      "character": 44
+                    }
+                  }
+                },
+                "type": "logic[31:0]"
+              },
+              {
+                "kind": "Logic",
+                "instName": "gen_alu_b",
+                "instLoc": {
+                  "uri": "file://cpu.sv",
+                  "range": {
+                    "start": {
+                      "line": 93,
+                      "character": 46
+                    },
+                    "end": {
+                      "line": 93,
+                      "character": 55
+                    }
+                  }
+                },
+                "type": "logic[31:0]"
+              },
+              {
+                "kind": "Logic",
+                "instName": "gen_alu_result",
+                "instLoc": {
+                  "uri": "file://cpu.sv",
+                  "range": {
+                    "start": {
+                      "line": 93,
+                      "character": 57
+                    },
+                    "end": {
+                      "line": 93,
+                      "character": 71
+                    }
+                  }
+                },
+                "type": "logic[31:0]"
+              },
+              {
+                "kind": "Logic",
+                "instName": "gen_alu_op",
+                "instLoc": {
+                  "uri": "file://cpu.sv",
+                  "range": {
+                    "start": {
+                      "line": 94,
+                      "character": 21
+                    },
+                    "end": {
+                      "line": 94,
+                      "character": 31
+                    }
+                  }
+                },
+                "type": "alu_op_t / enum"
+              },
+              {
+                "kind": "Logic",
+                "instName": "gen_alu_zero",
+                "instLoc": {
+                  "uri": "file://cpu.sv",
+                  "range": {
+                    "start": {
+                      "line": 95,
+                      "character": 18
+                    },
+                    "end": {
+                      "line": 95,
+                      "character": 30
+                    }
+                  }
+                },
+                "type": "logic"
+              },
+              {
+                "kind": "Logic",
+                "instName": "gen_alu_overflow",
+                "instLoc": {
+                  "uri": "file://cpu.sv",
+                  "range": {
+                    "start": {
+                      "line": 95,
+                      "character": 32
+                    },
+                    "end": {
+                      "line": 95,
+                      "character": 48
+                    }
+                  }
+                },
+                "type": "logic"
+              },
+              {
+                "kind": "Instance",
+                "instName": "gen_alu_inst",
+                "instLoc": {
+                  "uri": "file://cpu.sv",
+                  "range": {
+                    "start": {
+                      "line": 99,
+                      "character": 14
+                    },
+                    "end": {
+                      "line": 106,
+                      "character": 13
+                    }
+                  }
+                },
+                "declName": "alu",
+                "declLoc": {
+                  "uri": "file://alu.sv",
+                  "range": {
+                    "start": {
+                      "line": 2,
+                      "character": 0
+                    },
+                    "end": {
+                      "line": 55,
+                      "character": 9
+                    }
+                  }
+                },
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

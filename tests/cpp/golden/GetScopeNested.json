@@ -1,0 +1,430 @@
+[
+  {
+    "alu_scope": [
+      {
+        "kind": "Param",
+        "instName": "WIDTH",
+        "instLoc": {
+          "uri": "file://alu.sv",
+          "range": {
+            "start": {
+              "line": 3,
+              "character": 18
+            },
+            "end": {
+              "line": 3,
+              "character": 28
+            }
+          }
+        },
+        "type": "int",
+        "value": "32"
+      },
+      {
+        "kind": "Port",
+        "instName": "a",
+        "instLoc": {
+          "uri": "file://alu.sv",
+          "range": {
+            "start": {
+              "line": 5,
+              "character": 32
+            },
+            "end": {
+              "line": 5,
+              "character": 33
+            }
+          }
+        },
+        "type": "input logic[31:0]"
+      },
+      {
+        "kind": "Port",
+        "instName": "b",
+        "instLoc": {
+          "uri": "file://alu.sv",
+          "range": {
+            "start": {
+              "line": 6,
+              "character": 32
+            },
+            "end": {
+              "line": 6,
+              "character": 33
+            }
+          }
+        },
+        "type": "input logic[31:0]"
+      },
+      {
+        "kind": "Port",
+        "instName": "op",
+        "instLoc": {
+          "uri": "file://alu.sv",
+          "range": {
+            "start": {
+              "line": 7,
+              "character": 32
+            },
+            "end": {
+              "line": 7,
+              "character": 34
+            }
+          }
+        },
+        "type": "input alu_op_t / enum"
+      },
+      {
+        "kind": "Port",
+        "instName": "result",
+        "instLoc": {
+          "uri": "file://alu.sv",
+          "range": {
+            "start": {
+              "line": 8,
+              "character": 32
+            },
+            "end": {
+              "line": 8,
+              "character": 38
+            }
+          }
+        },
+        "type": "output logic[31:0]"
+      },
+      {
+        "kind": "Port",
+        "instName": "zero",
+        "instLoc": {
+          "uri": "file://alu.sv",
+          "range": {
+            "start": {
+              "line": 9,
+              "character": 32
+            },
+            "end": {
+              "line": 9,
+              "character": 36
+            }
+          }
+        },
+        "type": "output logic"
+      },
+      {
+        "kind": "Port",
+        "instName": "overflow",
+        "instLoc": {
+          "uri": "file://alu.sv",
+          "range": {
+            "start": {
+              "line": 10,
+              "character": 32
+            },
+            "end": {
+              "line": 10,
+              "character": 40
+            }
+          }
+        },
+        "type": "output logic"
+      },
+      {
+        "kind": "Logic",
+        "instName": "extended_result",
+        "instLoc": {
+          "uri": "file://alu.sv",
+          "range": {
+            "start": {
+              "line": 13,
+              "character": 20
+            },
+            "end": {
+              "line": 13,
+              "character": 35
+            }
+          }
+        },
+        "type": "logic[32:0]"
+      }
+    ]
+  },
+  {
+    "mem_ctrl_scope": [
+      {
+        "kind": "Param",
+        "instName": "ADDR_WIDTH",
+        "instLoc": {
+          "uri": "file://memory_controller.sv",
+          "range": {
+            "start": {
+              "line": 3,
+              "character": 18
+            },
+            "end": {
+              "line": 3,
+              "character": 33
+            }
+          }
+        },
+        "type": "int",
+        "value": "32"
+      },
+      {
+        "kind": "Param",
+        "instName": "DATA_WIDTH",
+        "instLoc": {
+          "uri": "file://memory_controller.sv",
+          "range": {
+            "start": {
+              "line": 4,
+              "character": 18
+            },
+            "end": {
+              "line": 4,
+              "character": 33
+            }
+          }
+        },
+        "type": "int",
+        "value": "32"
+      },
+      {
+        "kind": "Port",
+        "instName": "clk",
+        "instLoc": {
+          "uri": "file://memory_controller.sv",
+          "range": {
+            "start": {
+              "line": 6,
+              "character": 36
+            },
+            "end": {
+              "line": 6,
+              "character": 39
+            }
+          }
+        },
+        "type": "input logic"
+      },
+      {
+        "kind": "Port",
+        "instName": "rst_n",
+        "instLoc": {
+          "uri": "file://memory_controller.sv",
+          "range": {
+            "start": {
+              "line": 7,
+              "character": 36
+            },
+            "end": {
+              "line": 7,
+              "character": 41
+            }
+          }
+        },
+        "type": "input logic"
+      },
+      {
+        "kind": "Port",
+        "instName": "cpu_addr",
+        "instLoc": {
+          "uri": "file://memory_controller.sv",
+          "range": {
+            "start": {
+              "line": 10,
+              "character": 35
+            },
+            "end": {
+              "line": 10,
+              "character": 43
+            }
+          }
+        },
+        "type": "input logic[31:0]"
+      },
+      {
+        "kind": "Port",
+        "instName": "cpu_wdata",
+        "instLoc": {
+          "uri": "file://memory_controller.sv",
+          "range": {
+            "start": {
+              "line": 11,
+              "character": 35
+            },
+            "end": {
+              "line": 11,
+              "character": 44
+            }
+          }
+        },
+        "type": "input logic[31:0]"
+      },
+      {
+        "kind": "Port",
+        "instName": "cpu_rdata",
+        "instLoc": {
+          "uri": "file://memory_controller.sv",
+          "range": {
+            "start": {
+              "line": 12,
+              "character": 35
+            },
+            "end": {
+              "line": 12,
+              "character": 44
+            }
+          }
+        },
+        "type": "output logic[31:0]"
+      },
+      {
+        "kind": "Port",
+        "instName": "cpu_we",
+        "instLoc": {
+          "uri": "file://memory_controller.sv",
+          "range": {
+            "start": {
+              "line": 13,
+              "character": 36
+            },
+            "end": {
+              "line": 13,
+              "character": 42
+            }
+          }
+        },
+        "type": "input logic"
+      },
+      {
+        "kind": "Port",
+        "instName": "cpu_req",
+        "instLoc": {
+          "uri": "file://memory_controller.sv",
+          "range": {
+            "start": {
+              "line": 14,
+              "character": 36
+            },
+            "end": {
+              "line": 14,
+              "character": 43
+            }
+          }
+        },
+        "type": "input logic"
+      },
+      {
+        "kind": "Port",
+        "instName": "cpu_ack",
+        "instLoc": {
+          "uri": "file://memory_controller.sv",
+          "range": {
+            "start": {
+              "line": 15,
+              "character": 36
+            },
+            "end": {
+              "line": 15,
+              "character": 43
+            }
+          }
+        },
+        "type": "output logic"
+      },
+      {
+        "kind": "Logic",
+        "instName": "memory",
+        "instLoc": {
+          "uri": "file://memory_controller.sv",
+          "range": {
+            "start": {
+              "line": 19,
+              "character": 27
+            },
+            "end": {
+              "line": 19,
+              "character": 42
+            }
+          }
+        },
+        "type": "logic[31:0]$[0:1023]"
+      },
+      {
+        "kind": "Logic",
+        "instName": "state",
+        "instLoc": {
+          "uri": "file://memory_controller.sv",
+          "range": {
+            "start": {
+              "line": 20,
+              "character": 16
+            },
+            "end": {
+              "line": 20,
+              "character": 21
+            }
+          }
+        },
+        "type": "logic[1:0]"
+      },
+      {
+        "kind": "Param",
+        "instName": "IDLE",
+        "instLoc": {
+          "uri": "file://memory_controller.sv",
+          "range": {
+            "start": {
+              "line": 22,
+              "character": 15
+            },
+            "end": {
+              "line": 22,
+              "character": 27
+            }
+          }
+        },
+        "type": "logic[1:0]",
+        "value": "2'b0"
+      },
+      {
+        "kind": "Param",
+        "instName": "READ",
+        "instLoc": {
+          "uri": "file://memory_controller.sv",
+          "range": {
+            "start": {
+              "line": 23,
+              "character": 15
+            },
+            "end": {
+              "line": 23,
+              "character": 27
+            }
+          }
+        },
+        "type": "logic[1:0]",
+        "value": "2'b1"
+      },
+      {
+        "kind": "Param",
+        "instName": "WRITE",
+        "instLoc": {
+          "uri": "file://memory_controller.sv",
+          "range": {
+            "start": {
+              "line": 24,
+              "character": 15
+            },
+            "end": {
+              "line": 24,
+              "character": 28
+            }
+          }
+        },
+        "type": "logic[1:0]",
+        "value": "2'b10"
+      }
+    ]
+  }
+]
