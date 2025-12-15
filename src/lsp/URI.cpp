@@ -146,6 +146,9 @@ URI::URI(std::string scheme, std::string authority, std::string path, std::strin
 }
 
 URI URI::fromFile(const std::filesystem::path& file) {
+    if (file.empty())
+        return URI();
+    
     std::string path = file.generic_string();
     std::string authority = "";
 
