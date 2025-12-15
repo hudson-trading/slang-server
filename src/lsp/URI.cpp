@@ -4,6 +4,7 @@
 #include <ctre.hpp>
 #include <filesystem>
 #include <string>
+#include <string_view>
 #include <utility>
 
 // Pattern from RFC 3986
@@ -148,7 +149,7 @@ URI::URI(std::string scheme, std::string authority, std::string path, std::strin
 URI URI::fromFile(const std::filesystem::path& file) {
     if (file.empty())
         return URI();
-    
+
     std::string path = file.generic_string();
     std::string authority = "";
 
@@ -189,8 +190,7 @@ std::string_view URI::getPath() const {
 
 #ifdef _WIN32
     // Convert drive letter: /c:/ -> C:/
-    if (fsPath_.size() >= 3 && fsPath_[0] == '/' && std::isalpha(fsPath_[1]) &&
-        fsPath_[2] == ':') {
+    if (fsPath_.size() >= 3 && fsPath_[0] == '/' && std::isalpha(fsPath_[1]) && fsPath_[2] == ':') {
         fsPath_[1] = static_cast<char>(std::toupper(fsPath_[1]));
         fsPath_.erase(0, 1); // remove leading slash
     }
