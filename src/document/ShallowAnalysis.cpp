@@ -502,9 +502,15 @@ std::vector<lsp::DocumentLink> ShallowAnalysis::getDocLinks() const {
         if (inc.syntax->fileName.location().buffer() != m_buffer) {
             continue;
         }
+
+        const auto bufferId = inc.buffer.id;
+
+        if (!m_sourceManager.isValid(bufferId))
+            continue;
+
         links.push_back(lsp::DocumentLink{
             .range = toRange(inc.syntax->fileName.range(), m_sourceManager),
-            .target = URI::fromFile(m_sourceManager.getFullPath(inc.buffer.id)),
+            .target = URI::fromFile(m_sourceManager.getFullPath(bufferId)),
         });
     }
     return links;
