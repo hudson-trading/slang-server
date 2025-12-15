@@ -301,24 +301,24 @@ module TestModule #(
 
     bus_if.master bus_master,
     ^^^^^^ Ref -> `interface bus_if #(\n\    parameter type data_t = bit,\n\    parameter int ADDR_WIDTH = 32\n\)(\n\    input logic clk,\n\    input logic rst\n\);`
-           ^ Ref -> `// In bus_if`\n\\n\---\n\\n\`// Modport for master\n\modport master (\n\    input clk, rst, ready,\n\    output valid, addr, data, write_enable\n\);`
-            ^ Ref -> `// In bus_if`\n\\n\---\n\\n\`// Modport for master\n\modport master (\n\    input clk, rst, ready,\n\    output valid, addr, data, write_enable\n\);`
-             ^ Ref -> `// In bus_if`\n\\n\---\n\\n\`// Modport for master\n\modport master (\n\    input clk, rst, ready,\n\    output valid, addr, data, write_enable\n\);`
-              ^ Ref -> `// In bus_if`\n\\n\---\n\\n\`// Modport for master\n\modport master (\n\    input clk, rst, ready,\n\    output valid, addr, data, write_enable\n\);`
-               ^ Ref -> `// In bus_if`\n\\n\---\n\\n\`// Modport for master\n\modport master (\n\    input clk, rst, ready,\n\    output valid, addr, data, write_enable\n\);`
-                ^ Ref -> `// In bus_if`\n\\n\---\n\\n\`// Modport for master\n\modport master (\n\    input clk, rst, ready,\n\    output valid, addr, data, write_enable\n\);`
+           ^ Ref -> `// In bus_if`\n\\n\---\n\\n\ Modport for master\n\\n\`modport master (\n\    input clk, rst, ready,\n\    output valid, addr, data, write_enable\n\);`
+            ^ Ref -> `// In bus_if`\n\\n\---\n\\n\ Modport for master\n\\n\`modport master (\n\    input clk, rst, ready,\n\    output valid, addr, data, write_enable\n\);`
+             ^ Ref -> `// In bus_if`\n\\n\---\n\\n\ Modport for master\n\\n\`modport master (\n\    input clk, rst, ready,\n\    output valid, addr, data, write_enable\n\);`
+              ^ Ref -> `// In bus_if`\n\\n\---\n\\n\ Modport for master\n\\n\`modport master (\n\    input clk, rst, ready,\n\    output valid, addr, data, write_enable\n\);`
+               ^ Ref -> `// In bus_if`\n\\n\---\n\\n\ Modport for master\n\\n\`modport master (\n\    input clk, rst, ready,\n\    output valid, addr, data, write_enable\n\);`
+                ^ Ref -> `// In bus_if`\n\\n\---\n\\n\ Modport for master\n\\n\`modport master (\n\    input clk, rst, ready,\n\    output valid, addr, data, write_enable\n\);`
                   ^^^^^^^^^^ Sym bus_master : InterfacePort
 
     bus_if.follower bus_follower
     ^^^^^^ Ref -> `interface bus_if #(\n\    parameter type data_t = bit,\n\    parameter int ADDR_WIDTH = 32\n\)(\n\    input logic clk,\n\    input logic rst\n\);`
-           ^ Ref -> `// In bus_if`\n\\n\---\n\\n\`// Modport for follower\n\modport follower (\n\    input clk, rst, valid, addr, data, write_enable,\n\    output ready\n\);`
-            ^ Ref -> `// In bus_if`\n\\n\---\n\\n\`// Modport for follower\n\modport follower (\n\    input clk, rst, valid, addr, data, write_enable,\n\    output ready\n\);`
-             ^ Ref -> `// In bus_if`\n\\n\---\n\\n\`// Modport for follower\n\modport follower (\n\    input clk, rst, valid, addr, data, write_enable,\n\    output ready\n\);`
-              ^ Ref -> `// In bus_if`\n\\n\---\n\\n\`// Modport for follower\n\modport follower (\n\    input clk, rst, valid, addr, data, write_enable,\n\    output ready\n\);`
-               ^ Ref -> `// In bus_if`\n\\n\---\n\\n\`// Modport for follower\n\modport follower (\n\    input clk, rst, valid, addr, data, write_enable,\n\    output ready\n\);`
-                ^ Ref -> `// In bus_if`\n\\n\---\n\\n\`// Modport for follower\n\modport follower (\n\    input clk, rst, valid, addr, data, write_enable,\n\    output ready\n\);`
-                 ^ Ref -> `// In bus_if`\n\\n\---\n\\n\`// Modport for follower\n\modport follower (\n\    input clk, rst, valid, addr, data, write_enable,\n\    output ready\n\);`
-                  ^ Ref -> `// In bus_if`\n\\n\---\n\\n\`// Modport for follower\n\modport follower (\n\    input clk, rst, valid, addr, data, write_enable,\n\    output ready\n\);`
+           ^ Ref -> `// In bus_if`\n\\n\---\n\\n\ Modport for follower\n\\n\`modport follower (\n\    input clk, rst, valid, addr, data, write_enable,\n\    output ready\n\);`
+            ^ Ref -> `// In bus_if`\n\\n\---\n\\n\ Modport for follower\n\\n\`modport follower (\n\    input clk, rst, valid, addr, data, write_enable,\n\    output ready\n\);`
+             ^ Ref -> `// In bus_if`\n\\n\---\n\\n\ Modport for follower\n\\n\`modport follower (\n\    input clk, rst, valid, addr, data, write_enable,\n\    output ready\n\);`
+              ^ Ref -> `// In bus_if`\n\\n\---\n\\n\ Modport for follower\n\\n\`modport follower (\n\    input clk, rst, valid, addr, data, write_enable,\n\    output ready\n\);`
+               ^ Ref -> `// In bus_if`\n\\n\---\n\\n\ Modport for follower\n\\n\`modport follower (\n\    input clk, rst, valid, addr, data, write_enable,\n\    output ready\n\);`
+                ^ Ref -> `// In bus_if`\n\\n\---\n\\n\ Modport for follower\n\\n\`modport follower (\n\    input clk, rst, valid, addr, data, write_enable,\n\    output ready\n\);`
+                 ^ Ref -> `// In bus_if`\n\\n\---\n\\n\ Modport for follower\n\\n\`modport follower (\n\    input clk, rst, valid, addr, data, write_enable,\n\    output ready\n\);`
+                  ^ Ref -> `// In bus_if`\n\\n\---\n\\n\ Modport for follower\n\\n\`modport follower (\n\    input clk, rst, valid, addr, data, write_enable,\n\    output ready\n\);`
                     ^^^^^^^^^^^^ Sym bus_follower : InterfacePort
 
 );
@@ -366,7 +366,7 @@ module TestModule #(
 
         .data_in(sub_data_in),
          ^^^^^^^ Ref -> `// In Sub`\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
-                 ^^^^^^^^^^^ Ref -> `// Instance array that depends on NUM_SUBS parameter\n\logic [15:0] sub_data_in [NUM_SUBS];`
+                 ^^^^^^^^^^^ Ref ->  Instance array that depends on NUM_SUBS parameter\n\\n\`logic [15:0] sub_data_in [NUM_SUBS];`
 
         .data_out(sub_data_out)
          ^^^^^^^^ Ref -> `// In Sub`\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
@@ -493,7 +493,7 @@ module TestModule #(
         bus_master.addr = width_port[0];
         ^^^^^^^^^^ Ref -> `bus_if.master bus_master`
                    ^^^^ Ref -> `// In bus_if.master`\n\\n\---\n\\n\`output valid, addr, data, write_enable`
-                          ^^^^^^^^^^ Ref -> `// some useful info\n\input logic [test_pkg::WIDTH-1:0] width_port`
+                          ^^^^^^^^^^ Ref ->  some useful info\n\\n\`input logic [test_pkg::WIDTH-1:0] width_port`
 
         bus_master.data <= state;
         ^^^^^^^^^^ Ref -> `bus_if.master bus_master`
@@ -720,7 +720,7 @@ module StructAssignmentTest (
     typedef struct packed {
 
         simple_struct_t inner;
-        ^^^^^^^^^^^^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\`// Struct definitions for testing\n\typedef struct packed {\n\    logic [7:0] addr;\n\    logic [15:0] data;\n\    logic valid;\n\} simple_struct_t;`
+        ^^^^^^^^^^^^^^^ Ref -> `// In StructAssignmentTest`\n\\n\---\n\\n\ Struct definitions for testing\n\\n\`typedef struct packed {\n\    logic [7:0] addr;\n\    logic [15:0] data;\n\    logic valid;\n\} simple_struct_t;`
                         ^^^^^ Sym inner : Field
 
         logic [3:0] tag;
@@ -737,11 +737,11 @@ module StructAssignmentTest (
     // Variables for testing
 
     simple_struct_t single_struct;
-    ^^^^^^^^^^^^^^^ Ref -> `// Struct definitions for testing\n\typedef struct packed {\n\    logic [7:0] addr;\n\    logic [15:0] data;\n\    logic valid;\n\} simple_struct_t;`
+    ^^^^^^^^^^^^^^^ Ref ->  Struct definitions for testing\n\\n\`typedef struct packed {\n\    logic [7:0] addr;\n\    logic [15:0] data;\n\    logic valid;\n\} simple_struct_t;`
                     ^^^^^^^^^^^^^ Sym single_struct : Variable
 
     simple_struct_t struct_array[4];
-    ^^^^^^^^^^^^^^^ Ref -> `// Struct definitions for testing\n\typedef struct packed {\n\    logic [7:0] addr;\n\    logic [15:0] data;\n\    logic valid;\n\} simple_struct_t;`
+    ^^^^^^^^^^^^^^^ Ref ->  Struct definitions for testing\n\\n\`typedef struct packed {\n\    logic [7:0] addr;\n\    logic [15:0] data;\n\    logic valid;\n\} simple_struct_t;`
                     ^^^^^^^^^^^^ Sym struct_array : Variable
 
     nested_struct_t nested_struct;
@@ -784,15 +784,15 @@ module StructAssignmentTest (
             // Basic struct member assignment
 
             single_struct.addr <= 8'h00;
-            ^^^^^^^^^^^^^ Ref -> `// Variables for testing\n\simple_struct_t single_struct;`
+            ^^^^^^^^^^^^^ Ref ->  Variables for testing\n\\n\`simple_struct_t single_struct;`
                           ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [7:0] addr;`
 
             single_struct.data <= 16'h0000;
-            ^^^^^^^^^^^^^ Ref -> `// Variables for testing\n\simple_struct_t single_struct;`
+            ^^^^^^^^^^^^^ Ref ->  Variables for testing\n\\n\`simple_struct_t single_struct;`
                           ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [15:0] data;`
 
             single_struct.valid <= 1'b0;
-            ^^^^^^^^^^^^^ Ref -> `// Variables for testing\n\simple_struct_t single_struct;`
+            ^^^^^^^^^^^^^ Ref ->  Variables for testing\n\\n\`simple_struct_t single_struct;`
                           ^^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic valid;`
 
 
@@ -918,19 +918,19 @@ module StructAssignmentTest (
             // Runtime assignments with expressions
 
             single_struct.addr <= addr_val + 8'h10;
-            ^^^^^^^^^^^^^ Ref -> `// Variables for testing\n\simple_struct_t single_struct;`
+            ^^^^^^^^^^^^^ Ref ->  Variables for testing\n\\n\`simple_struct_t single_struct;`
                           ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [7:0] addr;`
                                   ^^^^^^^^ Ref -> `logic [7:0] addr_val;`
 
             single_struct.data <= data_val << 1;
-            ^^^^^^^^^^^^^ Ref -> `// Variables for testing\n\simple_struct_t single_struct;`
+            ^^^^^^^^^^^^^ Ref ->  Variables for testing\n\\n\`simple_struct_t single_struct;`
                           ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [15:0] data;`
                                   ^^^^^^^^ Ref -> `logic [15:0] data_val;`
 
             single_struct.valid <= ~single_struct.valid;
-            ^^^^^^^^^^^^^ Ref -> `// Variables for testing\n\simple_struct_t single_struct;`
+            ^^^^^^^^^^^^^ Ref ->  Variables for testing\n\\n\`simple_struct_t single_struct;`
                           ^^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic valid;`
-                                    ^^^^^^^^^^^^^ Ref -> `// Variables for testing\n\simple_struct_t single_struct;`
+                                    ^^^^^^^^^^^^^ Ref ->  Variables for testing\n\\n\`simple_struct_t single_struct;`
                                                   ^^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic valid;`
 
 
@@ -941,7 +941,7 @@ module StructAssignmentTest (
             ^^^^^^^^^^^^ Ref -> `simple_struct_t struct_array[4];`
                          ^^^^^ Ref -> `logic [1:0] index;`
                                     ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [7:0] addr;`
-                                            ^^^^^^^^^^^^^ Ref -> `// Variables for testing\n\simple_struct_t single_struct;`
+                                            ^^^^^^^^^^^^^ Ref ->  Variables for testing\n\\n\`simple_struct_t single_struct;`
                                                           ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [7:0] addr;`
 
             struct_array[addr_val[1:0]].data <= nested_struct.inner.data;
@@ -1013,7 +1013,7 @@ module StructAssignmentTest (
             ^^^^^^^^^ Ref -> `test_pkg::packet_t pkg_array[3];`
                       ^^^^^ Ref -> `logic [1:0] index;`
                              ^^^^ Ref -> `// In test_pkg::packet_t`\n\\n\---\n\\n\`logic [15:0] data;`
-                                     ^^^^^^^^^^^^^ Ref -> `// Variables for testing\n\simple_struct_t single_struct;`
+                                     ^^^^^^^^^^^^^ Ref ->  Variables for testing\n\\n\`simple_struct_t single_struct;`
                                                    ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [15:0] data;`
                                                           ^^^^^^^^^^^^^ Ref -> `nested_struct_t nested_struct;`
                                                                         ^^^^^ Ref -> `// In StructAssignmentTest::nested_struct_t`\n\\n\---\n\\n\`simple_struct_t inner;`
@@ -1048,7 +1048,7 @@ module StructAssignmentTest (
         // Direct member assignments in combinational logic
 
         if (single_struct.valid) begin
-            ^^^^^^^^^^^^^ Ref -> `// Variables for testing\n\simple_struct_t single_struct;`
+            ^^^^^^^^^^^^^ Ref ->  Variables for testing\n\\n\`simple_struct_t single_struct;`
                           ^^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic valid;`
 
             nested_struct.tag = struct_array[0].addr[3:0];
@@ -1083,15 +1083,15 @@ module StructAssignmentTest (
     initial begin
 
         single_struct.addr = 8'h77;
-        ^^^^^^^^^^^^^ Ref -> `// Variables for testing\n\simple_struct_t single_struct;`
+        ^^^^^^^^^^^^^ Ref ->  Variables for testing\n\\n\`simple_struct_t single_struct;`
                       ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [7:0] addr;`
 
         single_struct.data = 16'h8888;
-        ^^^^^^^^^^^^^ Ref -> `// Variables for testing\n\simple_struct_t single_struct;`
+        ^^^^^^^^^^^^^ Ref ->  Variables for testing\n\\n\`simple_struct_t single_struct;`
                       ^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic [15:0] data;`
 
         single_struct.valid = 1'b1;
-        ^^^^^^^^^^^^^ Ref -> `// Variables for testing\n\simple_struct_t single_struct;`
+        ^^^^^^^^^^^^^ Ref ->  Variables for testing\n\\n\`simple_struct_t single_struct;`
                       ^^^^^ Ref -> `// In StructAssignmentTest::simple_struct_t`\n\\n\---\n\\n\`logic valid;`
 
 
