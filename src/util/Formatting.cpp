@@ -3,9 +3,10 @@
 
 #include "util/Formatting.h"
 
-#include "util/Logging.h"
 #include <fmt/format.h>
 #include <sstream>
+#include <string>
+#include <string_view>
 
 #include "slang/syntax/AllSyntax.h"
 #include "slang/syntax/SyntaxKind.h"
@@ -46,7 +47,7 @@ void shiftIndent(std::string& s) {
         return;
     }
 
-    // skip the first line, since it's whitepsace isn't included
+    // skip the first line, since it's whitespace isn't included
     std::getline(stream, line);
     while (std::getline(stream, line)) {
         // Skip empty lines
@@ -169,10 +170,67 @@ std::string detailFormat(const syntax::SyntaxNode& node) {
     return res;
 }
 
-std::string svCodeBlockString(std::string_view code) {
+/// Strip the comment markers from a doc comment so we can
+// display the documentation nicely (and depending on the ide
+// render markdown)
+std::string stripDocComment(std::string_view input) {
+    fmt::memory_buffer out;
+    bool inBlock = false;
+
+    std::size_t pos = 0;
+    while (pos <= input.size()) {
+        // Get next line
+        std::size_t end = input.find('\n', pos);
+        if (end == std::string_view::npos)
+            end = input.size();
+
+        std::string_view line = input.substr(pos, end - pos);
+
+        // Trim leading whitespace
+        ltrim(line);
+
+        if (!inBlock) {
+            // Single-line doc comment
+            if (line.starts_with("///"))
+                line.remove_prefix(3);
+            else if (line.starts_with("//"))
+                line.remove_prefix(2);
+
+            // To be a valid doc comment, block comments must start
+            // at beginning of line
+            else if (line.starts_with("/*")) {
+                inBlock = true;
+                line.remove_prefix(2);
+            }
+        }
+
+        if (inBlock) {
+            // End of block comment
+            if (auto p = line.find("*/"); p != std::string_view::npos) {
+                line = line.substr(0, p);
+                inBlock = false;
+            }
+
+            // Check for leading '*'; ie:
+            /*
+             * <- Leading star
+             */
+            if (!line.empty() && line.front() == '*')
+                line.remove_prefix(1);
+        }
+
+        fmt::format_to(fmt::appender(out), "{}\n", line);
+        pos = end + 1;
+    }
+
+    return fmt::to_string(out);
+}
+
+std::string svCodeBlockString(std::string_view code, bool shiftIndentation) {
     auto res = std::string{code};
     stripBlankLines(res);
-    shiftIndent(res);
+    if (shiftIndentation)
+        shiftIndent(res);
     // We use quad backticks since in sv triple can be used for macro concatenations
     return fmt::format("````systemverilog\n{}\n````", res);
 }
@@ -206,9 +264,11 @@ std::string svCodeBlockString(const syntax::SyntaxNode& node) {
         squashSpaces(res);
     }
 
-    res = slang::syntax::SyntaxPrinter().printLeadingComments(*fmtNode).str() + res;
+    const auto docs = slang::syntax::SyntaxPrinter().printLeadingComments(*fmtNode).str();
 
-    return svCodeBlockString(res);
+    const bool is_macro = node.kind == syntax::SyntaxKind::DefineDirective ||
+                          node.kind == syntax::SyntaxKind::MacroUsage;
+    return stripDocComment(docs) + svCodeBlockString(res, !is_macro);
 }
 
 lsp::MarkupContent svCodeBlock(const syntax::SyntaxNode& node) {
@@ -219,6 +279,14 @@ lsp::MarkupContent svCodeBlock(const syntax::SyntaxNode& node) {
 void ltrim(std::string& s) {
     s.erase(s.begin(),
             std::find_if(s.begin(), s.end(), [](unsigned char ch) { return !std::isspace(ch); }));
+}
+
+void ltrim(std::string_view& sv) {
+    std::size_t i = 0;
+    while (i < sv.size() && std::isspace(sv[i])) {
+        ++i;
+    }
+    sv.remove_prefix(i);
 }
 
 std::string toCamelCase(std::string_view str) {
