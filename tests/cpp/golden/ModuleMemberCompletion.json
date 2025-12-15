@@ -37,7 +37,7 @@
         "kind": "Struct",
         "documentation": {
           "kind": "markdown",
-          "value": "````systemverilog\n// Type definitions\ntypedef struct {\n    logic [7:0] addr;\n    logic [31:0] data;\n} bus_transaction_t;\n````"
+          "value": " Type definitions\n\n````systemverilog\ntypedef struct {\n    logic [7:0] addr;\n    logic [31:0] data;\n} bus_transaction_t;\n````"
         },
         "filterText": "bus_transaction_t"
       },
@@ -133,7 +133,7 @@
         "kind": "TypeParameter",
         "documentation": {
           "kind": "markdown",
-          "value": "````systemverilog\n// Parameters\nparameter int PARAM_INT = 42\n````"
+          "value": " Parameters\n\n````systemverilog\nparameter int PARAM_INT = 42\n````"
         },
         "filterText": "PARAM_INT"
       },
@@ -184,7 +184,7 @@
         "kind": "Struct",
         "documentation": {
           "kind": "markdown",
-          "value": "````systemverilog\n// Type definitions\ntypedef struct {\n    logic [7:0] addr;\n    logic [31:0] data;\n} bus_transaction_t;\n````"
+          "value": " Type definitions\n\n````systemverilog\ntypedef struct {\n    logic [7:0] addr;\n    logic [31:0] data;\n} bus_transaction_t;\n````"
         },
         "filterText": "bus_transaction_t"
       },
@@ -196,7 +196,7 @@
         "kind": "Function",
         "documentation": {
           "kind": "markdown",
-          "value": "````systemverilog\n// Local functions\nfunction logic [7:0] calc_parity(input logic [7:0] data);\n    return ^data;\nendfunction\n````"
+          "value": " Local functions\n\n````systemverilog\nfunction logic [7:0] calc_parity(input logic [7:0] data);\n    return ^data;\nendfunction\n````"
         },
         "filterText": "calc_parity",
         "insertText": "calc_parity(${1:data /* logic[7:0] */})",
@@ -258,7 +258,7 @@
         "kind": "Variable",
         "documentation": {
           "kind": "markdown",
-          "value": "````systemverilog\n// Local variables of different types\nlogic internal_signal;\n````"
+          "value": " Local variables of different types\n\n````systemverilog\nlogic internal_signal;\n````"
         },
         "filterText": "internal_signal"
       },
@@ -270,7 +270,7 @@
         "kind": "Class",
         "documentation": {
           "kind": "markdown",
-          "value": "````systemverilog\n// Interface port example\nsimple_interface intf();\n````"
+          "value": " Interface port example\n\n````systemverilog\nsimple_interface intf();\n````"
         },
         "filterText": "intf"
       },
@@ -282,7 +282,7 @@
         "kind": "Function",
         "documentation": {
           "kind": "markdown",
-          "value": "````systemverilog\n// Task\ntask reset_signals();\n    internal_signal <= 1'b0;\n    wide_signal <= 16'h0;\nendtask\n````"
+          "value": " Task\n\n````systemverilog\ntask reset_signals();\n    internal_signal <= 1'b0;\n    wide_signal <= 16'h0;\nendtask\n````"
         },
         "filterText": "reset_signals",
         "insertText": "reset_signals()",
@@ -320,7 +320,7 @@
         "kind": "Class",
         "documentation": {
           "kind": "markdown",
-          "value": "````systemverilog\n// Instance of another module\nsub_module u_sub (\n    .clk(clk),\n    .rst(rst),\n    .enable(internal_signal)\n);\n````"
+          "value": " Instance of another module\n\n````systemverilog\nsub_module u_sub (\n    .clk(clk),\n    .rst(rst),\n    .enable(internal_signal)\n);\n````"
         },
         "filterText": "u_sub"
       },
