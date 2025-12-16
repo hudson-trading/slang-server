@@ -104,11 +104,7 @@ void ServerDriver::updateDoc(SlangDoc& doc, FileUpdateType type) {
             comp->refresh();
             INFO("Publishing Comp diags")
             diagClient->updateDiags();
-            sm.clearOldBuffers();
         }
-    }
-    else {
-        sm.clearOldBuffers();
     }
 }
 
@@ -533,7 +529,7 @@ std::optional<lsp::Hover> ServerDriver::getDocHover(const URI& uri, const lsp::P
     else {
         // show file for macros
         auto macroBuf = info.nameToken.location().buffer();
-        if (macroBuf != doc->getBuffer() && sm.isValid(macroBuf)) {
+        if (macroBuf != doc->getBuffer() && sm.isLatestData(macroBuf)) {
             auto path = sm.getFullPath(macroBuf);
             if (!path.empty()) {
                 md = fmt::format(
@@ -773,8 +769,9 @@ std::optional<std::vector<lsp::Location>> ServerDriver::getDocReferences(
                 addMemberReferences(references, gParentSymbol, *targetSymbol, true);
             }
             else {
-                WARN("Skipping global refs for symbol {}: {} with parent {}: {}", targetName,
-                     toString(targetSymbol->kind), parentSymbol.name, toString(parentSymbol.kind));
+                // WARN("Skipping global refs for symbol {}: {} with parent {}: {}", targetName,
+                //      toString(targetSymbol->kind), parentSymbol.name,
+                //      toString(parentSymbol.kind));
                 if (targetLoc.buffer() != doc->getBuffer()) {
                     analysis.addLocalReferences(references, targetSymbol->location, targetName);
                 }

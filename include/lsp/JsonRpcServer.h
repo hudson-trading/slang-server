@@ -60,7 +60,6 @@ protected:
                 };
                 return rfl::to_generic<rfl::UnderlyingEnums>(getResult());
             };
-            std::cerr << "Registered method: " << name << "\n";
         }
     }
 
@@ -82,7 +81,6 @@ protected:
                 (static_cast<Impl*>(this)->*Method)(std::nullopt);
             }
         };
-        std::cerr << "Registered notification: " << name << "\n";
     }
 
     std::variant<rfl::Generic, RpcError, std::nullopt_t> processMessage(RpcRequest request) {

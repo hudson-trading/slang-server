@@ -12,6 +12,7 @@
 #include "lsp/LspTypes.h"
 #include "util/Converters.h"
 #include "util/Logging.h"
+#include "util/SlangExtensions.h"
 #include <fmt/format.h>
 #include <memory>
 #include <string_view>
@@ -512,10 +513,8 @@ std::vector<lsp::DocumentLink> ShallowAnalysis::getDocLinks() const {
 
 bool ShallowAnalysis::hasValidBuffers() {
     for (auto& tree : m_allTrees) {
-        for (auto& buffer : tree->getSourceBufferIds()) {
-            if (!m_sourceManager.isValid(buffer)) {
-                return false;
-            }
+        if (!server::hasValidBuffers(m_sourceManager, tree)) {
+            return false;
         }
     }
     return true;

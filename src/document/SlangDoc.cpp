@@ -12,6 +12,7 @@
 #include "document/ShallowAnalysis.h"
 #include "lsp/URI.h"
 #include "util/Logging.h"
+#include "util/SlangExtensions.h"
 #include <fmt/format.h>
 #include <fmt/ranges.h>
 #include <stdexcept>
@@ -50,14 +51,23 @@ std::shared_ptr<SlangDoc> SlangDoc::fromTree(ServerDriver& driver,
 std::shared_ptr<SlangDoc> SlangDoc::fromText(ServerDriver& driver, const URI& uri,
                                              std::string_view text) {
     std::string_view path = uri.getPath();
+    SourceBuffer buffer;
+
+    // Check if this path was previously cached (e.g., from an include)
+    // If so, we need to replace the old buffer with the editor's version
     if (driver.sm.isCached(path)) {
-        auto buffer = driver.sm.readSource(path, nullptr).value();
-        return std::make_shared<SlangDoc>(driver, uri, buffer);
+        auto existingBuffer = driver.sm.readSource(path, nullptr).value();
+        SmallVector<char> newBuffer;
+        newBuffer.insert(newBuffer.end(), text.begin(), text.end());
+        if (newBuffer.empty() || newBuffer.back() != '\0')
+            newBuffer.push_back('\0');
+        buffer = driver.sm.replaceBuffer(existingBuffer.id, std::move(newBuffer));
     }
     else {
-        auto buffer = driver.sm.assignText<true>(path, text);
-        return std::make_shared<SlangDoc>(driver, uri, buffer);
+        buffer = driver.sm.assignText(path, text);
     }
+
+    return std::make_shared<SlangDoc>(driver, uri, buffer);
 }
 
 std::shared_ptr<SlangDoc> SlangDoc::open(ServerDriver& driver, const URI& uri) {
@@ -73,19 +83,15 @@ const std::string_view SlangDoc::getText() const {
 std::shared_ptr<syntax::SyntaxTree> SlangDoc::getSyntaxTree() {
     if (!m_tree) {
         // Will read the cached file data if it exists
-        if (!m_sourceManager.isValid(m_buffer.id)) {
+        if (!m_sourceManager.isLatestData(m_buffer.id)) {
             m_buffer = m_sourceManager.readSource(m_uri.getPath(), nullptr).value();
         }
         m_tree = syntax::SyntaxTree::fromBuffer(m_buffer, m_sourceManager, m_options);
     }
-    else {
-        // validate the buffers in the current tree
-        SLANG_ASSERT(m_tree->getSourceBufferIds().size() == 1);
-        // TODO: validate included files
-        if (!m_sourceManager.isValid(m_tree->getSourceBufferIds()[0])) {
-            m_buffer = m_sourceManager.readSource(m_uri.getPath(), nullptr).value();
-            m_tree = syntax::SyntaxTree::fromBuffer(m_buffer, m_sourceManager, m_options);
-        }
+    else if (!hasValidBuffers(m_sourceManager, m_tree)) {
+        // Tree has invalid buffers, need to reparse
+        m_buffer = m_sourceManager.readSource(m_uri.getPath(), nullptr).value();
+        m_tree = syntax::SyntaxTree::fromBuffer(m_buffer, m_sourceManager, m_options);
     }
     return m_tree;
 }
@@ -181,8 +187,7 @@ void SlangDoc::onChange(const std::vector<lsp::TextDocumentContentChangeEvent>& 
         // handle inserts
         buffer.insert(buffer.begin() + offsets.first, change.text.begin(), change.text.end());
     }
-
-    m_buffer = m_sourceManager.assignBuffer<true>(m_uri.getPath(), std::move(buffer));
+    m_buffer = m_sourceManager.replaceBuffer(m_buffer.id, std::move(buffer));
 
     // Invalidate pointers to old buffer
     m_tree.reset();

@@ -117,6 +117,9 @@ private:
     /// Copy of compilation options
     Bag m_options;
 
+    /// Retained buffer data to prevent deallocation while this compilation exists
+    std::vector<std::shared_ptr<void>> m_retainedBuffers;
+
     /// Index of buffer -> definitions and definition -> instances given a compilation. Used for
     /// navigating a compilation
     InstanceIndexer m_instances;

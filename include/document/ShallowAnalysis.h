@@ -90,9 +90,9 @@ public:
         return syntaxes.getWordTokenAt(loc);
     }
 
-    /// @brief Gets the AST symbol at a specific source location
-    /// @param loc The source location to query
-    /// @return Pointer to the referenced symbol, or nullptr if not found
+    // @brief Gets the AST symbol at a specific source location
+    // @param loc The source location to query
+    // @return *Pointer* to the referenced symbol, or nullptr if not found
     const slang::ast::Symbol* getSymbolAt(slang::SourceLocation loc) const;
 
     /// @brief Gets the AST scope at a specific source location
