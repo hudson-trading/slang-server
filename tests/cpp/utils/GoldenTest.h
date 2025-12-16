@@ -143,7 +143,7 @@ public:
     std::string makeUrisRelative(const std::string& json_str) {
         // Get the workspace root (current working directory during tests)
         std::string cwd = std::filesystem::current_path().generic_string();
-        
+
         #ifdef _WIN32
         if (cwd.size() >= 2 && cwd[1] == ':' && std::isalpha(cwd[0]))
             cwd[0] = static_cast<char>(std::toupper(cwd[0]));
