@@ -145,6 +145,8 @@ public:
         std::string cwd = std::filesystem::current_path().generic_string();
 
 #ifdef _WIN32
+        // Even though `fs::current_path()` is absolute, we still check to
+        // make sure its not a UNC path (ie: `\\server\share\path\to\somewhere`)
         if (cwd.size() >= 2 && cwd[1] == ':' && std::isalpha(cwd[0]))
             cwd[0] = static_cast<char>(std::toupper(cwd[0]));
         std::string file_prefix = "file:///" + cwd + "/";
