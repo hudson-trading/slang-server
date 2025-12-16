@@ -185,7 +185,6 @@ jobs:
           mv ${{ github.workspace }} ${{ runner.temp }}/slang-server-checkout
           mv ${{ runner.temp }}/neovim-plugin ${{ github.workspace }}
         working-directory: ${{ runner.temp }}
-
       - name: Run Neovim plugin tests
         # This should work on Windows as well, but there's some linker error
         # that I don't feel like debugging via GH
