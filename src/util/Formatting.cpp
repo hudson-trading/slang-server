@@ -176,7 +176,7 @@ std::string detailFormat(const syntax::SyntaxNode& node) {
 std::string stripDocComment(std::string_view input) {
     if (input.empty())
         return {};
-    
+
     fmt::memory_buffer out;
     bool inBlock = false;
 
