@@ -139,11 +139,18 @@ public:
             rfl::to_generic(std::unordered_map<std::string, T>{{label, (some_struct)}}));
     }
 
-    // Helper to replace absolute paths in URIs with relative paths
+    /// Helper to replace absolute paths in URIs with relative paths
     std::string makeUrisRelative(const std::string& json_str) {
         // Get the workspace root (current working directory during tests)
-        std::string cwd = std::filesystem::current_path().string();
+        std::string cwd = std::filesystem::current_path().generic_string();
+        
+        #ifdef _WIN32
+        if (cwd.size() >= 2 && cwd[1] == ':' && std::isalpha(cwd[0]))
+            cwd[0] = static_cast<char>(std::toupper(cwd[0]));
+        std::string file_prefix = "file:///" + cwd + "/";
+        #else
         std::string file_prefix = "file://" + cwd + "/";
+        #endif
 
         std::string result = json_str;
         size_t pos = 0;
