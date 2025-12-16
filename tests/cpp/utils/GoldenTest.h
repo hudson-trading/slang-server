@@ -144,13 +144,13 @@ public:
         // Get the workspace root (current working directory during tests)
         std::string cwd = std::filesystem::current_path().generic_string();
 
-        #ifdef _WIN32
+#ifdef _WIN32
         if (cwd.size() >= 2 && cwd[1] == ':' && std::isalpha(cwd[0]))
             cwd[0] = static_cast<char>(std::toupper(cwd[0]));
         std::string file_prefix = "file:///" + cwd + "/";
-        #else
+#else
         std::string file_prefix = "file://" + cwd + "/";
-        #endif
+#endif
 
         std::string result = json_str;
         size_t pos = 0;
