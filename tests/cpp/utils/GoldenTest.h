@@ -78,8 +78,14 @@ public:
                 tmpFile << actual_str;
             }
             // Run diff tool
+#ifdef _WIN32
+            std::string cmd = "fc \"" + m_goldenFilePath.string() + "\" \"" + tmpPath.string() +
+                              "\"";
+#else
             std::string cmd = "diff -u \"" + m_goldenFilePath.string() + "\" \"" +
                               tmpPath.string() + "\"";
+#endif
+
             int ret = std::system(cmd.c_str());
             if (ret == 0) {
                 std::cout << "No differences found by diff, but strings did not match.\n";
@@ -133,11 +139,20 @@ public:
             rfl::to_generic(std::unordered_map<std::string, T>{{label, (some_struct)}}));
     }
 
-    // Helper to replace absolute paths in URIs with relative paths
+    /// Helper to replace absolute paths in URIs with relative paths
     std::string makeUrisRelative(const std::string& json_str) {
         // Get the workspace root (current working directory during tests)
-        std::string cwd = std::filesystem::current_path().string();
+        std::string cwd = std::filesystem::current_path().generic_string();
+
+#ifdef _WIN32
+        // Even though `fs::current_path()` is absolute, we still check to
+        // make sure its not a UNC path (ie: `\\server\share\path\to\somewhere`)
+        if (cwd.size() >= 2 && cwd[1] == ':' && std::isalpha(cwd[0]))
+            cwd[0] = static_cast<char>(std::toupper(cwd[0]));
+        std::string file_prefix = "file:///" + cwd + "/";
+#else
         std::string file_prefix = "file://" + cwd + "/";
+#endif
 
         std::string result = json_str;
         size_t pos = 0;

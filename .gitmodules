@@ -4,3 +4,6 @@
 [submodule "external/reflect-cpp"]
 	path = external/reflect-cpp
 	url = https://github.com/getml/reflect-cpp.git
+[submodule "external/ctre"]
+	path = external/ctre
+	url = https://github.com/hanickadot/compile-time-regular-expressions.git
