@@ -171,6 +171,10 @@ export class InstancesView
   }
 
   revealPath(module: string, path: string | undefined = undefined, focus: boolean = false) {
+    if (!this.treeView?.visible) {
+      return
+    }
+
     const moduleItem = this.modules.get(module)
     if (moduleItem === undefined) {
       return
