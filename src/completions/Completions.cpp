@@ -36,6 +36,14 @@
 namespace server::completions {
 using namespace slang;
 
+/// List of SystemVerilog keywords suitable for prepending to the LHS of an expression
+const std::vector<std::string> SV_LHS_KEYWORDS = {
+    "logic",
+    "assign",
+    "wire",
+    "reg",
+};
+
 //------------------------------------------------------------------------------
 // Macros
 //------------------------------------------------------------------------------
@@ -550,6 +558,43 @@ void getMemberCompletions(std::vector<lsp::CompletionItem>& results, const slang
         prevSym = &currentScope->asSymbol();
         currentScope = parentSymbol.getParentScope();
     }
+}
+
+void getKeywordCompletions(std::vector<lsp::CompletionItem>& results) {
+    for (const auto& kw : SV_LHS_KEYWORDS) {
+        results.emplace_back(lsp::CompletionItem{
+            .label = kw,
+            .kind = lsp::CompletionItemKind::Keyword,
+            .documentation = std::nullopt,
+            .filterText = kw,
+        });
+    }
+
+    // on the LHS, we can also provide one of the always_XX routines
+    results.emplace_back(lsp::CompletionItem{
+        .label = "always_ff",
+        .kind = lsp::CompletionItemKind::Snippet,
+        .documentation = std::nullopt,
+        .filterText = "always_ff",
+        .insertText = "always_ff @($0) begin\n\t\nend",
+        .insertTextFormat = lsp::InsertTextFormat::Snippet,
+    });
+    results.emplace_back(lsp::CompletionItem{
+        .label = "always_comb",
+        .kind = lsp::CompletionItemKind::Snippet,
+        .documentation = std::nullopt,
+        .filterText = "always_comb",
+        .insertText = "always_comb begin\n\t$0\nend",
+        .insertTextFormat = lsp::InsertTextFormat::Snippet,
+    });
+    results.emplace_back(lsp::CompletionItem{
+        .label = "always_latch",
+        .kind = lsp::CompletionItemKind::Snippet,
+        .documentation = std::nullopt,
+        .filterText = "always_latch",
+        .insertText = "always_latch begin\n\t$0\nend",
+        .insertTextFormat = lsp::InsertTextFormat::Snippet,
+    });
 }
 
 } // namespace server::completions

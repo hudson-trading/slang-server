@@ -36,42 +36,6 @@
     ],
     "description": "set module, mod i0 (.*);"
   },
-  "always": {
-    "prefix": [
-      "al",
-      "always"
-    ],
-    "body": [
-      "always @($1) begin",
-      "\t$2",
-      "end"
-    ],
-    "description": "Insert an always block"
-  },
-  "alwaysposclk": {
-    "prefix": [
-      "alclk",
-      "alwaysposclk"
-    ],
-    "body": [
-      "always @(posedge clk $1) begin",
-      "\t$2",
-      "end"
-    ],
-    "description": "always @(posedge clk)"
-  },
-  "alwaysnegclk": {
-    "prefix": [
-      "alnegclk",
-      "alwaysnegclk"
-    ],
-    "body": [
-      "always @(negedge clk $1) begin",
-      "\t$2",
-      "end"
-    ],
-    "description": "always @(negedge clk)"
-  },
   "begin/end": {
     "prefix": "begin",
     "body": [
@@ -125,13 +89,6 @@
     ],
     "description": "casez () ... endcase"
   },
-  "reg": {
-    "prefix": "reg",
-    "body": [
-      "reg $1;"
-    ],
-    "description": "reg reg_name;"
-  },
   "regarray": {
     "prefix": [
       "regarray",
@@ -151,13 +108,6 @@
       "reg [$1:$2] $3 [$4:$5];"
     ],
     "description": "reg [N:0] reg_name [0:M];"
-  },
-  "wire": {
-    "prefix": "wire",
-    "body": [
-      "wire $1;"
-    ],
-    "description": "wire wire_name;"
   },
   "wirearray": {
     "prefix": [

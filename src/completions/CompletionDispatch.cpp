@@ -54,6 +54,8 @@ void CompletionDispatch::getInvokedCompletions(std::vector<lsp::CompletionItem>&
                 results.push_back(completions::getModuleCompletion(name, entries[0].kind));
             }
         }
+        // also add keywords as well
+        completions::getKeywordCompletions(results);
         INFO("Returning {} module completions", results.size());
     }
     else {
