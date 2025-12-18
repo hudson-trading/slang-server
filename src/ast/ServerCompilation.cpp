@@ -34,10 +34,19 @@ void ServerCompilation::refresh() {
 
     // The main compilation is allowed to refer to old buffers
     comp = std::make_unique<slang::ast::Compilation>(m_options);
+
+    // Collect all buffer IDs from all syntax trees
+    std::vector<BufferID> allBuffers;
     for (auto& doc : m_documents) {
-        comp->addSyntaxTree(doc->getSyntaxTree());
+        auto tree = doc->getSyntaxTree();
+        comp->addSyntaxTree(tree);
+        for (auto bufId : tree->getSourceBufferIds()) {
+            allBuffers.push_back(bufId);
+        }
     }
-    m_sourceManager.clearOldBuffers();
+
+    // Retain buffer data to prevent deallocation while this compilation exists
+    m_retainedBuffers = m_sourceManager.retainBuffers(allBuffers);
 
     // reset and rebuild indexed info
     auto& root = comp->getRoot();

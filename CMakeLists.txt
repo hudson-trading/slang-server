@@ -282,6 +282,7 @@ add_library(
   src/lsp/URI.cpp
   src/util/Converters.cpp
   src/util/Formatting.cpp
+  src/util/SlangExtensions.cpp
   src/Config.cpp
   src/Indexer.cpp
   src/ServerDriver.cpp

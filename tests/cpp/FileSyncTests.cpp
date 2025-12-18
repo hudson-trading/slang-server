@@ -126,3 +126,76 @@ endmodule
     doc.save();
     doc.close();
 }
+
+TEST_CASE("GotoDefinition_IncludedFileModification") {
+    /// Test that goto definition works correctly when the included file is modified
+    ServerHarness server("macro_test");
+
+    // Open the main file that includes common_macros.svh
+    auto memoryModule = server.openFile("memory_module.sv");
+    memoryModule.ensureSynced();
+
+    // Find the usage of `WIDTH macro
+    auto cursor = memoryModule.after("DATA_WIDTH = ").before("`WIDTH");
+
+    // Get initial definition in common_macros.svh
+    auto initialDefs = cursor.getDefinitions();
+    CHECK(initialDefs.size() == 1);
+
+    auto& initialDef = initialDefs[0];
+    auto originalLine = initialDef.targetRange.start.line;
+    CHECK(initialDef.targetUri.str().find("common_macros.svh") != std::string::npos);
+
+    // Modify the included file by adding newlines at the top
+    auto macrosFile = server.openFile("common_macros.svh");
+    macrosFile.insert(0, "\n\n\n");
+    macrosFile.ensureSynced();
+
+    // Get definitions again WITHOUT modifying the main file
+    // The old syntax tree still references the old BufferID from common_macros.svh
+    // With proper buffer invalidation, the old BufferID should be invalid
+    // and force re-reading the file, giving us the updated line numbers
+    auto newDefs = cursor.getDefinitions();
+    CHECK(newDefs.size() == 1);
+
+    auto& newDef = newDefs[0];
+    CHECK(newDef.targetUri.str().find("common_macros.svh") != std::string::npos);
+    CHECK(newDef.targetRange.start.line == originalLine + 3);
+}
+
+TEST_CASE("GotoDefinition_TwoLayerIncludeModification") {
+    /// Test that goto definition works correctly when a file two layers deep is modified
+    /// top.sv -> intermediate.svh -> base_defs.svh
+    ServerHarness server("two_layer_include");
+
+    // Open the top file that includes intermediate.svh, which includes base_defs.svh
+    auto topModule = server.openFile("top.sv");
+    topModule.ensureSynced();
+
+    // Find the usage of `BUS_WIDTH macro (defined in base_defs.svh)
+    auto cursor = topModule.after("WIDTH = ").before("`BUS_WIDTH");
+
+    // Get initial definition in base_defs.svh
+    auto initialDefs = cursor.getDefinitions();
+    CHECK(initialDefs.size() == 1);
+
+    auto& initialDef = initialDefs[0];
+    auto originalLine = initialDef.targetRange.start.line;
+    CHECK(initialDef.targetUri.str().find("base_defs.svh") != std::string::npos);
+
+    // Modify the base file (two layers deep) by adding newlines at the top
+    auto baseFile = server.openFile("base_defs.svh");
+    baseFile.insert(0, "\n\n");
+    baseFile.ensureSynced();
+
+    // Get definitions again WITHOUT modifying the top file or intermediate file
+    // The old syntax trees still reference the old BufferID from base_defs.svh
+    // With proper buffer invalidation through the include chain, the old BufferID
+    // should be invalid and force re-reading the file, giving us the updated line numbers
+    auto newDefs = cursor.getDefinitions();
+    CHECK(newDefs.size() == 1);
+
+    auto& newDef = newDefs[0];
+    CHECK(newDef.targetUri.str().find("base_defs.svh") != std::string::npos);
+    CHECK(newDef.targetRange.start.line == originalLine + 2);
+}
