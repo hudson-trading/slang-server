@@ -76,8 +76,8 @@ module automatic m1 import p::*; #(int i = 1)
                                        ^ Sym i : Parameter
 
     (a, b, , .c({a, b[0]}));
-     ^ Sym a : Port
-        ^ Sym b : Port
+     ^ Ref -> `input a;`
+        ^ Ref -> `output [1:0] b;`
 
     input a;
           ^ Sym a : Net
@@ -695,8 +695,8 @@ extern program p(a, b);
 
 program p(a, b);
         ^ Sym p : Definition
-          ^ Sym a : Port
-             ^ Sym b : Port
+          ^ Ref -> `input a, b;`
+             ^ Ref -> `input a, b;`
 
     input a, b;
           ^ Sym a : Net
@@ -757,10 +757,10 @@ endconfig
 
 module ALU (o1, i1, i2, opcode);
        ^^^ Sym ALU : Definition
-            ^^ Sym o1 : Port
-                ^^ Sym i1 : Port
-                    ^^ Sym i2 : Port
-                        ^^^^^^ Sym opcode : Port
+            ^^ Ref -> `output [7:0] o1;`
+                ^^ Ref -> `input [7:0] i1, i2;`
+                    ^^ Ref -> `input [7:0] i1, i2;`
+                        ^^^^^^ Ref -> `input [2:1] opcode;`
 
     input [7:0] i1, i2;
                 ^^ Sym i1 : Net

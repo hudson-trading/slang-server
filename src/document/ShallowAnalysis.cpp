@@ -36,6 +36,24 @@
 #include "slang/util/Util.h"
 namespace server {
 using namespace slang;
+
+// Helper to check if two symbols represent the same semantic entity.
+// After normalization in getSymbolAtToken, most symbols should have pointer equality.
+// This fallback handles edge cases where different instance bodies create different
+// symbol objects for the same source-level declaration (e.g., parameters).
+static bool symbolsMatch(const ast::Symbol* a, const ast::Symbol* b) {
+    if (!a || !b) {
+        return false;
+    }
+    if (a == b) {
+        return true;
+    }
+    // Match by location as a fallback
+    if (a->location == b->location) {
+        return true;
+    }
+    return false;
+}
 ShallowAnalysis::ShallowAnalysis(SourceManager& sourceManager, slang::BufferID buffer,
                                  std::shared_ptr<SyntaxTree> tree, slang::Bag options,
                                  const std::vector<std::shared_ptr<SyntaxTree>>& allTrees) :
@@ -301,6 +319,15 @@ const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declT
                 // Module declarations get indexed to their body. We do want to keep the body
                 // as the indexed sym for use in the future though with hdl features.
                 return &sym->as<ast::InstanceBodySymbol>().getDefinition();
+            case ast::SymbolKind::Port: {
+                // Named port connections get indexed to the port symbol. Return the internal
+                // symbol so that references work across instance boundaries.
+                auto& port = sym->as<ast::PortSymbol>();
+                if (port.internalSymbol) {
+                    return port.internalSymbol;
+                }
+                return sym;
+            }
             default:
                 return sym;
         }
@@ -459,33 +486,7 @@ void ShallowAnalysis::addLocalReferences(std::vector<lsp::Location>& references,
         }
 
         const ast::Symbol* tokenSymbol = getSymbolAtToken(token);
-        if (tokenSymbol != targetSymbol) {
-            continue;
-        }
-
-        references.push_back(lsp::Location{
-            .uri = URI::fromFile(path),
-            .range = toRange(token->range(), m_sourceManager),
-        });
-    }
-}
-
-void ShallowAnalysis::addLocalReferences(std::vector<lsp::Location>& references,
-                                         const ast::Symbol* targetSymbol,
-                                         std::string_view targetName) const {
-
-    auto path = m_sourceManager.getFullPath(m_buffer);
-
-    // Iterate through all tokens in the document
-    for (const auto* token : syntaxes.collected) {
-        // Check if token name matches
-        if (token->kind != parsing::TokenKind::Identifier || token->valueText() != targetName) {
-            continue;
-        }
-
-        // Check if token refers to the same symbol
-        const ast::Symbol* tokenSymbol = getSymbolAtToken(token);
-        if (tokenSymbol != targetSymbol) {
+        if (!symbolsMatch(tokenSymbol, targetSymbol)) {
             continue;
         }
 
