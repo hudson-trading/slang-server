@@ -123,7 +123,7 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     // File features
     registerCommand<ExpandMacroArgs, bool, &SlangServer::expandMacros>("slang.expandMacros");
 
-    if (params.workspaceFolders.has_value()) {
+    if (params.workspaceFolders.has_value() && !params.workspaceFolders->empty()) {
         auto folders = params.workspaceFolders.value();
         if (folders.size() > 1) {
 
