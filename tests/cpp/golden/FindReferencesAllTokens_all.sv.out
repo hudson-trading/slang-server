@@ -76,14 +76,14 @@ module automatic m1 import p::*; #(int i = 1)
                                        ^ Refs[1]
 
     (a, b, , .c({a, b[0]}));
-     ^ Refs[1]
-        ^ Refs[1]
+     ^ Refs[2]
+        ^ Refs[2]
 
     input a;
-          ^ Refs[1]
+          ^ Refs[2]
 
     output [1:0] b;
-                 ^ Refs[1]
+                 ^ Refs[2]
 
     localparam int c = p::x;
                    ^ Refs[1]
@@ -103,21 +103,21 @@ module m2 #(
        ^^ Refs[3]
 
     parameter i = 1,
-              ^ Refs[3]
+              ^ Refs[4]
 
     localparam j = i,
                ^ Refs[1]
-                   ^ Refs[3]
+                   ^ Refs[4]
 
     parameter type x_t = bit
-                   ^^^ Refs[2]
+                   ^^^ Refs[3]
 
 )
 
     (input int a[], (* bar = "asdf" *) output logic b = 1, ref c,
-               ^ Refs[1]
-                                                    ^ Refs[1]
-                                                               ^ Refs[1]
+               ^ Refs[2]
+                                                    ^ Refs[2]
+                                                               ^ Refs[2]
 
     input p::y2 d2,
           ^ Refs[7]
@@ -134,8 +134,8 @@ endmodule
 
 extern interface I(input a, output b);
                  ^ Refs[3]
-                         ^ Refs[1]
-                                   ^ Refs[1]
+                         ^ Refs[2]
+                                   ^ Refs[2]
 
 
 
@@ -151,12 +151,12 @@ endinterface
 
 
 extern macromodule m3;
-                   ^^ Refs[6]
+                   ^^ Refs[10]
 
 
 
 macromodule m3;
-            ^^ Refs[6]
+            ^^ Refs[10]
 
     wire b;
          ^ Refs[5]
@@ -167,8 +167,8 @@ macromodule m3;
     I d(.a(), .b());
     ^ Refs[3]
       ^ Refs[3]
-         ^ Refs[1]
-               ^ Refs[1]
+         ^ Refs[2]
+               ^ Refs[2]
 
 
 
@@ -183,7 +183,7 @@ macromodule m3;
     ^^ Refs[3]
 
         .x_t(y_t)
-         ^^^ Refs[2]
+         ^^^ Refs[3]
              ^^^ Refs[2]
 
     ) m (, b, c, d, );
@@ -207,24 +207,24 @@ macromodule m3;
     ^^ Refs[3]
 
         .i(1),
-         ^ Refs[3]
+         ^ Refs[4]
 
         .x_t(y2)
-         ^^^ Refs[2]
+         ^^^ Refs[3]
              ^^ Refs[2]
 
     ) m2_inst (
       ^^^^^^^ Refs[1]
 
         .a({1, 2}),
-         ^ Refs[1]
+         ^ Refs[2]
 
         .b(b),
-         ^ Refs[1]
+         ^ Refs[2]
            ^ Refs[5]
 
         .c(),
-         ^ Refs[1]
+         ^ Refs[2]
 
         .d(d),
          ^ Refs[2]
@@ -280,7 +280,7 @@ macromodule m3;
         wait fork;
 
         wait_order (m3.ev) f++;
-                    ^^ Refs[6]
+                    ^^ Refs[10]
                        ^^ Refs[2]
                            ^ Refs[7]
 
@@ -299,7 +299,7 @@ macromodule m3;
 
 
         disable m3.foo;
-                ^^ Refs[6]
+                ^^ Refs[10]
                    ^^^ Refs[2]
 
 
@@ -538,11 +538,11 @@ macromodule m3;
            ^ Refs[1]
 
     for (genvar i = 0; i < 10; i += 2)
-                       ^ Refs[2]
-                               ^ Refs[2]
+                       ^ Refs[3]
+                               ^ Refs[3]
 
         if (i == 7) begin
-            ^ Refs[2]
+            ^ Refs[3]
 
         end
 
@@ -654,9 +654,9 @@ macromodule m3;
 
 
     defparam m3.m.i = 1:1:1;
-             ^^ Refs[6]
+             ^^ Refs[10]
                 ^ Refs[3]
-                  ^ Refs[3]
+                  ^ Refs[4]
 
 
 
@@ -688,7 +688,7 @@ macromodule m3;
 
 
 endmodule : m3
-            ^^ Refs[6]
+            ^^ Refs[10]
 
 
 
@@ -699,12 +699,12 @@ extern program p(a, b);
 
 program p(a, b);
         ^ Refs[4]
-          ^ Refs[1]
-             ^ Refs[1]
+          ^ Refs[2]
+             ^ Refs[2]
 
     input a, b;
-          ^ Refs[1]
-             ^ Refs[1]
+          ^ Refs[2]
+             ^ Refs[2]
 
 endprogram : p
              ^ Refs[4]
@@ -734,7 +734,7 @@ endprimitive
 
 
 (* attr = 3.14 *) bind m3.m m1 #(1) bound('x, , , );
-                       ^^ Refs[6]
+                       ^^ Refs[10]
                           ^ Refs[3]
                             ^^ Refs[2]
                                     ^^^^^ Refs[1]
@@ -748,13 +748,13 @@ config cfg;
                ^ Refs[1]
 
     design work.m3;
-                ^^ Refs[6]
+                ^^ Refs[10]
 
     default liblist a b;
 
     cell m3 use work.m3;
-         ^^ Refs[6]
-                     ^^ Refs[6]
+         ^^ Refs[10]
+                     ^^ Refs[10]
 
 endconfig
 
@@ -762,20 +762,20 @@ endconfig
 
 module ALU (o1, i1, i2, opcode);
        ^^^ Refs[1]
-            ^^ Refs[1]
-                ^^ Refs[1]
-                    ^^ Refs[1]
-                        ^^^^^^ Refs[1]
+            ^^ Refs[6]
+                ^^ Refs[4]
+                    ^^ Refs[4]
+                        ^^^^^^ Refs[6]
 
     input [7:0] i1, i2;
-                ^^ Refs[1]
-                    ^^ Refs[1]
+                ^^ Refs[4]
+                    ^^ Refs[4]
 
     input [2:1] opcode;
-                ^^^^^^ Refs[1]
+                ^^^^^^ Refs[6]
 
     output [7:0] o1;
-                 ^^ Refs[1]
+                 ^^ Refs[6]
 
 
 
@@ -785,25 +785,25 @@ module ALU (o1, i1, i2, opcode);
                   ^^ Refs[2]
 
         if (opcode == 2'b00) (i1,i2 *> o1) = (25.0, 25.0);
-            ^^^^^^ Refs[1]
-                              ^^ Refs[1]
-                                 ^^ Refs[1]
-                                       ^^ Refs[1]
+            ^^^^^^ Refs[6]
+                              ^^ Refs[4]
+                                 ^^ Refs[4]
+                                       ^^ Refs[6]
 
         if (opcode == 2'b01) (i1 => o1) = (5.6, 8.0);
-            ^^^^^^ Refs[1]
-                              ^^ Refs[1]
-                                    ^^ Refs[1]
+            ^^^^^^ Refs[6]
+                              ^^ Refs[4]
+                                    ^^ Refs[6]
 
         if (opcode == s1) (i2 => o1) = (5.6, 8.0);
-            ^^^^^^ Refs[1]
+            ^^^^^^ Refs[6]
                       ^^ Refs[2]
-                           ^^ Refs[1]
-                                 ^^ Refs[1]
+                           ^^ Refs[4]
+                                 ^^ Refs[6]
 
         (opcode *> o1) = (6.1, 6.5);
-         ^^^^^^ Refs[1]
-                   ^^ Refs[1]
+         ^^^^^^ Refs[6]
+                   ^^ Refs[6]
 
     endspecify
 
@@ -815,7 +815,7 @@ interface Iface;
           ^^^^^ Refs[4]
 
     extern function void foo(int i, real r);
-                         ^^^ Refs[1]
+                         ^^^ Refs[3]
                                  ^ Refs[1]
                                          ^ Refs[1]
 
@@ -825,16 +825,16 @@ interface Iface;
 
 
     modport m(export foo, function void bar(int, logic), task baz, export func);
-            ^ Refs[2]
+            ^ Refs[3]
                      ^^^ Refs[1]
-                                        ^^^ Refs[1]
-                                                              ^^^ Refs[1]
+                                        ^^^ Refs[3]
+                                                              ^^^ Refs[3]
                                                                           ^^^^ Refs[1]
 
     modport n(import function void func(int), import task t2);
             ^ Refs[1]
-                                   ^^^^ Refs[1]
-                                                          ^^ Refs[1]
+                                   ^^^^ Refs[2]
+                                                          ^^ Refs[3]
 
     modport o(export t2);
             ^ Refs[1]
@@ -847,22 +847,22 @@ endinterface
 module n(Iface.m a);
        ^ Refs[3]
          ^^^^^ Refs[4]
-               ^ Refs[2]
+               ^ Refs[3]
                  ^ Refs[8]
 
     initial begin
 
         a.foo(42, 3.14);
         ^ Refs[8]
-          ^^^ Refs[1]
+          ^^^ Refs[3]
 
         a.bar(1, 1);
         ^ Refs[8]
-          ^^^ Refs[1]
+          ^^^ Refs[3]
 
         a.baz();
         ^ Refs[8]
-          ^^^ Refs[1]
+          ^^^ Refs[3]
 
     end
 
@@ -870,21 +870,21 @@ module n(Iface.m a);
 
     function void a.bar(int i, logic l); endfunction
                   ^ Refs[8]
-                    ^^^ Refs[1]
+                    ^^^ Refs[3]
 
     task a.baz; endtask
          ^ Refs[8]
-           ^^^ Refs[1]
+           ^^^ Refs[3]
 
     function void a.func(int i); endfunction
                   ^ Refs[8]
-                    ^^^^ Refs[1]
+                    ^^^^ Refs[2]
 
 
 
     function void a.foo(int i, real r);
                   ^ Refs[8]
-                    ^^^ Refs[1]
+                    ^^^ Refs[3]
 
     endfunction
 
@@ -914,7 +914,7 @@ module m4;
     ^ Refs[3]
       ^^ Refs[1]
          ^^ Refs[3]
-            ^ Refs[2]
+            ^ Refs[3]
 
 
 
@@ -923,7 +923,7 @@ module m4;
 
     task i1.t2;
          ^^ Refs[3]
-            ^^ Refs[1]
+            ^^ Refs[3]
 
         static int i = baz;
                        ^^^ Refs[3]
@@ -934,7 +934,7 @@ module m4;
 
     task i2.t2;
          ^^ Refs[3]
-            ^^ Refs[1]
+            ^^ Refs[3]
 
         static int i = baz;
                        ^^^ Refs[3]
@@ -968,7 +968,7 @@ typedef enum {
 
 
 checker assert_window1 (
-        ^^^^^^^^^^^^^^ Refs[1]
+        ^^^^^^^^^^^^^^ Refs[2]
 
     logic test_expr,
           ^^^^^^^^^ Refs[2]
@@ -1131,7 +1131,7 @@ module m5;
     initial begin
 
         assert_window1 aw2(1 + 1, a, b);
-        ^^^^^^^^^^^^^^ Refs[1]
+        ^^^^^^^^^^^^^^ Refs[2]
                        ^^^ Refs[1]
                                   ^ Refs[4]
                                      ^ Refs[4]
@@ -1240,7 +1240,7 @@ endfunction
 
 
 class G #(type T);
-      ^ Refs[1]
+      ^ Refs[3]
 
     extern function T foo;
 
@@ -1276,11 +1276,11 @@ module m7;
        ^^ Refs[1]
 
     G #(real) g1;
-    ^ Refs[1]
+    ^ Refs[3]
               ^^ Refs[1]
 
     G #(int) g2;
-    ^ Refs[1]
+    ^ Refs[3]
              ^^ Refs[2]
 
 
@@ -1309,10 +1309,10 @@ class A;
             ^ Refs[7]
 
     function integer f();
-                     ^ Refs[5]
+                     ^ Refs[6]
 
         f = i;
-        ^ Refs[5]
+        ^ Refs[6]
             ^ Refs[3]
 
     endfunction
@@ -1341,11 +1341,11 @@ class B extends A;
 
         j = super.f();
         ^ Refs[7]
-                  ^ Refs[5]
+                  ^ Refs[6]
 
         j = this.super.f();
         ^ Refs[7]
-                       ^ Refs[5]
+                       ^ Refs[6]
 
     endfunction
 
@@ -1369,7 +1369,7 @@ class C2 extends B;
                 ^ Refs[2]
                    ^ Refs[2]
                        ^ Refs[5]
-                          ^ Refs[5]
+                          ^ Refs[6]
 
     endfunction
 
@@ -1448,7 +1448,7 @@ module m6;
     integer i = b1.f();
             ^ Refs[1]
                 ^^ Refs[2]
-                   ^ Refs[5]
+                   ^ Refs[6]
 
     initial begin
 

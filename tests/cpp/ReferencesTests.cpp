@@ -897,3 +897,88 @@ TEST_CASE("FindReferences - Nested Struct Member Deep Access") {
     CHECK(refs->size() == 2);
     verifyReferenceTokens(server, *refs, "id");
 }
+
+TEST_CASE("Rename - Port From Definition") {
+    ServerHarness server("indexer_test");
+    auto hdl = server.openFile("port_rename.sv");
+    hdl.ensureSynced();
+
+    // Rename 'clk' port from its declaration in child_module
+    auto cursor = hdl.after("input logic c"); // Position at 'c' of 'clk'
+    auto edit = server.getDocRename(lsp::RenameParams{
+        .textDocument = {.uri = hdl.m_uri},
+        .position = cursor.getPosition(),
+        .newName = "clock",
+    });
+
+    REQUIRE(edit.has_value());
+    REQUIRE(edit->changes.has_value());
+
+    auto& changes = *edit->changes;
+    auto uriStr = hdl.m_uri.str();
+    REQUIRE(changes.find(uriStr) != changes.end());
+
+    // Should find:
+    // 1. Declaration: input logic clk
+    // 2. Usage: @(posedge clk)
+    // 3. Named port connection: .clk(sys_clk)
+    CHECK(changes[uriStr].size() == 3);
+
+    // All edits should have the new name
+    for (const auto& textEdit : changes[uriStr]) {
+        CHECK(textEdit.newText == "clock");
+    }
+}
+
+TEST_CASE("Rename - Port From Instance Connection") {
+    ServerHarness server("indexer_test");
+    auto hdl = server.openFile("port_rename.sv");
+    hdl.ensureSynced();
+
+    // Rename 'clk' port from the named port connection in parent_module
+    auto cursor = hdl.after(".c"); // Position at 'c' of '.clk'
+    auto edit = server.getDocRename(lsp::RenameParams{
+        .textDocument = {.uri = hdl.m_uri},
+        .position = cursor.getPosition(),
+        .newName = "clock",
+    });
+
+    REQUIRE(edit.has_value());
+    REQUIRE(edit->changes.has_value());
+
+    auto& changes = *edit->changes;
+    auto uriStr = hdl.m_uri.str();
+    REQUIRE(changes.find(uriStr) != changes.end());
+
+    // Should find same 3 references as when renaming from definition
+    CHECK(changes[uriStr].size() == 3);
+
+    // All edits should have the new name
+    for (const auto& textEdit : changes[uriStr]) {
+        CHECK(textEdit.newText == "clock");
+    }
+}
+
+TEST_CASE("FindReferences - Port Across Instance Boundary") {
+    ServerHarness server("indexer_test");
+    auto hdl = server.openFile("port_rename.sv");
+    hdl.ensureSynced();
+
+    // Find references to 'data_out' port from its declaration
+    auto cursor = hdl.after("output logic [7:0] ");
+    auto refs = server.getDocReferences(lsp::ReferenceParams{
+        .context = {.includeDeclaration = true},
+        .textDocument = {.uri = hdl.m_uri},
+        .position = cursor.getPosition(),
+    });
+
+    REQUIRE(refs.has_value());
+    // Should find:
+    // 1. Declaration: output logic [7:0] data_out
+    // 2. Usage in reset: data_out <= '0
+    // 3. Usage in else: data_out <= data_out + 1 (LHS)
+    // 4. Usage in else: data_out <= data_out + 1 (RHS)
+    // 5. Named port connection: .data_out(result)
+    CHECK(refs->size() == 5);
+    verifyReferenceTokens(server, *refs, "data_out");
+}
