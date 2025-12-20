@@ -648,8 +648,8 @@
     ]
   },
   "scripts": {
-    "clean": "rm -rf out dist .vscode-test",
-    "clean:light": "rm -rf out dist .vscode-test/extensions .vscode-test/user-data",
+    "clean": "rimraf out dist .vscode-test",
+    "clean:light": "rimraf out dist .vscode-test/extensions .vscode-test/user-data",
     "package": "pnpm vsce package --no-dependencies",
     "gen-types": "pnpm -F slanglib gen-types",
     "check-types": "pnpm gen-types && tsc --noEmit",
@@ -665,6 +665,7 @@
     "watch": "pnpm esbuild-base --sourcemap --watch",
     "build-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
+    "test": "pnpm build-tests && tape out/test/**/*.js",
     "prerelease:alpha": "ts-node scripts/update-alpha-version.ts",
     "lint:ts": "eslint src --ext ts --fix",
     "lint": "pnpm lint:ts",
@@ -697,6 +698,7 @@
     "glob": "^11.0.0",
     "jiti": "^2.6.1",
     "prettier-plugin-organize-imports": "^4.1.0",
+    "rimraf": "^6.1.2",
     "tape": "^5.9.0",
     "tmp-promise": "^3.0.3",
     "ts-node": "^10.9.2",
