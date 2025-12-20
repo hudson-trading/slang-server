@@ -19,6 +19,9 @@
     "resolveJsonModule": true
   },
   "exclude": [
-    "node_modules"
+    "eslint.config.ts",
+    "node_modules",
+    "dist",
+    "out"
   ]
 }
