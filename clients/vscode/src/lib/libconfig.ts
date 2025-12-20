@@ -670,7 +670,7 @@ export class ConfigObject<T extends JSONSchemaType> extends ExtensionNode {
   }
 }
 
-type Platform = 'windows' | 'linux' | 'mac'
+export type Platform = 'windows' | 'linux' | 'mac'
 
 type PlatformMap = { [key in Platform]: string }
 

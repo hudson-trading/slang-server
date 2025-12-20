@@ -1,5 +1,4 @@
 import * as vscode from 'vscode'
-import * as path from 'path'
 import { installLatestSlang } from './install'
 import { PathConfigObject } from '../lib/libconfig'
 

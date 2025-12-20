@@ -55,21 +55,21 @@ function chooseReleaseAsset(release: GithubRelease): GithubAsset {
 
   if (platform === 'windows') {
     const asset = assets.find((a) => a.name === 'slang-server-windows-x64.zip')
-    if (asset) return asset
+    if (asset) {return asset}
   }
 
   if (platform === 'mac') {
     const asset = assets.find((a) => a.name === 'slang-server-macos.tar.gz')
-    if (asset) return asset
+    if (asset) {return asset}
   }
 
   if (platform === 'linux') {
     // Prefer gcc, fall back to clang
     const gcc = assets.find((a) => a.name === 'slang-server-linux-x64-gcc.tar.gz')
-    if (gcc) return gcc
+    if (gcc) {return gcc}
 
     const clang = assets.find((a) => a.name === 'slang-server-linux-x64-clang.tar.gz')
-    if (clang) return clang
+    if (clang) {return clang}
   }
 
   throw new Error(`No compatible slang-server release found for ${platform}`)
@@ -107,11 +107,13 @@ async function findBinary(root: string, name: string): Promise<string> {
   const entries = await fs.readdir(root, { withFileTypes: true })
   for (const e of entries) {
     const p = path.join(root, e.name)
-    if (e.isFile() && e.name === name) return p
+    if (e.isFile() && e.name === name) {return p}
     if (e.isDirectory()) {
       try {
         return await findBinary(p, name)
-      } catch {}
+      } catch {
+        // ignore
+      }
     }
   }
   throw new Error(`Failed to find ${name} in extracted archive`)
