@@ -3,7 +3,7 @@ import * as path from 'path'
 import decompress from 'decompress'
 import * as stream from 'stream'
 import { pipeline } from 'stream/promises'
-import { getPlatform, Platform } from '../lib/libconfig'
+import { getPlatform, Platform } from '../lib/platform'
 
 type GithubAsset = {
   name: string

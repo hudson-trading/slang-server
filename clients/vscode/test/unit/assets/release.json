@@ -15,8 +15,8 @@
       "browser_download_url": "http://127.0.0.1:9999/slang-server-windows-x64.zip"
     },
     {
-      "name": "slang-server-macos-x64.tar.gz",
-      "browser_download_url": "http://127.0.0.1:9999/slang-server-macos-x64.tar.gz"
+      "name": "slang-server-macos.tar.gz",
+      "browser_download_url": "http://127.0.0.1:9999/slang-server-macos.tar.gz"
     }
   ]
 }

@@ -9,6 +9,7 @@ import { JSONSchemaType } from './jsonSchema'
 import { Logger, StubLogger, createLogger } from './logger'
 import { IConfigurationPropertySchema } from './vscodeConfigs'
 import fs = require('fs')
+import { PlatformMap, getPlatform } from './platform'
 
 const execFilePromise = promisify(child_process.execFile)
 
@@ -670,10 +671,6 @@ export class ConfigObject<T extends JSONSchemaType> extends ExtensionNode {
   }
 }
 
-export type Platform = 'windows' | 'linux' | 'mac'
-
-type PlatformMap = { [key in Platform]: string }
-
 type PathConfigSchema = Omit<IConfigurationPropertySchema, 'default'>
 export class PathConfigObject extends ConfigObject<string> {
   platformDefaults: PlatformMap
@@ -786,18 +783,6 @@ export class PathConfigObject extends ConfigObject<string> {
       .getConfiguration()
       .update(this.configPath!, value, vscode.ConfigurationTarget.Global)
     this.cachedValue = value
-  }
-}
-
-export function getPlatform(): Platform {
-  switch (process.platform) {
-    case 'win32':
-      return 'windows'
-    case 'darwin':
-      return 'mac'
-    default:
-      // includes WSL
-      return 'linux'
   }
 }
 
