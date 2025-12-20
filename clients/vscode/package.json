@@ -648,8 +648,8 @@
     ]
   },
   "scripts": {
-    "clean": "rm -rf out dist .vscode-test",
-    "clean:light": "rm -rf out dist .vscode-test/extensions .vscode-test/user-data",
+    "clean": "rimraf out dist .vscode-test",
+    "clean:light": "rimraf out dist .vscode-test/extensions .vscode-test/user-data",
     "package": "pnpm vsce package --no-dependencies",
     "gen-types": "pnpm -F slanglib gen-types",
     "check-types": "pnpm gen-types && tsc --noEmit",
@@ -694,6 +694,7 @@
     "glob": "^11.0.0",
     "jiti": "^2.6.1",
     "prettier-plugin-organize-imports": "^4.1.0",
+    "rimraf": "^6.1.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.3"
   }
