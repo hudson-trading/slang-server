@@ -1,0 +1,10 @@
+{
+  "name": "v1.0.0",
+  "tag_name": "1.0.0",
+  "assets": [
+    {
+      "name": "slang-server-linux-x64-gcc.tar.gz",
+      "browser_download_url": "http://127.0.0.1:9999/slang-server-linux-x64-gcc.tar.gz"
+    }
+  ]
+}

@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 import * as vscode from 'vscode'
 
-import * as child_process from 'child_process'
-
 import path from 'path'
 import * as process from 'process'
 import * as semver from 'semver'
@@ -28,6 +26,8 @@ import { ProjectComponent } from './sidebar/ProjectComponent'
 import * as slang from './SlangInterface'
 import { AnyVerilogLanguages, anyVerilogSelector, getWorkspaceFolder } from './utils'
 import { glob } from 'glob'
+import { InstallerUI } from './installer/ui'
+import { prepareSlang } from './installer/prepare'
 
 export var ext: SlangExtension
 
@@ -421,6 +421,19 @@ export async function activate(context: vscode.ExtensionContext) {
     title: 'Slang',
     icon: '$(chip)',
   })
+
+  const installerUI = new InstallerUI(context, ext.path)
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('slang.installServer', () => installerUI.installLatest())
+  )
+
+  const serverPath = await prepareSlang(installerUI)
+
+  if (!serverPath) {
+    return
+  }
+
   await ext.activateExtension('slang', 'Slang', context, [
     'AndrewNolte.vscode-system-verilog',
     'AndrewNolte.vscode-slang',
