@@ -34,13 +34,16 @@ bool isSingleLine(const std::string& s);
 
 std::string detailFormat(const syntax::SyntaxNode& node);
 
-std::string svCodeBlockString(std::string_view code);
+std::string svCodeBlockString(std::string_view code, bool shiftIndentation = true);
 
 std::string svCodeBlockString(const syntax::SyntaxNode& node);
 
 lsp::MarkupContent svCodeBlock(const syntax::SyntaxNode& node);
 
+/// Trim leading whitespace
 void ltrim(std::string& s);
+
+void ltrim(std::string_view& sv);
 
 std::string toCamelCase(std::string_view str);
 

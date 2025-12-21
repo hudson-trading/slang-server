@@ -33,7 +33,7 @@
 `define FOO(blah) blah
 
 `define BAR(blah) `FOO(blah)
-                  ^^^^ Ref -> `// Nested macro definitions\n\`define FOO(blah) blah`
+                  ^^^^ Ref ->  Nested macro definitions\n\\n\``define FOO(blah) blah`
 
 `define BAZ(xy) xy
 
@@ -45,7 +45,7 @@
                                       ^^^^ Ref -> ``define BAZ(xy) xy`
 
 `define COMPLEX_BAR(blah, flurb) `COMPLEX_FOO(blah, flurb)
-                                 ^^^^^^^^^^^^ Ref -> `// More complex nested macros\n\`define COMPLEX_FOO(blah, flurb) blah+`BAZ(flurb)`
+                                 ^^^^^^^^^^^^ Ref ->  More complex nested macros\n\\n\``define COMPLEX_FOO(blah, flurb) blah+`BAZ(flurb)`
 
 
 
@@ -56,7 +56,7 @@
 `define CLOSING_PAREN 1)
 
 `define COMBINED_MACRO `INCOMPLETE_PAREN + `CLOSING_PAREN ()
-                       ^^^^^^^^^^^^^^^^^ Ref -> `// Macros that create syntax issues\n\`define INCOMPLETE_PAREN (i`
+                       ^^^^^^^^^^^^^^^^^ Ref ->  Macros that create syntax issues\n\\n\``define INCOMPLETE_PAREN (i`
                                            ^^^^^^^^^^^^^^ Ref -> ``define CLOSING_PAREN 1)`
 
 
@@ -132,7 +132,7 @@ module test;
         ^^^^^^^^ Sym test_var : Variable
 
     logic [`BUS_WIDTH-1:0] bus_signal;
-           ^^^^^^^^^^ Ref -> `// Use macros from common_macros.svh\n\`define BUS_WIDTH `WIDTH`
+           ^^^^^^^^^^ Ref ->  Use macros from common_macros.svh\n\\n\``define BUS_WIDTH `WIDTH`
                            ^^^^^^^^^^ Sym bus_signal : Variable
 
     logic [`ADDR_BITS-1:0] address;
@@ -144,10 +144,10 @@ module test;
     // Use CREATE_REG macro from common_macros.svh
 
     `CREATE_REG(status_reg, 8)
-    ^^^^^^^^^^^ Ref -> `// From common_macros.svh`\n\\n\---\n\\n\``define CREATE_REG(name, width) \\n\logic [width-1:0] name; \\n\assign name = {width{1'b0}};`
+    ^^^^^^^^^^^ Ref -> `// From common_macros.svh`\n\\n\---\n\\n\``define CREATE_REG(name, width) \\n\    logic [width-1:0] name; \\n\    assign name = {width{1'b0}};`
 
     `CREATE_REG(control_reg, 16)
-    ^^^^^^^^^^^ Ref -> `// From common_macros.svh`\n\\n\---\n\\n\``define CREATE_REG(name, width) \\n\logic [width-1:0] name; \\n\assign name = {width{1'b0}};`
+    ^^^^^^^^^^^ Ref -> `// From common_macros.svh`\n\\n\---\n\\n\``define CREATE_REG(name, width) \\n\    logic [width-1:0] name; \\n\    assign name = {width{1'b0}};`
 
 
 
@@ -155,7 +155,7 @@ module test;
 
     localparam int SIMPLE_VAL = `SIMPLE_MACRO;
                    ^^^^^^^^^^ Sym SIMPLE_VAL : Parameter
-                                ^^^^^^^^^^^^^ Ref -> `// Basic macro definitions\n\`define SIMPLE_MACRO 42`
+                                ^^^^^^^^^^^^^ Ref ->  Basic macro definitions\n\\n\``define SIMPLE_MACRO 42`
 
 
 
@@ -201,12 +201,12 @@ module test;
     `DECLARE_INT(initial_state, STATE_IDLE)
     ^^^^^^^^^^^^ Ref -> ``define DECLARE_INT(name, val) localparam int name = val;`
                  ^^^^^^^^^^^^^ Ref -> `localparam int initial_state = STATE_IDLE`\n\ Expanded from\n\ ``DECLARE_INT(initial_state, STATE_IDLE)`
-                                ^^^^^^^^^^ Ref -> `// In test.state_t`\n\\n\---\n\\n\`// Enum for testing macro with enum values\n\typedef enum {\n\    STATE_IDLE = 0,\n\    STATE_ACTIVE = 1,\n\    STATE_WAIT = 2,\n\    STATE_DONE = 3\n\} state_t;`
+                                ^^^^^^^^^^ Ref -> `// In test.state_t`\n\\n\---\n\\n\ Enum for testing macro with enum values\n\\n\`typedef enum {\n\    STATE_IDLE = 0,\n\    STATE_ACTIVE = 1,\n\    STATE_WAIT = 2,\n\    STATE_DONE = 3\n\} state_t;`
 
     `DECLARE_INT(active_state, STATE_ACTIVE)
     ^^^^^^^^^^^^ Ref -> ``define DECLARE_INT(name, val) localparam int name = val;`
                  ^^^^^^^^^^^^ Ref -> `localparam int active_state = STATE_ACTIVE`\n\ Expanded from\n\ ``DECLARE_INT(active_state, STATE_ACTIVE)`
-                               ^^^^^^^^^^^^ Ref -> `// In test.state_t`\n\\n\---\n\\n\`// Enum for testing macro with enum values\n\typedef enum {\n\    STATE_IDLE = 0,\n\    STATE_ACTIVE = 1,\n\    STATE_WAIT = 2,\n\    STATE_DONE = 3\n\} state_t;`
+                               ^^^^^^^^^^^^ Ref -> `// In test.state_t`\n\\n\---\n\\n\ Enum for testing macro with enum values\n\\n\`typedef enum {\n\    STATE_IDLE = 0,\n\    STATE_ACTIVE = 1,\n\    STATE_WAIT = 2,\n\    STATE_DONE = 3\n\} state_t;`
 
 
 
@@ -231,7 +231,7 @@ module test;
 
         for (i = 0; i < `SIMPLE_MACRO; i++) begin : gen_block
                     ^ Ref -> `// In test`\n\\n\---\n\\n\`i`
-                        ^^^^^^^^^^^^^ Ref -> `// Basic macro definitions\n\`define SIMPLE_MACRO 42`
+                        ^^^^^^^^^^^^^ Ref ->  Basic macro definitions\n\\n\``define SIMPLE_MACRO 42`
                                        ^ Ref -> `// In test`\n\\n\---\n\\n\`i`
                                                     ^^^^^^^^^ Sym gen_block : GenerateBlockArray
 
@@ -250,10 +250,10 @@ module test;
     always_comb begin
 
         case (test_var)
-              ^^^^^^^^ Ref -> `// Variables for testing - use macros from common_macros.svh\n\int test_var;`
+              ^^^^^^^^ Ref ->  Variables for testing - use macros from common_macros.svh\n\\n\`int test_var;`
 
             `SIMPLE_MACRO: bus_signal = `TWO_ARG_MACRO(1, 2);
-            ^^^^^^^^^^^^^ Ref -> `// Basic macro definitions\n\`define SIMPLE_MACRO 42`
+            ^^^^^^^^^^^^^ Ref ->  Basic macro definitions\n\\n\``define SIMPLE_MACRO 42`
                            ^^^^^^^^^^ Ref -> `logic [-1:0] bus_signal;`
                                         ^^^^^^^^^^^^^^ Ref -> ``define TWO_ARG_MACRO(a, b) (a + b)`
 
@@ -295,7 +295,7 @@ module test;
     // Alternative implementation without memory_module
 
     test_struct my_struct;
-    ^^^^^^^^^^^ Ref -> `// Basic struct for testing member access\n\typedef struct {\n\    int i;\n\    logic [7:0] data;\n\} test_struct;`
+    ^^^^^^^^^^^ Ref ->  Basic struct for testing member access\n\\n\`typedef struct {\n\    int i;\n\    logic [7:0] data;\n\} test_struct;`
                 ^^^^^^^^^ Sym my_struct : Variable
 
 `endif
@@ -307,7 +307,7 @@ module test;
     initial begin
 
         $display("Testing macro: %d", `SIMPLE_MACRO);
-                                      ^^^^^^^^^^^^^ Ref -> `// Basic macro definitions\n\`define SIMPLE_MACRO 42`
+                                      ^^^^^^^^^^^^^ Ref ->  Basic macro definitions\n\\n\``define SIMPLE_MACRO 42`
 
         $display("Function macro result: %d", `FUNC_MACRO(25));
                                               ^^^^^^^^^^^ Ref -> ``define FUNC_MACRO(x) (x + 1)`
@@ -323,7 +323,7 @@ module test;
         // Test assertion macro from common_macros.svh
 
         `ASSERT_EQ(10, 10)
-        ^^^^^^^^^^ Ref -> `// From common_macros.svh`\n\\n\---\n\\n\``define ASSERT_EQ(actual, expected) \\n\if (actual !== expected) \\n\    $error("Assertion failed: %s != %s", `"actual`", `"expected`");`
+        ^^^^^^^^^^ Ref -> `// From common_macros.svh`\n\\n\---\n\\n\``define ASSERT_EQ(actual, expected) \\n\    if (actual !== expected) \\n\        $error("Assertion failed: %s != %s", `"actual`", `"expected`");`
 
     end
 
