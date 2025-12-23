@@ -16,18 +16,18 @@ module crossfile_user
 )(
 
     input logic clk,
-                ^^^ Refs[2]
+                ^^^ Refs[3]
 
     input logic rst,
-                ^^^ Refs[2]
+                ^^^ Refs[3]
 
     input transaction_t trans_in,
           ^^^^^^^^^^^^^ Refs[5]
-                        ^^^^^^^^ Refs[2]
+                        ^^^^^^^^ Refs[3]
 
     output transaction_t trans_out
            ^^^^^^^^^^^^^ Refs[5]
-                         ^^^^^^^^^ Refs[2]
+                         ^^^^^^^^^ Refs[3]
 
 );
 
@@ -63,10 +63,10 @@ module crossfile_user
 
 
     always_ff @(posedge clk) begin
-                        ^^^ Refs[2]
+                        ^^^ Refs[3]
 
         if (rst) begin
-            ^^^ Refs[2]
+            ^^^ Refs[3]
 
             wr_ptr <= '0;
             ^^^^^^ Refs[5]
@@ -79,10 +79,10 @@ module crossfile_user
             buffer[wr_ptr] <= trans_in;
             ^^^^^^ Refs[3]
                    ^^^^^^ Refs[5]
-                              ^^^^^^^^ Refs[2]
+                              ^^^^^^^^ Refs[3]
 
             trans_out <= buffer[rd_ptr];
-            ^^^^^^^^^ Refs[2]
+            ^^^^^^^^^ Refs[3]
                          ^^^^^^ Refs[3]
                                 ^^^^^^ Refs[5]
 
@@ -131,19 +131,19 @@ module crossfile_top;
       ^^^^^^ Refs[1]
 
         .clk(clk),
-         ^^^ Refs[2]
+         ^^^ Refs[3]
              ^^^ Refs[2]
 
         .rst(rst),
-         ^^^ Refs[2]
+         ^^^ Refs[3]
              ^^^ Refs[2]
 
         .trans_in(t1),
-         ^^^^^^^^ Refs[2]
+         ^^^^^^^^ Refs[3]
                   ^^ Refs[2]
 
         .trans_out(t2)
-         ^^^^^^^^^ Refs[2]
+         ^^^^^^^^^ Refs[3]
                    ^^ Refs[2]
 
     );
