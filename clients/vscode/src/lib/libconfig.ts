@@ -7,11 +7,21 @@ import { JSONSchemaType } from './jsonSchema'
 import { Logger, StubLogger, createLogger } from './logger'
 import { IConfigurationPropertySchema } from './vscodeConfigs'
 import fs = require('fs')
+import { PlatformMap, getPlatform } from './platform'
 
 export async function fileExists(filePath: string): Promise<boolean> {
   try {
     await fs.promises.access(filePath, fs.constants.F_OK)
     return true
+  } catch {
+    return false
+  }
+}
+
+async function isFile(filePath: string): Promise<boolean> {
+  try {
+    const stat = await fs.promises.stat(filePath)
+    return stat.isFile()
   } catch {
     return false
   }
@@ -266,8 +276,9 @@ export abstract class ExtensionComponent extends ExtensionNode {
                 viewsInlineButtons.push(button.getButtonWhen())
                 if (button.obj.isSubmenu) {
                   // add submenu number for priority
-                  viewsInlineButtons[viewsInlineButtons.length - 1].group +=
-                    `@${viewsInlineButtons.length}`
+                  viewsInlineButtons[
+                    viewsInlineButtons.length - 1
+                  ].group += `@${viewsInlineButtons.length}`
                 }
               } else if (button instanceof WebviewButton) {
                 webviewButtons.push(button.getButtonWhen())
@@ -395,7 +406,7 @@ interface TreeItemButtonSpec extends ContextCommandSpec {
 // }
 
 export class CommandNode<
-  Spec extends ContextCommandSpec = CommandConfigSpec,
+  Spec extends ContextCommandSpec = CommandConfigSpec
 > extends ExtensionNode {
   obj: Spec
   func: (...args: any[]) => any
@@ -665,10 +676,6 @@ export class ConfigObject<T extends JSONSchemaType> extends ExtensionNode {
   }
 }
 
-type Platform = 'windows' | 'linux' | 'mac'
-
-type PlatformMap = { [key in Platform]: string }
-
 type PathConfigSchema = Omit<IConfigurationPropertySchema, 'default'>
 export class PathConfigObject extends ConfigObject<string> {
   platformDefaults: PlatformMap
@@ -739,6 +746,16 @@ export class PathConfigObject extends ConfigObject<string> {
       )
       return false
     }
+
+    // check if it's a directory
+    const is_file = await isFile(toolpath)
+    if (!is_file) {
+      vscode.window.showErrorMessage(
+        `Path "${this.configPath}: ${toolpath}" is not a file, please reconfigure`
+      )
+      return false
+    }
+
     return true
   }
 
@@ -755,17 +772,12 @@ export class PathConfigObject extends ConfigObject<string> {
     out += `    windows: \`${this.platformDefaults.windows}\`\n\n`
     return out
   }
-}
 
-export function getPlatform(): Platform {
-  switch (process.platform) {
-    case 'win32':
-      return 'windows'
-    case 'darwin':
-      return 'mac'
-    default:
-      // includes WSL
-      return 'linux'
+  async updateValue(value: string) {
+    await vscode.workspace
+      .getConfiguration()
+      .update(this.configPath!, value, vscode.ConfigurationTarget.Global)
+    this.cachedValue = value
   }
 }
 
