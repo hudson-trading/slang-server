@@ -18,15 +18,6 @@ export async function fileExists(filePath: string): Promise<boolean> {
   }
 }
 
-async function isFile(filePath: string): Promise<boolean> {
-  try {
-    const stat = await fs.promises.stat(filePath)
-    return stat.isFile()
-  } catch {
-    return false
-  }
-}
-
 class ExtensionNode {
   nodeName: string | undefined
   configPath: string | undefined
@@ -743,15 +734,6 @@ export class PathConfigObject extends ConfigObject<string> {
     if (!exists) {
       vscode.window.showErrorMessage(
         `File "${this.configPath}: ${toolpath}" doesn't exist, please reconfigure`
-      )
-      return false
-    }
-
-    // check if it's a directory
-    const is_file = await isFile(toolpath)
-    if (!is_file) {
-      vscode.window.showErrorMessage(
-        `Path "${this.configPath}: ${toolpath}" is not a file, please reconfigure`
       )
       return false
     }
