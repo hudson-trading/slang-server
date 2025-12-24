@@ -1,3 +1,22 @@
 [
-  []
+  [
+    {
+      "range": {
+        "start": {
+          "line": 152,
+          "character": 26
+        },
+        "end": {
+          "line": 152,
+          "character": 39
+        }
+      },
+      "severity": "Warning",
+      "code": "width-expand",
+      "codeDescription": {
+        "href": "https://sv-lang.com/warning-ref.html#width-expand"
+      },
+      "message": "implicit conversion expands from 1 to 32 bits"
+    }
+  ]
 ]

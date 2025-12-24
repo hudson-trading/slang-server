@@ -17,7 +17,7 @@ package test_pkg;
 endpackage
 
 interface bus_if #(
-    parameter type data_t = bit,
+    parameter type data_t,
     parameter int ADDR_WIDTH = 32
 )(
     input logic clk,
