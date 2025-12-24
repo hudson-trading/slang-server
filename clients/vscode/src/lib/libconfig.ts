@@ -727,26 +727,6 @@ export class PathConfigObject extends ConfigObject<string> {
     return toolpath
   }
 
-  async which(path: string): Promise<string> {
-    let args = ['-c', `which ${path}`]
-    if (getPlatform() === 'windows') {
-      args = ['/c', `where ${path}`]
-    }
-    try {
-      const { stdout, stderr } = await execFilePromise(getShell(), args)
-      if (stderr) {
-        return ''
-      }
-      if (getPlatform() === 'windows') {
-        // where returns multiple
-        return stdout.split('\r\n')[0].trim()
-      }
-      return stdout.trim()
-    } catch {
-      return ''
-    }
-  }
-
   async checkPathNotify(): Promise<boolean> {
     let toolpath = await this.getValueAsync()
     if (toolpath === '') {
