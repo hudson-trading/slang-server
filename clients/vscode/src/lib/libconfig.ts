@@ -2,15 +2,12 @@ import * as child_process from 'child_process'
 import { readFile, writeFile } from 'fs/promises'
 import * as path from 'path'
 import * as process from 'process'
-import { promisify } from 'util'
 import * as vscode from 'vscode'
 import which from 'which'
 import { JSONSchemaType } from './jsonSchema'
 import { Logger, StubLogger, createLogger } from './logger'
 import { IConfigurationPropertySchema } from './vscodeConfigs'
 import fs = require('fs')
-
-const execFilePromise = promisify(child_process.execFile)
 
 export async function fileExists(filePath: string): Promise<boolean> {
   try {
