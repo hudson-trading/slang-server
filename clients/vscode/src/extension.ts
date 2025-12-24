@@ -119,7 +119,7 @@ export class SlangExtension extends ActivityBarComponent {
 
   path: PathConfigObject = new PathConfigObject(
     {
-      description: 'Path to the slang-server (not slang)',
+      description: 'Path to slang-server (not slang)',
     },
     {
       windows: 'slang-server.exe',
