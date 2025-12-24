@@ -95,14 +95,14 @@ TEST_CASE("NoParamTop") {
 
     auto hdl = server.openFile("tests/data/hdl_test.sv");
 
-    JsonGoldenTest golden;
+    JsonGoldenTest golden(true);
     golden.record(hdl.getDiagnostics());
 }
 
 TEST_CASE("PartialElaboration") {
     ServerHarness server;
 
-    JsonGoldenTest golden;
+    JsonGoldenTest golden(true);
 
     // Check that we can reason about diagnostics without having to fully elaborate
     auto doc = server.openFile("test.sv", R"(
