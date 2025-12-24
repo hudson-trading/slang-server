@@ -33,7 +33,6 @@
 #include "slang/parsing/ParserMetadata.h"
 #include "slang/syntax/AllSyntax.h"
 #include "slang/syntax/SyntaxTree.h"
-#include "slang/syntax/SyntaxVisitor.h"
 #include "slang/text/SourceLocation.h"
 #include "slang/text/SourceManager.h"
 
@@ -79,6 +78,7 @@ ServerDriver::ServerDriver(Indexer& indexer, SlangLspClient& client, const Confi
     diagEngine.addClient(diagClient);
 
     options = driver.createOptionBag();
+    options.set(driver.getAnalysisOptions());
     ok = driver.parseAllSources();
 
     // Create documents from syntax trees

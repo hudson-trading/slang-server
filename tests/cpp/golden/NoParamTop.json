@@ -17,6 +17,350 @@
         "href": "https://sv-lang.com/warning-ref.html#width-expand"
       },
       "message": "implicit conversion expands from 1 to 32 bits"
+    },
+    {
+      "range": {
+        "start": {
+          "line": 95,
+          "character": 47
+        },
+        "end": {
+          "line": 95,
+          "character": 48
+        }
+      },
+      "severity": "Warning",
+      "code": "unused-port",
+      "codeDescription": {
+        "href": "https://sv-lang.com/warning-ref.html#unused-port"
+      },
+      "message": "unused port signal 'id_array'",
+      "tags": [
+        "Unnecessary"
+      ]
+    },
+    {
+      "range": {
+        "start": {
+          "line": 96,
+          "character": 29
+        },
+        "end": {
+          "line": 96,
+          "character": 30
+        }
+      },
+      "severity": "Warning",
+      "code": "unused-port",
+      "codeDescription": {
+        "href": "https://sv-lang.com/warning-ref.html#unused-port"
+      },
+      "message": "unused port signal 'pkt_in'",
+      "tags": [
+        "Unnecessary"
+      ]
+    },
+    {
+      "range": {
+        "start": {
+          "line": 106,
+          "character": 17
+        },
+        "end": {
+          "line": 106,
+          "character": 18
+        }
+      },
+      "severity": "Warning",
+      "code": "unassigned-variable",
+      "codeDescription": {
+        "href": "https://sv-lang.com/warning-ref.html#unassigned-variable"
+      },
+      "message": "variable 'sub_data_in' is never assigned a value"
+    },
+    {
+      "range": {
+        "start": {
+          "line": 107,
+          "character": 17
+        },
+        "end": {
+          "line": 107,
+          "character": 18
+        }
+      },
+      "severity": "Warning",
+      "code": "unused-but-set-variable",
+      "codeDescription": {
+        "href": "https://sv-lang.com/warning-ref.html#unused-but-set-variable"
+      },
+      "message": "variable 'sub_data_out' is assigned but its value is never used",
+      "tags": [
+        "Unnecessary"
+      ]
+    },
+    {
+      "range": {
+        "start": {
+          "line": 127,
+          "character": 14
+        },
+        "end": {
+          "line": 127,
+          "character": 19
+        }
+      },
+      "severity": "Warning",
+      "code": "case-enum-explicit",
+      "codeDescription": {
+        "href": "https://sv-lang.com/warning-ref.html#case-enum-explicit"
+      },
+      "message": "enumeration value 'STATE_C' not explicitly handled in case statement"
+    },
+    {
+      "range": {
+        "start": {
+          "line": 236,
+          "character": 20
+        },
+        "end": {
+          "line": 236,
+          "character": 21
+        }
+      },
+      "severity": "Warning",
+      "code": "unused-but-set-variable",
+      "codeDescription": {
+        "href": "https://sv-lang.com/warning-ref.html#unused-but-set-variable"
+      },
+      "message": "variable 'nested_array' is assigned but its value is never used",
+      "tags": [
+        "Unnecessary"
+      ]
+    },
+    {
+      "range": {
+        "start": {
+          "line": 247,
+          "character": 12
+        },
+        "end": {
+          "line": 247,
+          "character": 30
+        }
+      },
+      "severity": "Error",
+      "message": "variable 'single_struct.addr' driven by always_ff procedure cannot be written to by any other process"
+    },
+    {
+      "range": {
+        "start": {
+          "line": 328,
+          "character": 8
+        },
+        "end": {
+          "line": 328,
+          "character": 26
+        }
+      },
+      "severity": "Information",
+      "message": "also assigned here"
+    },
+    {
+      "range": {
+        "start": {
+          "line": 248,
+          "character": 12
+        },
+        "end": {
+          "line": 248,
+          "character": 30
+        }
+      },
+      "severity": "Error",
+      "message": "variable 'single_struct.data' driven by always_ff procedure cannot be written to by any other process"
+    },
+    {
+      "range": {
+        "start": {
+          "line": 329,
+          "character": 8
+        },
+        "end": {
+          "line": 329,
+          "character": 26
+        }
+      },
+      "severity": "Information",
+      "message": "also assigned here"
+    },
+    {
+      "range": {
+        "start": {
+          "line": 249,
+          "character": 12
+        },
+        "end": {
+          "line": 249,
+          "character": 31
+        }
+      },
+      "severity": "Error",
+      "message": "variable 'single_struct.valid' driven by always_ff procedure cannot be written to by any other process"
+    },
+    {
+      "range": {
+        "start": {
+          "line": 330,
+          "character": 8
+        },
+        "end": {
+          "line": 330,
+          "character": 27
+        }
+      },
+      "severity": "Information",
+      "message": "also assigned here"
+    },
+    {
+      "range": {
+        "start": {
+          "line": 257,
+          "character": 12
+        },
+        "end": {
+          "line": 257,
+          "character": 24
+        }
+      },
+      "severity": "Error",
+      "message": "variable 'struct_array' driven by always_ff procedure cannot be written to by any other process"
+    },
+    {
+      "range": {
+        "start": {
+          "line": 334,
+          "character": 8
+        },
+        "end": {
+          "line": 334,
+          "character": 29
+        }
+      },
+      "severity": "Information",
+      "message": "also assigned here"
+    },
+    {
+      "range": {
+        "start": {
+          "line": 270,
+          "character": 12
+        },
+        "end": {
+          "line": 270,
+          "character": 24
+        }
+      },
+      "severity": "Error",
+      "message": "variable 'nested_array' driven by always_ff procedure cannot be written to by any other process"
+    },
+    {
+      "range": {
+        "start": {
+          "line": 338,
+          "character": 8
+        },
+        "end": {
+          "line": 338,
+          "character": 27
+        }
+      },
+      "severity": "Information",
+      "message": "also assigned here"
+    },
+    {
+      "range": {
+        "start": {
+          "line": 279,
+          "character": 12
+        },
+        "end": {
+          "line": 279,
+          "character": 21
+        }
+      },
+      "severity": "Error",
+      "message": "variable 'pkg_array' driven by always_ff procedure cannot be written to by any other process"
+    },
+    {
+      "range": {
+        "start": {
+          "line": 341,
+          "character": 8
+        },
+        "end": {
+          "line": 341,
+          "character": 25
+        }
+      },
+      "severity": "Information",
+      "message": "also assigned here"
+    },
+    {
+      "range": {
+        "start": {
+          "line": 318,
+          "character": 12
+        },
+        "end": {
+          "line": 318,
+          "character": 29
+        }
+      },
+      "severity": "Error",
+      "message": "variable 'nested_struct.tag' driven by always_comb procedure cannot be written to by any other process"
+    },
+    {
+      "range": {
+        "start": {
+          "line": 264,
+          "character": 12
+        },
+        "end": {
+          "line": 264,
+          "character": 29
+        }
+      },
+      "severity": "Information",
+      "message": "also assigned here"
+    },
+    {
+      "range": {
+        "start": {
+          "line": 319,
+          "character": 12
+        },
+        "end": {
+          "line": 319,
+          "character": 32
+        }
+      },
+      "severity": "Error",
+      "message": "variable 'nested_struct.enable' driven by always_comb procedure cannot be written to by any other process"
+    },
+    {
+      "range": {
+        "start": {
+          "line": 265,
+          "character": 12
+        },
+        "end": {
+          "line": 265,
+          "character": 32
+        }
+      },
+      "severity": "Information",
+      "message": "also assigned here"
     }
   ]
 ]

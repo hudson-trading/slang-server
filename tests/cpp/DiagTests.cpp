@@ -5,8 +5,6 @@
 #include "utils/ServerHarness.h"
 #include <cstdlib>
 
-#include "slang/diagnostics/DeclarationsDiags.h"
-
 TEST_CASE("SingleFileDiag") {
     ServerHarness server;
 
@@ -89,7 +87,6 @@ TEST_CASE("AllGenerateBranches") {
         endmodule
         )");
     auto diags = doc.getDiagnostics();
-    CHECK(diags.size() == 6);
     golden.record(diags);
 }
 

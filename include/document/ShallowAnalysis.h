@@ -17,10 +17,12 @@
 #include <string_view>
 #include <vector>
 
+#include "slang/analysis/AnalysisManager.h"
 #include "slang/ast/ASTContext.h"
 #include "slang/ast/Compilation.h"
 #include "slang/ast/Lookup.h"
 #include "slang/ast/Symbol.h"
+#include "slang/diagnostics/Diagnostics.h"
 #include "slang/parsing/Token.h"
 #include "slang/syntax/AllSyntax.h"
 #include "slang/syntax/SyntaxNode.h"
@@ -144,6 +146,10 @@ public:
                             slang::SourceLocation targetLocation,
                             std::string_view targetName) const;
 
+    /// @brief Runs analysis on the shallow compilation and returns diagnostics
+    /// @return The analysis diagnostics (owned by internal AnalysisManager)
+    Diagnostics getAnalysisDiags();
+
 private:
     /// Reference to the source manager. Not const because we may need to parse macro args.
     SourceManager& m_sourceManager;
@@ -159,6 +165,9 @@ private:
 
     /// Compilation context for symbol resolution
     std::unique_ptr<slang::ast::Compilation> m_compilation;
+
+    /// Analysis manager for running driver and unused checks
+    slang::analysis::AnalysisManager m_analysisManager;
 
     /// Symbol tree visitor for /documentSymbols
     /// Currently this is relies on syntax, but we should switch it to use the shallow compilation

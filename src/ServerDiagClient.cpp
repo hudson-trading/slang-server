@@ -162,6 +162,10 @@ void ServerDiagClient::report(const slang::ReportedDiagnostic& diag) {
         m_diagnostics[uri].back().code = {std::string(optionName)};
         m_diagnostics[uri].back().codeDescription = lsp::CodeDescription{
             .href = URI::fromWeb("sv-lang.com/warning-ref.html#" + std::string(optionName))};
+
+        if (optionName.starts_with("unused")) {
+            m_diagnostics[uri].back().tags = {lsp::DiagnosticTag::Unnecessary};
+        }
     }
 }
 
