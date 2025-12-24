@@ -1,16 +1,12 @@
-import * as child_process from 'child_process'
 import { readFile, writeFile } from 'fs/promises'
 import * as path from 'path'
 import * as process from 'process'
-import { promisify } from 'util'
 import * as vscode from 'vscode'
 import which from 'which'
 import { JSONSchemaType } from './jsonSchema'
 import { Logger, StubLogger, createLogger } from './logger'
 import { IConfigurationPropertySchema } from './vscodeConfigs'
 import fs = require('fs')
-
-const execFilePromise = promisify(child_process.execFile)
 
 export async function fileExists(filePath: string): Promise<boolean> {
   try {
@@ -725,26 +721,6 @@ export class PathConfigObject extends ConfigObject<string> {
     this.cachedValue = toolpath
 
     return toolpath
-  }
-
-  async which(path: string): Promise<string> {
-    let args = ['-c', `which ${path}`]
-    if (getPlatform() === 'windows') {
-      args = ['/c', `where ${path}`]
-    }
-    try {
-      const { stdout, stderr } = await execFilePromise(getShell(), args)
-      if (stderr) {
-        return ''
-      }
-      if (getPlatform() === 'windows') {
-        // where returns multiple
-        return stdout.split('\r\n')[0].trim()
-      }
-      return stdout.trim()
-    } catch {
-      return ''
-    }
   }
 
   async checkPathNotify(): Promise<boolean> {
