@@ -267,9 +267,8 @@ export abstract class ExtensionComponent extends ExtensionNode {
                 viewsInlineButtons.push(button.getButtonWhen())
                 if (button.obj.isSubmenu) {
                   // add submenu number for priority
-                  viewsInlineButtons[
-                    viewsInlineButtons.length - 1
-                  ].group += `@${viewsInlineButtons.length}`
+                  viewsInlineButtons[viewsInlineButtons.length - 1].group += 
+                    `@${viewsInlineButtons.length}`
                 }
               } else if (button instanceof WebviewButton) {
                 webviewButtons.push(button.getButtonWhen())
@@ -397,7 +396,7 @@ interface TreeItemButtonSpec extends ContextCommandSpec {
 // }
 
 export class CommandNode<
-  Spec extends ContextCommandSpec = CommandConfigSpec
+  Spec extends ContextCommandSpec = CommandConfigSpec,
 > extends ExtensionNode {
   obj: Spec
   func: (...args: any[]) => any
