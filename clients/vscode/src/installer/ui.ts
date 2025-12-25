@@ -60,16 +60,16 @@ export class InstallerUI {
     return resp === install
   }
 
-  async promptReuse(version: string): Promise<boolean | undefined> {
-    const msg = `slang-server ${version} is already installed.`
-    const use = 'Use installed version'
-    const reinstall = 'Reinstall'
+  // async promptReuse(version: string): Promise<boolean | undefined> {
+  //   const msg = `slang-server ${version} is already installed.`
+  //   const use = 'Use installed version'
+  //   const reinstall = 'Reinstall'
 
-    const resp = await vscode.window.showInformationMessage(msg, use, reinstall)
-    if (resp === use) return true
-    if (resp === reinstall) return false
-    return undefined
-  }
+  //   const resp = await vscode.window.showInformationMessage(msg, use, reinstall)
+  //   if (resp === use) return true
+  //   if (resp === reinstall) return false
+  //   return undefined
+  // }
 
   async promptReload() {
     const resp = await vscode.window.showInformationMessage(

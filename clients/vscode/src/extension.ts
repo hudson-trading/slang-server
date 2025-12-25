@@ -169,10 +169,13 @@ export class SlangExtension extends ActivityBarComponent {
         }
 
         // Persist installed path into settings
-        this.path.cachedValue = installedPath
-        slangServerPath = installedPath
+        this.path.cachedValue = installedPath.path
+        slangServerPath = installedPath.path
 
-        await ui.promptReload()
+        // If we freshly installed it then we message the user to reload
+        if (installedPath.installed) {
+          await ui.promptReload()
+        }
       } catch (err: any) {
         await vscode.window.showErrorMessage(
           `Failed to install slang-server: ${err?.message ?? err}`

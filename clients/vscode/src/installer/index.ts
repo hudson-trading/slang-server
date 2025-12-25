@@ -9,21 +9,15 @@ function expectedInstallPath(storagePath: string, tag: string) {
   return path.join(storagePath, 'install', tag)
 }
 
-export async function prepareSlangServer(ui: InstallerUI): Promise<string | null> {
+export type InstallResult = { path: string; installed: boolean } | null
+export async function prepareSlangServer(ui: InstallerUI): Promise<InstallResult> {
   const release = await latestRelease()
   const installRoot = expectedInstallPath(ui.storagePath, release.tag_name)
 
   // Check if already installed
   try {
     const bin = await findExistingBinary(installRoot)
-    const reuse = await ui.promptReuse(release.tag_name)
-    if (reuse === true) {
-      return bin
-    } else if (reuse === false) {
-      await fs.rm(installRoot, { recursive: true, force: true })
-    } else {
-      return null
-    }
+    return { path: bin, installed: false }
   } catch {
     // Not installed, continue
   }
@@ -36,7 +30,7 @@ export async function prepareSlangServer(ui: InstallerUI): Promise<string | null
   })
 
   await ui.info(`slang-server installed at ${binaryPath}`)
-  return binaryPath
+  return { path: binaryPath, installed: true }
 }
 
 async function findExistingBinary(root: string): Promise<string> {
