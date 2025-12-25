@@ -3,29 +3,25 @@ import * as path from 'path'
 import { InstallerUI } from './ui'
 import { installLatestSlang, latestRelease } from './install'
 import * as vscode from 'vscode'
+import { getPlatform } from '../lib/platform'
 
-const BIN_NAME = process.platform === 'win32' ? 'slang-server.exe' : 'slang-server'
-
-function expectedInstallPath(storagePath: string, tag: string) {
-  return path.join(storagePath, 'install', tag)
-}
+const BIN_NAME = getPlatform() === 'windows' ? 'slang-server.exe' : 'slang-server'
 
 export async function prepareSlangServer(ui: InstallerUI): Promise<string> {
   const release = await latestRelease()
-  const installRoot = expectedInstallPath(ui.storagePath, release.tag_name)
+  const installRoot = path.join(ui.storagePath, 'install', release.tag_name)
 
   // Check if already installed
-  try {
-    const bin = await findExistingBinary(installRoot)
+  const bin = await findExistingBinary(installRoot)
+  if (bin !== null) {
+    // installed; return path
     return bin
-  } catch {
-    // Not installed, continue
   }
 
   const ok = await ui.promptInstall(release.tag_name)
   if (!ok) return ''
 
-  const binaryPath = await ui.progress('Installing slang-server…', false, async () => {
+  const binaryPath = await ui.progress('Installing slang-server...', false, async () => {
     return installLatestSlang(ui.storagePath)
   })
 
@@ -33,12 +29,13 @@ export async function prepareSlangServer(ui: InstallerUI): Promise<string> {
   return binaryPath
 }
 
-async function findExistingBinary(root: string): Promise<string> {
+async function findExistingBinary(root: string): Promise<string | null> {
+  // perhaps we can just look at the expected path instead of doing a full search?
   const entries = await fs.readdir(root, { recursive: true })
   for (const e of entries) {
-    if (typeof e === 'string' && e.endsWith(BIN_NAME)) {
+    if (e.endsWith(BIN_NAME)) {
       return path.join(root, e)
     }
   }
-  throw new Error('Not found')
+  return null
 }
