@@ -27,7 +27,7 @@ import * as slang from './SlangInterface'
 import { AnyVerilogLanguages, anyVerilogSelector, getWorkspaceFolder } from './utils'
 import { glob } from 'glob'
 import { InstallerUI } from './installer/ui'
-import { prepareSlang } from './installer/prepare'
+import { prepareSlangServer } from './installer'
 
 export var ext: SlangExtension
 
@@ -157,11 +157,28 @@ export class SlangExtension extends ActivityBarComponent {
     }
 
     if (slangServerPath === '') {
-      // TODO: offer to install it
-      await vscode.window.showErrorMessage(
-        `"slang.path not configured. Configure the abs path at slang.path, add to PATH, or disable in config.`
-      )
-      return
+      const ui = new InstallerUI(this.context)
+
+      try {
+        const installedPath = await prepareSlangServer(ui)
+        if (!installedPath) {
+          await vscode.window.showErrorMessage(
+            'slang-server is required to run the language server.'
+          )
+          return
+        }
+
+        // Persist installed path into settings
+        this.path.cachedValue = installedPath
+        slangServerPath = installedPath
+
+        await ui.promptReload()
+      } catch (err: any) {
+        await vscode.window.showErrorMessage(
+          `Failed to install slang-server: ${err?.message ?? err}`
+        )
+        return
+      }
     }
 
     // this.logger.info("using path " + slangServerPath)

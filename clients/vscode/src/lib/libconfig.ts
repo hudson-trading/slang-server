@@ -676,17 +676,6 @@ export class PathConfigObject extends ConfigObject<string> {
       default: '',
     })
     this.platformDefaults = platformDefaults
-    this.onConfigUpdated(async () => {
-      const toolpath = await this.findSlangServer()
-
-      if (toolpath !== '') {
-        await vscode.window.showErrorMessage(
-          `"slang.path not configured. Configure the abs path at slang.path, add to PATH, or disable in config.`
-        )
-      }
-
-      toolpath
-    })
   }
 
   compile(nodeName: string, parentNode?: ExtensionComponent | undefined): void {
