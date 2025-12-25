@@ -3,7 +3,7 @@ import { latestRelease } from './install'
 import { InstallerUI } from './ui'
 
 export async function prepareSlang(ui: InstallerUI): Promise<string | null> {
-  let configuredPath = await ui.slangPathConfig.getValueAsync()
+  let configuredPath = await ui.slangPathConfig.findSlangServer()
 
   if (configuredPath && (await fileExists(configuredPath))) {
     return configuredPath

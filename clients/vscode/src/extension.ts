@@ -147,8 +147,10 @@ export class SlangExtension extends ActivityBarComponent {
 
     // Check for environment variable set in launch.json; set when debugging in vscode
     let slangServerPath = process.env.SLANG_SERVER_PATH
+
+    // If not set, use configured path in settings.json
     if (!slangServerPath) {
-      slangServerPath = await this.path.getValueAsync()
+      slangServerPath = await this.path.findSlangServer()
       this.logger.info(`Using slang-server at ${slangServerPath}`)
     } else {
       this.logger.info(`Using slang-server from environment variable: ${slangServerPath}`)
@@ -160,6 +162,7 @@ export class SlangExtension extends ActivityBarComponent {
       )
       return
     }
+
     // check if it exists
     const exists = await fileExists(slangServerPath)
     if (!exists) {
@@ -421,19 +424,6 @@ export async function activate(context: vscode.ExtensionContext) {
     title: 'Slang',
     icon: '$(chip)',
   })
-
-  const installerUI = new InstallerUI(context, ext.path)
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('slang.installServer', () => installerUI.installLatest())
-  )
-
-  const serverPath = await prepareSlang(installerUI)
-
-  if (!serverPath) {
-    return
-  }
-
   await ext.activateExtension('slang', 'Slang', context, [
     'AndrewNolte.vscode-system-verilog',
     'AndrewNolte.vscode-slang',

@@ -18,15 +18,6 @@ export async function fileExists(filePath: string): Promise<boolean> {
   }
 }
 
-async function isFile(filePath: string): Promise<boolean> {
-  try {
-    const stat = await fs.promises.stat(filePath)
-    return stat.isFile()
-  } catch {
-    return false
-  }
-}
-
 class ExtensionNode {
   nodeName: string | undefined
   configPath: string | undefined
@@ -686,7 +677,7 @@ export class PathConfigObject extends ConfigObject<string> {
     })
     this.platformDefaults = platformDefaults
     this.onConfigUpdated(async () => {
-      await this.checkPathNotify()
+      await this.findSlangServer()
     })
   }
 
@@ -702,61 +693,60 @@ export class PathConfigObject extends ConfigObject<string> {
     return toolpath
   }
 
-  async getValueAsync(): Promise<string> {
-    let toolpath = vscode.workspace.getConfiguration().get(this.configPath!, '')
+  async findSlangServer(): Promise<string> {
+    // get configured path from settings.json
+    let slangServerPath = vscode.workspace.getConfiguration().get(this.configPath!, '')
 
-    // if we already performed which, use that
-    if (toolpath === '' && path.isAbsolute(this.cachedValue)) {
-      return this.cachedValue
-    }
+    // path has not been configured in settings.json
+    if (slangServerPath === '') {
+      // start by checking to see if we have a cached value
+      if (path.isAbsolute(this.cachedValue)) {
+        return this.cachedValue
+      }
 
-    if (toolpath === '') {
-      // if it's a platform default, check the path
-      toolpath = this.platformDefaults[getPlatform()]
+      // if we don't have a cached value, then we check to see if its on the path
+      slangServerPath = this.platformDefaults[getPlatform()]
+      const whichResult = await which(slangServerPath, { nothrow: true })
+      if (whichResult !== '' && whichResult !== null) {
+        console.error(`which ${slangServerPath} found ${whichResult}`)
+        slangServerPath = whichResult
 
-      if (!path.isAbsolute(toolpath)) {
-        const whichResult = await which(toolpath, { nothrow: true })
-        if (whichResult === '' || whichResult === null) {
-          console.error(`which ${toolpath} failed`)
-        } else {
-          console.error(`which ${toolpath} found ${whichResult}`)
-          toolpath = whichResult
-        }
+        // we return early since we found it on the path and we don't
+        // need to do further checks (like existance and directory)
+        this.cachedValue = slangServerPath
+        return slangServerPath
+      } else {
+        // not found on path
+        console.error(`which ${slangServerPath} failed`)
+
+        await vscode.window.showErrorMessage(
+          `"${slangServerPath}" not found. Configure abs path at ${this.configPath}, add to PATH.`
+        )
+
+        // TODO: Offer to install it
+        return ''
       }
     }
 
-    this.cachedValue = toolpath
+    this.cachedValue = slangServerPath
 
-    return toolpath
-  }
-
-  async checkPathNotify(): Promise<boolean> {
-    let toolpath = await this.getValueAsync()
-    if (toolpath === '') {
-      await vscode.window.showErrorMessage(
-        `"${toolpath}" not found. Configure abs path at ${this.configPath}, add to PATH, or disable in config.`
-      )
-      return false
-    }
-    // check if it exists
-    const exists = await fileExists(toolpath)
-    if (!exists) {
+    try {
+      const stats = await fs.promises.stat(slangServerPath)
+      if (!stats.isFile()) {
+        vscode.window.showErrorMessage(
+          `File "${this.configPath}: ${slangServerPath}" is not a file, please reconfigure`
+        )
+      }
+    } catch {
+      // I believe it only throws if the file DNE
+      // see: https://stackoverflow.com/a/53530146
+      // probably would be good to verify this though.
       vscode.window.showErrorMessage(
-        `File "${this.configPath}: ${toolpath}" doesn't exist, please reconfigure`
+        `File "${this.configPath}: ${slangServerPath}" doesn't exist, please reconfigure`
       )
-      return false
     }
 
-    // check if it's a directory
-    const is_file = await isFile(toolpath)
-    if (!is_file) {
-      vscode.window.showErrorMessage(
-        `Path "${this.configPath}: ${toolpath}" is not a file, please reconfigure`
-      )
-      return false
-    }
-
-    return true
+    return slangServerPath
   }
 
   getMarkdownString(): string {
