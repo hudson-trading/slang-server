@@ -47,8 +47,6 @@ export class InstallerUI {
         }
       )
 
-      await this.slangPathConfig.updateValue(binPath)
-
       vscode.window.showInformationMessage(
         'slang-server installed successfully. Restarting language server…'
       )

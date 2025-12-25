@@ -761,13 +761,6 @@ export class PathConfigObject extends ConfigObject<string> {
     out += `    windows: \`${this.platformDefaults.windows}\`\n\n`
     return out
   }
-
-  async updateValue(value: string) {
-    await vscode.workspace
-      .getConfiguration()
-      .update(this.configPath!, value, vscode.ConfigurationTarget.Global)
-    this.cachedValue = value
-  }
 }
 
 export function getShell(): string {
