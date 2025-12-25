@@ -161,7 +161,7 @@ export class SlangExtension extends ActivityBarComponent {
 
       try {
         const installedPath = await prepareSlangServer(ui)
-        if (!installedPath) {
+        if (installedPath == '') {
           await vscode.window.showErrorMessage(
             'slang-server is required to run the language server.'
           )
@@ -169,13 +169,8 @@ export class SlangExtension extends ActivityBarComponent {
         }
 
         // Persist installed path into settings
-        this.path.cachedValue = installedPath.path
-        slangServerPath = installedPath.path
-
-        // If we freshly installed it then we message the user to reload
-        if (installedPath.installed) {
-          await ui.promptReload()
-        }
+        this.path.cachedValue = installedPath
+        slangServerPath = installedPath
       } catch (err: any) {
         await vscode.window.showErrorMessage(
           `Failed to install slang-server: ${err?.message ?? err}`

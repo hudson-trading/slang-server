@@ -1,23 +1,10 @@
 import * as vscode from 'vscode'
-import * as path from 'path'
 
 export class InstallerUI {
   constructor(private readonly context: vscode.ExtensionContext) {}
 
   get storagePath(): string {
     return this.context.globalStorageUri!.fsPath
-  }
-
-  async choose(prompt: string, options: string[]) {
-    return vscode.window.showInformationMessage(prompt, ...options)
-  }
-
-  async error(message: string) {
-    vscode.window.showErrorMessage(message)
-  }
-
-  async info(message: string) {
-    vscode.window.showInformationMessage(message)
   }
 
   async progress<T>(
@@ -59,17 +46,6 @@ export class InstallerUI {
     const resp = await vscode.window.showInformationMessage(msg, install)
     return resp === install
   }
-
-  // async promptReuse(version: string): Promise<boolean | undefined> {
-  //   const msg = `slang-server ${version} is already installed.`
-  //   const use = 'Use installed version'
-  //   const reinstall = 'Reinstall'
-
-  //   const resp = await vscode.window.showInformationMessage(msg, use, reinstall)
-  //   if (resp === use) return true
-  //   if (resp === reinstall) return false
-  //   return undefined
-  // }
 
   async promptReload() {
     const resp = await vscode.window.showInformationMessage(
