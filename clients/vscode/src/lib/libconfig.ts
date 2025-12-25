@@ -267,7 +267,7 @@ export abstract class ExtensionComponent extends ExtensionNode {
                 viewsInlineButtons.push(button.getButtonWhen())
                 if (button.obj.isSubmenu) {
                   // add submenu number for priority
-                  viewsInlineButtons[viewsInlineButtons.length - 1].group += 
+                  viewsInlineButtons[viewsInlineButtons.length - 1].group +=
                     `@${viewsInlineButtons.length}`
                 }
               } else if (button instanceof WebviewButton) {
