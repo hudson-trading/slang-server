@@ -111,24 +111,6 @@ async function extractArchive(archive: string, dest: string) {
   })
 }
 
-async function findBinary(root: string, name: string): Promise<string> {
-  const entries = await fs.readdir(root, { withFileTypes: true })
-  for (const e of entries) {
-    const p = path.join(root, e.name)
-    if (e.isFile() && e.name === name) {
-      return p
-    }
-    if (e.isDirectory()) {
-      try {
-        return await findBinary(p, name)
-      } catch {
-        // ignore
-      }
-    }
-  }
-  throw new Error(`Failed to find ${name} in extracted archive`)
-}
-
 async function ensureExecutable(binPath: string) {
   if (platform !== 'windows') {
     await fs.chmod(binPath, 0o755)
@@ -148,8 +130,8 @@ export async function installLatestSlang(storagePath: string) {
   await extractArchive(archivePath, installDir)
 
   const binaryName = platform === 'windows' ? 'slang-server.exe' : 'slang-server'
+  const binaryPath = path.join(installDir, binaryName)
 
-  const binaryPath = await findBinary(installDir, binaryName)
   await ensureExecutable(binaryPath)
 
   await fs.rm(archivePath, { force: true })
