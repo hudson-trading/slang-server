@@ -26,8 +26,7 @@ import { ProjectComponent } from './sidebar/ProjectComponent'
 import * as slang from './SlangInterface'
 import { AnyVerilogLanguages, anyVerilogSelector, getWorkspaceFolder } from './utils'
 import { glob } from 'glob'
-import { InstallerUI } from './installer/ui'
-import { prepareSlangServer } from './installer/prepare'
+import { InstallerUI, prepareSlangServer } from './installer'
 
 export var ext: SlangExtension
 
