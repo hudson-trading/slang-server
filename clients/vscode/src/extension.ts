@@ -157,6 +157,7 @@ export class SlangExtension extends ActivityBarComponent {
     }
 
     if (slangServerPath === '') {
+      // TODO: offer to install it
       await vscode.window.showErrorMessage(
         `"slang.path not configured. Configure the abs path at slang.path, add to PATH, or disable in config.`
       )

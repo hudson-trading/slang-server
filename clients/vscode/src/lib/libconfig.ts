@@ -695,46 +695,45 @@ export class PathConfigObject extends ConfigObject<string> {
 
   async findSlangServer(): Promise<string> {
     // get configured path from settings.json
-    let slangServerPath = vscode.workspace.getConfiguration().get(this.configPath!, '')
+    let toolpath = vscode.workspace.getConfiguration().get(this.configPath!, '')
 
     // path has not been configured in settings.json
-    if (slangServerPath === '') {
+    if (toolpath === '') {
       // start by checking to see if we have a cached value
       if (path.isAbsolute(this.cachedValue)) {
         return this.cachedValue
       }
 
       // if we don't have a cached value, then we check to see if its on the path
-      slangServerPath = this.platformDefaults[getPlatform()]
-      const whichResult = await which(slangServerPath, { nothrow: true })
+      toolpath = this.platformDefaults[getPlatform()]
+      const whichResult = await which(toolpath, { nothrow: true })
       if (whichResult !== '' && whichResult !== null) {
-        console.error(`which ${slangServerPath} found ${whichResult}`)
-        slangServerPath = whichResult
+        console.error(`which ${toolpath} found ${whichResult}`)
+        toolpath = whichResult
 
         // we return early since we found it on the path and we don't
         // need to do further checks (like existance and directory)
-        this.cachedValue = slangServerPath
-        return slangServerPath
+        this.cachedValue = toolpath
+        return toolpath
       } else {
         // not found on path
-        console.error(`which ${slangServerPath} failed`)
+        console.error(`which ${toolpath} failed`)
 
         await vscode.window.showErrorMessage(
-          `"${slangServerPath}" not found. Configure abs path at ${this.configPath}, add to PATH.`
+          `"${toolpath}" not found. Configure abs path at ${this.configPath}, add to PATH.`
         )
 
-        // TODO: Offer to install it
         return ''
       }
     }
 
-    this.cachedValue = slangServerPath
+    this.cachedValue = toolpath
 
     try {
-      const stats = await fs.promises.stat(slangServerPath)
+      const stats = await fs.promises.stat(toolpath)
       if (!stats.isFile()) {
         vscode.window.showErrorMessage(
-          `File "${this.configPath}: ${slangServerPath}" is not a file, please reconfigure`
+          `File "${this.configPath}: ${toolpath}" is not a file, please reconfigure`
         )
       }
     } catch {
@@ -742,11 +741,11 @@ export class PathConfigObject extends ConfigObject<string> {
       // see: https://stackoverflow.com/a/53530146
       // probably would be good to verify this though.
       vscode.window.showErrorMessage(
-        `File "${this.configPath}: ${slangServerPath}" doesn't exist, please reconfigure`
+        `File "${this.configPath}: ${toolpath}" doesn't exist, please reconfigure`
       )
     }
 
-    return slangServerPath
+    return toolpath
   }
 
   getMarkdownString(): string {
