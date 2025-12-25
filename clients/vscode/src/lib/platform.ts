@@ -1,3 +1,5 @@
+import * as process from 'process'
+
 export type Platform = 'windows' | 'linux' | 'mac'
 
 export type PlatformMap = { [key in Platform]: string }
