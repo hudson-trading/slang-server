@@ -51,7 +51,7 @@ endpackage
 interface bus_if #(
           ^^^^^^ Sym bus_if : Definition
 
-    parameter type data_t = bit,
+    parameter type data_t,
                    ^^^^^^ Sym data_t : TypeAlias
 
     parameter int ADDR_WIDTH = 32
@@ -80,7 +80,7 @@ interface bus_if #(
                            ^^^^ Sym addr : Variable
 
     data_t data;
-    ^^^^^^ Ref -> `parameter type data_t = bit`
+    ^^^^^^ Ref -> `parameter type data_t`
            ^^^^ Sym data : Variable
 
     logic write_enable;
@@ -134,7 +134,7 @@ interface bus_if #(
                    ^^^^^^^^^^ Sym write_data : Subroutine
                                            ^^^^^^^^^^ Ref -> `// In bus_if`\n\\n\---\n\\n\`parameter int ADDR_WIDTH = 32`
                                                            ^^^^^^^ Sym address : FormalArgument
-                                                                          ^^^^^^ Ref -> `// In bus_if`\n\\n\---\n\\n\`parameter type data_t = bit`
+                                                                          ^^^^^^ Ref -> `// In bus_if`\n\\n\---\n\\n\`parameter type data_t`
                                                                                  ^^^^^^^^^^ Sym write_data : FormalArgument
 
         @(posedge clk);
@@ -174,7 +174,7 @@ interface bus_if #(
                    ^^^^^^^^^ Sym read_data : Subroutine
                                           ^^^^^^^^^^ Ref -> `// In bus_if`\n\\n\---\n\\n\`parameter int ADDR_WIDTH = 32`
                                                           ^^^^^^^ Sym address : FormalArgument
-                                                                          ^^^^^^ Ref -> `// In bus_if`\n\\n\---\n\\n\`parameter type data_t = bit`
+                                                                          ^^^^^^ Ref -> `// In bus_if`\n\\n\---\n\\n\`parameter type data_t`
                                                                                  ^^^^^^^^^ Sym read_data : FormalArgument
 
         @(posedge clk);
@@ -300,7 +300,7 @@ module TestModule #(
                             ^^^^^^^^ Sym data_out : Variable
 
     bus_if.master bus_master,
-    ^^^^^^ Ref -> `interface bus_if #(\n\    parameter type data_t = bit,\n\    parameter int ADDR_WIDTH = 32\n\)(\n\    input logic clk,\n\    input logic rst\n\);`
+    ^^^^^^ Ref -> `interface bus_if #(\n\    parameter type data_t,\n\    parameter int ADDR_WIDTH = 32\n\)(\n\    input logic clk,\n\    input logic rst\n\);`
            ^ Ref -> `// In bus_if`\n\\n\---\n\\n\`// Modport for master\n\modport master (\n\    input clk, rst, ready,\n\    output valid, addr, data, write_enable\n\);`
             ^ Ref -> `// In bus_if`\n\\n\---\n\\n\`// Modport for master\n\modport master (\n\    input clk, rst, ready,\n\    output valid, addr, data, write_enable\n\);`
              ^ Ref -> `// In bus_if`\n\\n\---\n\\n\`// Modport for master\n\modport master (\n\    input clk, rst, ready,\n\    output valid, addr, data, write_enable\n\);`
@@ -310,7 +310,7 @@ module TestModule #(
                   ^^^^^^^^^^ Sym bus_master : InterfacePort
 
     bus_if.follower bus_follower
-    ^^^^^^ Ref -> `interface bus_if #(\n\    parameter type data_t = bit,\n\    parameter int ADDR_WIDTH = 32\n\)(\n\    input logic clk,\n\    input logic rst\n\);`
+    ^^^^^^ Ref -> `interface bus_if #(\n\    parameter type data_t,\n\    parameter int ADDR_WIDTH = 32\n\)(\n\    input logic clk,\n\    input logic rst\n\);`
            ^ Ref -> `// In bus_if`\n\\n\---\n\\n\`// Modport for follower\n\modport follower (\n\    input clk, rst, valid, addr, data, write_enable,\n\    output ready\n\);`
             ^ Ref -> `// In bus_if`\n\\n\---\n\\n\`// Modport for follower\n\modport follower (\n\    input clk, rst, valid, addr, data, write_enable,\n\    output ready\n\);`
              ^ Ref -> `// In bus_if`\n\\n\---\n\\n\`// Modport for follower\n\modport follower (\n\    input clk, rst, valid, addr, data, write_enable,\n\    output ready\n\);`
