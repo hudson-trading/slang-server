@@ -27,7 +27,7 @@ import * as slang from './SlangInterface'
 import { AnyVerilogLanguages, anyVerilogSelector, getWorkspaceFolder } from './utils'
 import { glob } from 'glob'
 import { InstallerUI } from './installer/ui'
-import { prepareSlangServer } from './installer'
+import { prepareSlangServer } from './installer/prepare'
 
 export var ext: SlangExtension
 
