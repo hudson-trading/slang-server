@@ -677,7 +677,15 @@ export class PathConfigObject extends ConfigObject<string> {
     })
     this.platformDefaults = platformDefaults
     this.onConfigUpdated(async () => {
-      await this.findSlangServer()
+      const toolpath = await this.findSlangServer()
+
+      if (toolpath !== '') {
+        await vscode.window.showErrorMessage(
+          `"slang.path not configured. Configure the abs path at slang.path, add to PATH, or disable in config.`
+        )
+      }
+
+      toolpath
     })
   }
 
@@ -718,10 +726,6 @@ export class PathConfigObject extends ConfigObject<string> {
       } else {
         // not found on path
         console.error(`which ${toolpath} failed`)
-
-        await vscode.window.showErrorMessage(
-          `"${toolpath}" not found. Configure abs path at ${this.configPath}, add to PATH.`
-        )
 
         return ''
       }

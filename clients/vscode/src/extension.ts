@@ -164,14 +164,6 @@ export class SlangExtension extends ActivityBarComponent {
       return
     }
 
-    // check if it exists
-    const exists = await fileExists(slangServerPath)
-    if (!exists) {
-      vscode.window.showErrorMessage(
-        `File "${slangServerPath}" set for slang.path doesn't exist, please reconfigure`
-      )
-      return
-    }
     // this.logger.info("using path " + slangServerPath)
     const serverOptions: ServerOptions = {
       run: { command: slangServerPath, args: this.args.getValue() },
