@@ -160,7 +160,7 @@ export class SlangExtension extends ActivityBarComponent {
 
       try {
         const installedPath = await prepareSlangServer(ui)
-        if (installedPath == '') {
+        if (installedPath === '') {
           await vscode.window.showErrorMessage(
             'slang-server is required to run the language server.'
           )
