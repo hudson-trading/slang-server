@@ -579,12 +579,6 @@ export class ConfigObject<T extends JSONSchemaType> extends ExtensionNode {
     return this.cachedValue
   }
 
-  listen(): void {
-    this.onConfigUpdated(() => {
-      this.getValue()
-    })
-  }
-
   private inferSchema(value: any): any {
     if (typeof value === 'string') {
       return { type: 'string' }
