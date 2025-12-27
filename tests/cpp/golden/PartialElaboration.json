@@ -27,6 +27,27 @@
       },
       "severity": "Information",
       "message": "comparison reduces to (2 == 1)"
+    },
+    {
+      "range": {
+        "start": {
+          "line": 4,
+          "character": 26
+        },
+        "end": {
+          "line": 4,
+          "character": 27
+        }
+      },
+      "severity": "Warning",
+      "code": "unused-parameter",
+      "codeDescription": {
+        "href": "https://sv-lang.com/warning-ref.html#unused-parameter"
+      },
+      "message": "unused parameter 'z'",
+      "tags": [
+        "Unnecessary"
+      ]
     }
   ]
 ]

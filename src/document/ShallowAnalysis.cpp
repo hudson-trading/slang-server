@@ -17,6 +17,8 @@
 #include <memory>
 #include <string_view>
 
+#include "slang/analysis/AnalysisManager.h"
+#include "slang/analysis/AnalysisOptions.h"
 #include "slang/ast/ASTContext.h"
 #include "slang/ast/Compilation.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
@@ -58,7 +60,8 @@ ShallowAnalysis::ShallowAnalysis(SourceManager& sourceManager, slang::BufferID b
                                  std::shared_ptr<SyntaxTree> tree, slang::Bag options,
                                  const std::vector<std::shared_ptr<SyntaxTree>>& allTrees) :
     syntaxes(*tree), m_sourceManager(sourceManager), m_buffer(buffer), m_tree(tree),
-    m_allTrees(allTrees), m_symbolTreeVisitor(m_sourceManager), m_symbolIndexer(buffer) {
+    m_allTrees(allTrees), m_analysisManager(options.getOrDefault<analysis::AnalysisOptions>()),
+    m_symbolTreeVisitor(m_sourceManager), m_symbolIndexer(buffer) {
 
     if (!m_tree) {
         ERROR("DocumentAnalysis initialized with null syntax tree");
@@ -553,6 +556,18 @@ std::string ShallowAnalysis::getDebugHover(const parsing::Token& tok) const {
         }
     }
     return value;
+}
+
+Diagnostics ShallowAnalysis::getAnalysisDiags() {
+    if (!m_compilation || m_compilation->getRoot().topInstances.empty()) {
+        return {};
+    }
+
+    m_compilation->freeze();
+    m_analysisManager.analyze(*m_compilation);
+    m_compilation->unfreeze();
+
+    return m_analysisManager.getDiagnostics();
 }
 
 } // namespace server

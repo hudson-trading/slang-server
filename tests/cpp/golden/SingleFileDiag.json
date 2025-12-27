@@ -31,6 +31,27 @@
       },
       "severity": "Error",
       "message": "expected a declaration name"
+    },
+    {
+      "range": {
+        "start": {
+          "line": 4,
+          "character": 19
+        },
+        "end": {
+          "line": 4,
+          "character": 20
+        }
+      },
+      "severity": "Warning",
+      "code": "unused-parameter",
+      "codeDescription": {
+        "href": "https://sv-lang.com/warning-ref.html#unused-parameter"
+      },
+      "message": "unused parameter 'y'",
+      "tags": [
+        "Unnecessary"
+      ]
     }
   ]
 ]

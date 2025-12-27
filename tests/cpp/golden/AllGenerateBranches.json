@@ -83,6 +83,27 @@
       },
       "severity": "Error",
       "message": "port 'port3' does not exist in 'x'"
+    },
+    {
+      "range": {
+        "start": {
+          "line": 2,
+          "character": 26
+        },
+        "end": {
+          "line": 2,
+          "character": 27
+        }
+      },
+      "severity": "Warning",
+      "code": "unused-parameter",
+      "codeDescription": {
+        "href": "https://sv-lang.com/warning-ref.html#unused-parameter"
+      },
+      "message": "unused parameter 'p'",
+      "tags": [
+        "Unnecessary"
+      ]
     }
   ]
 ]
