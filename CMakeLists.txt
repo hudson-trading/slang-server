@@ -73,6 +73,16 @@ project(
   HOMEPAGE_URL https://github.com/hudson-trading/slang-server
   DESCRIPTION "SystemVerilog language server based on slang")
 
+# Enable compile_commands.json for IDE/clangd tooling by default
+if(SLANG_SERVER_MASTER_PROJECT AND NOT DEFINED CMAKE_EXPORT_COMPILE_COMMANDS)
+  set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+endif()
+
+# Use slang's bundled fmt library for consistent version across environments
+if(SLANG_SERVER_MASTER_PROJECT AND NOT DEFINED CMAKE_DISABLE_FIND_PACKAGE_fmt)
+  set(CMAKE_DISABLE_FIND_PACKAGE_fmt TRUE)
+endif()
+
 if(CMAKE_SYSTEM_NAME MATCHES "Darwin")
   # This ensures that *all* targets (including slang and reflect-cpp) use the
   # default Apple C++ runtime, preventing dynamic link conflicts.
