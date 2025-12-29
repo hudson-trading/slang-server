@@ -12,21 +12,25 @@
         }
       },
       "severity": "Error",
-      "message": "static assertion failed"
-    },
-    {
-      "range": {
-        "start": {
-          "line": 6,
-          "character": 27
-        },
-        "end": {
-          "line": 6,
-          "character": 33
+      "message": "static assertion failed",
+      "relatedInformation": [
+        {
+          "location": {
+            "uri": "file://test.sv",
+            "range": {
+              "start": {
+                "line": 6,
+                "character": 29
+              },
+              "end": {
+                "line": 6,
+                "character": 30
+              }
+            }
+          },
+          "message": "comparison reduces to (2 == 1)"
         }
-      },
-      "severity": "Information",
-      "message": "comparison reduces to (2 == 1)"
+      ]
     },
     {
       "range": {

@@ -48,6 +48,11 @@ void ServerDiagClient::report(const slang::ReportedDiagnostic& diag) {
         return;
     }
 
+    // Notes are processed as relatedInformation from the parent diagnostic
+    if (diag.severity == slang::DiagnosticSeverity::Note) {
+        return;
+    }
+
     // TODO: show include stack?
     // if (diag.shouldShowIncludeStack) {
     //     SmallVector<SourceLocation> includeStack;
@@ -149,6 +154,19 @@ void ServerDiagClient::report(const slang::ReportedDiagnostic& diag) {
 
     auto uri = mainLoc->uri;
     m_dirtyUris.emplace(uri);
+
+    // Add notes from the original diagnostic as relatedInformation
+    for (const auto& note : diag.originalDiagnostic.notes) {
+        if (note.location == SourceLocation::NoLocation && !note.code.showNoteWithNoLocation()) {
+            continue;
+        }
+        auto noteLoc = toLocation(note.location, m_sourceManager);
+        related.emplace_back(lsp::DiagnosticRelatedInformation{
+            .location = noteLoc,
+            .message = engine->formatMessage(note),
+        });
+    }
+
     m_diagnostics[uri].push_back(lsp::Diagnostic{
         .range = mainLoc->range,
         .severity = convertSeverity(diag.severity),

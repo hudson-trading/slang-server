@@ -57,4 +57,4 @@ async def test_diags_update(
     )
 
     diags = await client.wait_for_notification("textDocument/publishDiagnostics")
-    assert len(diags.diagnostics) == 6
+    assert len(diags.diagnostics) == 4

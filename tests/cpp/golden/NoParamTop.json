@@ -150,21 +150,25 @@
         }
       },
       "severity": "Error",
-      "message": "variable 'single_struct.addr' driven by always_ff procedure cannot be written to by any other process"
-    },
-    {
-      "range": {
-        "start": {
-          "line": 328,
-          "character": 8
-        },
-        "end": {
-          "line": 328,
-          "character": 26
+      "message": "variable 'single_struct.addr' driven by always_ff procedure cannot be written to by any other process",
+      "relatedInformation": [
+        {
+          "location": {
+            "uri": "file://hdl_test.sv",
+            "range": {
+              "start": {
+                "line": 328,
+                "character": 8
+              },
+              "end": {
+                "line": 328,
+                "character": 9
+              }
+            }
+          },
+          "message": "also assigned here"
         }
-      },
-      "severity": "Information",
-      "message": "also assigned here"
+      ]
     },
     {
       "range": {
@@ -178,21 +182,25 @@
         }
       },
       "severity": "Error",
-      "message": "variable 'single_struct.data' driven by always_ff procedure cannot be written to by any other process"
-    },
-    {
-      "range": {
-        "start": {
-          "line": 329,
-          "character": 8
-        },
-        "end": {
-          "line": 329,
-          "character": 26
+      "message": "variable 'single_struct.data' driven by always_ff procedure cannot be written to by any other process",
+      "relatedInformation": [
+        {
+          "location": {
+            "uri": "file://hdl_test.sv",
+            "range": {
+              "start": {
+                "line": 329,
+                "character": 8
+              },
+              "end": {
+                "line": 329,
+                "character": 9
+              }
+            }
+          },
+          "message": "also assigned here"
         }
-      },
-      "severity": "Information",
-      "message": "also assigned here"
+      ]
     },
     {
       "range": {
@@ -206,21 +214,25 @@
         }
       },
       "severity": "Error",
-      "message": "variable 'single_struct.valid' driven by always_ff procedure cannot be written to by any other process"
-    },
-    {
-      "range": {
-        "start": {
-          "line": 330,
-          "character": 8
-        },
-        "end": {
-          "line": 330,
-          "character": 27
+      "message": "variable 'single_struct.valid' driven by always_ff procedure cannot be written to by any other process",
+      "relatedInformation": [
+        {
+          "location": {
+            "uri": "file://hdl_test.sv",
+            "range": {
+              "start": {
+                "line": 330,
+                "character": 8
+              },
+              "end": {
+                "line": 330,
+                "character": 9
+              }
+            }
+          },
+          "message": "also assigned here"
         }
-      },
-      "severity": "Information",
-      "message": "also assigned here"
+      ]
     },
     {
       "range": {
@@ -234,21 +246,25 @@
         }
       },
       "severity": "Error",
-      "message": "variable 'struct_array' driven by always_ff procedure cannot be written to by any other process"
-    },
-    {
-      "range": {
-        "start": {
-          "line": 334,
-          "character": 8
-        },
-        "end": {
-          "line": 334,
-          "character": 29
+      "message": "variable 'struct_array' driven by always_ff procedure cannot be written to by any other process",
+      "relatedInformation": [
+        {
+          "location": {
+            "uri": "file://hdl_test.sv",
+            "range": {
+              "start": {
+                "line": 334,
+                "character": 8
+              },
+              "end": {
+                "line": 334,
+                "character": 9
+              }
+            }
+          },
+          "message": "also assigned here"
         }
-      },
-      "severity": "Information",
-      "message": "also assigned here"
+      ]
     },
     {
       "range": {
@@ -262,21 +278,25 @@
         }
       },
       "severity": "Error",
-      "message": "variable 'nested_array' driven by always_ff procedure cannot be written to by any other process"
-    },
-    {
-      "range": {
-        "start": {
-          "line": 338,
-          "character": 8
-        },
-        "end": {
-          "line": 338,
-          "character": 27
+      "message": "variable 'nested_array' driven by always_ff procedure cannot be written to by any other process",
+      "relatedInformation": [
+        {
+          "location": {
+            "uri": "file://hdl_test.sv",
+            "range": {
+              "start": {
+                "line": 338,
+                "character": 8
+              },
+              "end": {
+                "line": 338,
+                "character": 9
+              }
+            }
+          },
+          "message": "also assigned here"
         }
-      },
-      "severity": "Information",
-      "message": "also assigned here"
+      ]
     },
     {
       "range": {
@@ -290,21 +310,25 @@
         }
       },
       "severity": "Error",
-      "message": "variable 'pkg_array' driven by always_ff procedure cannot be written to by any other process"
-    },
-    {
-      "range": {
-        "start": {
-          "line": 341,
-          "character": 8
-        },
-        "end": {
-          "line": 341,
-          "character": 25
+      "message": "variable 'pkg_array' driven by always_ff procedure cannot be written to by any other process",
+      "relatedInformation": [
+        {
+          "location": {
+            "uri": "file://hdl_test.sv",
+            "range": {
+              "start": {
+                "line": 341,
+                "character": 8
+              },
+              "end": {
+                "line": 341,
+                "character": 9
+              }
+            }
+          },
+          "message": "also assigned here"
         }
-      },
-      "severity": "Information",
-      "message": "also assigned here"
+      ]
     },
     {
       "range": {
@@ -318,21 +342,25 @@
         }
       },
       "severity": "Error",
-      "message": "variable 'nested_struct.tag' driven by always_comb procedure cannot be written to by any other process"
-    },
-    {
-      "range": {
-        "start": {
-          "line": 264,
-          "character": 12
-        },
-        "end": {
-          "line": 264,
-          "character": 29
+      "message": "variable 'nested_struct.tag' driven by always_comb procedure cannot be written to by any other process",
+      "relatedInformation": [
+        {
+          "location": {
+            "uri": "file://hdl_test.sv",
+            "range": {
+              "start": {
+                "line": 264,
+                "character": 12
+              },
+              "end": {
+                "line": 264,
+                "character": 13
+              }
+            }
+          },
+          "message": "also assigned here"
         }
-      },
-      "severity": "Information",
-      "message": "also assigned here"
+      ]
     },
     {
       "range": {
@@ -346,21 +374,25 @@
         }
       },
       "severity": "Error",
-      "message": "variable 'nested_struct.enable' driven by always_comb procedure cannot be written to by any other process"
-    },
-    {
-      "range": {
-        "start": {
-          "line": 265,
-          "character": 12
-        },
-        "end": {
-          "line": 265,
-          "character": 32
+      "message": "variable 'nested_struct.enable' driven by always_comb procedure cannot be written to by any other process",
+      "relatedInformation": [
+        {
+          "location": {
+            "uri": "file://hdl_test.sv",
+            "range": {
+              "start": {
+                "line": 265,
+                "character": 12
+              },
+              "end": {
+                "line": 265,
+                "character": 13
+              }
+            }
+          },
+          "message": "also assigned here"
         }
-      },
-      "severity": "Information",
-      "message": "also assigned here"
+      ]
     }
   ]
 ]
