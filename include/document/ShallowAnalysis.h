@@ -167,7 +167,7 @@ private:
     std::unique_ptr<slang::ast::Compilation> m_compilation;
 
     /// Analysis manager for running driver and unused checks
-    slang::analysis::AnalysisManager m_analysisManager;
+    slang::analysis::AnalysisManager m_driverAnalysis;
 
     /// Symbol tree visitor for /documentSymbols
     /// Currently this is relies on syntax, but we should switch it to use the shallow compilation

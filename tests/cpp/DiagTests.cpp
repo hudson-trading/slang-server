@@ -119,3 +119,42 @@ TEST_CASE("PartialElaboration") {
     auto diags = doc.getDiagnostics();
     golden.record(diags);
 }
+
+TEST_CASE("CompilationDiagnostics") {
+    ServerHarness server("comp_repo");
+
+    server.setBuildFile("cpu_design.f");
+
+    JsonGoldenTest golden;
+
+    // Get URIs for the files
+    auto cpuUri = URI::fromFile(fs::current_path() / "cpu.sv");
+    auto aluUri = URI::fromFile(fs::current_path() / "alu.sv");
+    auto memUri = URI::fromFile(fs::current_path() / "memory_controller.sv");
+
+    // Get diagnostics from the client (published diagnostics)
+    auto cpuClientDiags = server.client.getDiagnostics(cpuUri);
+    auto aluClientDiags = server.client.getDiagnostics(aluUri);
+    auto memClientDiags = server.client.getDiagnostics(memUri);
+
+    golden.record("cpu_client_diags", cpuClientDiags);
+
+    // Assert that at least one file has diagnostics
+    CHECK(cpuClientDiags.size() > 0);
+
+    // Open the files
+    auto cpu = server.openFile("cpu.sv");
+    auto alu = server.openFile("alu.sv");
+    auto mem = server.openFile("memory_controller.sv");
+
+    // Get diagnostics from the document handles
+    auto cpuDocDiags = cpu.getDiagnostics();
+    auto aluDocDiags = alu.getDiagnostics();
+    auto memDocDiags = mem.getDiagnostics();
+    golden.record("cpuDocDiags", cpuDocDiags);
+
+    // Verify that client diagnostics match original document diagnostics (no duplicates)
+    CHECK(cpuClientDiags.size() == cpuDocDiags.size());
+    CHECK(aluClientDiags.size() == aluDocDiags.size());
+    CHECK(memClientDiags.size() == memDocDiags.size());
+}

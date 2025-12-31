@@ -60,7 +60,7 @@ ShallowAnalysis::ShallowAnalysis(SourceManager& sourceManager, slang::BufferID b
                                  std::shared_ptr<SyntaxTree> tree, slang::Bag options,
                                  const std::vector<std::shared_ptr<SyntaxTree>>& allTrees) :
     syntaxes(*tree), m_sourceManager(sourceManager), m_buffer(buffer), m_tree(tree),
-    m_allTrees(allTrees), m_analysisManager(options.getOrDefault<analysis::AnalysisOptions>()),
+    m_allTrees(allTrees), m_driverAnalysis(options.getOrDefault<analysis::AnalysisOptions>()),
     m_symbolTreeVisitor(m_sourceManager), m_symbolIndexer(buffer) {
 
     if (!m_tree) {
@@ -564,10 +564,10 @@ Diagnostics ShallowAnalysis::getAnalysisDiags() {
     }
 
     m_compilation->freeze();
-    m_analysisManager.analyze(*m_compilation);
+    m_driverAnalysis.analyze(*m_compilation);
     m_compilation->unfreeze();
 
-    return m_analysisManager.getDiagnostics();
+    return m_driverAnalysis.getDiagnostics();
 }
 
 } // namespace server

@@ -130,7 +130,14 @@ public:
     ////////////////////////////////////////////////
     /// Lsp Functions
     ////////////////////////////////////////////////
+
+    void issueParseDiagnostics(DiagnosticEngine& diagEngine);
+
     /// @brief Issue all diagnostics from this document to the given diagnostic engine
+    /// Issue diagnostics to the diagnostic engine
+    /// @param diagEngine The diagnostic engine to issue to
+    /// @param parseOnly If true, only issue parse diagnostics (for when ServerCompilation handles
+    /// semantic diags)
     void issueDiagnosticsTo(slang::DiagnosticEngine& diagEngine);
 
     /// @brief For the document symbols request

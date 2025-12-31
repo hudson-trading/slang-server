@@ -20,20 +20,27 @@ public:
         cwd = std::filesystem::current_path().string();
     }
 
-    ~ServerDiagClient() { clear(); }
+    ~ServerDiagClient() { clearAndPush(); }
     /// reports from the diagnostic engine
     void report(const slang::ReportedDiagnostic& to_report) override;
 
     /// report unpublished diags to the client
-    void updateDiags();
+    void pushDiags();
 
-    // Clear all diagnostics by publishing empty lists, then clear internal data structures
-    // We want to see these go away for compilations, because they may be very stale
-    void clear();
+    /// report unpublished diags to the client, doing the specified uri first
+    void pushDiags(const URI& priorityUri);
 
     // Clear a specific URI's diagnostics, put not publishing to client, since they are still likely
     // relevant
     void clear(URI uri);
+
+    // Clear all diagnostics by publishing empty lists, then clear internal data structures
+    // We want to see these go away for compilations, because they may be stale
+    void clearAndPush();
+
+    // Clear internal diagnostic data structures without notifying the client
+    // Add all uris to dirty so they get republished after new diags are added.
+    void clear();
 
 private:
     std::unordered_map<URI, std::vector<lsp::Diagnostic>> m_diagnostics;

@@ -28,6 +28,7 @@
 #include "slang/ast/symbols/InstanceSymbols.h"
 #include "slang/ast/types/Type.h"
 #include "slang/diagnostics/DiagnosticEngine.h"
+#include "slang/diagnostics/Diagnostics.h"
 #include "slang/driver/Driver.h"
 #include "slang/driver/SourceLoader.h"
 #include "slang/parsing/ParserMetadata.h"
@@ -92,20 +93,30 @@ ServerDriver::ServerDriver(Indexer& indexer, SlangLspClient& client, const Confi
 
 // Doc updates (open, change, save)
 void ServerDriver::updateDoc(SlangDoc& doc, FileUpdateType type) {
-    m_indexer.waitForIndexingCompletion();
-    diagClient->clear(doc.getURI());
-    doc.issueDiagnosticsTo(diagEngine);
-    diagClient->updateDiags();
-    INFO("Published diags for {}", doc.getURI().getPath());
+    // Grab dependent documents
+    doc.setDependentDocuments(getDependentDocs(doc.getSyntaxTree()));
 
-    if (comp) {
-        // Slower diags, elaboration
-        if (type == FileUpdateType::SAVE) {
-            comp->refresh();
-            INFO("Publishing Comp diags")
-            diagClient->updateDiags();
+    // Clear and re-issue diagnostics for this document
+    diagClient->clear(doc.getURI());
+
+    if (comp && type == FileUpdateType::SAVE) {
+        // Clear just the data structures; add all uris to dirty set
+        diagClient->clear();
+
+        // Re-issue parse diagnostics for all documents, since we cleared
+        for (const auto& [uri, d] : docs) {
+            d->issueParseDiagnostics(diagEngine);
         }
+        // Elaborate; Issue semantic diagnostics from full compilation
+        comp->refresh();
+        comp->issueDiagnosticsTo(diagEngine);
     }
+    else {
+        // In explore mode: issue normal shallow diags on changes
+        doc.issueDiagnosticsTo(diagEngine);
+    }
+    diagClient->pushDiags(doc.getURI());
+    INFO("Published diags for {}", doc.getURI().getPath());
 }
 
 std::unique_ptr<ServerDriver> ServerDriver::create(Indexer& indexer, SlangLspClient& client,
@@ -116,7 +127,7 @@ std::unique_ptr<ServerDriver> ServerDriver::create(Indexer& indexer, SlangLspCli
 
     // Copy only open documents from old driver if provided
     if (oldDriver) {
-        oldDriver->diagClient->clear();
+        oldDriver->diagClient->clearAndPush();
         for (const auto& uri : oldDriver->m_openDocs) {
             auto docIt = oldDriver->docs.find(uri);
             if (docIt == oldDriver->docs.end()) {
@@ -142,13 +153,23 @@ std::unique_ptr<ServerDriver> ServerDriver::create(Indexer& indexer, SlangLspCli
     return newDriver;
 }
 
-SlangDoc& ServerDriver::openDocument(const URI& uri, const std::string_view text) {
-    auto doc = SlangDoc::fromText(*this, uri, text);
-    docs[uri] = doc;
+void ServerDriver::openDocument(const URI& uri, const std::string_view text) {
+    bool readText = true;
+    if (docs.find(uri) != docs.end()) {
+        if (docs[uri]->textMatches(text)) {
+            readText = false;
+        }
+        else {
+            WARN("Document {} text does not match, updating", uri.getPath());
+        }
+    }
+    if (readText) {
+        auto doc = SlangDoc::fromText(*this, uri, text);
+        docs[uri] = doc;
+        updateDoc(*doc, FileUpdateType::OPEN);
+    }
     // Track this as an open document
     m_openDocs.insert(uri);
-    updateDoc(*doc, FileUpdateType::OPEN);
-    return *doc;
 }
 
 std::shared_ptr<SlangDoc> ServerDriver::getDocument(const URI& uri) {
@@ -284,18 +305,17 @@ bool ServerDriver::createCompilation(const URI& uri, std::string_view top) {
         syntaxTrees,
         [this](std::string_view name) {
             auto paths = m_indexer.getRelevantFilesForName(name);
-            SourceBuffer buffer;
             if (!paths.empty()) {
                 auto maybeBuf = sm.readSource(paths[0], /* library */ nullptr);
                 if (maybeBuf) {
-                    buffer = *maybeBuf;
+                    return *maybeBuf;
                 }
                 else {
                     ERROR("Failed to read source for {}: {}", paths[0].string(),
                           maybeBuf.error().message());
                 }
             }
-            return buffer;
+            return SourceBuffer{};
         },
         sm, this->options);
 
@@ -308,20 +328,16 @@ bool ServerDriver::createCompilation(const URI& uri, std::string_view top) {
     for (const auto& doc : documents) {
         docs[doc->getURI()] = doc;
     }
-    // Copy the const options bag, set top
-    slang::Bag localOptions = this->options;
-    auto& cOptions = localOptions.insertOrGet<slang::ast::CompilationOptions>();
-    cOptions.topModules = {top};
 
-    comp = std::make_unique<ServerCompilation>(std::move(documents), localOptions, sm);
+    comp = std::make_unique<ServerCompilation>(documents, this->options, sm, std::string(top));
 
-    // refresh
-    for (auto& uri : m_openDocs) {
-        auto docIt = docs.find(uri);
-        if (docIt != docs.end()) {
-            updateDoc(*docIt->second, FileUpdateType::OPEN);
-        }
+    // Publish initial diags
+    for (const auto& doc : documents) {
+        doc->issueParseDiagnostics(diagEngine);
     }
+    comp->issueDiagnosticsTo(diagEngine);
+    diagClient->pushDiags();
+
     return true;
 }
 
@@ -344,6 +360,17 @@ bool ServerDriver::createCompilation() {
     }
 
     comp = std::make_unique<ServerCompilation>(std::move(documents), this->options, sm);
+
+    // Issue parse diagnostics for all documents + semantic diagnostics from compilation
+    // This ensures that when a user opens a document later, the diagnostics don't disappear
+    diagClient->clear();
+    for (const auto& [uri, doc] : docs) {
+        doc->issueParseDiagnostics(diagEngine);
+    }
+
+    // Issue semantic diagnostics from the compilation
+    comp->issueDiagnosticsTo(diagEngine);
+    diagClient->pushDiags();
     return true;
 }
 
