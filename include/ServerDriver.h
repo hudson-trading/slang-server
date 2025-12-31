@@ -68,7 +68,7 @@ public:
     };
 
     /// @brief Gets a document by URI, creating it if it doesn't exist
-    SlangDoc& openDocument(const URI& uri, const std::string_view text);
+    void openDocument(const URI& uri, const std::string_view text);
 
     /// @brief Close a document and remove it from the open docs set
     void closeDocument(const URI& uri);

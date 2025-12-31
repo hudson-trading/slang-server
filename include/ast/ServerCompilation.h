@@ -7,10 +7,8 @@
 //------------------------------------------------------------------------------
 #pragma once
 
-#include "ConeTracer.h"
 #include "HierarchicalView.h"
-#include "InstanceIndexer.h"
-#include "ReferenceIndexer.h"
+#include "ServerCompilationAnalysis.h"
 #include "document/SlangDoc.h"
 #include "util/Converters.h"
 #include <filesystem>
@@ -22,24 +20,27 @@
 namespace server {
 using namespace slang;
 
-/// @brief A server compilation that is a thin wrapper around a slang compilation, and can be
-/// updated as changes come in. Updates to the documents trigger recompilation, but not a reparse of
-/// all the trees. Trees can be added if new modules are added, but will not be removed.
+/// @brief A server compilation that is set via top level or a .f file.
+/// Manages the specification of the compilation, as well as the analysis state that gets refreshed
+/// on file saves.
+///
+/// More state here is planned, like the currently focused instance, and a mapping
+/// of modules to instance for enriched data like inlayed parameter or signal values.
 class ServerCompilation {
 public:
-    std::unique_ptr<slang::ast::Compilation> comp;
     /// @brief Constructs a new ServerCompilation instance
     /// @param documents Vector of weak pointers to SlangDocuments this compilation is based on
     /// @param options Copy of the options bag for this compilation
+    /// @param top Optional top module name (owned by this compilation)
     ServerCompilation(std::vector<std::shared_ptr<SlangDoc>> documents, Bag options,
-                      SourceManager& sourceManager);
+                      SourceManager& sourceManager, std::optional<std::string> top = std::nullopt);
 
     ~ServerCompilation() = default;
 
     /// Update the compilation based by requesting all syntax trees from the documents
     void refresh();
 
-    InstanceIndexer& getInstances() { return m_instances; }
+    InstanceIndexer& getInstances() { return m_analysis->instances; }
 
     /// Get instances by module; Used for the 'instances' view. Only contains the module name and
     /// count
@@ -65,12 +66,15 @@ public:
     /// Get document and position params for a given RTL path
     std::optional<lsp::ShowDocumentParams> getHierDocParams(const std::string& path);
 
+    /// Issue all semantic diagnostics from the compilation to the diagnostic engine
+    void issueDiagnosticsTo(slang::DiagnosticEngine& diagEngine);
+
     /// Populate incoming / outgoing (drivers / loads) call hierarchy LSP responses
     template<typename P, typename R>
     std::optional<std::vector<R>> getCallHierarchyCalls(const P& params) {
         static constexpr bool isDriver =
             std::is_same<P, lsp::CallHierarchyIncomingCallsParams>::value;
-        auto cone = getCone<isDriver>(params.item.name);
+        auto cone = m_analysis->getCone<isDriver>(params.item.name);
 
         std::vector<R> result;
         for (const auto leaf : cone) {
@@ -97,7 +101,7 @@ public:
     /// Return list of RTL paths for a driver or load cone
     template<bool isDrivers>
     std::vector<std::string> getConePaths(const std::string& path) {
-        auto cone = getCone<isDrivers>(path);
+        auto cone = m_analysis->getCone<isDrivers>(path);
         std::vector<std::string> result;
         std::set<std::string> seen;
         for (const auto leaf : cone) {
@@ -117,66 +121,16 @@ private:
     /// Copy of compilation options
     Bag m_options;
 
-    /// Retained buffer data to prevent deallocation while this compilation exists
-    std::vector<std::shared_ptr<void>> m_retainedBuffers;
-
-    /// Index of buffer -> definitions and definition -> instances given a compilation. Used for
-    /// navigating a compilation
-    InstanceIndexer m_instances;
-
-    /// Index of value symbol -> uses (e.g. processes or continuous assignments)
-    std::optional<ReferenceIndexer> m_references = std::nullopt;
+    /// Owned storage for top module name, used with setTopLevel
+    /// CompilationOptions::topModules uses string_view, so we need to own the string here
+    std::optional<std::string> m_top;
 
     /// Reference to the source manager for this compilation,
     /// owned by the driver
     SourceManager& m_sourceManager;
 
-    template<bool isDrivers>
-    struct ConeSelector;
-
-    /// Get cone leaves (drivers or loads depending on template parameter) for a given RTL path
-    template<bool isDrivers>
-    std::set<ConeLeaf> getCone(const std::string& path) {
-        using ConeSelector_t = typename ConeSelector<isDrivers>::type;
-        slang::ast::LookupResult result;
-        slang::ast::ASTContext context(comp->getRoot(), slang::ast::LookupLocation::max);
-        slang::ast::Lookup::name(comp->parseName(path), context, slang::ast::LookupFlags::None,
-                                 result);
-        if (!result.found) {
-            throw std::runtime_error(
-                fmt::format("Could not find path in compiled design: {}", path));
-        }
-
-        if (!m_references) {
-            m_references.emplace();
-            m_references->reset(&comp->getRoot());
-        }
-
-        auto it = m_references->symbolToUses.find(
-            ConeLeaf::concreteSymbol(result.found)->as_if<slang::ast::ValueSymbol>());
-        if (it == m_references->symbolToUses.end()) {
-            throw std::runtime_error(fmt::format("Could not find reference to: {}", path));
-        }
-
-        ConeSelector_t coneTracer(result.found);
-        for (const auto symbol : it->second) {
-            std::cerr << "CONE: " << symbol->getSyntax()->toString()
-                      << std::endl; // NCOMMIT -- remove
-            symbol->visit(coneTracer);
-        }
-
-        return coneTracer.getLeaves();
-    }
-};
-
-template<>
-struct ServerCompilation::ConeSelector<true> {
-    using type = DriversTracer;
-};
-
-template<>
-struct ServerCompilation::ConeSelector<false> {
-    using type = LoadsTracer;
+    /// The analysis state, rebuilt on refresh()
+    std::unique_ptr<ServerCompilationAnalysis> m_analysis;
 };
 
 } // namespace server
