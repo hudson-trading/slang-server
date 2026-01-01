@@ -18,7 +18,6 @@ import {
   CommandNode,
   ConfigObject,
   EditorButton,
-  fileExists,
   PathConfigObject,
   ViewContainerSpec,
 } from './lib/libconfig'

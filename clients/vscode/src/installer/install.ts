@@ -117,7 +117,7 @@ async function ensureExecutable(binPath: string) {
   }
 }
 
-export async function installLatestSlang(storagePath: string) {
+export async function installLatestSlang(storagePath: string): Promise<string> {
   const release = await latestRelease()
   const asset = chooseReleaseAsset(release)
 

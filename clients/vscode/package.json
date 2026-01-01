@@ -691,6 +691,7 @@
     "@typescript-eslint/eslint-plugin": "^8.21.0",
     "@typescript-eslint/parser": "^8.21.0",
     "@vscode/vsce": "^3.6.2",
+    "compressing": "^2.0.0",
     "depcheck": "^1.4.7",
     "esbuild": "^0.25.11",
     "eslint": "^9.18.0",
