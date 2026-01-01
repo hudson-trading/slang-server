@@ -418,10 +418,10 @@ export async function deactivate(): Promise<void> {
 export async function activate(context: vscode.ExtensionContext) {
   ext = new SlangExtension(context, {
     id: 'slang',
-    title: 'Slang',
+    title: 'slang',
     icon: '$(chip)',
   })
-  await ext.activateExtension('slang', 'Slang', context, [
+  await ext.activateExtension('slang', 'slang', context, [
     'AndrewNolte.vscode-system-verilog',
     'AndrewNolte.vscode-slang',
     'mshr-h.veriloghdl',
