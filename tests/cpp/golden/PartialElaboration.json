@@ -12,21 +12,46 @@
         }
       },
       "severity": "Error",
-      "message": "static assertion failed"
+      "message": "static assertion failed",
+      "relatedInformation": [
+        {
+          "location": {
+            "uri": "file://test.sv",
+            "range": {
+              "start": {
+                "line": 6,
+                "character": 29
+              },
+              "end": {
+                "line": 6,
+                "character": 30
+              }
+            }
+          },
+          "message": "comparison reduces to (2 == 1)"
+        }
+      ]
     },
     {
       "range": {
         "start": {
-          "line": 6,
-          "character": 27
+          "line": 4,
+          "character": 26
         },
         "end": {
-          "line": 6,
-          "character": 33
+          "line": 4,
+          "character": 27
         }
       },
-      "severity": "Information",
-      "message": "comparison reduces to (2 == 1)"
+      "severity": "Warning",
+      "code": "unused-parameter",
+      "codeDescription": {
+        "href": "https://sv-lang.com/warning-ref.html#unused-parameter"
+      },
+      "message": "unused parameter 'z'",
+      "tags": [
+        "Unnecessary"
+      ]
     }
   ]
 ]

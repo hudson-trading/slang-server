@@ -194,27 +194,36 @@ void SlangDoc::onChange(const std::vector<lsp::TextDocumentContentChangeEvent>& 
     m_analysis.reset();
 }
 
-bool isValidShallow(const DiagCode& code) {
-    if (code == diag::IndexOOB || code == diag::ScopeIndexOutOfRange || code == diag::ErrorTask ||
-        code == diag::WarningTask || code == diag::InfoTask || code == diag::FatalTask) {
-        return false;
-    }
-    return true;
-}
-
 void SlangDoc::issueDiagnosticsTo(DiagnosticEngine& diagEngine) {
-    for (auto& diag : getAnalysis(true).getCompilation()->getAllDiagnostics()) {
+
+    auto issueDiag = [&](const Diagnostic& diag) {
+        if (!diag.location) {
+            return;
+        }
         // Only issue diagnostics that belong to this document's syntax tree
         if (m_buffer.id != m_sourceManager.getFullyOriginalLoc(diag.location).buffer()) {
-            continue;
+            return;
         }
-        if (!isValidShallow(diag.code)) {
-            // Some diagnostics are not valid for shallow analysis
-            // TODO: consider only suppressing some of these for untaken generate branches
-            continue;
-        }
-        // Some diags should be ignored with the AllGenerates flag
         diagEngine.issue(diag);
+    };
+
+    // Issue compilation diagnostics
+    auto& analysis = getAnalysis(true);
+    auto& compilation = *analysis.getCompilation();
+    for (auto& diag : compilation.getAllDiagnostics()) {
+        issueDiag(diag);
+    }
+
+    // Run analysis phase to get additional diagnostics like unused ports
+
+    // Skip if there's a full compilation (it will run its own analysis)
+    if (m_driver.comp) {
+        return;
+    }
+
+    // Run analysis on the shallow compilation
+    for (auto& diag : analysis.getAnalysisDiags()) {
+        issueDiag(diag);
     }
 }
 
