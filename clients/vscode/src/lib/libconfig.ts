@@ -7,6 +7,7 @@ import { JSONSchemaType } from './jsonSchema'
 import { Logger, StubLogger, createLogger } from './logger'
 import { IConfigurationPropertySchema } from './vscodeConfigs'
 import fs = require('fs')
+import { PlatformMap, getPlatform } from './platform'
 
 export async function fileExists(filePath: string): Promise<boolean> {
   try {
@@ -578,12 +579,6 @@ export class ConfigObject<T extends JSONSchemaType> extends ExtensionNode {
     return this.cachedValue
   }
 
-  listen(): void {
-    this.onConfigUpdated(() => {
-      this.getValue()
-    })
-  }
-
   private inferSchema(value: any): any {
     if (typeof value === 'string') {
       return { type: 'string' }
@@ -665,10 +660,6 @@ export class ConfigObject<T extends JSONSchemaType> extends ExtensionNode {
   }
 }
 
-type Platform = 'windows' | 'linux' | 'mac'
-
-type PlatformMap = { [key in Platform]: string }
-
 type PathConfigSchema = Omit<IConfigurationPropertySchema, 'default'>
 export class PathConfigObject extends ConfigObject<string> {
   platformDefaults: PlatformMap
@@ -678,9 +669,6 @@ export class PathConfigObject extends ConfigObject<string> {
       default: '',
     })
     this.platformDefaults = platformDefaults
-    this.onConfigUpdated(async () => {
-      await this.checkPathNotify()
-    })
   }
 
   compile(nodeName: string, parentNode?: ExtensionComponent | undefined): void {
@@ -695,51 +683,55 @@ export class PathConfigObject extends ConfigObject<string> {
     return toolpath
   }
 
-  async getValueAsync(): Promise<string> {
+  async findSlangServer(): Promise<string> {
+    // get configured path from settings.json
     let toolpath = vscode.workspace.getConfiguration().get(this.configPath!, '')
 
-    // if we already performed which, use that
-    if (toolpath === '' && path.isAbsolute(this.cachedValue)) {
-      return this.cachedValue
-    }
-
+    // path has not been configured in settings.json
     if (toolpath === '') {
-      // if it's a platform default, check the path
-      toolpath = this.platformDefaults[getPlatform()]
+      // start by checking to see if we have a cached value
+      if (path.isAbsolute(this.cachedValue)) {
+        return this.cachedValue
+      }
 
-      if (!path.isAbsolute(toolpath)) {
-        const whichResult = await which(toolpath, { nothrow: true })
-        if (whichResult === '' || whichResult === null) {
-          console.error(`which ${toolpath} failed`)
-        } else {
-          console.error(`which ${toolpath} found ${whichResult}`)
-          toolpath = whichResult
-        }
+      // if we don't have a cached value, then we check to see if its on the path
+      toolpath = this.platformDefaults[getPlatform()]
+      const whichResult = await which(toolpath, { nothrow: true })
+      if (whichResult !== '' && whichResult !== null) {
+        console.error(`which ${toolpath} found ${whichResult}`)
+        toolpath = whichResult
+
+        // we return early since we found it on the path and we don't
+        // need to do further checks (like existance and directory)
+        this.cachedValue = toolpath
+        return toolpath
+      } else {
+        // not found on path
+        console.error(`which ${toolpath} failed`)
+
+        return ''
       }
     }
 
     this.cachedValue = toolpath
 
-    return toolpath
-  }
-
-  async checkPathNotify(): Promise<boolean> {
-    let toolpath = await this.getValueAsync()
-    if (toolpath === '') {
-      await vscode.window.showErrorMessage(
-        `"${toolpath}" not found. Configure abs path at ${this.configPath}, add to PATH, or disable in config.`
-      )
-      return false
-    }
-    // check if it exists
-    const exists = await fileExists(toolpath)
-    if (!exists) {
+    try {
+      const stats = await fs.promises.stat(toolpath)
+      if (!stats.isFile()) {
+        vscode.window.showErrorMessage(
+          `File "${this.configPath}: ${toolpath}" is not a file, please reconfigure`
+        )
+      }
+    } catch {
+      // I believe it only throws if the file DNE
+      // see: https://stackoverflow.com/a/53530146
+      // probably would be good to verify this though.
       vscode.window.showErrorMessage(
         `File "${this.configPath}: ${toolpath}" doesn't exist, please reconfigure`
       )
-      return false
     }
-    return true
+
+    return toolpath
   }
 
   getMarkdownString(): string {
@@ -754,18 +746,6 @@ export class PathConfigObject extends ConfigObject<string> {
     out += `    mac:     \`${this.platformDefaults.mac}\`\n\n`
     out += `    windows: \`${this.platformDefaults.windows}\`\n\n`
     return out
-  }
-}
-
-export function getPlatform(): Platform {
-  switch (process.platform) {
-    case 'win32':
-      return 'windows'
-    case 'darwin':
-      return 'mac'
-    default:
-      // includes WSL
-      return 'linux'
   }
 }
 
