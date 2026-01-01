@@ -4,7 +4,8 @@
     "target": "ES2020",
     "outDir": "out",
     "lib": [
-      "ES2020"
+      "ES2020",
+      "dom"
     ],
     "sourceMap": true,
     "types": [
@@ -23,6 +24,5 @@
     "node_modules",
     "dist",
     "out",
-    "dom"
   ]
 }
