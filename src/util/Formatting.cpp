@@ -3,10 +3,12 @@
 
 #include "util/Formatting.h"
 
-#include "util/Logging.h"
 #include <fmt/format.h>
 #include <sstream>
 
+#include "slang/ast/symbols/PortSymbols.h"
+#include "slang/ast/symbols/ValueSymbol.h"
+#include "slang/ast/types/Type.h"
 #include "slang/syntax/AllSyntax.h"
 #include "slang/syntax/SyntaxKind.h"
 #include "slang/syntax/SyntaxPrinter.h"
@@ -177,7 +179,7 @@ std::string svCodeBlockString(std::string_view code) {
     return fmt::format("````systemverilog\n{}\n````", res);
 }
 
-std::string svCodeBlockString(const syntax::SyntaxNode& node) {
+std::string formatSyntaxNode(const syntax::SyntaxNode& node) {
     const syntax::SyntaxNode* fmtNode = &node;
     switch (node.kind) {
         // Adjust these to just be the header
@@ -208,7 +210,15 @@ std::string svCodeBlockString(const syntax::SyntaxNode& node) {
 
     res = slang::syntax::SyntaxPrinter().printLeadingComments(*fmtNode).str() + res;
 
-    return svCodeBlockString(res);
+    // Apply formatting for clean display
+    stripBlankLines(res);
+    shiftIndent(res);
+
+    return res;
+}
+
+std::string svCodeBlockString(const syntax::SyntaxNode& node) {
+    return svCodeBlockString(formatSyntaxNode(node));
 }
 
 lsp::MarkupContent svCodeBlock(const syntax::SyntaxNode& node) {
@@ -230,6 +240,47 @@ std::string toCamelCase(std::string_view str) {
     result.push_back(static_cast<char>(std::tolower(str[0])));
     result.append(str.substr(1));
     return result;
+}
+
+std::string getTypeString(const ast::Type& declType) {
+    if (declType.isError()) {
+        return "Incomplete type";
+    }
+    auto& type = declType.getCanonicalType();
+
+    if (type.isStruct() || type.isUnion() || type.isEnum()) {
+        auto kindStr = toString(type.kind);
+        // Trim off "Type" from kind string
+        return fmt::format("{} {} (logic[{}:0])", kindStr.substr(0, kindStr.size() - 4),
+                           declType.name, type.getBitWidth() - 1, 0);
+    }
+    return type.toString();
+}
+
+std::string portString(ast::ArgumentDirection dir) {
+    switch (dir) {
+        case ast::ArgumentDirection::In:
+            return "input";
+        case ast::ArgumentDirection::Out:
+            return "output";
+        case ast::ArgumentDirection::InOut:
+            return "inout";
+        case ast::ArgumentDirection::Ref:
+            return "ref";
+        default:
+            SLANG_UNREACHABLE;
+    }
+    return "unknown";
+}
+
+std::string getTypeString(const ast::ValueSymbol& value) {
+    const slang::ast::Type& decl = value.getType();
+    auto port = value.getFirstPortBackref();
+    if (port) {
+        // return getDeclaredTypeString(decl);
+        return fmt::format("{} {}", portString(port->port->direction), getTypeString(decl));
+    }
+    return getTypeString(decl);
 }
 
 } // namespace server
