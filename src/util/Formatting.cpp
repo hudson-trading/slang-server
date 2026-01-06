@@ -3,15 +3,17 @@
 
 #include "util/Formatting.h"
 
-#include "util/Logging.h"
 #include <fmt/format.h>
 #include <sstream>
 
+#include "slang/ast/symbols/PortSymbols.h"
+#include "slang/ast/symbols/ValueSymbol.h"
+#include "slang/ast/types/Type.h"
+#include "slang/ast/types/TypePrinter.h"
 #include "slang/syntax/AllSyntax.h"
 #include "slang/syntax/SyntaxKind.h"
 #include "slang/syntax/SyntaxPrinter.h"
 #include "slang/text/CharInfo.h"
-
 namespace server {
 using namespace slang;
 
@@ -177,7 +179,7 @@ std::string svCodeBlockString(std::string_view code) {
     return fmt::format("````systemverilog\n{}\n````", res);
 }
 
-std::string svCodeBlockString(const syntax::SyntaxNode& node) {
+std::string formatSyntaxNode(const syntax::SyntaxNode& node) {
     const syntax::SyntaxNode* fmtNode = &node;
     switch (node.kind) {
         // Adjust these to just be the header
@@ -208,7 +210,15 @@ std::string svCodeBlockString(const syntax::SyntaxNode& node) {
 
     res = slang::syntax::SyntaxPrinter().printLeadingComments(*fmtNode).str() + res;
 
-    return svCodeBlockString(res);
+    // Apply formatting for clean display
+    stripBlankLines(res);
+    shiftIndent(res);
+
+    return res;
+}
+
+std::string svCodeBlockString(const syntax::SyntaxNode& node) {
+    return svCodeBlockString(formatSyntaxNode(node));
 }
 
 lsp::MarkupContent svCodeBlock(const syntax::SyntaxNode& node) {
@@ -231,5 +241,67 @@ std::string toCamelCase(std::string_view str) {
     result.append(str.substr(1));
     return result;
 }
+
+template<bool ForHover>
+std::string getTypeStringImpl(const ast::Type& declType) {
+    if (declType.isError()) {
+        return "Incomplete type";
+    }
+
+    slang::ast::TypePrinter printer;
+    if constexpr (ForHover) {
+        printer.options.quoteChar = '`';
+        printer.options.anonymousTypeStyle = ast::TypePrintingOptions::FriendlyName;
+    }
+    printer.options.elideScopeNames = true;
+    printer.options.skipTypeDefs = true;
+    printer.options.printAKA = true;
+    printer.options.printIntegralRange = true;
+    printer.append(declType);
+
+    auto& type = declType.getCanonicalType();
+
+    if (type.isStruct() || type.isUnion() || type.isEnum()) {
+        auto kindStr = toString(type.kind);
+        // Trim off "Type" from kind string
+        return fmt::format("{} {}", kindStr.substr(0, kindStr.size() - 4), printer.toString());
+    }
+    else {
+        return printer.toString();
+    }
+}
+
+template std::string getTypeStringImpl<true>(const ast::Type& declType);
+template std::string getTypeStringImpl<false>(const ast::Type& declType);
+
+std::string portString(ast::ArgumentDirection dir) {
+    switch (dir) {
+        case ast::ArgumentDirection::In:
+            return "input";
+        case ast::ArgumentDirection::Out:
+            return "output";
+        case ast::ArgumentDirection::InOut:
+            return "inout";
+        case ast::ArgumentDirection::Ref:
+            return "ref";
+        default:
+            SLANG_UNREACHABLE;
+    }
+    return "unknown";
+}
+
+template<bool ForHover>
+std::string getTypeStringImpl(const ast::ValueSymbol& value) {
+    const slang::ast::Type& decl = value.getType();
+    auto port = value.getFirstPortBackref();
+    if (port) {
+        return fmt::format("{} {}", portString(port->port->direction),
+                           getTypeStringImpl<ForHover>(decl));
+    }
+    return getTypeStringImpl<ForHover>(decl);
+}
+
+template std::string getTypeStringImpl<true>(const ast::ValueSymbol& value);
+template std::string getTypeStringImpl<false>(const ast::ValueSymbol& value);
 
 } // namespace server

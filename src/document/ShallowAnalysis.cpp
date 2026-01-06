@@ -524,38 +524,53 @@ bool ShallowAnalysis::hasValidBuffers() {
     return true;
 }
 
-std::string ShallowAnalysis::getDebugHover(const parsing::Token& tok) const {
-    std::string value = fmt::format("`{}` Token\n", toString(tok.kind));
+markup::Paragraph ShallowAnalysis::getDebugHover(const parsing::Token& tok) const {
+    markup::Paragraph para;
 
+    // Token info header
+    para.appendBold("Token:").appendCode(toString(tok.kind)).newLine();
+
+    // Walk up the syntax tree
     auto node = syntaxes.getSyntaxAt(&tok);
     for (auto nodePtr = node; nodePtr; nodePtr = nodePtr->parent) {
         // In case of bad memory
         if (nodePtr->kind > syntax::SyntaxKind::XorAssignmentExpression) {
             break;
         }
+
         auto kindStr = toString(nodePtr->kind);
         if (kindStr.empty()) {
-            value += "*Unknown*";
+            para.appendText("Unknown syntax kind");
             break;
         }
 
-        value += fmt::format("*{}* ", toString(nodePtr->kind));
+        // Show syntax kind
+        para.appendBold(kindStr).appendText(": ");
+
+        // Show source text preview
         auto range = nodePtr->sourceRange();
-        std::string svText = "No Source";
         if (range != SourceRange::NoLocation) {
-            svText = nodePtr->toString();
+            auto svText = nodePtr->toString();
+            if (svText.size() > 40) {
+                svText = svText.substr(0, 18) + "..." + svText.substr(svText.size() - 18);
+            }
+            para.appendCode(svText);
         }
-        value += fmt::format("`{}`  \n ", svText.substr(0, std::min((size_t)20, svText.size())));
+        else {
+            para.appendText("(no source)");
+        }
+        para.newLine();
 
+        // Check if we've reached a symbol
         auto sym = m_symbolIndexer.getSymbol(nodePtr);
-
         if (sym) {
-            // We reached a symbol
-            value += fmt::format("`{} : {}`  \n", sym->name, toString(sym->kind));
+            para.appendBold("Symbol:").appendCode(sym->name);
+            para.appendText(" (").appendText(toString(sym->kind)).appendText(")");
             break;
         }
     }
-    return value;
+
+    return para;
 }
 
 Diagnostics ShallowAnalysis::getAnalysisDiags() {

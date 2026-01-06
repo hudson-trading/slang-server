@@ -345,7 +345,7 @@
                 }
               }
             },
-            "type": "cpu_state_t / enum"
+            "type": "Enum cpu_state_t (logic[2:0])"
           },
           {
             "kind": "Logic",
@@ -581,7 +581,7 @@
             }
           }
         },
-        "type": "cpu_state_t / enum"
+        "type": "Enum cpu_state_t (logic[2:0])"
       },
       {
         "kind": "Logic",
@@ -858,7 +858,7 @@
             }
           }
         },
-        "type": "input alu_op_t / enum"
+        "type": "input Enum alu_op_t (logic[3:0])"
       },
       {
         "kind": "Port",

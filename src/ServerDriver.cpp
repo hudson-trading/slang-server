@@ -8,6 +8,7 @@
 
 #include "ServerDriver.h"
 
+#include "Hovers.h"
 #include "Indexer.h"
 #include "ServerDiagClient.h"
 #include "ast/ServerCompilation.h"
@@ -18,6 +19,7 @@
 #include "util/Converters.h"
 #include "util/Formatting.h"
 #include "util/Logging.h"
+#include "util/Markdown.h"
 #include <memory>
 #include <queue>
 #include <string_view>
@@ -26,6 +28,7 @@
 #include "slang/ast/Symbol.h"
 #include "slang/ast/symbols/CompilationUnitSymbols.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
+#include "slang/ast/symbols/ParameterSymbols.h"
 #include "slang/ast/types/Type.h"
 #include "slang/diagnostics/DiagnosticEngine.h"
 #include "slang/diagnostics/Diagnostics.h"
@@ -497,7 +500,6 @@ std::optional<lsp::Hover> ServerDriver::getDocHover(const URI& uri, const lsp::P
     if (!doc) {
         return {};
     }
-    auto& analysis = doc->getAnalysis();
     auto loc = sm.getSourceLocation(doc->getBuffer(), position.line, position.character);
     if (!loc) {
         return {};
@@ -511,62 +513,14 @@ std::optional<lsp::Hover> ServerDriver::getDocHover(const URI& uri, const lsp::P
         if (tok == nullptr) {
             return {};
         }
-        return lsp::Hover{
-            .contents = lsp::MarkupContent{.kind = lsp::MarkupKind::make<"markdown">(),
-                                           .value = analysis.getDebugHover(*tok)}};
+        markup::Document doc;
+        doc.addParagraph(analysis.getDebugHover(*tok));
+        return lsp::Hover{.contents = doc.build()};
 #endif
         return {};
     }
     auto info = *maybeInfo;
-
-    auto md = svCodeBlockString(*info.node);
-
-    if (info.macroUsageRange != SourceRange::NoLocation) {
-        auto text = sm.getText(info.macroUsageRange);
-        md += fmt::format("\n Expanded from\n {}", svCodeBlockString(text));
-    }
-
-    if (info.symbol) {
-        // Show hierarchical path if:
-        // 1. Symbol is in a different scope than the current position
-        // 2. and Symbol's scope is not the root scope ($unit)
-        auto symbolScope = info.symbol->getParentScope();
-        auto lookupScope = analysis.getScopeAt(loc.value());
-
-        if (lookupScope && symbolScope && lookupScope != symbolScope) {
-            auto& parentSym = symbolScope->asSymbol();
-            auto hierPath = parentSym.getLexicalPath();
-            // The typedef name needs to be appended; it's not attached to the type
-            if (parentSym.kind == ast::SymbolKind::PackedStructType ||
-                parentSym.kind == ast::SymbolKind::UnpackedStructType) {
-                auto syntax = parentSym.getSyntax();
-                if (syntax && syntax->parent &&
-                    syntax->parent->kind == syntax::SyntaxKind::TypedefDeclaration) {
-                    hierPath += "::";
-                    hierPath +=
-                        syntax->parent->as<syntax::TypedefDeclarationSyntax>().name.valueText();
-                }
-            }
-            if (!hierPath.empty()) {
-                md = fmt::format("{}\n\n---\n\n{}",
-                                 svCodeBlockString(fmt::format("// In {}", hierPath)), md);
-            }
-        }
-    }
-    else {
-        // show file for macros
-        auto macroBuf = info.nameToken.location().buffer();
-        if (macroBuf != doc->getBuffer() && sm.isLatestData(macroBuf)) {
-            auto path = sm.getFullPath(macroBuf);
-            if (!path.empty()) {
-                md = fmt::format(
-                    "{}\n\n---\n\n{}",
-                    svCodeBlockString(fmt::format("// From {}", path.filename().string())), md);
-            }
-        }
-    }
-
-    return lsp::Hover{.contents = markdown(md)};
+    return lsp::Hover{.contents = getHover(sm, doc->getBuffer(), info)};
 }
 
 std::vector<lsp::LocationLink> ServerDriver::getDocDefinition(const URI& uri,

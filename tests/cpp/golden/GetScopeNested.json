@@ -72,7 +72,7 @@
             }
           }
         },
-        "type": "input alu_op_t / enum"
+        "type": "input Enum alu_op_t (logic[3:0])"
       },
       {
         "kind": "Port",
