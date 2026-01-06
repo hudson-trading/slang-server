@@ -9,6 +9,7 @@
 #pragma once
 #include "lsp/LspTypes.h"
 #include "util/Converters.h"
+#include "util/Formatting.h"
 #include <fmt/format.h>
 #include <optional>
 #include <string>
@@ -24,8 +25,8 @@
 #include "slang/ast/symbols/ParameterSymbols.h"
 #include "slang/ast/symbols/PortSymbols.h"
 #include "slang/ast/symbols/ValueSymbol.h"
+#include "slang/ast/types/AllTypes.h"
 #include "slang/ast/types/DeclaredType.h"
-#include "slang/ast/types/Type.h"
 #include "slang/text/SourceManager.h"
 
 namespace hier {
@@ -231,82 +232,27 @@ static void handleInstanceArray(std::vector<HierItem_t>& result,
     }));
 }
 
-// Ports and ValueSymbols both have these, but don't share a base class
-template<typename T>
-concept HasTypeAndDeclaredType = requires(T a) {
-    { a.getType() } -> std::convertible_to<const slang::ast::Type&>;
-    { a.getDeclaredType() } -> std::convertible_to<const slang::ast::DeclaredType*>;
-};
-
-template<HasTypeAndDeclaredType T>
-static std::string getTypeString(const T& value) {
-    const slang::ast::Type& decl = value.getDeclaredType() ? value.getDeclaredType()->getType()
-                                                           : value.getType();
-
-    // if the canonical (resolved) type is different, we want to provide that data too
-    auto ret = decl.toString();
-    const slang::ast::Type& type = value.getType().getCanonicalType();
-    if (type.isStruct()) {
-        ret += " / struct";
-    }
-    else if (type.isUnion()) {
-        ret += " / union";
-    }
-    else if (type.isEnum()) {
-        ret += " / enum";
-    }
-    else if (&type != &decl) {
-        ret += " / " + type.toString();
-    }
-    return ret;
-}
-
 static void handleParameter(std::vector<HierItem_t>& result,
                             const slang::ast::ParameterSymbol& param, const SourceManager& sm) {
     result.push_back(HierItem_t(Var{
         .kind = SlangKind::Param,
         .instName = std::string(param.name),
         .instLoc = toLocation(param.getSyntax()->sourceRange(), sm),
-        // the type of params isn't really relevant- they're mostly ints.
-        // TODO: have enums print the string value, rather than the int value
         .type = getTypeString(param),
         .value = param.getValue().toString(),
     }));
 }
 
-static void handlePort(std::vector<HierItem_t>& result, const slang::ast::PortSymbol& port,
-                       const SourceManager& sm) {
-    result.push_back(HierItem_t(Var{
-        .kind = SlangKind::Port,
-        .instName = std::string(port.name),
-        .instLoc = toLocation(port.getSyntax()->sourceRange(), sm),
-        .type = fmt::format("{} {}", portString(port.direction), getTypeString(port)),
-    }));
-}
-
+// Includes ports
 static void handleValue(std::vector<HierItem_t>& result, const slang::ast::ValueSymbol& val,
                         const SourceManager& sm) {
 
-    // Ignore if the current symbol has already been added as a Port
-    bool is_port = false;
-    if (!result.empty()) {
-        rfl::visit(
-            [&](auto&& x) {
-                if (x.kind == SlangKind::Port && x.instName == val.name) {
-                    is_port = true;
-                }
-            },
-            result.back());
-    }
-
-    if (!is_port) {
-        result.push_back(HierItem_t(Var{
-            .kind = SlangKind::Logic,
-            .instName = std::string(val.name),
-            .instLoc = toLocation(val.getSyntax()->sourceRange(), sm),
-            .type = getTypeString(val),
-        }));
-    }
+    result.push_back(HierItem_t(Var{
+        .kind = val.getFirstPortBackref() ? SlangKind::Port : SlangKind::Logic,
+        .instName = std::string(val.name),
+        .instLoc = toLocation(val.getSyntax()->sourceRange(), sm),
+        .type = getTypeString(val),
+    }));
 }
 
 static std::vector<HierItem_t> getScopeChildren(const slang::ast::Scope& scope,
@@ -318,9 +264,6 @@ static std::vector<HierItem_t> getScopeChildren(const slang::ast::Scope& scope,
         }
         else if (auto param = sym.as_if<slang::ast::ParameterSymbol>()) {
             handleParameter(result, *param, sm);
-        }
-        else if (auto port = sym.as_if<slang::ast::PortSymbol>()) {
-            handlePort(result, *port, sm);
         }
         else if (auto val = sym.as_if<slang::ast::ValueSymbol>()) {
             handleValue(result, *val, sm);

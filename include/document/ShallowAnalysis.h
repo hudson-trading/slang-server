@@ -12,6 +12,7 @@
 #include "document/SymbolTreeVisitor.h"
 #include "document/SyntaxIndexer.h"
 #include "lsp/LspTypes.h"
+#include "util/Markdown.h"
 #include <memory>
 #include <optional>
 #include <string_view>
@@ -116,7 +117,7 @@ public:
 
     /// @brief Generates debug hover information for a syntax node, traversing up the parent
     /// syntax pointers
-    std::string getDebugHover(const slang::parsing::Token& node) const;
+    markup::Paragraph getDebugHover(const slang::parsing::Token& tok) const;
 
     /// @brief Gets the AST symbol that a declared token refers to, if any
     const slang::ast::Symbol* getSymbolAtToken(const slang::parsing::Token* node) const;
