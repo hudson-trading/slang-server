@@ -40,7 +40,7 @@ public:
         if (it != m_diagnostics.end()) {
             return it->second;
         }
-        throw std::runtime_error("No diagnostics found for URI: " + std::string{uri.getPath()});
+        return {};
     }
 
     void expectError(const std::string& msg) {

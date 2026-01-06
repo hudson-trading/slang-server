@@ -226,7 +226,7 @@ void SlangServer::setExplore() {
 
     // Move data into the Server Driver
     m_driver = ServerDriver::create(m_indexer, m_client, m_config, {}, m_driver.get());
-    m_driver->diagClient->updateDiags();
+    m_driver->diagClient->pushDiags();
 }
 
 std::monostate SlangServer::setTopLevel(const std::string& path) {
