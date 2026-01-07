@@ -387,6 +387,18 @@ const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declT
                 }
                 return cur;
             }
+            // with IdentifierSelectNameSyntax (instance arrays) result.found will be the final
+            // element, when we may want the array. In the case of the selectors being the token, we
+            // do want the element for completions
+            if (syntax->kind == syntax::SyntaxKind::IdentifierSelectName &&
+                (result.found->kind == slang::ast::SymbolKind::Instance ||
+                 result.found->kind == slang::ast::SymbolKind::GenerateBlock)) {
+                auto& idSelect = syntax->as<syntax::IdentifierSelectNameSyntax>();
+                if (idSelect.identifier == *declTok) {
+                    return result.path.at(result.path.size() - 1 - idSelect.selectors.size())
+                        .symbol.get();
+                }
+            }
             return result.found;
         }
 
