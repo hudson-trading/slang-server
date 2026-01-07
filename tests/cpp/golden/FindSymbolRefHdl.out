@@ -376,6 +376,20 @@ module TestModule #(
 
 
 
+    // Test instance array access - goto on sub_inst[0] should go to sub_inst declaration
+
+    logic [15:0] inst_array_test;
+                 ^^^^^^^^^^^^^^^ Sym inst_array_test : Variable
+
+    assign inst_array_test = sub_inst[0].data_out + sub_inst[1].data_out;
+           ^^^^^^^^^^^^^^^ Ref -> **Variable** `inst_array_test` in `TestModule`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\\n\\n\---\n\\n\`// Test instance array access - goto on sub_inst[0] should go to sub_inst declaration\n\logic [15:0] inst_array_test;`
+                             ^^^^^^^^ Ref -> **Instance** `` in `TestModule.sub_inst`  \n\Type: Sub  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(16)) sub_inst [NUM_SUBS] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(sub_data_in),\n\    .data_out(sub_data_out)\n\);`
+                                         ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+                                                    ^^^^^^^^ Ref -> **Instance** `` in `TestModule.sub_inst`  \n\Type: Sub  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(16)) sub_inst [NUM_SUBS] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(sub_data_in),\n\    .data_out(sub_data_out)\n\);`
+                                                                ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+
+
+
     always_ff @(posedge clk) begin
                         ^^^ Ref -> **Variable** `clk` in `TestModule`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
 
@@ -571,6 +585,97 @@ module NoDefaults #(
                   ^^^^^^^^ Ref -> **Variable** `data_out` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
 
     );
+
+
+
+    // 2D instance array
+
+    Sub #(.WIDTH(WIDTH)) sub_2d [2][3] (
+    ^^^ Ref -> **Definition** `Sub`  \n\\n\\n\---\n\\n\`module Sub #(\n\    parameter int WIDTH = 16\n\)(\n\    input logic clk,\n\    input logic rst,\n\    input logic [WIDTH-1:0] data_in,\n\    output logic [WIDTH-1:0] data_out\n\);`
+           ^^^^^ Ref -> **Parameter** `WIDTH` in `Sub`  \n\Type: `int`  \n\\n\\n\---\n\\n\`parameter int WIDTH = 16`
+                 ^^^^^ Ref -> **Parameter** `WIDTH` in `NoDefaults`  \n\Type: `int`  \n\\n\\n\---\n\\n\`parameter int WIDTH`
+                         ^^^^^^ Sym sub_2d : InstanceArray
+
+        .clk(clk),
+         ^^^ Ref -> **Variable** `clk` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
+             ^^^ Ref -> **Variable** `clk` in `NoDefaults`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
+
+        .rst(rst),
+         ^^^ Ref -> **Variable** `rst` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
+             ^^^ Ref -> **Variable** `rst` in `NoDefaults`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
+
+        .data_in(data_in),
+         ^^^^^^^ Ref -> **Variable** `data_in` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+                 ^^^^^^^ Ref -> **Variable** `data_in` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+
+        .data_out()
+         ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+
+    );
+
+
+
+    // Test 2D instance array access
+
+    logic [WIDTH-1:0] test_2d_access;
+           ^^^^^ Ref -> **Parameter** `WIDTH` in `NoDefaults`  \n\Type: `int`  \n\\n\\n\---\n\\n\`parameter int WIDTH`
+                      ^^^^^^^^^^^^^^ Sym test_2d_access : Variable
+
+    assign test_2d_access = sub_2d[0][1].data_out + sub_2d[1][2].data_out;
+           ^^^^^^^^^^^^^^ Ref -> **Variable** `test_2d_access` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`// Test 2D instance array access\n\logic [WIDTH-1:0] test_2d_access;`
+                            ^^^^^^ Ref -> **Instance** `` in `NoDefaults.sub_2d`  \n\Type: Sub  \n\\n\\n\---\n\\n\`// 2D instance array\n\Sub #(.WIDTH(WIDTH)) sub_2d [2][3] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(data_in),\n\    .data_out()\n\);`
+                                         ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+                                                    ^^^^^^ Ref -> **Instance** `` in `NoDefaults.sub_2d`  \n\Type: Sub  \n\\n\\n\---\n\\n\`// 2D instance array\n\Sub #(.WIDTH(WIDTH)) sub_2d [2][3] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(data_in),\n\    .data_out()\n\);`
+                                                                 ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+
+
+
+    genvar j;
+           ^ Sym j : Genvar
+
+    for(j = 0; j < 3; j++) begin : gen_loop_2
+               ^ Ref -> **Genvar** `j` in `NoDefaults`  \n\\n\\n\---\n\\n\`j`
+                      ^ Ref -> **Genvar** `j` in `NoDefaults`  \n\\n\\n\---\n\\n\`j`
+                                   ^^^^^^^^^^ Sym gen_loop_2 : GenerateBlockArray
+
+        Sub #(.WIDTH(WIDTH)) gen_sub_array [4] (
+        ^^^ Ref -> **Definition** `Sub`  \n\\n\\n\---\n\\n\`module Sub #(\n\    parameter int WIDTH = 16\n\)(\n\    input logic clk,\n\    input logic rst,\n\    input logic [WIDTH-1:0] data_in,\n\    output logic [WIDTH-1:0] data_out\n\);`
+               ^^^^^ Ref -> **Parameter** `WIDTH` in `Sub`  \n\Type: `int`  \n\\n\\n\---\n\\n\`parameter int WIDTH = 16`
+                     ^^^^^ Ref -> **Parameter** `WIDTH` in `NoDefaults`  \n\Type: `int`  \n\\n\\n\---\n\\n\`parameter int WIDTH`
+                             ^^^^^^^^^^^^^ Sym gen_sub_array : InstanceArray
+
+            .clk(clk),
+             ^^^ Ref -> **Variable** `clk` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
+                 ^^^ Ref -> **Variable** `clk` in `NoDefaults`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
+
+            .rst(rst),
+             ^^^ Ref -> **Variable** `rst` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
+                 ^^^ Ref -> **Variable** `rst` in `NoDefaults`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
+
+            .data_in(data_in),
+             ^^^^^^^ Ref -> **Variable** `data_in` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+                     ^^^^^^^ Ref -> **Variable** `data_in` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+
+            .data_out()
+             ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+
+        );
+
+    end
+
+
+
+    // Test instance array inside generate scope access
+
+    logic [WIDTH-1:0] test_gen_array_access;
+           ^^^^^ Ref -> **Parameter** `WIDTH` in `NoDefaults`  \n\Type: `int`  \n\\n\\n\---\n\\n\`parameter int WIDTH`
+                      ^^^^^^^^^^^^^^^^^^^^^ Sym test_gen_array_access : Variable
+
+    assign test_gen_array_access = gen_loop_2[0].gen_sub_array[2].data_out;
+           ^^^^^^^^^^^^^^^^^^^^^ Ref -> **Variable** `test_gen_array_access` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`// Test instance array inside generate scope access\n\logic [WIDTH-1:0] test_gen_array_access;`
+                                   ^^^^^^^^^^ Ref -> **GenerateBlock** `` in `NoDefaults.gen_loop_2`  \n\\n\\n\---\n\\n\`begin : gen_loop_2\n\    Sub #(.WIDTH(WIDTH)) gen_sub_array [4] (\n\        .clk(clk),\n\        .rst(rst),\n\        .data_in(data_in),\n\        .data_out()\n\    );\n\end`
+                                                 ^^^^^^^^^^^^^ Ref -> **Instance** `` in `NoDefaults.gen_loop_2.gen_sub_array`  \n\Type: Sub  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(WIDTH)) gen_sub_array [4] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(data_in),\n\    .data_out()\n\);`
+                                                                  ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
 
 
 
