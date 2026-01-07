@@ -241,21 +241,21 @@ void resolveModule(const slang::syntax::ModuleHeaderSyntax& header, lsp::Complet
 
 void resolveModule(const slang::syntax::SyntaxTree& tree, std::string_view moduleName,
                    lsp::CompletionItem& ret, bool excludeName) {
-    for (auto [syntax, node] : tree.getMetadata().nodeMeta) {
-        auto& module = syntax->as<slang::syntax::ModuleDeclarationSyntax>();
-        if (module.header->name.valueText() != moduleName)
+    for (auto [module, node] : tree.getMetadata().nodeMeta) {
+        auto& header = *module->header;
+        if (header.name.valueText() != moduleName)
             continue;
 
-        switch (syntax->kind) {
+        switch (module->kind) {
             case slang::syntax::SyntaxKind::InterfaceDeclaration:
             case slang::syntax::SyntaxKind::ModuleDeclaration: {
-                resolveModule(*module.header, ret, excludeName);
+                resolveModule(header, ret, excludeName);
             } break;
             default: {
                 // Packages and programs- just do the name. For packages we may want to
                 // automatically add the ::, but not sure if that will retrigger completions
-                ret.documentation = svCodeBlock(*module.header);
-                ret.insertText = module.header->name.valueText();
+                ret.documentation = svCodeBlock(header);
+                ret.insertText = header.name.valueText();
                 ret.insertTextFormat = lsp::InsertTextFormat::PlainText;
                 continue;
             }
