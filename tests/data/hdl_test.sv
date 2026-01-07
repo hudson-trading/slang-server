@@ -114,6 +114,10 @@ module TestModule #(
         .data_out(sub_data_out)
     );
 
+    // Test instance array access - goto on sub_inst[0] should go to sub_inst declaration
+    logic [15:0] inst_array_test;
+    assign inst_array_test = sub_inst[0].data_out + sub_inst[1].data_out;
+
     always_ff @(posedge clk) begin
         if (rst) begin
             state <= test_pkg::STATE_A;
@@ -177,6 +181,32 @@ module NoDefaults #(
         .data_in(data_in),
         .data_out(data_out)
     );
+
+    // 2D instance array
+    Sub #(.WIDTH(WIDTH)) sub_2d [2][3] (
+        .clk(clk),
+        .rst(rst),
+        .data_in(data_in),
+        .data_out()
+    );
+
+    // Test 2D instance array access
+    logic [WIDTH-1:0] test_2d_access;
+    assign test_2d_access = sub_2d[0][1].data_out + sub_2d[1][2].data_out;
+
+    genvar j;
+    for(j = 0; j < 3; j++) begin : gen_loop_2
+        Sub #(.WIDTH(WIDTH)) gen_sub_array [4] (
+            .clk(clk),
+            .rst(rst),
+            .data_in(data_in),
+            .data_out()
+        );
+    end
+
+    // Test instance array inside generate scope access
+    logic [WIDTH-1:0] test_gen_array_access;
+    assign test_gen_array_access = gen_loop_2[0].gen_sub_array[2].data_out;
 
     genvar i;
     for(i = 0; i < n_iters; i++) begin : gen_loop
