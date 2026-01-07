@@ -27,6 +27,7 @@
 #include "slang/ast/symbols/ValueSymbol.h"
 #include "slang/ast/types/AllTypes.h"
 #include "slang/ast/types/Type.h"
+#include "slang/diagnostics/AnalysisDiags.h"
 #include "slang/driver/Driver.h"
 #include "slang/parsing/Token.h"
 #include "slang/parsing/TokenKind.h"
@@ -180,9 +181,6 @@ const ast::Symbol* ShallowAnalysis::handleScopedNameLookup(const syntax::NameSyn
 const ast::Symbol* ShallowAnalysis::handleInterfacePortHeader(const parsing::Token* node,
                                                               const syntax::SyntaxNode* syntax,
                                                               const ast::Scope* scope) const {
-    if (!m_compilation) {
-        return nullptr;
-    }
 
     auto& header = syntax->parent->as<syntax::InterfacePortHeaderSyntax>();
     auto iface = m_compilation->tryGetDefinition(header.nameOrKeyword.valueText(), *scope);
@@ -261,10 +259,6 @@ const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declT
         return nullptr;
     }
 
-    if (!m_compilation) {
-        ERROR("No compilation available for getSymbolAtToken");
-        return nullptr;
-    }
     auto syntax = syntaxes.getSyntaxAt(declTok);
     // Note: SuperHandle nodes can cause issues in symbol lookup
     if (!syntax || syntax->kind == syntax::SyntaxKind::SuperHandle) {
@@ -574,7 +568,7 @@ markup::Paragraph ShallowAnalysis::getDebugHover(const parsing::Token& tok) cons
 }
 
 Diagnostics ShallowAnalysis::getAnalysisDiags() {
-    if (!m_compilation || m_compilation->getRoot().topInstances.empty()) {
+    if (m_compilation->getRoot().topInstances.empty()) {
         return {};
     }
 
@@ -582,7 +576,8 @@ Diagnostics ShallowAnalysis::getAnalysisDiags() {
     m_driverAnalysis.analyze(*m_compilation);
     m_compilation->unfreeze();
 
-    return m_driverAnalysis.getDiagnostics();
+    // filter out unused def diags. TODO: maybe make this a separate unused flag?
+    return m_driverAnalysis.getDiagnostics().filter({diag::UnusedDefinition});
 }
 
 } // namespace server
