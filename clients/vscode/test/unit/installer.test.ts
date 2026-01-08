@@ -48,7 +48,7 @@ tape('install: windows', async (assert) => {
       fakePlatform('windows')
       fakeGithubReleaseURL('http://127.0.0.1:9999/release.json')
 
-      await withFakeGitHub(assetsRoot, async () => {
+      await withFakeGitHub(assetsDir, async () => {
         const binPath = await installLatestSlang(dir.path)
         assert.true(fs.existsSync(binPath), 'binary exists')
         assert.ok(binPath.endsWith('slang-server.exe'), 'correct binary name')

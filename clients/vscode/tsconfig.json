@@ -5,7 +5,7 @@
     "outDir": "out",
     "lib": [
       "ES2020",
-      "dom"
+      "DOM"
     ],
     "sourceMap": true,
     "types": [
