@@ -29,4 +29,6 @@
   "[cpp]": {
     "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
   },
+  // Disables ctest from popping up in the VSCode explorer. Use C++ TestMate instead.
+  "cmake.ctest.testExplorerIntegrationEnabled": false,
 }
