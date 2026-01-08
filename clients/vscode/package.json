@@ -375,7 +375,7 @@
       },
       {
         "command": "slang.project.selectTopLevel",
-        "title": "Slang: Select Top Level",
+        "title": "slang: Select Top Level",
         "shortTitle": "Select Top"
       },
       {
@@ -392,17 +392,17 @@
       },
       {
         "command": "slang.project.setInstance",
-        "title": "Slang: Select Instance"
+        "title": "slang: Select Instance"
       },
       {
         "command": "slang.project.showBuildFile",
-        "title": "Slang: Open Build File",
+        "title": "slang: Open Build File",
         "icon": "$(file)",
         "shown": true
       },
       {
         "command": "slang.project.selectBuildFile",
-        "title": "Slang: Select build file",
+        "title": "slang: Select build file",
         "icon": "$(file-directory)",
         "shown": true
       },
@@ -477,11 +477,11 @@
       },
       {
         "command": "slang.restartLanguageServer",
-        "title": "Slang: Restart Language Server"
+        "title": "slang: Restart Language Server"
       },
       {
         "command": "slang.showOutput",
-        "title": "Slang: Show Output"
+        "title": "slang: Show Output"
       },
       {
         "command": "slang.updateConfig",

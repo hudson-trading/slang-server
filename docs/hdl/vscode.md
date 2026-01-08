@@ -88,7 +88,7 @@ While a compilation is active, the modules view will open when switching text do
 
 ## Setting an Instance
 
-### `Slang: Select Instance` Command
+### `slang: Select Instance` Command
 
 <div class="grid" markdown>
   <div class="grid-item" markdown>
