@@ -4,7 +4,8 @@
     "target": "ES2020",
     "outDir": "out",
     "lib": [
-      "ES2020"
+      "ES2020",
+      "DOM"
     ],
     "sourceMap": true,
     "types": [
@@ -19,6 +20,9 @@
     "resolveJsonModule": true
   },
   "exclude": [
-    "node_modules"
+    "eslint.config.ts",
+    "node_modules",
+    "dist",
+    "out",
   ]
 }
