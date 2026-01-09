@@ -115,12 +115,32 @@ void ServerDiagClient::report(const slang::ReportedDiagnostic& diag) {
     // range range (in ranges)
     // But LSP diags just have a range, so we need to combine them.
 
+    auto guessTokenLenFromMessage = [](std::string_view msg) -> std::size_t {
+        auto l = msg.find('\'');
+        if (l != std::string_view::npos) {
+            auto r = msg.find('\'', l + 1);
+            if (r != std::string_view::npos && r > l + 1)
+                return static_cast<size_t>(r - (l + 1));
+        }
+
+        l = msg.find('"');
+        if (l != std::string_view::npos) {
+            auto r = msg.find('"', l + 1);
+            if (r != std::string_view::npos && r > l + 1)
+                return static_cast<size_t>(r - (l + 1));
+        }
+
+        // Return a single char
+        return 1;
+    };
+
     auto getLocation = [&](SourceLocation loc, std::span<const SourceRange> ranges,
                            std::string_view message) -> std::optional<lsp::Location> {
         bool hasLocation = loc.buffer() != SourceLocation::NoLocation.buffer();
         if (ranges.empty()) {
             if (hasLocation) {
-                return toLocation(loc, m_sourceManager);
+                const std::size_t len = guessTokenLenFromMessage(message);
+                return toLocation(loc, m_sourceManager, len);
             }
             else {
                 ERROR("Diagnostic has no ranges and no location: {}", message);

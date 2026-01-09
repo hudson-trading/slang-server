@@ -37,6 +37,9 @@ lsp::Location toLocation(const SourceRange& range, const SourceManager& sourceMa
 
 lsp::Location toLocation(const SourceLocation& loc, const SourceManager& sourceManager);
 
+lsp::Location toLocation(const SourceLocation& loc, const SourceManager& sourceManager,
+                         const std::size_t length);
+
 lsp::SymbolKind toSymbolKind(const slang::syntax::SyntaxKind& kind);
 
 lsp::MarkupContent markdown(std::string& md);
