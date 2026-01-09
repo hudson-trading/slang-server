@@ -120,14 +120,14 @@ void ServerDiagClient::report(const slang::ReportedDiagnostic& diag) {
         if (l != std::string_view::npos) {
             auto r = msg.find('\'', l + 1);
             if (r != std::string_view::npos && r > l + 1)
-                return static_cast<size_t>(r - (l + 1));
+                return static_cast<std::size_t>(r - (l + 1));
         }
 
         l = msg.find('"');
         if (l != std::string_view::npos) {
             auto r = msg.find('"', l + 1);
             if (r != std::string_view::npos && r > l + 1)
-                return static_cast<size_t>(r - (l + 1));
+                return static_cast<std::size_t>(r - (l + 1));
         }
 
         // Return a single char
