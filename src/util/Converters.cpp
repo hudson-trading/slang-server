@@ -89,6 +89,12 @@ lsp::Location toLocation(const SourceLocation& loc, const SourceManager& sourceM
                                              .end = toPosition(loc + 1, sourceManager)}};
 }
 
+lsp::Location toLocation(const SourceLocation& loc, const SourceManager& sourceManager,
+                         const std::size_t length) {
+    return lsp::Location{.uri = URI::fromFile(sourceManager.getFullPath(loc.buffer())),
+                         .range = toRange(loc, sourceManager, length)};
+}
+
 lsp::SymbolKind toSymbolKind(const syntax::SyntaxKind& kind) {
     switch (kind) {
         case syntax::SyntaxKind::InterfaceDeclaration:

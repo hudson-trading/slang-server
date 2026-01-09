@@ -8,7 +8,7 @@
         },
         "end": {
           "line": 12,
-          "character": 22
+          "character": 23
         }
       },
       "severity": "Error",
@@ -22,7 +22,7 @@
         },
         "end": {
           "line": 12,
-          "character": 33
+          "character": 37
         }
       },
       "severity": "Error",
@@ -36,7 +36,7 @@
         },
         "end": {
           "line": 14,
-          "character": 22
+          "character": 23
         }
       },
       "severity": "Error",
@@ -50,7 +50,7 @@
         },
         "end": {
           "line": 14,
-          "character": 33
+          "character": 37
         }
       },
       "severity": "Error",
@@ -64,7 +64,7 @@
         },
         "end": {
           "line": 18,
-          "character": 22
+          "character": 23
         }
       },
       "severity": "Error",
@@ -78,7 +78,7 @@
         },
         "end": {
           "line": 18,
-          "character": 33
+          "character": 37
         }
       },
       "severity": "Error",
