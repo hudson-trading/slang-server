@@ -74,7 +74,7 @@ project(
   DESCRIPTION "SystemVerilog language server based on slang")
 
 # Enable compile_commands.json for IDE/clangd tooling by default
-if(SLANG_SERVER_MASTER_PROJECT AND NOT DEFINED CMAKE_EXPORT_COMPILE_COMMANDS)
+if(SLANG_SERVER_MASTER_PROJECT)
   set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 endif()
 
