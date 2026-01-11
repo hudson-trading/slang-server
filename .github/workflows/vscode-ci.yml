@@ -40,5 +40,3 @@ jobs:
       - name: Run Tests
         working-directory: clients/vscode
         run: pnpm run test
-
-      # TODO: Add proper tests
