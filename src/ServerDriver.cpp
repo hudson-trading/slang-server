@@ -238,7 +238,7 @@ std::vector<std::shared_ptr<SlangDoc>> ServerDriver::getDependentDocs(
 
             auto paths = data->second;
             if (!paths.empty()) {
-                std::string filePath = std::string{paths[0].uri->getPath()};
+                std::string filePath = paths[0].uri->string();
 
                 // Check if we've already processed this file to avoid cycles
                 if (processedFiles.find(filePath) != processedFiles.end())

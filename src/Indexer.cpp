@@ -12,8 +12,10 @@
 #include "util/Logging.h"
 #include <BS_thread_pool.hpp>
 #include <cctype>
+#include <filesystem>
 #include <fmt/format.h>
 #include <string_view>
+#include <unordered_map>
 
 #include "slang/driver/SourceLoader.h"
 #include "slang/parsing/Preprocessor.h"
@@ -150,23 +152,23 @@ Indexer::Indexer() {
     notifyIndexingComplete();
 }
 
-const URI* Indexer::internUri(const URI& uri) {
-    auto [it, inserted] = uniqueUris.insert(uri);
+const fs::path* Indexer::internUri(const fs::path& path) {
+    auto [it, inserted] = uniqueUris.insert(path);
     return &(*it);
 }
 
-void Indexer::openDocument(const URI& uri, const slang::syntax::SyntaxTree& tree) {
+void Indexer::openDocument(const fs::path& path, const slang::syntax::SyntaxTree& tree) {
     IndexGuard guard(*this);
 
-    IndexedPath path;
-    extractDataFromTree(tree, path);
+    IndexedPath indexedPath;
+    extractDataFromTree(tree, indexedPath);
 
     // Store the indexed path for this document, but don't add to global index yet
     // Entries will be added to the global index when the document is saved
-    openDocuments[uri] = std::move(path);
+    openDocuments[path] = std::move(indexedPath);
 }
 
-void Indexer::updateDocument(const URI& uri, const slang::syntax::SyntaxTree& tree) {
+void Indexer::updateDocument(const fs::path& path, const slang::syntax::SyntaxTree& tree) {
     IndexGuard guard(*this);
 
     // Extract new data
@@ -174,10 +176,10 @@ void Indexer::updateDocument(const URI& uri, const slang::syntax::SyntaxTree& tr
     extractDataFromTree(tree, newPath);
 
     // Intern the URI once for all operations
-    const URI* uriPtr = internUri(uri);
+    const fs::path* uriPtr = internUri(path);
 
     // Get the old indexed path
-    auto it = openDocuments.find(uri);
+    auto it = openDocuments.find(path);
     if (it == openDocuments.end()) {
         // Document wasn't open, just add all entries and store it
         for (const auto& item : newPath.symbols)
@@ -189,7 +191,7 @@ void Indexer::updateDocument(const URI& uri, const slang::syntax::SyntaxTree& tr
         for (const auto& ref : newPath.referencedSymbols)
             symbolReferences[ref].push_back(uriPtr);
 
-        openDocuments[uri] = std::move(newPath);
+        openDocuments[path] = std::move(newPath);
         return;
     }
 
@@ -248,7 +250,7 @@ void Indexer::updateDocument(const URI& uri, const slang::syntax::SyntaxTree& tr
     it->second = std::move(newPath);
 }
 
-void Indexer::closeDocument(const URI& uri) {
+void Indexer::closeDocument(const std::filesystem::path& uri) {
     IndexGuard guard(*this);
 
     // Just remove from open documents tracking
@@ -257,8 +259,7 @@ void Indexer::closeDocument(const URI& uri) {
 }
 
 void Indexer::indexPath(IndexedPath& indexedFile) {
-    URI fileUri = URI::fromFile(indexedFile.path);
-    const URI* uriPtr = internUri(fileUri);
+    const fs::path* uriPtr = internUri(indexedFile.path);
 
     for (const auto& item : indexedFile.symbols)
         symbolToFiles[item.name].push_back(GlobalSymbolLoc{.uri = uriPtr, .kind = item.kind});
@@ -270,7 +271,7 @@ void Indexer::indexPath(IndexedPath& indexedFile) {
         symbolReferences[ref].push_back(uriPtr);
 }
 
-void Indexer::addDocuments(const std::vector<std::filesystem::path>& paths, uint32_t numThreads) {
+void Indexer::addDocuments(const std::vector<fs::path>& paths, uint32_t numThreads) {
     IndexGuard guard(*this);
 
     auto indexedPaths = indexPaths(paths, numThreads);
@@ -278,14 +279,12 @@ void Indexer::addDocuments(const std::vector<std::filesystem::path>& paths, uint
         indexPath(indexedFile);
 }
 
-void Indexer::removeDocuments(const std::vector<std::filesystem::path>& paths,
-                              uint32_t numThreads) {
+void Indexer::removeDocuments(const std::vector<fs::path>& paths, uint32_t numThreads) {
     IndexGuard guard(*this);
 
     auto indexedPaths = indexPaths(paths, numThreads);
     for (const auto& entry : indexedPaths) {
-        URI uri = URI::fromFile(entry.path);
-        const URI* uriPtr = internUri(uri);
+        const fs::path* pathPtr = internUri(entry.path);
 
         // Remove symbols
         for (const auto& item : entry.symbols) {
@@ -294,7 +293,7 @@ void Indexer::removeDocuments(const std::vector<std::filesystem::path>& paths,
                 auto& vec = mapIt->second;
                 vec.erase(std::remove_if(vec.begin(), vec.end(),
                                          [&](const GlobalSymbolLoc& loc) {
-                                             return loc.uri == uriPtr && loc.kind == item.kind;
+                                             return loc.uri == pathPtr && loc.kind == item.kind;
                                          }),
                           vec.end());
                 if (vec.empty())
@@ -307,7 +306,7 @@ void Indexer::removeDocuments(const std::vector<std::filesystem::path>& paths,
             auto mapIt = macroToFiles.find(name);
             if (mapIt != macroToFiles.end()) {
                 auto& vec = mapIt->second;
-                vec.erase(std::remove(vec.begin(), vec.end(), uriPtr), vec.end());
+                vec.erase(std::remove(vec.begin(), vec.end(), pathPtr), vec.end());
                 if (vec.empty())
                     macroToFiles.erase(mapIt);
             }
@@ -318,7 +317,7 @@ void Indexer::removeDocuments(const std::vector<std::filesystem::path>& paths,
             auto mapIt = symbolReferences.find(ref);
             if (mapIt != symbolReferences.end()) {
                 auto& vec = mapIt->second;
-                vec.erase(std::remove(vec.begin(), vec.end(), uriPtr), vec.end());
+                vec.erase(std::remove(vec.begin(), vec.end(), pathPtr), vec.end());
                 if (vec.empty())
                     symbolReferences.erase(mapIt);
             }
@@ -341,7 +340,7 @@ std::vector<fs::path> Indexer::getRelevantFilesForName(std::string_view name) co
     std::vector<fs::path> result;
     if (it != symbolToFiles.end()) {
         for (const auto& entry : it->second)
-            result.push_back(fs::path(entry.uri->getPath()));
+            result.push_back(*entry.uri);
     }
 
     return result;
@@ -352,8 +351,8 @@ std::vector<fs::path> Indexer::getFilesForMacro(std::string_view name) const {
 
     std::vector<fs::path> result;
     if (it != macroToFiles.end()) {
-        for (const auto& uri : it->second)
-            result.push_back(fs::path(uri->getPath()));
+        for (const auto& path : it->second)
+            result.push_back(*path);
     }
 
     return result;
@@ -364,8 +363,8 @@ std::vector<fs::path> Indexer::getFilesReferencingSymbol(std::string_view name) 
 
     std::vector<fs::path> result;
     if (it != symbolReferences.end()) {
-        for (const auto& uri : it->second)
-            result.push_back(fs::path(uri->getPath()));
+        for (const auto& path : it->second)
+            result.push_back(*path);
     }
 
     return result;
@@ -493,22 +492,22 @@ void Indexer::indexAndReport(std::vector<fs::path> pathsToIndex, uint32_t numThr
 
     size_t macrosSize = 0;
     for (const auto& [name, uris] : macroToFiles) {
-        macrosSize += sizeof(std::pair<const std::string, slang::SmallVector<const URI*, 2>>) +
+        macrosSize += sizeof(std::pair<const std::string, slang::SmallVector<const fs::path*, 2>>) +
                       name.capacity();
-        macrosSize += uris.size() * sizeof(const URI*);
+        macrosSize += uris.size() * sizeof(const fs::path*);
     }
 
     size_t refsSize = 0;
     for (const auto& [name, uris] : symbolReferences) {
-        refsSize += sizeof(std::pair<const std::string, slang::SmallVector<const URI*, 2>>) +
+        refsSize += sizeof(std::pair<const std::string, slang::SmallVector<const fs::path*, 2>>) +
                     name.capacity();
-        refsSize += uris.size() * sizeof(const URI*);
+        refsSize += uris.size() * sizeof(const fs::path*);
     }
 
     // Count unique URIs storage
     size_t urisSize = 0;
     for (const auto& uri : uniqueUris) {
-        urisSize += sizeof(URI) + uri.str().capacity();
+        urisSize += sizeof(URI) + uri.string().capacity();
     }
 
     INFO("Indexing complete: {} symbols (~{} KB), {} macros (~{} KB), {} references (~{} KB), {} "
