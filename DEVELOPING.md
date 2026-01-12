@@ -70,7 +70,7 @@ This method works when running slang-server with vscode or pygls
 
 You can use the auto-attach debug config by pointing your repo to the build/vscode server build, then doing the following after changes:
 - rebuild your changes if any for the build/vscode build
-- run the `Slang: Restart Lanugage Server` command
+- run the `slang: Restart Lanugage Server` command
 - run the `Attach to slang-server (auto-attach)` debug option to reattach.
 
 ## Neovim Testing
