@@ -36,4 +36,14 @@
 
 ---@alias slang-server.lsp.Node slang-server.lsp.Item | slang-server.lsp.Var | slang-server.lsp.Scope | slang-server.lsp.FilledInstance
 
+---@class slang-server.lsp.QualifiedInstance
+---@field instPath string
+---@field instLoc string
+
+---@class slang-server.lsp.InstanceSet
+---@field declName string
+---@field declLoc slang-server.SourceLoc
+---@field instCount integer
+---@field inst slang-server.lsp.QualifiedInstance?
+
 ---@alias RespHandlers {on_success: fun(resp: any), on_failure?: fun(message: string)}
