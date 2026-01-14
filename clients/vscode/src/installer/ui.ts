@@ -4,7 +4,7 @@ export class InstallerUI {
   constructor(private readonly context: vscode.ExtensionContext) {}
 
   get storagePath(): string {
-    return this.context.globalStorageUri!.fsPath
+    return this.context.globalStorageUri.fsPath
   }
 
   async progress<T>(
