@@ -11,6 +11,8 @@ export async function prepareSlangServer(ui: InstallerUI): Promise<string> {
   const release = await latestRelease()
   const installRoot = path.join(ui.storagePath, 'install', release.tag_name)
 
+  await fs.mkdir(installRoot, { recursive: true })
+
   // Check if already installed
   const bin = await findExistingBinary(installRoot)
   if (bin !== null) {
