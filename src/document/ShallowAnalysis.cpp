@@ -27,6 +27,7 @@
 #include "slang/ast/symbols/ValueSymbol.h"
 #include "slang/ast/types/AllTypes.h"
 #include "slang/ast/types/Type.h"
+#include "slang/diagnostics/AnalysisDiags.h"
 #include "slang/driver/Driver.h"
 #include "slang/parsing/Token.h"
 #include "slang/parsing/TokenKind.h"
@@ -60,7 +61,7 @@ ShallowAnalysis::ShallowAnalysis(SourceManager& sourceManager, slang::BufferID b
                                  std::shared_ptr<SyntaxTree> tree, slang::Bag options,
                                  const std::vector<std::shared_ptr<SyntaxTree>>& allTrees) :
     syntaxes(*tree), m_sourceManager(sourceManager), m_buffer(buffer), m_tree(tree),
-    m_allTrees(allTrees), m_analysisManager(options.getOrDefault<analysis::AnalysisOptions>()),
+    m_allTrees(allTrees), m_driverAnalysis(options.getOrDefault<analysis::AnalysisOptions>()),
     m_symbolTreeVisitor(m_sourceManager), m_symbolIndexer(buffer) {
 
     if (!m_tree) {
@@ -180,9 +181,6 @@ const ast::Symbol* ShallowAnalysis::handleScopedNameLookup(const syntax::NameSyn
 const ast::Symbol* ShallowAnalysis::handleInterfacePortHeader(const parsing::Token* node,
                                                               const syntax::SyntaxNode* syntax,
                                                               const ast::Scope* scope) const {
-    if (!m_compilation) {
-        return nullptr;
-    }
 
     auto& header = syntax->parent->as<syntax::InterfacePortHeaderSyntax>();
     auto iface = m_compilation->tryGetDefinition(header.nameOrKeyword.valueText(), *scope);
@@ -261,10 +259,6 @@ const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declT
         return nullptr;
     }
 
-    if (!m_compilation) {
-        ERROR("No compilation available for getSymbolAtToken");
-        return nullptr;
-    }
     auto syntax = syntaxes.getSyntaxAt(declTok);
     // Note: SuperHandle nodes can cause issues in symbol lookup
     if (!syntax || syntax->kind == syntax::SyntaxKind::SuperHandle) {
@@ -524,50 +518,66 @@ bool ShallowAnalysis::hasValidBuffers() {
     return true;
 }
 
-std::string ShallowAnalysis::getDebugHover(const parsing::Token& tok) const {
-    std::string value = fmt::format("`{}` Token\n", toString(tok.kind));
+markup::Paragraph ShallowAnalysis::getDebugHover(const parsing::Token& tok) const {
+    markup::Paragraph para;
 
+    // Token info header
+    para.appendBold("Token:").appendCode(toString(tok.kind)).newLine();
+
+    // Walk up the syntax tree
     auto node = syntaxes.getSyntaxAt(&tok);
     for (auto nodePtr = node; nodePtr; nodePtr = nodePtr->parent) {
         // In case of bad memory
         if (nodePtr->kind > syntax::SyntaxKind::XorAssignmentExpression) {
             break;
         }
+
         auto kindStr = toString(nodePtr->kind);
         if (kindStr.empty()) {
-            value += "*Unknown*";
+            para.appendText("Unknown syntax kind");
             break;
         }
 
-        value += fmt::format("*{}* ", toString(nodePtr->kind));
+        // Show syntax kind
+        para.appendBold(kindStr).appendText(": ");
+
+        // Show source text preview
         auto range = nodePtr->sourceRange();
-        std::string svText = "No Source";
         if (range != SourceRange::NoLocation) {
-            svText = nodePtr->toString();
+            auto svText = nodePtr->toString();
+            if (svText.size() > 40) {
+                svText = svText.substr(0, 18) + "..." + svText.substr(svText.size() - 18);
+            }
+            para.appendCode(svText);
         }
-        value += fmt::format("`{}`  \n ", svText.substr(0, std::min((size_t)20, svText.size())));
+        else {
+            para.appendText("(no source)");
+        }
+        para.newLine();
 
+        // Check if we've reached a symbol
         auto sym = m_symbolIndexer.getSymbol(nodePtr);
-
         if (sym) {
-            // We reached a symbol
-            value += fmt::format("`{} : {}`  \n", sym->name, toString(sym->kind));
+            para.appendBold("Symbol:").appendCode(sym->name);
+            para.appendText(" (").appendText(toString(sym->kind)).appendText(")");
             break;
         }
     }
-    return value;
+
+    return para;
 }
 
 Diagnostics ShallowAnalysis::getAnalysisDiags() {
-    if (!m_compilation || m_compilation->getRoot().topInstances.empty()) {
+    if (m_compilation->getRoot().topInstances.empty()) {
         return {};
     }
 
     m_compilation->freeze();
-    m_analysisManager.analyze(*m_compilation);
+    m_driverAnalysis.analyze(*m_compilation);
     m_compilation->unfreeze();
 
-    return m_analysisManager.getDiagnostics();
+    // filter out unused def diags. TODO: maybe make this a separate unused flag?
+    return m_driverAnalysis.getDiagnostics().filter({diag::UnusedDefinition});
 }
 
 } // namespace server

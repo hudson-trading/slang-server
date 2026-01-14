@@ -194,36 +194,36 @@ void SlangDoc::onChange(const std::vector<lsp::TextDocumentContentChangeEvent>& 
     m_analysis.reset();
 }
 
-void SlangDoc::issueDiagnosticsTo(DiagnosticEngine& diagEngine) {
-
-    auto issueDiag = [&](const Diagnostic& diag) {
-        if (!diag.location) {
-            return;
-        }
-        // Only issue diagnostics that belong to this document's syntax tree
-        if (m_buffer.id != m_sourceManager.getFullyOriginalLoc(diag.location).buffer()) {
-            return;
-        }
+void SlangDoc::issueParseDiagnostics(DiagnosticEngine& diagEngine) {
+    for (auto& diag : getSyntaxTree()->diagnostics()) {
         diagEngine.issue(diag);
-    };
+    }
+}
 
+void SlangDoc::issueDiagnosticsTo(DiagnosticEngine& diagEngine) {
     // Issue compilation diagnostics
     auto& analysis = getAnalysis(true);
-    auto& compilation = *analysis.getCompilation();
-    for (auto& diag : compilation.getAllDiagnostics()) {
-        issueDiag(diag);
+    auto& shallowComp = *analysis.getCompilation();
+
+    // Parse diags (just this tree, others will be handled by their SlangDoc objects
+    for (auto& diag : getSyntaxTree()->diagnostics()) {
+        diagEngine.issue(diag);
     }
 
-    // Run analysis phase to get additional diagnostics like unused ports
-
-    // Skip if there's a full compilation (it will run its own analysis)
-    if (m_driver.comp) {
-        return;
+    // Parse and shallow compilation diagnostics
+    // There will be many diags outside the buffer, like unknown modules.
+    for (auto& diag : shallowComp.getSemanticDiagnostics()) {
+        if (m_sourceManager.getFullyOriginalLoc(diag.location).buffer() != m_buffer.id) {
+            continue;
+        }
+        diagEngine.issue(diag);
     }
-
-    // Run analysis on the shallow compilation
+    // Analysis on the shallow compilation (unused, multidriven, etc)
     for (auto& diag : analysis.getAnalysisDiags()) {
-        issueDiag(diag);
+        if (m_sourceManager.getFullyOriginalLoc(diag.location).buffer() != m_buffer.id) {
+            continue;
+        }
+        diagEngine.issue(diag);
     }
 }
 

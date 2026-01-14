@@ -4,20 +4,6 @@
       {
         "range": {
           "start": {
-            "line": 3,
-            "character": 12
-          },
-          "end": {
-            "line": 3,
-            "character": 18
-          }
-        },
-        "severity": "Error",
-        "message": "use of undeclared identifier 'blargh'"
-      },
-      {
-        "range": {
-          "start": {
             "line": 4,
             "character": 15
           },
@@ -28,6 +14,20 @@
         },
         "severity": "Error",
         "message": "expected ';'"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 3,
+            "character": 12
+          },
+          "end": {
+            "line": 3,
+            "character": 18
+          }
+        },
+        "severity": "Error",
+        "message": "use of undeclared identifier 'blargh'"
       }
     ]
   },
@@ -36,20 +36,6 @@
       {
         "range": {
           "start": {
-            "line": 3,
-            "character": 12
-          },
-          "end": {
-            "line": 3,
-            "character": 18
-          }
-        },
-        "severity": "Error",
-        "message": "use of undeclared identifier 'blargh'"
-      },
-      {
-        "range": {
-          "start": {
             "line": 4,
             "character": 15
           },
@@ -60,6 +46,20 @@
         },
         "severity": "Error",
         "message": "expected ';'"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 3,
+            "character": 12
+          },
+          "end": {
+            "line": 3,
+            "character": 18
+          }
+        },
+        "severity": "Error",
+        "message": "use of undeclared identifier 'blargh'"
       }
     ]
   }

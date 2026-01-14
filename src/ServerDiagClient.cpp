@@ -18,6 +18,7 @@
 #include <sys/types.h>
 #include <unordered_map>
 
+#include "slang/diagnostics/AnalysisDiags.h"
 #include "slang/diagnostics/CompilationDiags.h"
 #include "slang/diagnostics/DiagnosticEngine.h"
 #include "slang/diagnostics/Diagnostics.h"
@@ -39,6 +40,34 @@ lsp::DiagnosticSeverity convertSeverity(slang::DiagnosticSeverity severity) {
             return lsp::DiagnosticSeverity::Error;
     }
     return lsp::DiagnosticSeverity::Error;
+}
+
+bool isUnusedCode(DiagCode code) {
+    if (code.getSubsystem() != slang::DiagSubsystem::Analysis)
+        return false;
+
+    // From AnalysisDiags.h - need to keep up to date
+    switch (code.getCode()) {
+        case slang::diag::UnusedArgument.getCode():
+        case slang::diag::UnusedAssertionDecl.getCode():
+        // Not quite unused, i.e. not safe for removal
+        // case slang::diag::UnusedButSetNet.getCode():
+        // case slang::diag::UnusedButSetPort.getCode():
+        // case slang::diag::UnusedButSetVariable.getCode():
+        case slang::diag::UnusedDefinition.getCode():
+        case slang::diag::UnusedGenvar.getCode():
+        case slang::diag::UnusedImplicitNet.getCode():
+        case slang::diag::UnusedImport.getCode():
+        case slang::diag::UnusedNet.getCode():
+        case slang::diag::UnusedParameter.getCode():
+        case slang::diag::UnusedPort.getCode():
+        case slang::diag::UnusedTypeParameter.getCode():
+        case slang::diag::UnusedTypedef.getCode():
+        case slang::diag::UnusedVariable.getCode():
+        case slang::diag::UnusedWildcardImport.getCode():
+            return true;
+    }
+    return false;
 }
 
 void ServerDiagClient::report(const slang::ReportedDiagnostic& diag) {
@@ -157,7 +186,13 @@ void ServerDiagClient::report(const slang::ReportedDiagnostic& diag) {
 
     // Add notes from the original diagnostic as relatedInformation
     for (const auto& note : diag.originalDiagnostic.notes) {
-        if (note.location == SourceLocation::NoLocation && !note.code.showNoteWithNoLocation()) {
+        if (note.location == SourceLocation::NoLocation) {
+            if (note.code.showNoteWithNoLocation()) {
+                related.emplace_back(lsp::DiagnosticRelatedInformation{
+                    .location = *mainLoc,
+                    .message = engine->formatMessage(note),
+                });
+            }
             continue;
         }
         auto noteLoc = toLocation(note.location, m_sourceManager);
@@ -181,7 +216,7 @@ void ServerDiagClient::report(const slang::ReportedDiagnostic& diag) {
         m_diagnostics[uri].back().codeDescription = lsp::CodeDescription{
             .href = URI::fromWeb("sv-lang.com/warning-ref.html#" + std::string(optionName))};
 
-        if (optionName.starts_with("unused")) {
+        if (isUnusedCode(diag.originalDiagnostic.code)) {
             m_diagnostics[uri].back().tags = {lsp::DiagnosticTag::Unnecessary};
         }
     }
@@ -195,7 +230,7 @@ void ServerDiagClient::clear(URI uri) {
     m_dirtyUris.emplace(uri);
 }
 
-void ServerDiagClient::clear() {
+void ServerDiagClient::clearAndPush() {
     for (const auto& [uri, diags] : m_diagnostics) {
         m_client.onDocPublishDiagnostics(
             lsp::PublishDiagnosticsParams{.uri = uri, .diagnostics = {}});
@@ -208,7 +243,24 @@ void ServerDiagClient::clear() {
     m_dirtyUris.clear();
 }
 
-void ServerDiagClient::updateDiags() {
+void ServerDiagClient::clear() {
+    // Add all URIs to dirty set to notify client on next publish
+    for (const auto& [uri, _] : m_diagnostics) {
+        m_dirtyUris.emplace(uri);
+    }
+    m_diagnostics.clear();
+}
+
+void ServerDiagClient::pushDiags(const URI& priorityUri) {
+    auto it = m_diagnostics.find(priorityUri);
+    if (it != m_diagnostics.end()) {
+        m_client.onDocPublishDiagnostics(
+            lsp::PublishDiagnosticsParams{.uri = priorityUri, .diagnostics = it->second});
+    }
+    pushDiags();
+}
+
+void ServerDiagClient::pushDiags() {
     for (auto& uri : m_dirtyUris) {
         auto it = m_diagnostics.find(uri);
         if (it != m_diagnostics.end()) {

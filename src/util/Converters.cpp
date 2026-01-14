@@ -113,22 +113,6 @@ lsp::MarkupContent markdown(std::string& md) {
     return lsp::MarkupContent{.kind = lsp::MarkupKind::make<"markdown">(), .value = md};
 }
 
-std::string portString(ast::ArgumentDirection dir) {
-    switch (dir) {
-        case ast::ArgumentDirection::In:
-            return "input";
-        case ast::ArgumentDirection::Out:
-            return "output";
-        case ast::ArgumentDirection::InOut:
-            return "inout";
-        case ast::ArgumentDirection::Ref:
-            return "ref";
-        default:
-            SLANG_UNREACHABLE;
-    }
-    return "unknown";
-}
-
 std::string subroutineString(ast::SubroutineKind kind) {
     switch (kind) {
         case ast::SubroutineKind::Function:

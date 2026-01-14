@@ -9,6 +9,11 @@
 
 #include "slang/syntax/SyntaxNode.h"
 
+namespace slang::ast {
+class Type;
+class ValueSymbol;
+} // namespace slang::ast
+
 namespace server {
 /**
  * @brief Utility functions for formatting SystemVerilog code snippets.
@@ -34,6 +39,9 @@ bool isSingleLine(const std::string& s);
 
 std::string detailFormat(const syntax::SyntaxNode& node);
 
+/// Format a syntax node as plain text (no markdown wrapper)
+std::string formatSyntaxNode(const syntax::SyntaxNode& node);
+
 std::string svCodeBlockString(std::string_view code);
 
 std::string svCodeBlockString(const syntax::SyntaxNode& node);
@@ -43,5 +51,30 @@ lsp::MarkupContent svCodeBlock(const syntax::SyntaxNode& node);
 void ltrim(std::string& s);
 
 std::string toCamelCase(std::string_view str);
+
+// Print the canonical type nicely, if it's a type alias
+template<bool isMarkdown>
+std::string getTypeStringImpl(const ast::Type& type);
+
+// Print a type of a value symbol nicely, including the canonical type and port direction if
+// applicable
+template<bool isMarkdown>
+std::string getTypeStringImpl(const ast::ValueSymbol& value);
+
+// Plain text versions
+inline std::string getTypeString(const ast::Type& type) {
+    return getTypeStringImpl<false>(type);
+}
+inline std::string getTypeString(const ast::ValueSymbol& value) {
+    return getTypeStringImpl<false>(value);
+}
+
+// Hover/Markdown versions
+inline std::string getHoverTypeString(const ast::Type& type) {
+    return getTypeStringImpl<true>(type);
+}
+inline std::string getHoverTypeString(const ast::ValueSymbol& value) {
+    return getTypeStringImpl<true>(value);
+}
 
 } // namespace server

@@ -16,49 +16,30 @@
 
 #include "slang/ast/Compilation.h"
 #include "slang/text/SourceManager.h"
-#include "slang/util/Util.h"
 
 namespace fs = std::filesystem;
 
 namespace server {
 
 ServerCompilation::ServerCompilation(std::vector<std::shared_ptr<SlangDoc>> documents, Bag options,
-                                     SourceManager& m_sourceManager) :
-    m_documents(std::move(documents)), m_options(std::move(options)),
-    m_sourceManager(m_sourceManager) {
+                                     SourceManager& sourceManager, std::optional<std::string> top) :
+    m_documents(std::move(documents)), m_options(std::move(options)), m_top(std::move(top)),
+    m_sourceManager(sourceManager) {
+
+    if (m_top) {
+        m_options.insertOrGet<slang::ast::CompilationOptions>().topModules = {*m_top};
+    }
     refresh();
 }
 
 void ServerCompilation::refresh() {
-    // Create a new compilation
-
-    // The main compilation is allowed to refer to old buffers
-    comp = std::make_unique<slang::ast::Compilation>(m_options);
-
-    // Collect all buffer IDs from all syntax trees
-    std::vector<BufferID> allBuffers;
-    for (auto& doc : m_documents) {
-        auto tree = doc->getSyntaxTree();
-        comp->addSyntaxTree(tree);
-        for (auto bufId : tree->getSourceBufferIds()) {
-            allBuffers.push_back(bufId);
-        }
-    }
-
-    // Retain buffer data to prevent deallocation while this compilation exists
-    m_retainedBuffers = m_sourceManager.retainBuffers(allBuffers);
-
-    // reset and rebuild indexed info
-    auto& root = comp->getRoot();
-    m_instances.reset(&root);
-
-    // symbol references are not indexed until cone tracing is requested
-    m_references.reset();
+    m_analysis = std::make_unique<ServerCompilationAnalysis>(m_documents, m_options,
+                                                             m_sourceManager);
 }
 
 std::vector<hier::InstanceSet> ServerCompilation::getScopesByModule() {
     std::vector<hier::InstanceSet> result;
-    for (auto& [_name, instances] : m_instances.moduleToInstances) {
+    for (auto& [_name, instances] : m_analysis->instances.moduleToInstances) {
         if (instances.size() == 0) {
             continue;
         }
@@ -79,8 +60,8 @@ std::vector<hier::InstanceSet> ServerCompilation::getScopesByModule() {
 
 std::vector<hier::QualifiedInstance> ServerCompilation::getInstancesOfModule(
     const std::string& moduleName) {
-    auto it = m_instances.moduleToInstances.find(moduleName);
-    if (it == m_instances.moduleToInstances.end()) {
+    auto it = m_analysis->instances.moduleToInstances.find(moduleName);
+    if (it == m_analysis->instances.moduleToInstances.end()) {
         return {};
     }
     std::vector<hier::QualifiedInstance> result;
@@ -91,7 +72,7 @@ std::vector<hier::QualifiedInstance> ServerCompilation::getInstancesOfModule(
 }
 
 std::vector<hier::HierItem_t> ServerCompilation::getScope(const std::string& hierPath) {
-    auto& root = comp->getRoot();
+    auto& root = m_analysis->compilation.getRoot();
 
     if (hierPath.empty()) {
         std::vector<hier::HierItem_t> result;
@@ -99,7 +80,7 @@ std::vector<hier::HierItem_t> ServerCompilation::getScope(const std::string& hie
             INFO("Adding top instance {}", inst->name);
             hier::handleInstance(result, *inst, m_sourceManager, true);
         }
-        for (auto& pkg : comp->getPackages()) {
+        for (auto& pkg : m_analysis->compilation.getPackages()) {
             hier::handlePackage(result, *pkg, m_sourceManager);
         }
         return result;
@@ -121,7 +102,7 @@ std::vector<hier::HierItem_t> ServerCompilation::getScope(const std::string& hie
         }
     }
     if (!scope) {
-        scope = comp->getPackage(hierPath);
+        scope = m_analysis->compilation.getPackage(hierPath);
         if (!scope) {
             ERROR("Failed to find symbol at path {}", hierPath);
             return {};
@@ -148,7 +129,7 @@ std::vector<std::string> ServerCompilation::getInstances(
                                                       params.position.character);
     if (location) {
         inst::InstanceVisitor visitor(*location);
-        comp->getRoot().visit(visitor);
+        m_analysis->compilation.getRoot().visit(visitor);
         return visitor.getInstances();
     }
 
@@ -176,10 +157,11 @@ std::optional<std::vector<lsp::CallHierarchyItem>> ServerCompilation::getDocPrep
 }
 
 bool ServerCompilation::isWcpVariable(const std::string& path) {
-    const auto& root = comp->getRoot();
+    const auto& root = m_analysis->compilation.getRoot();
     slang::ast::LookupResult result;
     slang::ast::ASTContext context(root, ast::LookupLocation::max);
-    slang::ast::Lookup::name(comp->parseName(path), context, ast::LookupFlags::None, result);
+    slang::ast::Lookup::name(m_analysis->compilation.parseName(path), context,
+                             ast::LookupFlags::None, result);
 
     if (!result.found) {
         return false;
@@ -227,8 +209,10 @@ std::optional<lsp::ShowDocumentParams> ServerCompilation::getHierDocParams(
     // TODO -- structs / nested structs -- currently taken to variable instance, not
     // type definition -- do we want both?
     slang::ast::LookupResult result;
-    slang::ast::ASTContext context(comp->getRoot(), slang::ast::LookupLocation::max);
-    slang::ast::Lookup::name(comp->parseName(path), context, slang::ast::LookupFlags::None, result);
+    slang::ast::ASTContext context(m_analysis->compilation.getRoot(),
+                                   slang::ast::LookupLocation::max);
+    slang::ast::Lookup::name(m_analysis->compilation.parseName(path), context,
+                             slang::ast::LookupFlags::None, result);
     if (!result.found) {
         return std::nullopt;
     }
@@ -242,6 +226,10 @@ std::optional<lsp::ShowDocumentParams> ServerCompilation::getHierDocParams(
                                    .takeFocus = true,
                                    .selection = std::optional<lsp::Range>(
                                        toRange(loc, m_sourceManager, result.found->name.length()))};
+}
+
+void ServerCompilation::issueDiagnosticsTo(slang::DiagnosticEngine& diagEngine) {
+    m_analysis->issueDiagnosticsTo(diagEngine);
 }
 
 } // namespace server

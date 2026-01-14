@@ -8,6 +8,7 @@
 
 #include "ServerDriver.h"
 
+#include "Hovers.h"
 #include "Indexer.h"
 #include "ServerDiagClient.h"
 #include "ast/ServerCompilation.h"
@@ -18,6 +19,7 @@
 #include "util/Converters.h"
 #include "util/Formatting.h"
 #include "util/Logging.h"
+#include "util/Markdown.h"
 #include <memory>
 #include <queue>
 #include <string_view>
@@ -26,8 +28,10 @@
 #include "slang/ast/Symbol.h"
 #include "slang/ast/symbols/CompilationUnitSymbols.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
+#include "slang/ast/symbols/ParameterSymbols.h"
 #include "slang/ast/types/Type.h"
 #include "slang/diagnostics/DiagnosticEngine.h"
+#include "slang/diagnostics/Diagnostics.h"
 #include "slang/driver/Driver.h"
 #include "slang/driver/SourceLoader.h"
 #include "slang/parsing/ParserMetadata.h"
@@ -92,20 +96,30 @@ ServerDriver::ServerDriver(Indexer& indexer, SlangLspClient& client, const Confi
 
 // Doc updates (open, change, save)
 void ServerDriver::updateDoc(SlangDoc& doc, FileUpdateType type) {
-    m_indexer.waitForIndexingCompletion();
-    diagClient->clear(doc.getURI());
-    doc.issueDiagnosticsTo(diagEngine);
-    diagClient->updateDiags();
-    INFO("Published diags for {}", doc.getURI().getPath());
+    // Grab dependent documents
+    doc.setDependentDocuments(getDependentDocs(doc.getSyntaxTree()));
 
-    if (comp) {
-        // Slower diags, elaboration
-        if (type == FileUpdateType::SAVE) {
-            comp->refresh();
-            INFO("Publishing Comp diags")
-            diagClient->updateDiags();
+    // Clear and re-issue diagnostics for this document
+    diagClient->clear(doc.getURI());
+
+    if (comp && type == FileUpdateType::SAVE) {
+        // Clear just the data structures; add all uris to dirty set
+        diagClient->clear();
+
+        // Re-issue parse diagnostics for all documents, since we cleared
+        for (const auto& [uri, d] : docs) {
+            d->issueParseDiagnostics(diagEngine);
         }
+        // Elaborate; Issue semantic diagnostics from full compilation
+        comp->refresh();
+        comp->issueDiagnosticsTo(diagEngine);
     }
+    else {
+        // In explore mode: issue normal shallow diags on changes
+        doc.issueDiagnosticsTo(diagEngine);
+    }
+    diagClient->pushDiags(doc.getURI());
+    INFO("Published diags for {}", doc.getURI().getPath());
 }
 
 std::unique_ptr<ServerDriver> ServerDriver::create(Indexer& indexer, SlangLspClient& client,
@@ -116,7 +130,7 @@ std::unique_ptr<ServerDriver> ServerDriver::create(Indexer& indexer, SlangLspCli
 
     // Copy only open documents from old driver if provided
     if (oldDriver) {
-        oldDriver->diagClient->clear();
+        oldDriver->diagClient->clearAndPush();
         for (const auto& uri : oldDriver->m_openDocs) {
             auto docIt = oldDriver->docs.find(uri);
             if (docIt == oldDriver->docs.end()) {
@@ -142,13 +156,23 @@ std::unique_ptr<ServerDriver> ServerDriver::create(Indexer& indexer, SlangLspCli
     return newDriver;
 }
 
-SlangDoc& ServerDriver::openDocument(const URI& uri, const std::string_view text) {
-    auto doc = SlangDoc::fromText(*this, uri, text);
-    docs[uri] = doc;
+void ServerDriver::openDocument(const URI& uri, const std::string_view text) {
+    bool readText = true;
+    if (docs.find(uri) != docs.end()) {
+        if (docs[uri]->textMatches(text)) {
+            readText = false;
+        }
+        else {
+            WARN("Document {} text does not match, updating", uri.getPath());
+        }
+    }
+    if (readText) {
+        auto doc = SlangDoc::fromText(*this, uri, text);
+        docs[uri] = doc;
+        updateDoc(*doc, FileUpdateType::OPEN);
+    }
     // Track this as an open document
     m_openDocs.insert(uri);
-    updateDoc(*doc, FileUpdateType::OPEN);
-    return *doc;
 }
 
 std::shared_ptr<SlangDoc> ServerDriver::getDocument(const URI& uri) {
@@ -228,8 +252,7 @@ std::vector<std::shared_ptr<SlangDoc>> ServerDriver::getDependentDocs(
                     docs[newdoc->getURI()] = newdoc;
 
                     // Only add packages to the queue for recursive processing
-                    for (auto& [n, _] : newdoc->getSyntaxTree()->getMetadata().nodeMeta) {
-                        auto decl = &n->as<syntax::ModuleDeclarationSyntax>();
+                    for (auto& [decl, _] : newdoc->getSyntaxTree()->getMetadata().nodeMeta) {
                         if (decl->kind == syntax::SyntaxKind::PackageDeclaration) {
                             treesToProcess.push(newdoc->getSyntaxTree());
                             break;
@@ -284,18 +307,17 @@ bool ServerDriver::createCompilation(const URI& uri, std::string_view top) {
         syntaxTrees,
         [this](std::string_view name) {
             auto paths = m_indexer.getRelevantFilesForName(name);
-            SourceBuffer buffer;
             if (!paths.empty()) {
                 auto maybeBuf = sm.readSource(paths[0], /* library */ nullptr);
                 if (maybeBuf) {
-                    buffer = *maybeBuf;
+                    return *maybeBuf;
                 }
                 else {
                     ERROR("Failed to read source for {}: {}", paths[0].string(),
                           maybeBuf.error().message());
                 }
             }
-            return buffer;
+            return SourceBuffer{};
         },
         sm, this->options);
 
@@ -308,20 +330,16 @@ bool ServerDriver::createCompilation(const URI& uri, std::string_view top) {
     for (const auto& doc : documents) {
         docs[doc->getURI()] = doc;
     }
-    // Copy the const options bag, set top
-    slang::Bag localOptions = this->options;
-    auto& cOptions = localOptions.insertOrGet<slang::ast::CompilationOptions>();
-    cOptions.topModules = {top};
 
-    comp = std::make_unique<ServerCompilation>(std::move(documents), localOptions, sm);
+    comp = std::make_unique<ServerCompilation>(documents, this->options, sm, std::string(top));
 
-    // refresh
-    for (auto& uri : m_openDocs) {
-        auto docIt = docs.find(uri);
-        if (docIt != docs.end()) {
-            updateDoc(*docIt->second, FileUpdateType::OPEN);
-        }
+    // Publish initial diags
+    for (const auto& doc : documents) {
+        doc->issueParseDiagnostics(diagEngine);
     }
+    comp->issueDiagnosticsTo(diagEngine);
+    diagClient->pushDiags();
+
     return true;
 }
 
@@ -344,6 +362,17 @@ bool ServerDriver::createCompilation() {
     }
 
     comp = std::make_unique<ServerCompilation>(std::move(documents), this->options, sm);
+
+    // Issue parse diagnostics for all documents + semantic diagnostics from compilation
+    // This ensures that when a user opens a document later, the diagnostics don't disappear
+    diagClient->clear();
+    for (const auto& [uri, doc] : docs) {
+        doc->issueParseDiagnostics(diagEngine);
+    }
+
+    // Issue semantic diagnostics from the compilation
+    comp->issueDiagnosticsTo(diagEngine);
+    diagClient->pushDiags();
     return true;
 }
 
@@ -470,7 +499,6 @@ std::optional<lsp::Hover> ServerDriver::getDocHover(const URI& uri, const lsp::P
     if (!doc) {
         return {};
     }
-    auto& analysis = doc->getAnalysis();
     auto loc = sm.getSourceLocation(doc->getBuffer(), position.line, position.character);
     if (!loc) {
         return {};
@@ -484,62 +512,14 @@ std::optional<lsp::Hover> ServerDriver::getDocHover(const URI& uri, const lsp::P
         if (tok == nullptr) {
             return {};
         }
-        return lsp::Hover{
-            .contents = lsp::MarkupContent{.kind = lsp::MarkupKind::make<"markdown">(),
-                                           .value = analysis.getDebugHover(*tok)}};
+        markup::Document doc;
+        doc.addParagraph(analysis.getDebugHover(*tok));
+        return lsp::Hover{.contents = doc.build()};
 #endif
         return {};
     }
     auto info = *maybeInfo;
-
-    auto md = svCodeBlockString(*info.node);
-
-    if (info.macroUsageRange != SourceRange::NoLocation) {
-        auto text = sm.getText(info.macroUsageRange);
-        md += fmt::format("\n Expanded from\n {}", svCodeBlockString(text));
-    }
-
-    if (info.symbol) {
-        // Show hierarchical path if:
-        // 1. Symbol is in a different scope than the current position
-        // 2. and Symbol's scope is not the root scope ($unit)
-        auto symbolScope = info.symbol->getParentScope();
-        auto lookupScope = analysis.getScopeAt(loc.value());
-
-        if (lookupScope && symbolScope && lookupScope != symbolScope) {
-            auto& parentSym = symbolScope->asSymbol();
-            auto hierPath = parentSym.getLexicalPath();
-            // The typedef name needs to be appended; it's not attached to the type
-            if (parentSym.kind == ast::SymbolKind::PackedStructType ||
-                parentSym.kind == ast::SymbolKind::UnpackedStructType) {
-                auto syntax = parentSym.getSyntax();
-                if (syntax && syntax->parent &&
-                    syntax->parent->kind == syntax::SyntaxKind::TypedefDeclaration) {
-                    hierPath += "::";
-                    hierPath +=
-                        syntax->parent->as<syntax::TypedefDeclarationSyntax>().name.valueText();
-                }
-            }
-            if (!hierPath.empty()) {
-                md = fmt::format("{}\n\n---\n\n{}",
-                                 svCodeBlockString(fmt::format("// In {}", hierPath)), md);
-            }
-        }
-    }
-    else {
-        // show file for macros
-        auto macroBuf = info.nameToken.location().buffer();
-        if (macroBuf != doc->getBuffer() && sm.isLatestData(macroBuf)) {
-            auto path = sm.getFullPath(macroBuf);
-            if (!path.empty()) {
-                md = fmt::format(
-                    "{}\n\n---\n\n{}",
-                    svCodeBlockString(fmt::format("// From {}", path.filename().string())), md);
-            }
-        }
-    }
-
-    return lsp::Hover{.contents = markdown(md)};
+    return lsp::Hover{.contents = getHover(sm, doc->getBuffer(), info)};
 }
 
 std::vector<lsp::LocationLink> ServerDriver::getDocDefinition(const URI& uri,

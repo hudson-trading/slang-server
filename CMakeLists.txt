@@ -74,7 +74,7 @@ project(
   DESCRIPTION "SystemVerilog language server based on slang")
 
 # Enable compile_commands.json for IDE/clangd tooling by default
-if(SLANG_SERVER_MASTER_PROJECT AND NOT DEFINED CMAKE_EXPORT_COMPILE_COMMANDS)
+if(SLANG_SERVER_MASTER_PROJECT)
   set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 endif()
 
@@ -101,6 +101,7 @@ option(SLANG_SERVER_INCLUDE_INSTALL "Include installation targets"
        ${SLANG_SERVER_MASTER_PROJECT})
 option(SLANG_SERVER_STATIC_LINK_STDLIB
        "Statically link C++ standard library (libstdc++/libc++) and libgcc" OFF)
+option(SLANG_CI_BUILD "Enable stricter warnings for CI builds" OFF)
 
 # Always require C++20 or later, no extensions.
 set(CMAKE_CXX_STANDARD 20)
@@ -280,6 +281,7 @@ add_library(
   slang_server_obj_lib OBJECT
   ${CMAKE_CURRENT_BINARY_DIR}/VersionInfo.cpp
   src/ast/ServerCompilation.cpp
+  src/ast/ServerCompilationAnalysis.cpp
   src/ast/WcpClient.cpp
   src/document/ShallowAnalysis.cpp
   src/document/SlangDoc.cpp
@@ -293,7 +295,9 @@ add_library(
   src/util/Converters.cpp
   src/util/Formatting.cpp
   src/util/SlangExtensions.cpp
+  src/util/Markdown.cpp
   src/Config.cpp
+  src/Hovers.cpp
   src/Indexer.cpp
   src/ServerDriver.cpp
   src/SlangServer.cpp
@@ -311,9 +315,14 @@ target_link_libraries(slang_server_obj_lib PUBLIC slang::slang ctre)
 # Apply pedantic warnings only to slang-server code, not external libraries
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(
-    slang_server_obj_lib
-    PRIVATE -Wpedantic -Wunused-variable -Wpessimizing-move
-            -Wunused-but-set-variable -Wno-nonnull -Werror)
+    slang_server_obj_lib PRIVATE -Wpedantic -Wpessimizing-move -Wno-nonnull
+                                 -Wno-unused-parameter -Werror)
+  # Stricter unused variable warnings only in CI builds
+  if(SLANG_CI_BUILD)
+    target_compile_options(
+      slang_server_obj_lib PRIVATE -Wunused-variable -Wunused-but-set-variable
+                                   -Wunused-parameter)
+  endif()
 endif()
 
 # Build the slang-server executable
