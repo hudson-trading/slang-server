@@ -12,10 +12,10 @@ hide:
 slang-server provides comprehensive SystemVerilog language support for modern editors and IDEs, including:
 
 - **Real-time diagnostics and linting**
-- **Code completion and IntelliSense**
-- **Go-to definition and Hover Info**
+- **Code completions (IntelliSense)**
+- **Go-to definition and Go-to references**
 - **Symbol search and workspace indexing**
-- **Hardware-specific language extensions**
+- **Hardware-specific language features via custom editor clients**
 
 ## Quick Start
 
@@ -23,7 +23,7 @@ Check out the [installation guide](start/installing.md) and learn how to [config
 
 ## Project Status
 
-slang-server is actively developed by the hardware team at Hudson River Trading and welcomes community contributions. The project aims to be the most comprehensive and performant SystemVerilog language server.
+`slang-server` is actively developed by the hardware team at Hudson River Trading and welcomes community contributions. The project aims to be the most comprehensive and performant SystemVerilog language server.
 
 ## Support & Contributing
 
