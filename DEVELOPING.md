@@ -30,7 +30,7 @@ The `unittests` target is also buildable and runnable, to ensure any temporary u
 
 ## Vscode Testing
 
-Install the Slang Extension on either the [Vscode Marketplace](TODO) or [OpenVSX](TODO)
+Install the Slang Extension on either the [Vscode Marketplace](https://marketplace.visualstudio.com/items?itemName=Hudson-River-Trading.vscode-slang) or [OpenVSX](https://open-vsx.org/extension/Hudson-River-Trading/vscode-slang)
 
 Add this to `.vscode/settings.json` to use slang-server
 

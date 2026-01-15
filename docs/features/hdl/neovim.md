@@ -7,7 +7,7 @@ hide:
 
 # Hardware Language Features - Neovim
 
-All features listed here require the Neovim plugin.  See the [installation guide](../start/installing.md) for how to get started.
+All features listed here require the Neovim plugin.  See the [installation guide](/start/installing.md) for how to get started.
 Once installed the `SlangServer` command will provide a number of subcommands outlined below.
 
 ## Setting a Compilation
