@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 import * as vscode from 'vscode'
 
-import * as child_process from 'child_process'
-
 import path from 'path'
 import * as process from 'process'
 import * as semver from 'semver'
@@ -20,7 +18,6 @@ import {
   CommandNode,
   ConfigObject,
   EditorButton,
-  fileExists,
   PathConfigObject,
   ViewContainerSpec,
 } from './lib/libconfig'
@@ -28,6 +25,7 @@ import { ProjectComponent } from './sidebar/ProjectComponent'
 import * as slang from './SlangInterface'
 import { AnyVerilogLanguages, anyVerilogSelector, getWorkspaceFolder } from './utils'
 import { glob } from 'glob'
+import { InstallerUI, prepareSlangServer } from './installer'
 
 export var ext: SlangExtension
 
@@ -119,7 +117,7 @@ export class SlangExtension extends ActivityBarComponent {
 
   path: PathConfigObject = new PathConfigObject(
     {
-      description: 'Path to the slang-server (not slang)',
+      description: 'Path to slang-server (not slang)',
     },
     {
       windows: 'slang-server.exe',
@@ -147,27 +145,38 @@ export class SlangExtension extends ActivityBarComponent {
 
     // Check for environment variable set in launch.json; set when debugging in vscode
     let slangServerPath = process.env.SLANG_SERVER_PATH
+
+    // If not set, use configured path in settings.json
     if (!slangServerPath) {
-      slangServerPath = await this.path.getValueAsync()
+      slangServerPath = await this.path.findSlangServer()
       this.logger.info(`Using slang-server at ${slangServerPath}`)
     } else {
       this.logger.info(`Using slang-server from environment variable: ${slangServerPath}`)
     }
 
     if (slangServerPath === '') {
-      await vscode.window.showErrorMessage(
-        `"slang.path not configured. Configure the abs path at slang.path, add to PATH, or disable in config.`
-      )
-      return
+      const ui = new InstallerUI(this.context)
+
+      try {
+        const installedPath = await prepareSlangServer(ui)
+        if (installedPath === '') {
+          await vscode.window.showErrorMessage(
+            'slang-server is required to run the language server.'
+          )
+          return
+        }
+
+        // Persist installed path into settings
+        this.path.cachedValue = installedPath
+        slangServerPath = installedPath
+      } catch (err: any) {
+        await vscode.window.showErrorMessage(
+          `Failed to install slang-server: ${err?.message ?? err}`
+        )
+        return
+      }
     }
-    // check if it exists
-    const exists = await fileExists(slangServerPath)
-    if (!exists) {
-      vscode.window.showErrorMessage(
-        `File "${slangServerPath}" set for slang.path doesn't exist, please reconfigure`
-      )
-      return
-    }
+
     // this.logger.info("using path " + slangServerPath)
     const serverOptions: ServerOptions = {
       run: { command: slangServerPath, args: this.args.getValue() },
