@@ -59,6 +59,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     steps:
+      # NOCOMMIT
+      # - name: Debug
+      #  run: |
+      #    pwd
+      #- uses: toddstrader/action-setup-vim@test
+      #  # - uses: rhysd/action-setup-vim@v1
+      #  with:
+      #    neovim: true
       - name: Install dependencies (Rocky Linux 8)
         if: matrix.container == 'rockylinux:8'
         run: |
@@ -67,6 +75,8 @@ jobs:
           dnf config-manager --set-enabled powertools
           dnf -y install epel-release
           dnf -y install gcc-c++ clang cmake git make gcc-toolset-14-libatomic-devel
+          dnf -y install neovim
+          nvim --version
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref || github.ref }}
@@ -173,21 +183,10 @@ jobs:
             ${{ matrix.artifact_name }}.zip
           retention-days: 7
 
-      # Making the neovim plugin the top-level dir below this point for busted action
-      # Moving the old checkout is easier than doing some Windows-portable rm -rf thing
-      - name: Move build
-        # Skip for container builds (Rocky Linux) as paths don't work the same way
-        if: matrix.container == ''
-        run: |
-          echo ${{ runner.temp }}/slang-build/bin >> $GITHUB_PATH
-          mv ${{ github.workspace }}/build/${{ matrix.preset }} ${{ runner.temp }}/slang-build
-          mv ${{ github.workspace }}/clients/neovim ${{ runner.temp }}/neovim-plugin
-          mv ${{ github.workspace }} ${{ runner.temp }}/slang-server-checkout
-          mv ${{ runner.temp }}/neovim-plugin ${{ github.workspace }}
-        working-directory: ${{ runner.temp }}
       - name: Run Neovim plugin tests
         # This should work on Windows as well, but there's some linker error
         # that I don't feel like debugging via GH
-        # Skip for container builds (Rocky Linux) as paths don't work the same way
-        if: runner.os != 'Windows' && matrix.container == ''
-        uses: nvim-neorocks/nvim-busted-action@v1
+        if: runner.os != 'Windows'
+        uses: toddstrader/nvim-busted-action@args
+        with:
+          luarocks_args: 'clients/neovim/slang-server.nvim-scm-1.rockspec --test-type busted -- -C clients/neovim/'

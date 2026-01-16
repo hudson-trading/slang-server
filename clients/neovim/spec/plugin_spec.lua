@@ -28,7 +28,7 @@ describe("SlangServer", function()
       name = "slang-server",
       -- NOCOMMIT -- pick this up from slang-server release
       cmd = {
-         "slang-server",
+         "../../build/bin/slang-server",
       },
       filetypes = { "systemverilog" },
       root_dir = vim.uv.cwd(),
