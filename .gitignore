@@ -27,6 +27,7 @@ CMakeUserPresets.json
 .vs/
 *.code-workspace
 .vscode/launch.json
+.luarocks
 
 # Claude and Slang
 *.local.json
