@@ -24,12 +24,11 @@ describe("SlangServer", function()
    vim.cmd("edit tests/foo.sv")
    vim.cmd("set filetype=systemverilog")
    -- start slang-server
+   local server_bin = os.getenv("SLANG_SERVER_BIN") or "../../build/bin/slang-server"
    local client = vim.lsp.start({
       name = "slang-server",
       -- NOCOMMIT -- pick this up from slang-server release
-      cmd = {
-         "slang-server",
-      },
+      cmd = { server_bin },
       filetypes = { "systemverilog" },
       root_dir = vim.uv.cwd(),
    })
