@@ -1,0 +1,42 @@
+[
+  {
+    "transactions[0].": []
+  },
+  {
+    "transactions_2d[0][1].": []
+  },
+  {
+    "nested_arr[3].": []
+  },
+  {
+    "nested_arr[5].txn.": [
+      {
+        "label": "addr",
+        "labelDetails": {
+          "detail": " logic[7:0]",
+          "description": "transaction_t"
+        },
+        "kind": "Property",
+        "filterText": "addr"
+      },
+      {
+        "label": "data",
+        "labelDetails": {
+          "detail": " logic[31:0]",
+          "description": "transaction_t"
+        },
+        "kind": "Property",
+        "filterText": "data"
+      },
+      {
+        "label": "valid",
+        "labelDetails": {
+          "detail": " logic",
+          "description": "transaction_t"
+        },
+        "kind": "Property",
+        "filterText": "valid"
+      }
+    ]
+  }
+]
