@@ -169,9 +169,10 @@ module test;
 
     // Test two argument macro
 
-    localparam int TWO_ARG_VAL = `TWO_ARG_MACRO(5, 7);
+    localparam int TWO_ARG_VAL = `TWO_ARG_MACRO(SIMPLE_VAL, ~(FUNC_VAL));
                    ^^^^^^^^^^^ Sym TWO_ARG_VAL : Parameter
                                  ^^^^^^^^^^^^^^ Ref -> DefineDirective TWO_ARG_MACRO  \n\\n\\n\---\n\\n\``define TWO_ARG_MACRO(a, b) (a + b)`
+                                                ^^^^^^^^^^ Ref -> **Parameter** `SIMPLE_VAL` in `test`  \n\Type: `int`  \n\Value: `42`  \n\\n\\n\---\n\\n\`// Test simple macro usage\n\localparam int SIMPLE_VAL = 42`
 
 
 

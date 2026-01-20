@@ -69,7 +69,7 @@ module test;
     localparam int FUNC_VAL = `FUNC_MACRO(10);
 
     // Test two argument macro
-    localparam int TWO_ARG_VAL = `TWO_ARG_MACRO(5, 7);
+    localparam int TWO_ARG_VAL = `TWO_ARG_MACRO(SIMPLE_VAL, ~(FUNC_VAL));
 
     // Test definition behind macro
     `DECLARE_INT(some_int, 1)
