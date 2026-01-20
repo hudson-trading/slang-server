@@ -845,8 +845,7 @@
 
 <h1 id="limitations">Limitations<a class="headerlink" href="#limitations" title="Permanent link">&para;</a></h1>
 <p><strong>Potential Shallow Compilation Issues</strong></p>
-<p>In shallow compilations some nodes may be invalid due to unset parameters, missing defines, etc. Therefore some expressions may not be visited by slang and cause some false positives, especially with unused checking. We're trying to address these to get the best experience on the language server without needing to set a design.</p>
-<p>If you think you found an issue with a diagnostic, please check whether it shows up via a normal slang command to determine which repo to raise the issue in.</p>
+<p>In shallow compilations some nodes may be invalid due to unset parameters, missing defines, etc. Therefore some expressions may not be visited by slang and cause some false positives, especially with unused checking. These can often be fixed, so please raise an issue if you see one. Before raising an issue, please check whether it shows up via a normal slang command to determine which repo to raise the issue in.</p>
 <p><strong>Untaken Ifdef Branches</strong></p>
 <p>Features may be limited in the context of untaken ifdef branches. To minimize this, it's recommended to encode these ifdefs in package parameters, then use generate blocks in the hdl code. Or if these are single branch ifdefs, include the most permissible defines in your server config.</p>
 <p><strong>Deep Hierarchical References</strong></p>
