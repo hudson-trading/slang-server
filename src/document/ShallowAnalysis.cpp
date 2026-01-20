@@ -362,6 +362,10 @@ const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declT
                             return nullptr;
                         }
                         cur = scope->find(member->name);
+
+                        if (member->nameRange == declTok->range()) {
+                            return cur;
+                        }
                     }
                     else {
                         const ast::Type* type = nullptr;
