@@ -48,6 +48,13 @@ jobs:
             container: rockylinux:8
             artifact_name: slang-server-linux-x64-gcc
             extra_flags: -DCMAKE_CXX_COMPILER=/opt/rh/gcc-toolset-14/root/usr/bin/g++
+          - preset: clang-release
+            os: ubuntu-latest
+            artifact_name: slang-server-newer-linux-x64-clang
+            extra_flags: -DCMAKE_CXX_COMPILER=clang++
+          - preset: gcc-release
+            os: ubuntu-latest
+            artifact_name: slang-server-newer-linux-x64-gcc
           - preset: macos-release
             os: macos-15
             artifact_name: slang-server-macos
