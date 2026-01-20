@@ -18,7 +18,7 @@
         <link rel="prev" href="../../start/config/">
       
       
-        <link rel="next" href="../hdl/hdl/">
+        <link rel="next" href="../limitations/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -613,19 +613,33 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#limitations" class="md-nav__link">
-    <span class="md-ellipsis">
-      Limitations
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../limitations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Limitations
+    
+  </span>
+  
+
+      </a>
     </li>
   
 
@@ -651,10 +665,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_2" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_3" >
         
           
-          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
             
   
   
@@ -667,8 +681,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_2">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
             <span class="md-nav__icon md-icon"></span>
             HDL Features
           </label>
@@ -794,10 +808,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_3" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_4" >
         
           
-          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
             
   
   
@@ -810,8 +824,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_3">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
             <span class="md-nav__icon md-icon"></span>
             Design Choices
           </label>
@@ -960,15 +974,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#limitations" class="md-nav__link">
-    <span class="md-ellipsis">
-      Limitations
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -1048,14 +1053,7 @@ When a <a href="../hdl/hdl/">design is set</a>, the shallow compilation provides
 This will provide additional coloring for variable names, distinguishing between wires, registers, and parameters.
 For classes/functions it will distinguish betweeen instance variables, function args and locals.</p>
 <p><strong>Formatting</strong>
-This will likely live in the slang repo and also be shipped as a standalone binary. In order to have fairly nice formatting hovers and completions, basic formatting functions already exist in this repo, but not a full formatter. This includes things like squashing white spaces to condense hover and completion types, and left aligning blocks of text for hovers and completion docs.</p>
-<h3 id="limitations">Limitations<a class="headerlink" href="#limitations" title="Permanent link">&para;</a></h3>
-<ul>
-<li>In shallow compilations some nodes may be invalid due to unset parameters, missing defines, etc. Therefore some expressions may not be visited by slang and cause some false positives, especially with unused checking. We're trying to address these to get the best experience on the language server without needing to set a design.</li>
-<li>If you think you found an issue with a diagnostics, please check whether it shows up via a normal slang command to determine which repo to raise the issue in.</li>
-<li>Features may be limited in the context of untaken ifdef branches. To minimize this, it's recommended to encode these ifdefs in package parameters, then use generate blocks in the hdl code.</li>
-<li>Shallow compilations only load the directly referenced syntax trees, and only load more transitive trees through packages. This may therefore cause issues with deep hierarchical references.</li>
-</ul>
+This will likely live in the slang repo and also be shipped as a standalone binary. In order to have fairly nice formatting in hovers and completions, basic formatting functions already exist in this repo. This includes things like squashing white spaces to condense hover and completion types, and left aligning blocks of text for hovers and completion docs.</p>
 
 
 

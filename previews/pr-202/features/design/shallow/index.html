@@ -528,6 +528,29 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../limitations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Limitations
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
     
@@ -542,10 +565,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_2" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_3" >
         
           
-          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
             
   
   
@@ -558,8 +581,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_2">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
             <span class="md-nav__icon md-icon"></span>
             HDL Features
           </label>
@@ -685,10 +708,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" checked>
         
           
-          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
             
   
   
@@ -701,8 +724,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_3_3">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3_4">
             <span class="md-nav__icon md-icon"></span>
             Design Choices
           </label>
@@ -937,7 +960,7 @@
 <p>In software languages this is typically standard- you can compile just one cpp file for example, and forward declare other symbols that you use.
 This isn't really a thing for HDLs, where a full design is almost always assumed. Parts of Slang can be tweaked to essentially get this functionality.</p>
 <h3 id="limitations">Limitations<a class="headerlink" href="#limitations" title="Permanent link">&para;</a></h3>
-<p>Hierarchical references can go down or up more than one layer, in which case some symbols may not load. It would be nice to continue adding the relevant syntax trees to get all symbols in the current document, rather than just loading directly referenced symbols. Upward references will always be a blind spot for the language server, and are generally not considered a good practice.</p>
+<p>Hierarchical references can go down or up more than one layer, in which case some symbols may not load. It would be nice to continue adding the relevant syntax trees to get all symbols in the current document, rather than just loading directly referenced symbols. Upward references will always be a blind spot for the language server when a design isn't set, and are generally not considered a good practice.</p>
 <h2 id="allgeneratebranches">AllGenerateBranches<a class="headerlink" href="#allgeneratebranches" title="Permanent link">&para;</a></h2>
 <p>This compilation flag is used in shallow compilations to get symbols and diagnostics on all generate branches. This process can definitely be improved; for example certain diags are marked as invalid for shallow compilation, and that's tricky since some may have been missed, and ideally the system would never go down the path where it's publishing those diags.</p>
 <p>A related issue is the case of ifdef branches. Making an AllIfdefBranches flag would certainly cause chaos, and perhaps the best way of dealing with this is to just do syntax lookups in the untaken branches to provide symbols.</p>
