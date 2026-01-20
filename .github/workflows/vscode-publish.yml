@@ -41,11 +41,11 @@ jobs:
       - name: Publish to Visual Studio Marketplace
         working-directory: clients/vscode
         run: vsce publish ${{ inputs.kind }} ${{ inputs.prerelease && '--pre-release' || '' }} --no-dependencies --pat ${{ secrets.VS_MARKETPLACE_TOKEN }}
-      # - name: Install ovsx
-      #   run: pnpm install -g ovsx
-      # - name: Publish to Open Vsix
-      #   working-directory: clients/vscode
-      #   run: npx ovsx publish ${{ inputs.prerelease && '--pre-release' || '' }} --pat ${{ secrets.OPEN_VSX_TOKEN }}
+      - name: Install ovsx
+        run: pnpm install -g ovsx
+      - name: Publish to Open Vsix
+        working-directory: clients/vscode
+        run: npx ovsx publish ${{ inputs.prerelease && '--pre-release' || '' }} --pat ${{ secrets.OPEN_VSX_TOKEN }}
       - name: Commit and push version bump
         run: |
           git add clients/vscode/package.json
