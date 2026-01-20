@@ -18,7 +18,7 @@
         <link rel="prev" href="../../start/config/">
       
       
-        <link rel="next" href="../planned/">
+        <link rel="next" href="../limitations/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -26,7 +26,7 @@
     
     
       
-        <title>Feature Support - slang-server</title>
+        <title>Language Features - slang-server</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#feature-support" class="md-skip">
+        <a href="#language-features" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +114,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Feature Support
+              Language Features
             
           </span>
         </div>
@@ -284,47 +284,7 @@
           
   
   
-  Core Language Features
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../../hdl/hdl/" class="md-tabs__link">
-          
-  
-  
-  HDL Features
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../../design/indexing/" class="md-tabs__link">
-          
-  
-  
-  Design Choices
+  Features
 
         </a>
       </li>
@@ -417,7 +377,9 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
         
           
           <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
@@ -524,7 +486,7 @@
   
   
   <span class="md-ellipsis">
-    Core Language Features
+    Features
     
   </span>
   
@@ -535,7 +497,7 @@
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
-            Core Language Features
+            Features
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -560,7 +522,7 @@
   
   
   <span class="md-ellipsis">
-    Feature Support
+    Language Features
     
   </span>
   
@@ -573,7 +535,7 @@
   
   
   <span class="md-ellipsis">
-    Feature Support
+    Language Features
     
   </span>
   
@@ -598,9 +560,54 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#symbol-specific-feature-support" class="md-nav__link">
+  <a href="#diagnostics" class="md-nav__link">
     <span class="md-ellipsis">
-      Symbol-Specific Feature Support
+      Diagnostics
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hovers-and-go-to-definition" class="md-nav__link">
+    <span class="md-ellipsis">
+      Hovers and Go-to Definition
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#completions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Completions
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#go-to-references-rename" class="md-nav__link">
+    <span class="md-ellipsis">
+      Go-to References / Rename
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inlay-hints" class="md-nav__link">
+    <span class="md-ellipsis">
+      Inlay Hints
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#planned-lsp-methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      Planned LSP Methods:
     </span>
   </a>
   
@@ -622,12 +629,12 @@
   
   
     <li class="md-nav__item">
-      <a href="../planned/" class="md-nav__link">
+      <a href="../limitations/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    Planned Features
+    Limitations
     
   </span>
   
@@ -638,15 +645,8 @@
 
               
             
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
+              
+                
   
   
   
@@ -663,10 +663,12 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_3" >
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
             
   
   
@@ -679,8 +681,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
             <span class="md-nav__icon md-icon"></span>
             HDL Features
           </label>
@@ -693,7 +695,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../hdl/hdl/" class="md-nav__link">
+      <a href="../hdl/hdl/" class="md-nav__link">
         
   
   
@@ -716,7 +718,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../hdl/vscode/" class="md-nav__link">
+      <a href="../hdl/vscode/" class="md-nav__link">
         
   
   
@@ -739,7 +741,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../hdl/neovim/" class="md-nav__link">
+      <a href="../hdl/neovim/" class="md-nav__link">
         
   
   
@@ -762,7 +764,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../hdl/api/" class="md-nav__link">
+      <a href="../hdl/api/" class="md-nav__link">
         
   
   
@@ -784,9 +786,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -803,10 +806,12 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_4" >
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
             
   
   
@@ -819,8 +824,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
             <span class="md-nav__icon md-icon"></span>
             Design Choices
           </label>
@@ -833,7 +838,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/indexing/" class="md-nav__link">
+      <a href="../design/indexing/" class="md-nav__link">
         
   
   
@@ -856,7 +861,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/shallow/" class="md-nav__link">
+      <a href="../design/shallow/" class="md-nav__link">
         
   
   
@@ -867,6 +872,14 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -908,9 +921,54 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#symbol-specific-feature-support" class="md-nav__link">
+  <a href="#diagnostics" class="md-nav__link">
     <span class="md-ellipsis">
-      Symbol-Specific Feature Support
+      Diagnostics
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hovers-and-go-to-definition" class="md-nav__link">
+    <span class="md-ellipsis">
+      Hovers and Go-to Definition
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#completions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Completions
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#go-to-references-rename" class="md-nav__link">
+    <span class="md-ellipsis">
+      Go-to References / Rename
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inlay-hints" class="md-nav__link">
+    <span class="md-ellipsis">
+      Inlay Hints
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#planned-lsp-methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      Planned LSP Methods:
     </span>
   </a>
   
@@ -935,141 +993,67 @@
   
 
 
-<h1 id="feature-support">Feature Support<a class="headerlink" href="#feature-support" title="Permanent link">&para;</a></h1>
-<p>slang-server provides comprehensive Language Server Protocol (LSP) support for SystemVerilog, offering modern IDE features that significantly enhance development productivity.</p>
-<h3 id="symbol-specific-feature-support">Symbol-Specific Feature Support<a class="headerlink" href="#symbol-specific-feature-support" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Symbol Type</th>
-<th>GoTo</th>
-<th>Hover</th>
-<th>Completion</th>
-<th>Notes</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Modules</strong></td>
-<td>✅</td>
-<td>✅</td>
-<td>✅</td>
-<td></td>
-</tr>
-<tr>
-<td><strong>Interfaces</strong></td>
-<td>✅</td>
-<td>✅</td>
-<td>✅</td>
-<td></td>
-</tr>
-<tr>
-<td><strong>Classes</strong></td>
-<td>🟡</td>
-<td>🟡</td>
-<td>🟡</td>
-<td></td>
-</tr>
-<tr>
-<td><strong>Functions/Tasks</strong></td>
-<td>✅</td>
-<td>✅</td>
-<td>🟡</td>
-<td>Completions can be improved with signatures</td>
-</tr>
-<tr>
-<td><strong>Scope Variables</strong></td>
-<td>✅</td>
-<td>✅</td>
-<td>✅</td>
-<td></td>
-</tr>
-<tr>
-<td><strong>Ports</strong></td>
-<td>✅</td>
-<td>✅</td>
-<td>❌</td>
-<td>Completions planned for ports on instances</td>
-</tr>
-<tr>
-<td><strong>Parameters</strong></td>
-<td>✅</td>
-<td>✅</td>
-<td>❌</td>
-<td>Completions planned for params on instances</td>
-</tr>
-<tr>
-<td><strong>Typedefs</strong></td>
-<td>✅</td>
-<td>✅</td>
-<td>⚪</td>
-<td>Custom type definitions</td>
-</tr>
-<tr>
-<td><strong>Enums</strong></td>
-<td>✅</td>
-<td>✅</td>
-<td>⚪</td>
-<td>Enumeration values</td>
-</tr>
-<tr>
-<td><strong>Packages</strong></td>
-<td>✅</td>
-<td>✅</td>
-<td>✅</td>
-<td>Completions for package members</td>
-</tr>
-<tr>
-<td><strong>Wildcard Imports</strong></td>
-<td>✅</td>
-<td>✅</td>
-<td>✅</td>
-<td>Completions for imported members</td>
-</tr>
-<tr>
-<td><strong>Macros</strong></td>
-<td>🟡</td>
-<td>✅</td>
-<td>✅</td>
-<td>Indexed macro completions</td>
-</tr>
-<tr>
-<td><strong>System Tasks</strong></td>
-<td>⚪</td>
-<td>❌</td>
-<td>❌</td>
-<td>Planned</td>
-</tr>
-<tr>
-<td>&lt;!--</td>
-<td><strong>Constraints</strong></td>
-<td>🟡</td>
-<td>❌</td>
-<td>🟡</td>
-</tr>
-<tr>
-<td>&lt;!--</td>
-<td><strong>Covergroups</strong></td>
-<td>✅</td>
-<td>✅</td>
-<td>🟡</td>
-</tr>
-<tr>
-<td><strong>Assertions</strong></td>
-<td>✅</td>
-<td>✅</td>
-<td>🟡</td>
-<td>SVA property support</td>
-</tr>
-<tr>
-<td>&lt;!--</td>
-<td><strong>DPI Functions</strong></td>
-<td>🟡</td>
-<td>❌</td>
-<td>✅</td>
-</tr>
-</tbody>
-</table>
+<h1 id="language-features">Language Features<a class="headerlink" href="#language-features" title="Permanent link">&para;</a></h1>
+<h3 id="diagnostics">Diagnostics<a class="headerlink" href="#diagnostics" title="Permanent link">&para;</a></h3>
+<p>Diagnostics are provided by slang using <a href="../design/shallow/">Shallow Compilations</a> when a design is not set.
+When a <a href="../hdl/hdl/">design is set</a>, the shallow compilation provides diagnostics on each keystroke, and the design's compilation provides diagnostics on each save.</p>
+<p><img alt="goto-refs" src="../../assets/images/lints.gif" /></p>
+<h3 id="hovers-and-go-to-definition">Hovers and Go-to Definition<a class="headerlink" href="#hovers-and-go-to-definition" title="Permanent link">&para;</a></h3>
+<p>Hovers are provided on each symbol with the following info if applicable:</p>
+<ul>
+<li>Symbol kind, or Syntax kind in the case of macros.</li>
+<li>Lexical Scope, or file in the case of macros.</li>
+<li>Resolved type info</li>
+<li>Bitwidth, if a value or type</li>
+<li>Value, if a constant value</li>
+<li>The syntax that the symbol is derived from</li>
+<li>Macro usage, if symbol was defined from one.</li>
+</ul>
+<p><img alt="goto-refs" src="../../assets/images/hovers.gif" /></p>
+<p>Planned features:</p>
+<ul>
+<li>Multiple definitions, for example with modports.</li>
+<li>Macro expansion on hover, with expand quick-action</li>
+<li>Hovers/Gotos for struct assignments</li>
+<li>Hovers for builtins</li>
+</ul>
+<h3 id="completions">Completions<a class="headerlink" href="#completions" title="Permanent link">&para;</a></h3>
+<p>Completions are currently provided for the following constructs:</p>
+<ul>
+<li>Generic expression completions: parameters, variables, types etc.</li>
+<li>Modules and interfaces</li>
+<li>Functions and macros</li>
+<li>Hierarchical references and struct members</li>
+</ul>
+<p><img alt="goto-refs" src="../../assets/images/completions.gif" /></p>
+<p>Planned completions:</p>
+<ul>
+<li>Named assignments (structs, functions, ports, params)</li>
+<li>builtins (<code>$bits()</code>, etc.)</li>
+</ul>
+<h3 id="go-to-references-rename">Go-to References / Rename<a class="headerlink" href="#go-to-references-rename" title="Permanent link">&para;</a></h3>
+<p>Go-to references are provided for every nearly all symbols except for macros. Keep in mind this is an expensive operation, and may take some time for a large repo.</p>
+<p><img alt="goto-refs" src="../../assets/images/gotorefs.gif" /></p>
+<h3 id="inlay-hints">Inlay Hints<a class="headerlink" href="#inlay-hints" title="Permanent link">&para;</a></h3>
+<p>Inlay hints are text that show up inline in the code to provide useful info. They can be hovered for more info, and some can be double clicked to insert some text.</p>
+<p><strong>Ports Types</strong> - Show the type of ports in instances (off by default)</p>
+<p><img alt="goto-refs" src="../../assets/images/port_inlays.png" /></p>
+<p><strong>Wildcard Ports</strong> - Show which signals are passed through
+<img alt="goto-refs" src="../../assets/images/port_wildcard_inlays.png" /></p>
+<p><strong>Positional args in Macros, Functions, Paramter/Port lists</strong> - Show the argument names
+<img alt="goto-refs" src="../../assets/images/macro_inlays.png" /></p>
+<p>Planned Inlays:</p>
+<ul>
+<li><strong>Constant Values</strong> - Show parameter values and resolved types</li>
+<li><strong>Signals</strong> - Show the value when a waveform is connected and an instance is selected.</li>
+<li><strong>Wildcard Imports</strong> - Show which symbols are used from the import</li>
+</ul>
+<h3 id="planned-lsp-methods">Planned LSP Methods:<a class="headerlink" href="#planned-lsp-methods" title="Permanent link">&para;</a></h3>
+<p><strong>Semantic Token Highlighting</strong>
+This will provide additional coloring for variable names, distinguishing between wires, registers, and parameters.
+For classes/functions it will distinguish betweeen instance variables, function args and locals.</p>
+<p><strong>Formatting</strong>
+This will likely live in the slang repo and also be shipped as a standalone binary. In order to have fairly nice formatting in hovers and completions, basic formatting functions already exist in this repo. This includes things like squashing white spaces to condense hover and completion types, and left aligning blocks of text for hovers and completion docs.</p>
 
 
 
@@ -1166,7 +1150,7 @@
     
     
       
-      <script id="__config" type="application/json">{"base": "../..", "features": ["content.tabs.link", "content.code.annotate", "content.code.copy", "announce.dismiss", "navigation.tabs", "navigation.instant", "navigation.instant.prefetch", "navigation.instant.preview", "navigation.instant.progress", "navigation.path", "navigation.top", "navigation.tracking", "search.suggest", "toc.follow"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"base": "../..", "features": ["content.tabs.link", "content.code.annotate", "content.code.copy", "announce.dismiss", "navigation.tabs", "navigation.expand", "navigation.instant", "navigation.instant.prefetch", "navigation.instant.preview", "navigation.instant.progress", "navigation.path", "navigation.top", "navigation.tracking", "search.suggest", "toc.follow"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
       <script src="../../assets/javascripts/bundle.92b07e13.min.js"></script>
