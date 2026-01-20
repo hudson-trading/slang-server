@@ -854,7 +854,7 @@
 <p><strong>Single Unit Compilations</strong></p>
 <p>Designs that use slang's <a href="https://sv-lang.com/command-line-ref.html"><code>--single-unit</code></a> are not be supported. The main effect this tends to have is that macros are not inherited and so diagnostics will occur there. This flag means that all files are essentially concatenated before being sent to tools. Even if <code>slang-server</code> grabbed these dependencies, it would make file and compilation updates take much longer, so it's generally preferred to switch away from using this flag.</p>
 <p><strong>Some UVM Code</strong></p>
-<p>The common UVM practice where classes are `included in packages are not supported yet.</p>
+<p>The common UVM practice where classes are `included in a package results in poor support for those classes.</p>
 
 
 
