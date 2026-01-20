@@ -39,6 +39,7 @@ theme:
     - content.code.copy
     - announce.dismiss
     - navigation.tabs
+    - navigation.expand
     - navigation.instant
     - navigation.instant.prefetch
     - navigation.instant.preview
@@ -81,19 +82,17 @@ nav:
   - Getting Started:
       - start/installing.md
       - start/config.md
-  - Core Language Features:
+  - Features:
       - features/features.md
-      - Planned Features: features/planned.md
-      # - Hover Examples: features/hovers.md
-      # - Completion Examples: features/completions.md
-  - HDL Features:
-      - hdl/hdl.md
-      - Vscode: hdl/vscode.md
-      - Neovim: hdl/neovim.md
-      - hdl/api.md
-  - Design Choices:
-      - design/indexing.md
-      - design/shallow.md
+      - features/limitations.md
+      - HDL Features:
+          - features/hdl/hdl.md
+          - Vscode: features/hdl/vscode.md
+          - Neovim: features/hdl/neovim.md
+          - features/hdl/api.md
+      - Design Choices:
+          - features/design/indexing.md
+          - features/design/shallow.md
 
 markdown_extensions:
   - tables
