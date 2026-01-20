@@ -280,12 +280,12 @@ const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declT
         auto lastToken = macroArgSyntax.getLastToken();
         size_t startOffset = firstToken.location().offset();
         size_t endOffset = lastToken.location().offset() + lastToken.rawText().size();
-
-        std::string_view macroArg{firstToken.rawText().data(), endOffset - startOffset};
+        auto macroArgText = m_sourceManager.getText(SourceRange{
+            SourceLocation(m_buffer, startOffset), SourceLocation(m_buffer, endOffset)});
 
         // These will overwrite the same assigned source, but it's ok since they are temporary,
         // and the source manager should be thread safe (for when we do threaded async)
-        tokTree = SyntaxTree::fromText(macroArg, m_sourceManager);
+        tokTree = SyntaxTree::fromText(macroArgText, m_sourceManager);
         tokTree->root().parent = macroArgSyntax.parent;
         OffsetFinder visitor(declTok->location().offset() -
                              macroArgSyntax.getFirstToken().location().offset());
