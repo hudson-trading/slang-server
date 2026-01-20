@@ -584,57 +584,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Completions">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#generic-expression-completions-parameters-variables-types-etc" class="md-nav__link">
-    <span class="md-ellipsis">
-      Generic expression completions: parameters, variables, types, etc.
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#modules-and-interfaces" class="md-nav__link">
-    <span class="md-ellipsis">
-      Modules and Interfaces
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#functions" class="md-nav__link">
-    <span class="md-ellipsis">
-      Functions
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#hierarchical" class="md-nav__link">
-    <span class="md-ellipsis">
-      Hierarchical
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#structs" class="md-nav__link">
-    <span class="md-ellipsis">
-      Structs
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -656,18 +605,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#planned-features" class="md-nav__link">
+  <a href="#planned-lsp-methods" class="md-nav__link">
     <span class="md-ellipsis">
-      Planned features:
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#formatter" class="md-nav__link">
-    <span class="md-ellipsis">
-      Formatter
+      Planned LSP Methods:
     </span>
   </a>
   
@@ -991,57 +931,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Completions">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#generic-expression-completions-parameters-variables-types-etc" class="md-nav__link">
-    <span class="md-ellipsis">
-      Generic expression completions: parameters, variables, types, etc.
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#modules-and-interfaces" class="md-nav__link">
-    <span class="md-ellipsis">
-      Modules and Interfaces
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#functions" class="md-nav__link">
-    <span class="md-ellipsis">
-      Functions
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#hierarchical" class="md-nav__link">
-    <span class="md-ellipsis">
-      Hierarchical
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#structs" class="md-nav__link">
-    <span class="md-ellipsis">
-      Structs
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -1063,18 +952,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#planned-features" class="md-nav__link">
+  <a href="#planned-lsp-methods" class="md-nav__link">
     <span class="md-ellipsis">
-      Planned features:
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#formatter" class="md-nav__link">
-    <span class="md-ellipsis">
-      Formatter
+      Planned LSP Methods:
     </span>
   </a>
   
@@ -1109,33 +989,38 @@
 
 
 <h1 id="language-features">Language Features<a class="headerlink" href="#language-features" title="Permanent link">&para;</a></h1>
-<p><code>slang-server</code> provides comprehensive Language Server Protocol (LSP) support for SystemVerilog, offering modern IDE features that significantly enhance development productivity.</p>
 <h3 id="diagnostics">Diagnostics<a class="headerlink" href="#diagnostics" title="Permanent link">&para;</a></h3>
-<p>Diagnostics are provided by slang using <a href="../design/shallow/">Shallow Compilations</a> when a design is not set. Because of this some of the parameters may be invalid, and so some expressions may not be visited by slang and cause some false positives. We're trying to address these to get the best experience on the language server without needing to set a design.</p>
-<p>If you think you found an issue with a diagnostics, please check whether it shows up via a normal slang command to determine which repo to raise the issue in.</p>
+<p>Diagnostics are provided by slang using <a href="../design/shallow/">Shallow Compilations</a> when a design is not set.
+When a <a href="../hdl/hdl/">design is set</a>, the shallow compilation provides diagnostics on each keystroke, and the design's compilation provides diagnostics on each save.</p>
+<p><img alt="goto-refs" src="../../assets/images/lints.gif" /></p>
 <h3 id="hovers-and-go-to-definition">Hovers and Go-to Definition<a class="headerlink" href="#hovers-and-go-to-definition" title="Permanent link">&para;</a></h3>
-<p>Hovers are provided on each symbol with the following info:</p>
+<p>Hovers are provided on each symbol with the following info if applicable:</p>
 <ul>
 <li>Symbol kind, or Syntax kind in the case of macros.</li>
 <li>Lexical Scope, or file in the case of macros.</li>
 <li>Resolved type info</li>
-<li>Bitwidth, if applicable</li>
+<li>Bitwidth, if a value or type</li>
 <li>Value, if a constant value</li>
 <li>The syntax that the symbol is derived from</li>
-<li>Macro usage, if defined from one.</li>
+<li>Macro usage, if symbol was defined from one.</li>
 </ul>
-<p>Planned features:
-- Multiple definitions, for example with modports.
-- Macro expansion on hover, with expand quick-action
-- Gotos for structural struct assignments
-- Hover info for builtins</p>
+<p><img alt="goto-refs" src="../../assets/images/hovers.gif" /></p>
+<p>Planned features:</p>
+<ul>
+<li>Multiple definitions, for example with modports.</li>
+<li>Macro expansion on hover, with expand quick-action</li>
+<li>Hovers/Gotos for struct assignments</li>
+<li>Hovers for builtins</li>
+</ul>
 <h3 id="completions">Completions<a class="headerlink" href="#completions" title="Permanent link">&para;</a></h3>
 <p>Completions are currently provided for the following constructs:</p>
-<h4 id="generic-expression-completions-parameters-variables-types-etc">Generic expression completions: parameters, variables, types, etc.<a class="headerlink" href="#generic-expression-completions-parameters-variables-types-etc" title="Permanent link">&para;</a></h4>
-<h4 id="modules-and-interfaces">Modules and Interfaces<a class="headerlink" href="#modules-and-interfaces" title="Permanent link">&para;</a></h4>
-<h4 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h4>
-<h4 id="hierarchical">Hierarchical<a class="headerlink" href="#hierarchical" title="Permanent link">&para;</a></h4>
-<h4 id="structs">Structs<a class="headerlink" href="#structs" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Generic expression completions: parameters, variables, types etc.</li>
+<li>Modules and interfaces</li>
+<li>Functions and macros</li>
+<li>Hierarchical references and struct members</li>
+</ul>
+<p><img alt="goto-refs" src="../../assets/images/completions.gif" /></p>
 <p>Planned completions:</p>
 <ul>
 <li>Named assignments (structs, functions, ports, params)</li>
@@ -1143,25 +1028,31 @@
 </ul>
 <h3 id="go-to-references-rename">Go-to References / Rename<a class="headerlink" href="#go-to-references-rename" title="Permanent link">&para;</a></h3>
 <p>Go-to references are provided for every nearly all symbols except for macros. Keep in mind this is an expensive operation, and may take some time for a large repo.</p>
+<p><img alt="goto-refs" src="../../assets/images/gotorefs.gif" /></p>
 <h3 id="inlay-hints">Inlay Hints<a class="headerlink" href="#inlay-hints" title="Permanent link">&para;</a></h3>
 <p>Inlay hints are text that show up inline in the code to provide useful info. They can be hovered for more info, and some can be double clicked to insert some text.</p>
-<p><strong>Ports</strong> - Show the type of ports in instances (off by default)</p>
-<p><strong>Params</strong> - Show the resolved value of parameters</p>
-<p><strong>Macros/Functions</strong> - Show the positional argument names</p>
-<p><strong>Wildcard Ports</strong> - Show which signals are passed through</p>
+<p><strong>Ports Types</strong> - Show the type of ports in instances (off by default)</p>
+<p><img alt="goto-refs" src="../../assets/images/port_inlays.png" /></p>
+<p><strong>Wildcard Ports</strong> - Show which signals are passed through
+<img alt="goto-refs" src="../../assets/images/port_wildcard_inlays.png" /></p>
+<p><strong>Positional args in Macros, Functions, Paramter/Port lists</strong> - Show the argument names
+<img alt="goto-refs" src="../../assets/images/macro_inlays.png" /></p>
 <p>Planned Inlays:</p>
 <ul>
-<li><strong>Signals</strong> - Show the resolved type of wires and registers, and show the value when a waveform is connected</li>
+<li><strong>Constant Values</strong> - Show parameter values and resolved types</li>
+<li><strong>Signals</strong> - Show the value when a waveform is connected and an instance is selected.</li>
 <li><strong>Wildcard Imports</strong> - Show which symbols are used from the import</li>
 </ul>
-<h3 id="planned-features">Planned features:<a class="headerlink" href="#planned-features" title="Permanent link">&para;</a></h3>
+<h3 id="planned-lsp-methods">Planned LSP Methods:<a class="headerlink" href="#planned-lsp-methods" title="Permanent link">&para;</a></h3>
 <p><strong>Semantic Token Highlighting</strong>
 This will provide additional coloring for variable names, distinguishing between wires, registers, and parameters.
 For classes/functions it will distinguish betweeen instance variables, function args and locals.</p>
-<h3 id="formatter">Formatter<a class="headerlink" href="#formatter" title="Permanent link">&para;</a></h3>
-<p>This one is pretty self explanatory, but it will live in the slang repo and also be shipped as a standalone binary. In order to make formatting nice for things like hovers and completions, basic formatting functions already exist in this repo, but not a full formatter. This includes things like squashing white spaces to condense hover and completion types, and left aligning blocks of text for hovers and completion docs.</p>
+<p><strong>Formatting</strong>
+This will likely live in the slang repo and also be shipped as a standalone binary. In order to have fairly nice formatting hovers and completions, basic formatting functions already exist in this repo, but not a full formatter. This includes things like squashing white spaces to condense hover and completion types, and left aligning blocks of text for hovers and completion docs.</p>
 <h3 id="limitations">Limitations<a class="headerlink" href="#limitations" title="Permanent link">&para;</a></h3>
 <ul>
+<li>In shallow compilations some nodes may be invalid due to unset parameters, missing defines, etc. Therefore some expressions may not be visited by slang and cause some false positives, especially with unused checking. We're trying to address these to get the best experience on the language server without needing to set a design.</li>
+<li>If you think you found an issue with a diagnostics, please check whether it shows up via a normal slang command to determine which repo to raise the issue in.</li>
 <li>Features may be limited in the context of untaken ifdef branches. To minimize this, it's recommended to encode these ifdefs in package parameters, then use generate blocks in the hdl code.</li>
 <li>Shallow compilations only load the directly referenced syntax trees, and only load more transitive trees through packages. This may therefore cause issues with deep hierarchical references.</li>
 </ul>

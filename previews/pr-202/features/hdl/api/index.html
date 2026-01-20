@@ -922,9 +922,10 @@
 <p>In general it's preferred for the <code>slang-server</code> to initiate the handshake, since a user will likely always start with their editor, and move to more advanced tools when necessary.</p>
 <h2 id="vscode-only-integrations">Vscode-only Integrations<a class="headerlink" href="#vscode-only-integrations" title="Permanent link">&para;</a></h2>
 <p>Vscode apis can easily be exposed via hidden commands that aren't shown to the user. See <a href="https://github.com/hudson-trading/slang-server/blob/main/clients/vscode/src/sidebar/ProjectComponent.ts"><code>ProjectComponent.ts</code></a> for examples of some commands. Some new routes may need to be added to the server-client interface as well in <a href="https://github.com/hudson-trading/slang-server/blob/main/clients/vscode/src/SlangInterface.ts"><code>SlangInterface.ts</code></a></p>
-<p>There should be an api exposed to subscribe to changes to which filelist is set, as well as when updated slang compilations are available.</p>
+<p>In order to provide type safe API access, the <code>activate()</code> function should be changed to expose an API object that has both the server and client's routes.</p>
+<p>There should be an api exposed to subscribe within this to changes to which filelist is set, as well as when updated slang compilations are available.</p>
 <h2 id="slang-cpp-integrations">Slang Cpp Integrations<a class="headerlink" href="#slang-cpp-integrations" title="Permanent link">&para;</a></h2>
-<p>Similarly, it would be ideal to subscribe to a compilation and receive updates in cpp. However to get the full detail, the server should share a non-owning reference to the compilation over shared memory. This would need to be implemented.</p>
+<p>Similarly, it would be ideal to subscribe to a compilation and receive updates within in C++. The server should share a non-owning reference to the compilation over shared memory, which has yet to be implemented.</p>
 <h2 id="other-integrations">Other Integrations<a class="headerlink" href="#other-integrations" title="Permanent link">&para;</a></h2>
 <p>One can look to the <a href="https://gitlab.com/waveform-control-protocol/wcp">Surfer wcp work</a> for implementing an editor-agnostic and implementation-language-agnostic integration over JsonRPC.</p>
 
