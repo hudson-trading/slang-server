@@ -1,6 +1,6 @@
 # Slang Server
 
-`slang-server` is a [Language Server](https://microsoft.github.io/language-server-protocol/) for SystemVerilog based on the [Slang](https://github.com/MikePopoloski/slang) library, providing useful language features for editors like Vscode and Neovim.
+`slang-server` is a [Language Server](https://microsoft.github.io/language-server-protocol/) for SystemVerilog based on the [Slang](https://github.com/MikePopoloski/slang) library, providing useful language features for editors like VS Code and Neovim.
 
 See [the docs](https://hudson-trading.github.io/slang-server) for instructions on [installing](https://hudson-trading.github.io/slang-server/start/installing/) and [configuring](https://hudson-trading.github.io/slang-server/start/config/).
 
