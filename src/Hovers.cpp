@@ -116,7 +116,8 @@ lsp::MarkupContent getHover(const SourceManager& sm, const BufferID docBuffer,
 
     const std::string docComments = stripDocComment(formatDocComment(display_node));
 
-    doc.addParagraph().appendText(docComments).newLine();
+    if (!docComments.empty())
+        doc.addParagraph().appendText(docComments).newLine();
 
     // Add the main code block with proper formatting
     doc.addParagraph().appendCodeBlock(formatCode(display_node));

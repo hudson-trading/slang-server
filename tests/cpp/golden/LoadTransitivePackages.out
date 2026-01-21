@@ -2,7 +2,7 @@
 // Main test file that only imports base_pkg, but util_pkg should be loaded via dependencies
 
 import base_pkg::*;
-       ^^^^^^^^ Ref -> **Package** `base_pkg`  \n\\n\\n\---\n\\n\  \n\\n\\n\---\n\\n\`package base_pkg;`
+       ^^^^^^^^ Ref -> **Package** `base_pkg`  \n\\n\\n\---\n\\n\`package base_pkg;`
 
 
 
@@ -14,18 +14,18 @@ module cycle_test_module;
     // Use types from base_pkg (which exports util_pkg types)
 
     base_pkg::config_t system_config;
-    ^^^^^^^^ Ref -> **Package** `base_pkg`  \n\\n\\n\---\n\\n\  \n\\n\\n\---\n\\n\`package base_pkg;`
-              ^^^^^^^^ Ref -> **TypeAlias** `config_t` in `base_pkg`  \n\Resolved Type: PackedStruct `config_t` (`logic[55:0]`)  \n\Resolved Width: `56`  \n\\n\\n\---\n\\n\  \n\\n\\n\---\n\\n\`typedef struct packed {\n\    logic [7:0] version;\n\    logic [15:0] features;\n\    data_width_t max_width;\n\} config_t;`
+    ^^^^^^^^ Ref -> **Package** `base_pkg`  \n\\n\\n\---\n\\n\`package base_pkg;`
+              ^^^^^^^^ Ref -> **TypeAlias** `config_t` in `base_pkg`  \n\Resolved Type: PackedStruct `config_t` (`logic[55:0]`)  \n\Resolved Width: `56`  \n\\n\\n\---\n\\n\`typedef struct packed {\n\    logic [7:0] version;\n\    logic [15:0] features;\n\    data_width_t max_width;\n\} config_t;`
                        ^^^^^^^^^^^^^ Sym system_config : Variable
 
     base_pkg::result_t operation_result;  // This should resolve via export
-    ^^^^^^^^ Ref -> **Package** `base_pkg`  \n\\n\\n\---\n\\n\  \n\\n\\n\---\n\\n\`package base_pkg;`
-              ^^^^^^^^ Ref -> **TypeAlias** `result_t` in `util_pkg`  \n\Resolved Type: Enum `result_t` (`logic[1:0]`)  \n\Resolved Width: `2`  \n\\n\\n\---\n\\n\  \n\\n\\n\---\n\\n\`typedef enum logic [1:0] {\n\    SUCCESS = 2'b00,\n\    FAILURE = 2'b01,\n\    PENDING = 2'b10,\n\    ERROR_CODE = 2'b11\n\} result_t;`
+    ^^^^^^^^ Ref -> **Package** `base_pkg`  \n\\n\\n\---\n\\n\`package base_pkg;`
+              ^^^^^^^^ Ref -> **TypeAlias** `result_t` in `util_pkg`  \n\Resolved Type: Enum `result_t` (`logic[1:0]`)  \n\Resolved Width: `2`  \n\\n\\n\---\n\\n\`typedef enum logic [1:0] {\n\    SUCCESS = 2'b00,\n\    FAILURE = 2'b01,\n\    PENDING = 2'b10,\n\    ERROR_CODE = 2'b11\n\} result_t;`
                        ^^^^^^^^^^^^^^^^ Sym operation_result : Variable
 
     base_pkg::data_width_t bus_width;
-    ^^^^^^^^ Ref -> **Package** `base_pkg`  \n\\n\\n\---\n\\n\  \n\\n\\n\---\n\\n\`package base_pkg;`
-              ^^^^^^^^^^^^ Ref -> **TypeAlias** `data_width_t` in `base_pkg`  \n\Resolved Type: `data_width_t` (aka `logic[31:0]`)  \n\Resolved Width: `32`  \n\\n\\n\---\n\\n\  \n\\n\\n\---\n\\n\`typedef logic [31:0] data_width_t;`
+    ^^^^^^^^ Ref -> **Package** `base_pkg`  \n\\n\\n\---\n\\n\`package base_pkg;`
+              ^^^^^^^^^^^^ Ref -> **TypeAlias** `data_width_t` in `base_pkg`  \n\Resolved Type: `data_width_t` (aka `logic[31:0]`)  \n\Resolved Width: `32`  \n\\n\\n\---\n\\n\`typedef logic [31:0] data_width_t;`
                            ^^^^^^^^^ Sym bus_width : Variable
 
 
@@ -36,22 +36,22 @@ module cycle_test_module;
 
         system_config = base_pkg::create_config(32);
         ^^^^^^^^^^^^^ Ref -> **Variable** `system_config` in `cycle_test_module`  \n\Type: PackedStruct `config_t` (`logic[55:0]`)  \n\Width: `56`  \n\\n\\n\---\n\\n\ Use types from base_pkg (which exports util_pkg types)\n\\n\  \n\\n\\n\---\n\\n\`base_pkg::config_t system_config;`
-                        ^^^^^^^^ Ref -> **Package** `base_pkg`  \n\\n\\n\---\n\\n\  \n\\n\\n\---\n\\n\`package base_pkg;`
-                                  ^^^^^^^^^^^^^ Ref -> **Subroutine** `create_config` in `util_pkg`  \n\\n\\n\---\n\\n\  \n\\n\\n\---\n\\n\`function automatic base_pkg::config_t create_config(input base_pkg::data_width_t width);\n\    base_pkg::config_t cfg = base_pkg::get_default_config();\n\    cfg.max_width = width;\n\    return cfg;\n\endfunction`
+                        ^^^^^^^^ Ref -> **Package** `base_pkg`  \n\\n\\n\---\n\\n\`package base_pkg;`
+                                  ^^^^^^^^^^^^^ Ref -> **Subroutine** `create_config` in `util_pkg`  \n\\n\\n\---\n\\n\`function automatic base_pkg::config_t create_config(input base_pkg::data_width_t width);\n\    base_pkg::config_t cfg = base_pkg::get_default_config();\n\    cfg.max_width = width;\n\    return cfg;\n\endfunction`
 
         bus_width = system_config.max_width;
-        ^^^^^^^^^ Ref -> **Variable** `bus_width` in `cycle_test_module`  \n\Type: `data_width_t` (aka `logic[31:0]`)  \n\Width: `32`  \n\\n\\n\---\n\\n\  \n\\n\\n\---\n\\n\`base_pkg::data_width_t bus_width;`
+        ^^^^^^^^^ Ref -> **Variable** `bus_width` in `cycle_test_module`  \n\Type: `data_width_t` (aka `logic[31:0]`)  \n\Width: `32`  \n\\n\\n\---\n\\n\`base_pkg::data_width_t bus_width;`
                     ^^^^^^^^^^^^^ Ref -> **Variable** `system_config` in `cycle_test_module`  \n\Type: PackedStruct `config_t` (`logic[55:0]`)  \n\Width: `56`  \n\\n\\n\---\n\\n\ Use types from base_pkg (which exports util_pkg types)\n\\n\  \n\\n\\n\---\n\\n\`base_pkg::config_t system_config;`
-                                  ^^^^^^^^^ Ref -> **Field** `max_width` in `base_pkg::config_t`  \n\Type: `data_width_t` (aka `logic[31:0]`)  \n\Width: `32`  \n\\n\\n\---\n\\n\  \n\\n\\n\---\n\\n\`data_width_t max_width;`
+                                  ^^^^^^^^^ Ref -> **Field** `max_width` in `base_pkg::config_t`  \n\Type: `data_width_t` (aka `logic[31:0]`)  \n\Width: `32`  \n\\n\\n\---\n\\n\`data_width_t max_width;`
 
 
 
         // Test function calls (base_pkg should have access to util_pkg functions)
 
         operation_result = base_pkg::validate_config(system_config);
-        ^^^^^^^^^^^^^^^^ Ref -> **Variable** `operation_result` in `cycle_test_module`  \n\Type: Enum `result_t` (`logic[1:0]`)  \n\Width: `2`  \n\\n\\n\---\n\\n\  \n\\n\\n\---\n\\n\`base_pkg::result_t operation_result;`
-                           ^^^^^^^^ Ref -> **Package** `base_pkg`  \n\\n\\n\---\n\\n\  \n\\n\\n\---\n\\n\`package base_pkg;`
-                                     ^^^^^^^^^^^^^^^ Ref -> **Subroutine** `validate_config` in `base_pkg`  \n\\n\\n\---\n\\n\  \n\\n\\n\---\n\\n\`function automatic util_pkg::result_t validate_config(input config_t cfg);\n\    if (cfg.max_width > 0)\n\        return util_pkg::SUCCESS;\n\    else\n\        return util_pkg::FAILURE;\n\endfunction`
+        ^^^^^^^^^^^^^^^^ Ref -> **Variable** `operation_result` in `cycle_test_module`  \n\Type: Enum `result_t` (`logic[1:0]`)  \n\Width: `2`  \n\\n\\n\---\n\\n\`base_pkg::result_t operation_result;`
+                           ^^^^^^^^ Ref -> **Package** `base_pkg`  \n\\n\\n\---\n\\n\`package base_pkg;`
+                                     ^^^^^^^^^^^^^^^ Ref -> **Subroutine** `validate_config` in `base_pkg`  \n\\n\\n\---\n\\n\`function automatic util_pkg::result_t validate_config(input config_t cfg);\n\    if (cfg.max_width > 0)\n\        return util_pkg::SUCCESS;\n\    else\n\        return util_pkg::FAILURE;\n\endfunction`
                                                      ^^^^^^^^^^^^^ Ref -> **Variable** `system_config` in `cycle_test_module`  \n\Type: PackedStruct `config_t` (`logic[55:0]`)  \n\Width: `56`  \n\\n\\n\---\n\\n\ Use types from base_pkg (which exports util_pkg types)\n\\n\  \n\\n\\n\---\n\\n\`base_pkg::config_t system_config;`
 
 
@@ -59,16 +59,16 @@ module cycle_test_module;
         // Test exported enum values (accessed via base_pkg exports)
 
         if (operation_result == base_pkg::SUCCESS) begin
-            ^^^^^^^^^^^^^^^^ Ref -> **Variable** `operation_result` in `cycle_test_module`  \n\Type: Enum `result_t` (`logic[1:0]`)  \n\Width: `2`  \n\\n\\n\---\n\\n\  \n\\n\\n\---\n\\n\`base_pkg::result_t operation_result;`
-                                ^^^^^^^^ Ref -> **Package** `base_pkg`  \n\\n\\n\---\n\\n\  \n\\n\\n\---\n\\n\`package base_pkg;`
-                                          ^^^^^^^ Ref -> **EnumValue** `SUCCESS` in `util_pkg::result_t`  \n\Value: `2'b0`  \n\\n\\n\---\n\\n\  \n\\n\\n\---\n\\n\`typedef enum logic [1:0] {\n\    SUCCESS = 2'b00,\n\    FAILURE = 2'b01,\n\    PENDING = 2'b10,\n\    ERROR_CODE = 2'b11\n\} result_t;`
+            ^^^^^^^^^^^^^^^^ Ref -> **Variable** `operation_result` in `cycle_test_module`  \n\Type: Enum `result_t` (`logic[1:0]`)  \n\Width: `2`  \n\\n\\n\---\n\\n\`base_pkg::result_t operation_result;`
+                                ^^^^^^^^ Ref -> **Package** `base_pkg`  \n\\n\\n\---\n\\n\`package base_pkg;`
+                                          ^^^^^^^ Ref -> **EnumValue** `SUCCESS` in `util_pkg::result_t`  \n\Value: `2'b0`  \n\\n\\n\---\n\\n\`typedef enum logic [1:0] {\n\    SUCCESS = 2'b00,\n\    FAILURE = 2'b01,\n\    PENDING = 2'b10,\n\    ERROR_CODE = 2'b11\n\} result_t;`
 
             $display("Configuration valid");
 
         end else if (operation_result == base_pkg::ERROR_CODE) begin
-                     ^^^^^^^^^^^^^^^^ Ref -> **Variable** `operation_result` in `cycle_test_module`  \n\Type: Enum `result_t` (`logic[1:0]`)  \n\Width: `2`  \n\\n\\n\---\n\\n\  \n\\n\\n\---\n\\n\`base_pkg::result_t operation_result;`
-                                         ^^^^^^^^ Ref -> **Package** `base_pkg`  \n\\n\\n\---\n\\n\  \n\\n\\n\---\n\\n\`package base_pkg;`
-                                                   ^^^^^^^^^^ Ref -> **EnumValue** `ERROR_CODE` in `util_pkg::result_t`  \n\Value: `2'b11`  \n\\n\\n\---\n\\n\  \n\\n\\n\---\n\\n\`typedef enum logic [1:0] {\n\    SUCCESS = 2'b00,\n\    FAILURE = 2'b01,\n\    PENDING = 2'b10,\n\    ERROR_CODE = 2'b11\n\} result_t;`
+                     ^^^^^^^^^^^^^^^^ Ref -> **Variable** `operation_result` in `cycle_test_module`  \n\Type: Enum `result_t` (`logic[1:0]`)  \n\Width: `2`  \n\\n\\n\---\n\\n\`base_pkg::result_t operation_result;`
+                                         ^^^^^^^^ Ref -> **Package** `base_pkg`  \n\\n\\n\---\n\\n\`package base_pkg;`
+                                                   ^^^^^^^^^^ Ref -> **EnumValue** `ERROR_CODE` in `util_pkg::result_t`  \n\Value: `2'b11`  \n\\n\\n\---\n\\n\`typedef enum logic [1:0] {\n\    SUCCESS = 2'b00,\n\    FAILURE = 2'b01,\n\    PENDING = 2'b10,\n\    ERROR_CODE = 2'b11\n\} result_t;`
 
             $display("Configuration error");
 

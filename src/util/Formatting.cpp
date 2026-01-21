@@ -270,9 +270,9 @@ const syntax::SyntaxNode& selectDisplayNode(const syntax::SyntaxNode& node) {
 std::string formatDocComment(const syntax::SyntaxNode& node) {
     auto res = slang::syntax::SyntaxPrinter().printLeadingComments(node).str();
 
-    // // Apply formatting for clean display
-    // stripBlankLines(res);
-    // shiftIndent(res);
+    // Apply formatting for clean display
+    stripBlankLines(res);
+    shiftIndent(res);
     return res;
 }
 
