@@ -292,15 +292,7 @@ std::vector<std::string> ServerDriver::getModulesInFile(const std::string& path)
     return moduleNames;
 }
 
-bool ServerDriver::createCompilation(const URI& uri, std::string_view top) {
-    // Find the document
-    auto it = docs.find(uri);
-    if (it == docs.end()) {
-        return false; // Document not found
-    }
-
-    auto& doc = it->second;
-
+bool ServerDriver::createCompilation(std::shared_ptr<SlangDoc> doc, std::string_view top) {
     // Collect documents starting with the target document
     std::vector<std::shared_ptr<syntax::SyntaxTree>> syntaxTrees{doc->getSyntaxTree()};
     driver::SourceLoader::loadTrees(

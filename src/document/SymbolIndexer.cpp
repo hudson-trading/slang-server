@@ -154,6 +154,20 @@ void SymbolIndexer::indexInstanceSyntax(const slang::syntax::HierarchicalInstanc
     }
 }
 
+void SymbolIndexer::indexSymbolName(const slang::ast::Symbol& symbol) {
+    if (symbol.getSyntax() != nullptr) {
+        syntex[symbol.getSyntax()] = &symbol;
+
+        auto& syntax = *symbol.getSyntax();
+        if (syntax.sourceRange().start().buffer() == m_buffer) {
+            auto nameTok = findName(symbol.name, syntax);
+            if (nameTok) {
+                symdex[nameTok] = &symbol;
+            }
+        }
+    }
+}
+
 void SymbolIndexer::handle(const slang::ast::InstanceArraySymbol& sym) {
     // Index based on syntax, looking up definition from parent scope if needed
     if (sym.getSyntax() == nullptr || sym.location.buffer() != m_buffer ||
@@ -191,7 +205,7 @@ void SymbolIndexer::handle(const slang::ast::InstanceArraySymbol& sym) {
 }
 
 /// Module instances- module name, parameters, ports
-void SymbolIndexer::handleSym(const slang::ast::InstanceSymbol& sym) {
+void SymbolIndexer::handle(const slang::ast::InstanceSymbol& sym) {
     if (sym.getSyntax() == nullptr) {
         // This means it's the top level- just index the module name
         auto& modName =
@@ -204,6 +218,8 @@ void SymbolIndexer::handleSym(const slang::ast::InstanceSymbol& sym) {
         return;
     }
 
+    indexSymbolName(sym);
+
     switch (sym.getSyntax()->kind) {
         case slang::syntax::SyntaxKind::HierarchicalInstance: {
             auto& instSyntax = sym.getSyntax()->as<slang::syntax::HierarchicalInstanceSyntax>();
@@ -214,7 +230,8 @@ void SymbolIndexer::handleSym(const slang::ast::InstanceSymbol& sym) {
             WARN("Unknown instance symbol kind: {}", toString(sym.getSyntax()->kind));
         }
     }
-    if (sym.getDefinition().location.buffer() == m_buffer) {
+    if (sym.getDefinition().location.buffer() == m_buffer &&
+        sym.instanceDepth < MAX_INSTANCE_DEPTH) {
         visitDefault(sym);
     }
 }
@@ -226,26 +243,12 @@ void SymbolIndexer::handle(const slang::ast::EnumValueSymbol& sym) {
     }
 }
 
-void SymbolIndexer::handleSym(const slang::ast::TypeAliasType& value) {
+void SymbolIndexer::handle(const slang::ast::TypeAliasType& value) {
     if (value.location.buffer() != m_buffer) {
         return;
     }
+    indexSymbolName(value);
     value.getDeclaredType()->getType().visit(*this);
-}
-
-/// Index ValueSymbol names
-void SymbolIndexer::handleSym(const slang::ast::ValueSymbol& sym) {
-    if (!sym.getSyntax()) {
-        return;
-    }
-
-    auto nameTok = findName(sym.name, *sym.getSyntax());
-    if (nameTok == nullptr) {
-        INFO("Value Sym has no name token: {}: {}", sym.name, toString(sym.kind));
-        return;
-    }
-
-    symdex[nameTok] = &sym;
 }
 
 // These are not in the buffer, but should be visited

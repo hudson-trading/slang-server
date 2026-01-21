@@ -7,6 +7,7 @@
 //------------------------------------------------------------------------------
 #pragma once
 
+#include <cstdint>
 #include <string_view>
 #include <type_traits>
 #include <unordered_map>
@@ -17,7 +18,6 @@
 #include "slang/ast/symbols/CompilationUnitSymbols.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
 #include "slang/ast/symbols/MemberSymbols.h"
-#include "slang/ast/symbols/ValueSymbol.h"
 #include "slang/ast/types/AllTypes.h"
 #include "slang/syntax/SyntaxNode.h"
 #include "slang/text/SourceLocation.h"
@@ -48,74 +48,49 @@ public:
 
     const slang::ast::Scope* getScopeForSyntax(const slang::syntax::SyntaxNode& syntax) const;
 
-    void handle(const slang::ast::InstanceArraySymbol& sym);
-
-    // Called via generic handle()
-    void handleSym(const slang::ast::InstanceSymbol& sym);
-    void handleSym(const slang::ast::ValueSymbol& sym);
-    void handleSym(const slang::ast::TypeAliasType& value);
-
     // These are not in the buffer, but should be visited
     void handle(const slang::ast::RootSymbol& sym);
     void handle(const slang::ast::CompilationUnitSymbol& sym);
 
+    // Instance-like symbols
+
+    void handle(const slang::ast::PackageSymbol& sym) {
+        // For packages, only recurse if it's in our buffer
+        indexSymbolName(sym);
+        if (sym.location.buffer() == m_buffer) {
+            visitDefault(sym);
+        }
+    }
+    void handle(const slang::ast::InstanceSymbol& sym);
+    void handle(const slang::ast::InstanceArraySymbol& sym);
+
+    // Types
+
     void handle(const slang::ast::TypeParameterSymbol& sym) { sym.getTypeAlias().visit(*this); }
-
-    // Index for inlay hints
-    void handle(const slang::ast::CallExpression& sym);
-
+    void handle(const slang::ast::TypeAliasType& sym);
     // Anonymous types (no typedef)
     void handle(const slang::ast::TransparentMemberSymbol& sym) { sym.wrapped.visit(*this); }
-
     // Special case for enum values, since name may not map
     void handle(const slang::ast::EnumValueSymbol& sym);
 
-    /// Generic symbol handler with dispatch to specialized handlers
+    /// Generic symbol handler
     template<typename T>
         requires std::is_base_of_v<slang::ast::Symbol, T>
     void handle(const T& astNode) {
-        if (astNode.getSyntax()) {
-            syntex[astNode.getSyntax()] = &astNode;
-        }
-
-        if constexpr (std::is_same_v<slang::ast::InstanceSymbol, T>) {
-            handleSym(static_cast<const slang::ast::InstanceSymbol&>(astNode));
-        }
-        else if constexpr (std::is_base_of_v<slang::ast::ValueSymbol, T>) {
-            handleSym(static_cast<const slang::ast::ValueSymbol&>(astNode));
-        }
-
-        if (astNode.getSyntax() != nullptr) {
-            auto& syntax = *astNode.getSyntax();
-            if (syntax.sourceRange().start().buffer() == m_buffer) {
-                auto nameTok = findName(astNode.name, syntax);
-                if (nameTok) {
-                    symdex[nameTok] = &astNode;
-                }
-            }
-        }
-
-        // Recurse for symbols other than top level symbols
-        if constexpr (std::is_same_v<slang::ast::PackageSymbol, T>) {
-            if (astNode.location.buffer() != m_buffer) {
-                return;
-            }
-        }
-
-        // unwrap typedefs (structs, enums, unions)
-        if constexpr (std::is_same_v<slang::ast::TypeAliasType, T>) {
-            handleSym(static_cast<const slang::ast::TypeAliasType&>(astNode));
-        }
-        else {
+        indexSymbolName(astNode);
+        if (astNode.location.buffer() == m_buffer) {
             visitDefault(astNode);
         }
     }
 
 private:
+    static const uint32_t MAX_INSTANCE_DEPTH = 8;
     /// Helper to index instance syntax (shared by InstanceSymbol and InstanceArraySymbol)
     void indexInstanceSyntax(const slang::syntax::HierarchicalInstanceSyntax& instSyntax,
                              const slang::ast::InstanceBodySymbol& instanceSymbol,
                              const slang::ast::DefinitionSymbol& definition);
+
+    void indexSymbolName(const slang::ast::Symbol& symbol);
 };
 
 } // namespace server
