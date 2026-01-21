@@ -28,7 +28,7 @@ lsp::MarkupContent getHover(const SourceManager& sm, const BufferID docBuffer,
     if (info.symbol) {
         // <Kind/Type> <Name> in <Scope>
 
-        infoPg.appendBold(toString(info.symbol->kind)).appendCode(info.symbol->name);
+        infoPg.appendHeader(toString(info.symbol->kind), 3).appendCode(info.symbol->name);
 
         auto symbolScope = info.symbol->getParentScope();
         auto& parentSym = symbolScope->asSymbol();

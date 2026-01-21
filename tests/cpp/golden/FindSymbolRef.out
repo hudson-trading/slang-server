@@ -15,19 +15,19 @@ timeprecision 1ps;
 
     parameter type y_t = logic[x:0];
                    ^^^ Sym y_t : TypeAlias
-                               ^ Ref -> **Parameter** `x` in `p`  \n\Type: `int`  \n\Value: `1`  \n\\n\\n\---\n\\n\`parameter int x = 1`
+                               ^ Ref -> ### Parameter`x` in `p`  \n\Type: `int`  \n\Value: `1`  \n\\n\\n\---\n\\n\`parameter int x = 1`
 
     parameter int x2 = x + 1;
                   ^^ Sym x2 : Parameter
-                       ^ Ref -> **Parameter** `x` in `p`  \n\Type: `int`  \n\Value: `1`  \n\\n\\n\---\n\\n\`parameter int x = 1`
+                       ^ Ref -> ### Parameter`x` in `p`  \n\Type: `int`  \n\Value: `1`  \n\\n\\n\---\n\\n\`parameter int x = 1`
 
     parameter type y = logic[x:0];
                    ^ Sym y : TypeAlias
-                             ^ Ref -> **Parameter** `x` in `p`  \n\Type: `int`  \n\Value: `1`  \n\\n\\n\---\n\\n\`parameter int x = 1`
+                             ^ Ref -> ### Parameter`x` in `p`  \n\Type: `int`  \n\Value: `1`  \n\\n\\n\---\n\\n\`parameter int x = 1`
 
     parameter type y2 = logic[x2:0];
                    ^^ Sym y2 : TypeAlias
-                              ^^ Ref -> **Parameter** `x2` in `p`  \n\Type: `int`  \n\Value: `2`  \n\\n\\n\---\n\\n\`parameter int x2 = x + 1`
+                              ^^ Ref -> ### Parameter`x2` in `p`  \n\Type: `int`  \n\Value: `2`  \n\\n\\n\---\n\\n\`parameter int x2 = x + 1`
 
     program; endprogram
 
@@ -59,12 +59,12 @@ package pkg2;
         ^^^^ Sym pkg2 : Package
 
     import pkg1::packet_t;
-           ^^^^ Ref -> **Package** `pkg1`  \n\\n\\n\---\n\\n\`package pkg1;`
-                 ^^^^^^^^ Ref -> **TypeAlias** `packet_t` in `pkg1`  \n\Resolved Type: PackedStruct `packet_t` (`logic[8:0]`)  \n\Resolved Width: `9`  \n\\n\\n\---\n\\n\`typedef struct packed {\n\    logic [7:0] data;\n\    logic valid;\n\} packet_t;`
+           ^^^^ Ref -> ### Package`pkg1`  \n\\n\\n\---\n\\n\`package pkg1;`
+                 ^^^^^^^^ Ref -> ### TypeAlias`packet_t` in `pkg1`  \n\Resolved Type: PackedStruct `packet_t` (`logic[8:0]`)  \n\Resolved Width: `9`  \n\\n\\n\---\n\\n\`typedef struct packed {\n\    logic [7:0] data;\n\    logic valid;\n\} packet_t;`
 
     export pkg1::packet_t;
-           ^^^^ Ref -> **Package** `pkg1`  \n\\n\\n\---\n\\n\`package pkg1;`
-                 ^^^^^^^^ Ref -> **TypeAlias** `packet_t` in `pkg1`  \n\Resolved Type: PackedStruct `packet_t` (`logic[8:0]`)  \n\Resolved Width: `9`  \n\\n\\n\---\n\\n\`typedef struct packed {\n\    logic [7:0] data;\n\    logic valid;\n\} packet_t;`
+           ^^^^ Ref -> ### Package`pkg1`  \n\\n\\n\---\n\\n\`package pkg1;`
+                 ^^^^^^^^ Ref -> ### TypeAlias`packet_t` in `pkg1`  \n\Resolved Type: PackedStruct `packet_t` (`logic[8:0]`)  \n\Resolved Width: `9`  \n\\n\\n\---\n\\n\`typedef struct packed {\n\    logic [7:0] data;\n\    logic valid;\n\} packet_t;`
 
 endpackage
 
@@ -72,12 +72,12 @@ endpackage
 
 module automatic m1 import p::*; #(int i = 1)
                  ^^ Sym m1 : Definition
-                           ^ Ref -> **Package** `p`  \n\\n\\n\---\n\\n\`package static p;`
+                           ^ Ref -> ### Package`p`  \n\\n\\n\---\n\\n\`package static p;`
                                        ^ Sym i : Parameter
 
     (a, b, , .c({a, b[0]}));
-     ^ Ref -> **Net** `a` in `m1`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input a;`
-        ^ Ref -> **Net** `b` in `m1`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`output [1:0] b;`
+     ^ Ref -> ### Net`a` in `m1`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input a;`
+        ^ Ref -> ### Net`b` in `m1`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`output [1:0] b;`
 
     input a;
           ^ Sym a : Net
@@ -87,12 +87,12 @@ module automatic m1 import p::*; #(int i = 1)
 
     localparam int c = p::x;
                    ^ Sym c : Parameter
-                       ^ Ref -> **Package** `p`  \n\\n\\n\---\n\\n\`package static p;`
-                          ^ Ref -> **Parameter** `x` in `p`  \n\Type: `int`  \n\Value: `1`  \n\\n\\n\---\n\\n\`parameter int x = 1`
+                       ^ Ref -> ### Package`p`  \n\\n\\n\---\n\\n\`package static p;`
+                          ^ Ref -> ### Parameter`x` in `p`  \n\Type: `int`  \n\Value: `1`  \n\\n\\n\---\n\\n\`parameter int x = 1`
 
     localparam p::y d = {1'b0, 1'b1};
-               ^ Ref -> **Package** `p`  \n\\n\\n\---\n\\n\`package static p;`
-                  ^ Ref -> **TypeAlias** `y` in `p`  \n\Resolved Type: `y` (aka `logic[1:0]`)  \n\Resolved Width: `2`  \n\\n\\n\---\n\\n\`parameter type y = logic[x:0]`
+               ^ Ref -> ### Package`p`  \n\\n\\n\---\n\\n\`package static p;`
+                  ^ Ref -> ### TypeAlias`y` in `p`  \n\Resolved Type: `y` (aka `logic[1:0]`)  \n\Resolved Width: `2`  \n\\n\\n\---\n\\n\`parameter type y = logic[x:0]`
                     ^ Sym d : Parameter
 
 endmodule
@@ -107,7 +107,7 @@ module m2 #(
 
     localparam j = i,
                ^ Sym j : Parameter
-                   ^ Ref -> **Parameter** `i` in `m2`  \n\Type: `logic signed[31:0]`  \n\Value: `1`  \n\\n\\n\---\n\\n\`parameter i = 1`
+                   ^ Ref -> ### Parameter`i` in `m2`  \n\Type: `logic signed[31:0]`  \n\Value: `1`  \n\\n\\n\---\n\\n\`parameter i = 1`
 
     parameter type x_t = bit
                    ^^^ Sym x_t : TypeAlias
@@ -120,8 +120,8 @@ module m2 #(
                                                                ^ Sym c : Variable
 
     input p::y2 d2,
-          ^ Ref -> **Package** `p`  \n\\n\\n\---\n\\n\`package static p;`
-             ^^ Ref -> **TypeAlias** `y2` in `p`  \n\Resolved Type: `y2` (aka `logic[2:0]`)  \n\Resolved Width: `3`  \n\\n\\n\---\n\\n\`parameter type y2 = logic[x2:0]`
+          ^ Ref -> ### Package`p`  \n\\n\\n\---\n\\n\`package static p;`
+             ^^ Ref -> ### TypeAlias`y2` in `p`  \n\Resolved Type: `y2` (aka `logic[2:0]`)  \n\Resolved Width: `3`  \n\\n\\n\---\n\\n\`parameter type y2 = logic[x2:0]`
                 ^^ Sym d2 : Variable
 
      interface.mod d, .e());
@@ -133,7 +133,7 @@ endmodule
 
 
 extern interface I(input a, output b);
-                 ^ Ref -> **Definition** `I`  \n\\n\\n\---\n\\n\`interface I(.*);`
+                 ^ Ref -> ### Definition`I`  \n\\n\\n\---\n\\n\`interface I(.*);`
                          ^ Sym a : Net
                                    ^ Sym b : Net
 
@@ -151,7 +151,7 @@ endinterface
 
 
 extern macromodule m3;
-                   ^^ Ref -> **Definition** `m3`  \n\\n\\n\---\n\\n\`macromodule m3;`
+                   ^^ Ref -> ### Definition`m3`  \n\\n\\n\---\n\\n\`macromodule m3;`
 
 
 
@@ -165,73 +165,73 @@ macromodule m3;
           ^ Sym c : Variable
 
     I d(.a(), .b());
-    ^ Ref -> **Definition** `I`  \n\\n\\n\---\n\\n\`interface I(.*);`
+    ^ Ref -> ### Definition`I`  \n\\n\\n\---\n\\n\`interface I(.*);`
       ^ Sym d : Instance
-         ^ Ref -> **Net** `a` in `I`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input a`
-               ^ Ref -> **Net** `b` in `I`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`output b`
+         ^ Ref -> ### Net`a` in `I`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input a`
+               ^ Ref -> ### Net`b` in `I`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`output b`
 
 
 
     typedef p::y_t y_t;
-            ^ Ref -> **Package** `p`  \n\\n\\n\---\n\\n\`package static p;`
-               ^^^ Ref -> **TypeAlias** `y_t` in `p`  \n\Resolved Type: `y_t` (aka `logic[1:0]`)  \n\Resolved Width: `2`  \n\\n\\n\---\n\\n\`parameter type y_t = logic[x:0]`
+            ^ Ref -> ### Package`p`  \n\\n\\n\---\n\\n\`package static p;`
+               ^^^ Ref -> ### TypeAlias`y_t` in `p`  \n\Resolved Type: `y_t` (aka `logic[1:0]`)  \n\Resolved Width: `2`  \n\\n\\n\---\n\\n\`parameter type y_t = logic[x:0]`
                    ^^^ Sym y_t : TypeAlias
 
 
 
     m2 #(
-    ^^ Ref -> **Definition** `m2`  \n\\n\\n\---\n\\n\`module m2 #(\n\    parameter i = 1,\n\    localparam j = i,\n\    parameter type x_t = bit\n\)\n\    (input int a[], (* bar = "asdf" *) output logic b = 1, ref c,\n\    input p::y2 d2,\n\     interface.mod d, .e());`
+    ^^ Ref -> ### Definition`m2`  \n\\n\\n\---\n\\n\`module m2 #(\n\    parameter i = 1,\n\    localparam j = i,\n\    parameter type x_t = bit\n\)\n\    (input int a[], (* bar = "asdf" *) output logic b = 1, ref c,\n\    input p::y2 d2,\n\     interface.mod d, .e());`
 
         .x_t(y_t)
-         ^^^ Ref -> **TypeAlias** `x_t` in `m2`  \n\Resolved Type: `x_t` (aka `logic[1:0]`)  \n\Resolved Width: `2`  \n\\n\\n\---\n\\n\`parameter type x_t = bit`
-             ^^^ Ref -> **TypeAlias** `y_t` in `m3`  \n\Resolved Type: `y_t` (aka `logic[1:0]`)  \n\Resolved Width: `2`  \n\\n\\n\---\n\\n\`typedef p::y_t y_t;`
+         ^^^ Ref -> ### TypeAlias`x_t` in `m2`  \n\Resolved Type: `x_t` (aka `logic[1:0]`)  \n\Resolved Width: `2`  \n\\n\\n\---\n\\n\`parameter type x_t = bit`
+             ^^^ Ref -> ### TypeAlias`y_t` in `m3`  \n\Resolved Type: `y_t` (aka `logic[1:0]`)  \n\Resolved Width: `2`  \n\\n\\n\---\n\\n\`typedef p::y_t y_t;`
 
     ) m (, b, c, d, );
       ^ Sym m : Instance
-           ^ Ref -> **Net** `b` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wire b;`
-              ^ Ref -> **Variable** `c` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic c;`
-                 ^ Ref -> **Instance** `d` in `m3`  \n\Type: I  \n\\n\\n\---\n\\n\`I d(.a(), .b());`
+           ^ Ref -> ### Net`b` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wire b;`
+              ^ Ref -> ### Variable`c` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic c;`
+                 ^ Ref -> ### Instance`d` in `m3`  \n\Type: I  \n\\n\\n\---\n\\n\`I d(.a(), .b());`
 
 
 
 
 
     typedef p::y2 y2;
-            ^ Ref -> **Package** `p`  \n\\n\\n\---\n\\n\`package static p;`
-               ^^ Ref -> **TypeAlias** `y2` in `p`  \n\Resolved Type: `y2` (aka `logic[2:0]`)  \n\Resolved Width: `3`  \n\\n\\n\---\n\\n\`parameter type y2 = logic[x2:0]`
+            ^ Ref -> ### Package`p`  \n\\n\\n\---\n\\n\`package static p;`
+               ^^ Ref -> ### TypeAlias`y2` in `p`  \n\Resolved Type: `y2` (aka `logic[2:0]`)  \n\Resolved Width: `3`  \n\\n\\n\---\n\\n\`parameter type y2 = logic[x2:0]`
                   ^^ Sym y2 : TypeAlias
 
 
 
     m2 #(
-    ^^ Ref -> **Definition** `m2`  \n\\n\\n\---\n\\n\`module m2 #(\n\    parameter i = 1,\n\    localparam j = i,\n\    parameter type x_t = bit\n\)\n\    (input int a[], (* bar = "asdf" *) output logic b = 1, ref c,\n\    input p::y2 d2,\n\     interface.mod d, .e());`
+    ^^ Ref -> ### Definition`m2`  \n\\n\\n\---\n\\n\`module m2 #(\n\    parameter i = 1,\n\    localparam j = i,\n\    parameter type x_t = bit\n\)\n\    (input int a[], (* bar = "asdf" *) output logic b = 1, ref c,\n\    input p::y2 d2,\n\     interface.mod d, .e());`
 
         .i(1),
-         ^ Ref -> **Parameter** `i` in `m2`  \n\Type: `logic signed[31:0]`  \n\Value: `1`  \n\\n\\n\---\n\\n\`parameter i = 1`
+         ^ Ref -> ### Parameter`i` in `m2`  \n\Type: `logic signed[31:0]`  \n\Value: `1`  \n\\n\\n\---\n\\n\`parameter i = 1`
 
         .x_t(y2)
-         ^^^ Ref -> **TypeAlias** `x_t` in `m2`  \n\Resolved Type: `x_t` (aka `logic[2:0]`)  \n\Resolved Width: `3`  \n\\n\\n\---\n\\n\`parameter type x_t = bit`
-             ^^ Ref -> **TypeAlias** `y2` in `m3`  \n\Resolved Type: `y2` (aka `logic[2:0]`)  \n\Resolved Width: `3`  \n\\n\\n\---\n\\n\`typedef p::y2 y2;`
+         ^^^ Ref -> ### TypeAlias`x_t` in `m2`  \n\Resolved Type: `x_t` (aka `logic[2:0]`)  \n\Resolved Width: `3`  \n\\n\\n\---\n\\n\`parameter type x_t = bit`
+             ^^ Ref -> ### TypeAlias`y2` in `m3`  \n\Resolved Type: `y2` (aka `logic[2:0]`)  \n\Resolved Width: `3`  \n\\n\\n\---\n\\n\`typedef p::y2 y2;`
 
     ) m2_inst (
       ^^^^^^^ Sym m2_inst : Instance
 
         .a({1, 2}),
-         ^ Ref -> **Variable** `a` in `m2`  \n\Type: `dynamic array of int`  \n\\n\\n\---\n\\n\`input int a[]`
+         ^ Ref -> ### Variable`a` in `m2`  \n\Type: `dynamic array of int`  \n\\n\\n\---\n\\n\`input int a[]`
 
         .b(b),
-         ^ Ref -> **Variable** `b` in `m2`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`(* bar = "asdf" *) output logic b = 1`
-           ^ Ref -> **Net** `b` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wire b;`
+         ^ Ref -> ### Variable`b` in `m2`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`(* bar = "asdf" *) output logic b = 1`
+           ^ Ref -> ### Net`b` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wire b;`
 
         .c(),
-         ^ Ref -> **Variable** `c` in `m2`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`ref c`
+         ^ Ref -> ### Variable`c` in `m2`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`ref c`
 
         .d(d),
-         ^ Ref -> **InterfacePort** `d` in `m2`  \n\\n\\n\---\n\\n\`interface.mod d`
-           ^ Ref -> **Instance** `d` in `m3`  \n\Type: I  \n\\n\\n\---\n\\n\`I d(.a(), .b());`
+         ^ Ref -> ### InterfacePort`d` in `m2`  \n\\n\\n\---\n\\n\`interface.mod d`
+           ^ Ref -> ### Instance`d` in `m3`  \n\Type: I  \n\\n\\n\---\n\\n\`I d(.a(), .b());`
 
         .e()
-         ^ Ref -> **Port** `e` in `m2`  \n\\n\\n\---\n\\n\`.e()`
+         ^ Ref -> ### Port`e` in `m2`  \n\\n\\n\---\n\\n\`.e()`
 
     );
 
@@ -245,7 +245,7 @@ macromodule m3;
               ^ Sym w : Net
 
     assign (supply0, weak1) #(1:0:1, 2:1:0) w = 2;
-                                            ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
+                                            ^ Ref -> ### Net`w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
 
 
 
@@ -254,9 +254,9 @@ macromodule m3;
           ^ Sym v : Net
 
     alias {u,v} = w;
-           ^ Ref -> **Net** `u` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wor u,v;`
-             ^ Ref -> **Net** `v` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wor u,v;`
-                  ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
+           ^ Ref -> ### Net`u` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wor u,v;`
+             ^ Ref -> ### Net`v` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wor u,v;`
+                  ^ Ref -> ### Net`w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
 
 
 
@@ -270,18 +270,18 @@ macromodule m3;
     initial begin
 
         repeat (3) @(negedge b) f = #2 1;
-                             ^ Ref -> **Net** `b` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wire b;`
-                                ^ Ref -> **Variable** `f` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic f, z;`
+                             ^ Ref -> ### Net`b` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wire b;`
+                                ^ Ref -> ### Variable`f` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic f, z;`
 
         wait (f) ++f;
-              ^ Ref -> **Variable** `f` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic f, z;`
-                   ^ Ref -> **Variable** `f` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic f, z;`
+              ^ Ref -> ### Variable`f` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic f, z;`
+                   ^ Ref -> ### Variable`f` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic f, z;`
 
         wait fork;
 
         wait_order (m3.ev) f++;
-                       ^^ Ref -> **Variable** `ev` in `m3`  \n\Type: `event`  \n\\n\\n\---\n\\n\`event ev;`
-                           ^ Ref -> **Variable** `f` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic f, z;`
+                       ^^ Ref -> ### Variable`ev` in `m3`  \n\Type: `event`  \n\\n\\n\---\n\\n\`event ev;`
+                           ^ Ref -> ### Variable`f` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic f, z;`
 
 
 
@@ -298,15 +298,15 @@ macromodule m3;
 
 
         disable m3.foo;
-                   ^^^ Ref -> **StatementBlock** `foo` in `m3`  \n\\n\\n\---\n\\n\`begin : foo\n\end : foo`
+                   ^^^ Ref -> ### StatementBlock`foo` in `m3`  \n\\n\\n\---\n\\n\`begin : foo\n\end : foo`
 
 
 
         assign z = 1;
-               ^ Ref -> **Variable** `z` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic f, z;`
+               ^ Ref -> ### Variable`z` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic f, z;`
 
         deassign z;
-                 ^ Ref -> **Variable** `z` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic f, z;`
+                 ^ Ref -> ### Variable`z` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic f, z;`
 
 
 
@@ -315,7 +315,7 @@ macromodule m3;
 
 
         unique0 casex (w)
-                       ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
+                       ^ Ref -> ### Net`w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
 
             0, 1: ;
 
@@ -326,7 +326,7 @@ macromodule m3;
 
 
         case (w) inside
-              ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
+              ^ Ref -> ### Net`w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
 
             [0: 3]: ;
 
@@ -337,13 +337,13 @@ macromodule m3;
 
 
     always_ff @(posedge b iff f == 1) begin
-                        ^ Ref -> **Net** `b` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wire b;`
-                              ^ Ref -> **Variable** `f` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic f, z;`
+                        ^ Ref -> ### Net`b` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wire b;`
+                              ^ Ref -> ### Variable`f` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic f, z;`
 
         forever break;
 
         repeat (f + 2) continue;
-                ^ Ref -> **Variable** `f` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic f, z;`
+                ^ Ref -> ### Variable`f` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic f, z;`
 
         while (1)
 
@@ -352,14 +352,14 @@ macromodule m3;
         for (int i = 0, j = i; i < 10; i += 2, j += i) begin end
                  ^ Sym i : Variable
                         ^ Sym j : Variable
-                            ^ Ref -> **Variable** `i` in `m3`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int i = 0`
-                               ^ Ref -> **Variable** `i` in `m3`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int i = 0`
-                                       ^ Ref -> **Variable** `i` in `m3`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int i = 0`
-                                               ^ Ref -> **Variable** `j` in `m3`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`j = i`
-                                                    ^ Ref -> **Variable** `i` in `m3`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int i = 0`
+                            ^ Ref -> ### Variable`i` in `m3`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int i = 0`
+                               ^ Ref -> ### Variable`i` in `m3`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int i = 0`
+                                       ^ Ref -> ### Variable`i` in `m3`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int i = 0`
+                                               ^ Ref -> ### Variable`j` in `m3`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`j = i`
+                                                    ^ Ref -> ### Variable`i` in `m3`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int i = 0`
 
         foreach (w[q]) begin end
-                 ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
+                 ^ Ref -> ### Net`w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
 
     end
 
@@ -417,11 +417,11 @@ macromodule m3;
 
 
         VInt v;
-        ^^^^ Ref -> **TypeAlias** `VInt` in `m3`  \n\Resolved Type: UnpackedUnion `VInt`  \n\\n\\n\---\n\\n\`typedef union tagged {\n\    void Invalid;\n\    int Valid;\n\} VInt;`
+        ^^^^ Ref -> ### TypeAlias`VInt` in `m3`  \n\Resolved Type: UnpackedUnion `VInt`  \n\\n\\n\---\n\\n\`typedef union tagged {\n\    void Invalid;\n\    int Valid;\n\} VInt;`
              ^ Sym v : Variable
 
         Instr instr;
-        ^^^^^ Ref -> **TypeAlias** `Instr` in `m3`  \n\Resolved Type: UnpackedUnion `Instr`  \n\\n\\n\---\n\\n\`typedef union tagged {\n\    struct {\n\        bit [4:0] reg1, reg2, regd;\n\    } Add;\n\    union tagged {\n\        bit [9:0] JmpU;\n\        struct {\n\            bit [1:0] cc;\n\            bit [9:0] addr;\n\        } JmpC;\n\    } Jmp;\n\} Instr;`
+        ^^^^^ Ref -> ### TypeAlias`Instr` in `m3`  \n\Resolved Type: UnpackedUnion `Instr`  \n\\n\\n\---\n\\n\`typedef union tagged {\n\    struct {\n\        bit [4:0] reg1, reg2, regd;\n\    } Add;\n\    union tagged {\n\        bit [9:0] JmpU;\n\        struct {\n\            bit [1:0] cc;\n\            bit [9:0] addr;\n\        } JmpC;\n\    } Jmp;\n\} Instr;`
               ^^^^^ Sym instr : Variable
 
         automatic int rf[] = new [3];
@@ -433,25 +433,25 @@ macromodule m3;
 
 
         case (v) matches
-              ^ Ref -> **Variable** `v` in `m3`  \n\Type: UnpackedUnion `VInt`  \n\\n\\n\---\n\\n\`VInt v;`
+              ^ Ref -> ### Variable`v` in `m3`  \n\Type: UnpackedUnion `VInt`  \n\\n\\n\---\n\\n\`VInt v;`
 
             tagged Invalid &&& ~w : $display ("v is Invalid");
-                                ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
+                                ^ Ref -> ### Net`w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
 
             tagged Valid .n : $display ("v is Valid with value %d", n);
                           ^ Sym n : PatternVar
-                                                                    ^ Ref -> **PatternVar** `n` in `m3`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`.n`
+                                                                    ^ Ref -> ### PatternVar`n` in `m3`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`.n`
 
         endcase
 
 
 
         case (instr) matches
-              ^^^^^ Ref -> **Variable** `instr` in `m3`  \n\Type: UnpackedUnion `Instr`  \n\\n\\n\---\n\\n\`Instr instr;`
+              ^^^^^ Ref -> ### Variable`instr` in `m3`  \n\Type: UnpackedUnion `Instr`  \n\\n\\n\---\n\\n\`Instr instr;`
 
             tagged Add .s: case (s) matches
                         ^ Sym s : PatternVar
-                                 ^ Ref -> **PatternVar** `s` in `m3`  \n\Type: UnpackedStruct `<unnamed unpacked struct>`  \n\\n\\n\---\n\\n\`.s`
+                                 ^ Ref -> ### PatternVar`s` in `m3`  \n\Type: UnpackedStruct `<unnamed unpacked struct>`  \n\\n\\n\---\n\\n\`.s`
 
                             '{.*, .*, 0} : ; // no op
 
@@ -459,32 +459,32 @@ macromodule m3;
                                ^^ Sym r1 : PatternVar
                                     ^^ Sym r2 : PatternVar
                                          ^^ Sym rd : PatternVar
-                                               ^^ Ref -> **Variable** `rf` in `m3`  \n\Type: `dynamic array of int`  \n\\n\\n\---\n\\n\`automatic int rf[] = new [3];`
-                                                  ^^ Ref -> **PatternVar** `rd` in `m3`  \n\Type: `bit[4:0]`  \n\Width: `5`  \n\\n\\n\---\n\\n\`.rd`
-                                                        ^^ Ref -> **Variable** `rf` in `m3`  \n\Type: `dynamic array of int`  \n\\n\\n\---\n\\n\`automatic int rf[] = new [3];`
-                                                           ^^ Ref -> **PatternVar** `r1` in `m3`  \n\Type: `bit[4:0]`  \n\Width: `5`  \n\\n\\n\---\n\\n\`.r1`
-                                                                 ^^ Ref -> **Variable** `rf` in `m3`  \n\Type: `dynamic array of int`  \n\\n\\n\---\n\\n\`automatic int rf[] = new [3];`
-                                                                    ^^ Ref -> **PatternVar** `r2` in `m3`  \n\Type: `bit[4:0]`  \n\Width: `5`  \n\\n\\n\---\n\\n\`.r2`
+                                               ^^ Ref -> ### Variable`rf` in `m3`  \n\Type: `dynamic array of int`  \n\\n\\n\---\n\\n\`automatic int rf[] = new [3];`
+                                                  ^^ Ref -> ### PatternVar`rd` in `m3`  \n\Type: `bit[4:0]`  \n\Width: `5`  \n\\n\\n\---\n\\n\`.rd`
+                                                        ^^ Ref -> ### Variable`rf` in `m3`  \n\Type: `dynamic array of int`  \n\\n\\n\---\n\\n\`automatic int rf[] = new [3];`
+                                                           ^^ Ref -> ### PatternVar`r1` in `m3`  \n\Type: `bit[4:0]`  \n\Width: `5`  \n\\n\\n\---\n\\n\`.r1`
+                                                                 ^^ Ref -> ### Variable`rf` in `m3`  \n\Type: `dynamic array of int`  \n\\n\\n\---\n\\n\`automatic int rf[] = new [3];`
+                                                                    ^^ Ref -> ### PatternVar`r2` in `m3`  \n\Type: `bit[4:0]`  \n\Width: `5`  \n\\n\\n\---\n\\n\`.r2`
 
                           endcase
 
             tagged Jmp .j: case (j) matches
                         ^ Sym j : PatternVar
-                                 ^ Ref -> **PatternVar** `j` in `m3`  \n\Type: UnpackedUnion `<unnamed unpacked union>`  \n\\n\\n\---\n\\n\`.j`
+                                 ^ Ref -> ### PatternVar`j` in `m3`  \n\Type: UnpackedUnion `<unnamed unpacked union>`  \n\\n\\n\---\n\\n\`.j`
 
                             tagged JmpU .a : pc = pc + a;
                                          ^ Sym a : PatternVar
-                                             ^^ Ref -> **Variable** `pc` in `m3`  \n\Type: `longint`  \n\Width: `64`  \n\\n\\n\---\n\\n\`static longint pc = 'x;`
-                                                  ^^ Ref -> **Variable** `pc` in `m3`  \n\Type: `longint`  \n\Width: `64`  \n\\n\\n\---\n\\n\`static longint pc = 'x;`
-                                                       ^ Ref -> **PatternVar** `a` in `m3`  \n\Type: `bit[9:0]`  \n\Width: `10`  \n\\n\\n\---\n\\n\`.a`
+                                             ^^ Ref -> ### Variable`pc` in `m3`  \n\Type: `longint`  \n\Width: `64`  \n\\n\\n\---\n\\n\`static longint pc = 'x;`
+                                                  ^^ Ref -> ### Variable`pc` in `m3`  \n\Type: `longint`  \n\Width: `64`  \n\\n\\n\---\n\\n\`static longint pc = 'x;`
+                                                       ^ Ref -> ### PatternVar`a` in `m3`  \n\Type: `bit[9:0]`  \n\Width: `10`  \n\\n\\n\---\n\\n\`.a`
 
                             tagged JmpC '{.c, .a} : if (rf[c]) pc = a;
                                            ^ Sym c : PatternVar
                                                ^ Sym a : PatternVar
-                                                        ^^ Ref -> **Variable** `rf` in `m3`  \n\Type: `dynamic array of int`  \n\\n\\n\---\n\\n\`automatic int rf[] = new [3];`
-                                                           ^ Ref -> **PatternVar** `c` in `m3`  \n\Type: `bit[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`.c`
-                                                               ^^ Ref -> **Variable** `pc` in `m3`  \n\Type: `longint`  \n\Width: `64`  \n\\n\\n\---\n\\n\`static longint pc = 'x;`
-                                                                    ^ Ref -> **PatternVar** `a` in `m3`  \n\Type: `bit[9:0]`  \n\Width: `10`  \n\\n\\n\---\n\\n\`.a`
+                                                        ^^ Ref -> ### Variable`rf` in `m3`  \n\Type: `dynamic array of int`  \n\\n\\n\---\n\\n\`automatic int rf[] = new [3];`
+                                                           ^ Ref -> ### PatternVar`c` in `m3`  \n\Type: `bit[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`.c`
+                                                               ^^ Ref -> ### Variable`pc` in `m3`  \n\Type: `longint`  \n\Width: `64`  \n\\n\\n\---\n\\n\`static longint pc = 'x;`
+                                                                    ^ Ref -> ### PatternVar`a` in `m3`  \n\Type: `bit[9:0]`  \n\Width: `10`  \n\\n\\n\---\n\\n\`.a`
 
                            endcase
 
@@ -493,27 +493,27 @@ macromodule m3;
 
 
         if (instr matches (tagged Jmp .j) &&&
-            ^^^^^ Ref -> **Variable** `instr` in `m3`  \n\Type: UnpackedUnion `Instr`  \n\\n\\n\---\n\\n\`Instr instr;`
+            ^^^^^ Ref -> ### Variable`instr` in `m3`  \n\Type: UnpackedUnion `Instr`  \n\\n\\n\---\n\\n\`Instr instr;`
                                        ^ Sym j : PatternVar
 
             j matches (tagged JmpC '{cc:.c,addr:.a})) begin
-            ^ Ref -> **PatternVar** `j` in `m3`  \n\Type: UnpackedUnion `<unnamed unpacked union>`  \n\\n\\n\---\n\\n\`.j`
+            ^ Ref -> ### PatternVar`j` in `m3`  \n\Type: UnpackedUnion `<unnamed unpacked union>`  \n\\n\\n\---\n\\n\`.j`
                                          ^ Sym c : PatternVar
                                                  ^ Sym a : PatternVar
 
             pc = c[0] & a[0];
-            ^^ Ref -> **Variable** `pc` in `m3`  \n\Type: `longint`  \n\Width: `64`  \n\\n\\n\---\n\\n\`static longint pc = 'x;`
-                 ^ Ref -> **PatternVar** `c` in `m3`  \n\Type: `bit[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`.c`
-                        ^ Ref -> **PatternVar** `a` in `m3`  \n\Type: `bit[9:0]`  \n\Width: `10`  \n\\n\\n\---\n\\n\`.a`
+            ^^ Ref -> ### Variable`pc` in `m3`  \n\Type: `longint`  \n\Width: `64`  \n\\n\\n\---\n\\n\`static longint pc = 'x;`
+                 ^ Ref -> ### PatternVar`c` in `m3`  \n\Type: `bit[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`.c`
+                        ^ Ref -> ### PatternVar`a` in `m3`  \n\Type: `bit[9:0]`  \n\Width: `10`  \n\\n\\n\---\n\\n\`.a`
 
             pc = instr matches (tagged Jmp .j) &&&
-            ^^ Ref -> **Variable** `pc` in `m3`  \n\Type: `longint`  \n\Width: `64`  \n\\n\\n\---\n\\n\`static longint pc = 'x;`
-                 ^^^^^ Ref -> **Variable** `instr` in `m3`  \n\Type: UnpackedUnion `Instr`  \n\\n\\n\---\n\\n\`Instr instr;`
+            ^^ Ref -> ### Variable`pc` in `m3`  \n\Type: `longint`  \n\Width: `64`  \n\\n\\n\---\n\\n\`static longint pc = 'x;`
+                 ^^^^^ Ref -> ### Variable`instr` in `m3`  \n\Type: UnpackedUnion `Instr`  \n\\n\\n\---\n\\n\`Instr instr;`
 
                   j matches (tagged JmpC '{cc:.c,addr:.a}) ? c[0] & a[0] : 0;
-                  ^ Ref -> **PatternVar** `j` in `m3`  \n\Type: UnpackedUnion `<unnamed unpacked union>`  \n\\n\\n\---\n\\n\`.j`
-                                                             ^ Ref -> **PatternVar** `c` in `m3`  \n\Type: `bit[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`.c`
-                                                                    ^ Ref -> **PatternVar** `a` in `m3`  \n\Type: `bit[9:0]`  \n\Width: `10`  \n\\n\\n\---\n\\n\`.a`
+                  ^ Ref -> ### PatternVar`j` in `m3`  \n\Type: UnpackedUnion `<unnamed unpacked union>`  \n\\n\\n\---\n\\n\`.j`
+                                                             ^ Ref -> ### PatternVar`c` in `m3`  \n\Type: `bit[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`.c`
+                                                                    ^ Ref -> ### PatternVar`a` in `m3`  \n\Type: `bit[9:0]`  \n\Width: `10`  \n\\n\\n\---\n\\n\`.a`
 
         end
 
@@ -535,11 +535,11 @@ macromodule m3;
            ^ Sym j : Genvar
 
     for (genvar i = 0; i < 10; i += 2)
-                       ^ Ref -> **Genvar** `i` in `m3.genblk1`  \n\\n\\n\---\n\\n\`i`
-                               ^ Ref -> **Genvar** `i` in `m3.genblk1`  \n\\n\\n\---\n\\n\`i`
+                       ^ Ref -> ### Genvar`i` in `m3.genblk1`  \n\\n\\n\---\n\\n\`i`
+                               ^ Ref -> ### Genvar`i` in `m3.genblk1`  \n\\n\\n\---\n\\n\`i`
 
         if (i == 7) begin
-            ^ Ref -> **Parameter** `i` in `m3.genblk1`  \n\Type: `integer`  \n\Value: `8`  \n\\n\\n\---\n\\n\`i`
+            ^ Ref -> ### Parameter`i` in `m3.genblk1`  \n\Type: `integer`  \n\Value: `8`  \n\\n\\n\---\n\\n\`i`
 
         end
 
@@ -552,7 +552,7 @@ macromodule m3;
     generate
 
         case ($bits(w))
-                    ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
+                    ^ Ref -> ### Net`w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
 
             0, 1: begin end
 
@@ -592,8 +592,8 @@ macromodule m3;
                       ^ Sym y : AssertionPort
 
             ##1 x |-> y;
-                ^ Ref -> **AssertionPort** `x` in `m3.genblk3.p1`  \n\\n\\n\---\n\\n\`x`
-                      ^ Ref -> **AssertionPort** `y` in `m3.genblk3.p1`  \n\\n\\n\---\n\\n\`y`
+                ^ Ref -> ### AssertionPort`x` in `m3.genblk3.p1`  \n\\n\\n\---\n\\n\`x`
+                      ^ Ref -> ### AssertionPort`y` in `m3.genblk3.p1`  \n\\n\\n\---\n\\n\`y`
 
         endproperty
 
@@ -606,66 +606,66 @@ macromodule m3;
                  ^^ Sym p2 : Property
 
             @(posedge clk)
-                      ^^^ Ref -> **Net** `clk` in `m3.genblk3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wire clk;`
+                      ^^^ Ref -> ### Net`clk` in `m3.genblk3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wire clk;`
 
             a ##1 (b || c)[->1] |->
-            ^ Ref -> **Variable** `a` in `m3.genblk3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a,b,c,d,e,f;`
-                   ^ Ref -> **Variable** `b` in `m3.genblk3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a,b,c,d,e,f;`
-                        ^ Ref -> **Variable** `c` in `m3.genblk3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a,b,c,d,e,f;`
+            ^ Ref -> ### Variable`a` in `m3.genblk3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a,b,c,d,e,f;`
+                   ^ Ref -> ### Variable`b` in `m3.genblk3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a,b,c,d,e,f;`
+                        ^ Ref -> ### Variable`c` in `m3.genblk3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a,b,c,d,e,f;`
 
                 if (b)
-                    ^ Ref -> **Variable** `b` in `m3.genblk3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a,b,c,d,e,f;`
+                    ^ Ref -> ### Variable`b` in `m3.genblk3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a,b,c,d,e,f;`
 
                     p1(d,e)
-                    ^^ Ref -> **Property** `p1` in `m3.genblk3`  \n\\n\\n\---\n\\n\`property p1(x,y);\n\    ##1 x |-> y;\n\endproperty`
-                       ^ Ref -> **Variable** `d` in `m3.genblk3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a,b,c,d,e,f;`
-                         ^ Ref -> **Variable** `e` in `m3.genblk3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a,b,c,d,e,f;`
+                    ^^ Ref -> ### Property`p1` in `m3.genblk3`  \n\\n\\n\---\n\\n\`property p1(x,y);\n\    ##1 x |-> y;\n\endproperty`
+                       ^ Ref -> ### Variable`d` in `m3.genblk3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a,b,c,d,e,f;`
+                         ^ Ref -> ### Variable`e` in `m3.genblk3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a,b,c,d,e,f;`
 
                 else
 
                     f;
-                    ^ Ref -> **Variable** `f` in `m3.genblk3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a,b,c,d,e,f;`
+                    ^ Ref -> ### Variable`f` in `m3.genblk3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a,b,c,d,e,f;`
 
         endproperty
 
         cover property (p2 and p2);
-                        ^^ Ref -> **Property** `p2` in `m3.genblk3`  \n\\n\\n\---\n\\n\`property p2;\n\    @(posedge clk)\n\    a ##1 (b || c)[->1] |->\n\        if (b)\n\            p1(d,e)\n\        else\n\            f;\n\endproperty`
-                               ^^ Ref -> **Property** `p2` in `m3.genblk3`  \n\\n\\n\---\n\\n\`property p2;\n\    @(posedge clk)\n\    a ##1 (b || c)[->1] |->\n\        if (b)\n\            p1(d,e)\n\        else\n\            f;\n\endproperty`
+                        ^^ Ref -> ### Property`p2` in `m3.genblk3`  \n\\n\\n\---\n\\n\`property p2;\n\    @(posedge clk)\n\    a ##1 (b || c)[->1] |->\n\        if (b)\n\            p1(d,e)\n\        else\n\            f;\n\endproperty`
+                               ^^ Ref -> ### Property`p2` in `m3.genblk3`  \n\\n\\n\---\n\\n\`property p2;\n\    @(posedge clk)\n\    a ##1 (b || c)[->1] |->\n\        if (b)\n\            p1(d,e)\n\        else\n\            f;\n\endproperty`
 
     end
 
 
 
     prim prim_inst(q, r);
-    ^^^^ Ref -> **Primitive** `prim`  \n\\n\\n\---\n\\n\`primitive prim(output reg a, input b);\n\    table\n\        0 : ? : 1;\n\        1 : 0 : x;\n\    endtable\n\endprimitive`
+    ^^^^ Ref -> ### Primitive`prim`  \n\\n\\n\---\n\\n\`primitive prim(output reg a, input b);\n\    table\n\        0 : ? : 1;\n\        1 : 0 : x;\n\    endtable\n\endprimitive`
          ^^^^^^^^^ Sym prim_inst : PrimitiveInstance
                    ^ Sym q : Net
                       ^ Sym r : Net
 
     rcmos #1step (q, r, s, t);
-                  ^ Ref -> **Net** `q` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`q`
-                     ^ Ref -> **Net** `r` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`r`
+                  ^ Ref -> ### Net`q` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`q`
+                     ^ Ref -> ### Net`r` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`r`
                         ^ Sym s : Net
                            ^ Sym t : Net
 
 
 
     defparam m3.m.i = 1:1:1;
-                ^ Ref -> **Instance** `m` in `m3`  \n\Type: m2  \n\\n\\n\---\n\\n\`m2 #(\n\    .x_t(y_t)\n\) m (, b, c, d, );`
-                  ^ Ref -> **Parameter** `i` in `m2`  \n\Type: `logic signed[31:0]`  \n\Value: `1`  \n\\n\\n\---\n\\n\`parameter i = 1`
+                ^ Ref -> ### Instance`m` in `m3`  \n\Type: m2  \n\\n\\n\---\n\\n\`m2 #(\n\    .x_t(y_t)\n\) m (, b, c, d, );`
+                  ^ Ref -> ### Parameter`i` in `m2`  \n\Type: `logic signed[31:0]`  \n\Value: `1`  \n\\n\\n\---\n\\n\`parameter i = 1`
 
 
 
     clocking cb @(r or s);
              ^^ Sym cb : ClockingBlock
-                  ^ Ref -> **Net** `r` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`r`
-                       ^ Ref -> **Net** `s` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`s`
+                  ^ Ref -> ### Net`r` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`r`
+                       ^ Ref -> ### Net`s` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`s`
 
         default input posedge #3ps;
 
         input a = t;
               ^ Sym a : ClockVar
-                  ^ Ref -> **Net** `t` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`t`
+                  ^ Ref -> ### Net`t` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`t`
 
     endclocking
 
@@ -673,7 +673,7 @@ macromodule m3;
 
     global clocking cb2 @t; endclocking
                     ^^^ Sym cb2 : ClockingBlock
-                         ^ Ref -> **Net** `t` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`t`
+                         ^ Ref -> ### Net`t` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`t`
 
 
 
@@ -684,31 +684,31 @@ macromodule m3;
 
 
 endmodule : m3
-            ^^ Ref -> **Definition** `m3`  \n\\n\\n\---\n\\n\`macromodule m3;`
+            ^^ Ref -> ### Definition`m3`  \n\\n\\n\---\n\\n\`macromodule m3;`
 
 
 
 extern program p(a, b);
-               ^ Ref -> **Definition** `p`  \n\\n\\n\---\n\\n\`program p(a, b);`
+               ^ Ref -> ### Definition`p`  \n\\n\\n\---\n\\n\`program p(a, b);`
 
 
 
 program p(a, b);
         ^ Sym p : Definition
-          ^ Ref -> **Net** `a` in `p`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input a, b;`
-             ^ Ref -> **Net** `b` in `p`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input a, b;`
+          ^ Ref -> ### Net`a` in `p`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input a, b;`
+             ^ Ref -> ### Net`b` in `p`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input a, b;`
 
     input a, b;
           ^ Sym a : Net
              ^ Sym b : Net
 
 endprogram : p
-             ^ Ref -> **Definition** `p`  \n\\n\\n\---\n\\n\`program p(a, b);`
+             ^ Ref -> ### Definition`p`  \n\\n\\n\---\n\\n\`program p(a, b);`
 
 
 
 extern primitive prim(output reg a, input b);
-                 ^^^^ Ref -> **Primitive** `prim`  \n\\n\\n\---\n\\n\`primitive prim(output reg a, input b);\n\    table\n\        0 : ? : 1;\n\        1 : 0 : x;\n\    endtable\n\endprimitive`
+                 ^^^^ Ref -> ### Primitive`prim`  \n\\n\\n\---\n\\n\`primitive prim(output reg a, input b);\n\    table\n\        0 : ? : 1;\n\        1 : 0 : x;\n\    endtable\n\endprimitive`
 
 
 
@@ -730,8 +730,8 @@ endprimitive
 
 
 (* attr = 3.14 *) bind m3.m m1 #(1) bound('x, , , );
-                          ^ Ref -> **Instance** `m` in `m3`  \n\Type: m2  \n\\n\\n\---\n\\n\`m2 #(\n\    .x_t(y_t)\n\) m (, b, c, d, );`
-                            ^^ Ref -> **Definition** `m1`  \n\\n\\n\---\n\\n\`module automatic m1 import p::*; #(int i = 1)\n\(a, b, , .c({a, b[0]}));`
+                          ^ Ref -> ### Instance`m` in `m3`  \n\Type: m2  \n\\n\\n\---\n\\n\`m2 #(\n\    .x_t(y_t)\n\) m (, b, c, d, );`
+                            ^^ Ref -> ### Definition`m1`  \n\\n\\n\---\n\\n\`module automatic m1 import p::*; #(int i = 1)\n\(a, b, , .c({a, b[0]}));`
                                     ^^^^^ Sym bound : Instance
 
 
@@ -743,13 +743,13 @@ config cfg;
                ^ Sym i : Parameter
 
     design work.m3;
-                ^^ Ref -> **Definition** `m3`  \n\\n\\n\---\n\\n\`macromodule m3;`
+                ^^ Ref -> ### Definition`m3`  \n\\n\\n\---\n\\n\`macromodule m3;`
 
     default liblist a b;
 
     cell m3 use work.m3;
-         ^^ Ref -> **Definition** `m3`  \n\\n\\n\---\n\\n\`macromodule m3;`
-                     ^^ Ref -> **Definition** `m3`  \n\\n\\n\---\n\\n\`macromodule m3;`
+         ^^ Ref -> ### Definition`m3`  \n\\n\\n\---\n\\n\`macromodule m3;`
+                     ^^ Ref -> ### Definition`m3`  \n\\n\\n\---\n\\n\`macromodule m3;`
 
 endconfig
 
@@ -757,10 +757,10 @@ endconfig
 
 module ALU (o1, i1, i2, opcode);
        ^^^ Sym ALU : Definition
-            ^^ Ref -> **Net** `o1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`output [7:0] o1;`
-                ^^ Ref -> **Net** `i1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
-                    ^^ Ref -> **Net** `i2` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
-                        ^^^^^^ Ref -> **Net** `opcode` in `ALU`  \n\Type: `logic[2:1]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`input [2:1] opcode;`
+            ^^ Ref -> ### Net`o1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`output [7:0] o1;`
+                ^^ Ref -> ### Net`i1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
+                    ^^ Ref -> ### Net`i2` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
+                        ^^^^^^ Ref -> ### Net`opcode` in `ALU`  \n\Type: `logic[2:1]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`input [2:1] opcode;`
 
     input [7:0] i1, i2;
                 ^^ Sym i1 : Net
@@ -780,25 +780,25 @@ module ALU (o1, i1, i2, opcode);
                   ^^ Sym s1 : Specparam
 
         if (opcode == 2'b00) (i1,i2 *> o1) = (25.0, 25.0);
-            ^^^^^^ Ref -> **Net** `opcode` in `ALU`  \n\Type: `logic[2:1]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`input [2:1] opcode;`
-                              ^^ Ref -> **Net** `i1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
-                                 ^^ Ref -> **Net** `i2` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
-                                       ^^ Ref -> **Net** `o1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`output [7:0] o1;`
+            ^^^^^^ Ref -> ### Net`opcode` in `ALU`  \n\Type: `logic[2:1]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`input [2:1] opcode;`
+                              ^^ Ref -> ### Net`i1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
+                                 ^^ Ref -> ### Net`i2` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
+                                       ^^ Ref -> ### Net`o1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`output [7:0] o1;`
 
         if (opcode == 2'b01) (i1 => o1) = (5.6, 8.0);
-            ^^^^^^ Ref -> **Net** `opcode` in `ALU`  \n\Type: `logic[2:1]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`input [2:1] opcode;`
-                              ^^ Ref -> **Net** `i1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
-                                    ^^ Ref -> **Net** `o1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`output [7:0] o1;`
+            ^^^^^^ Ref -> ### Net`opcode` in `ALU`  \n\Type: `logic[2:1]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`input [2:1] opcode;`
+                              ^^ Ref -> ### Net`i1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
+                                    ^^ Ref -> ### Net`o1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`output [7:0] o1;`
 
         if (opcode == s1) (i2 => o1) = (5.6, 8.0);
-            ^^^^^^ Ref -> **Net** `opcode` in `ALU`  \n\Type: `logic[2:1]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`input [2:1] opcode;`
-                      ^^ Ref -> **Specparam** `s1` in `ALU`  \n\Type: `logic signed[31:0]`  \n\Width: `32`  \n\\n\\n\---\n\\n\`s1 = 2`
-                           ^^ Ref -> **Net** `i2` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
-                                 ^^ Ref -> **Net** `o1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`output [7:0] o1;`
+            ^^^^^^ Ref -> ### Net`opcode` in `ALU`  \n\Type: `logic[2:1]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`input [2:1] opcode;`
+                      ^^ Ref -> ### Specparam`s1` in `ALU`  \n\Type: `logic signed[31:0]`  \n\Width: `32`  \n\\n\\n\---\n\\n\`s1 = 2`
+                           ^^ Ref -> ### Net`i2` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
+                                 ^^ Ref -> ### Net`o1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`output [7:0] o1;`
 
         (opcode *> o1) = (6.1, 6.5);
-         ^^^^^^ Ref -> **Net** `opcode` in `ALU`  \n\Type: `logic[2:1]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`input [2:1] opcode;`
-                   ^^ Ref -> **Net** `o1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`output [7:0] o1;`
+         ^^^^^^ Ref -> ### Net`opcode` in `ALU`  \n\Type: `logic[2:1]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`input [2:1] opcode;`
+                   ^^ Ref -> ### Net`o1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`output [7:0] o1;`
 
     endspecify
 
@@ -841,38 +841,38 @@ endinterface
 
 module n(Iface.m a);
        ^ Sym n : Definition
-         ^^^^^ Ref -> **Definition** `Iface`  \n\\n\\n\---\n\\n\`interface Iface;`
-               ^ Ref -> **Modport** `m` in `Iface`  \n\\n\\n\---\n\\n\`modport m(export foo, function void bar(int, logic), task baz, export func);`
+         ^^^^^ Ref -> ### Definition`Iface`  \n\\n\\n\---\n\\n\`interface Iface;`
+               ^ Ref -> ### Modport`m` in `Iface`  \n\\n\\n\---\n\\n\`modport m(export foo, function void bar(int, logic), task baz, export func);`
                  ^ Sym a : InterfacePort
 
     initial begin
 
         a.foo(42, 3.14);
-        ^ Ref -> **InterfacePort** `a` in `n`  \n\\n\\n\---\n\\n\`Iface.m a`
+        ^ Ref -> ### InterfacePort`a` in `n`  \n\\n\\n\---\n\\n\`Iface.m a`
 
         a.bar(1, 1);
-        ^ Ref -> **InterfacePort** `a` in `n`  \n\\n\\n\---\n\\n\`Iface.m a`
+        ^ Ref -> ### InterfacePort`a` in `n`  \n\\n\\n\---\n\\n\`Iface.m a`
 
         a.baz();
-        ^ Ref -> **InterfacePort** `a` in `n`  \n\\n\\n\---\n\\n\`Iface.m a`
+        ^ Ref -> ### InterfacePort`a` in `n`  \n\\n\\n\---\n\\n\`Iface.m a`
 
     end
 
 
 
     function void a.bar(int i, logic l); endfunction
-                  ^ Ref -> **InterfacePort** `a` in `n`  \n\\n\\n\---\n\\n\`Iface.m a`
+                  ^ Ref -> ### InterfacePort`a` in `n`  \n\\n\\n\---\n\\n\`Iface.m a`
 
     task a.baz; endtask
-         ^ Ref -> **InterfacePort** `a` in `n`  \n\\n\\n\---\n\\n\`Iface.m a`
+         ^ Ref -> ### InterfacePort`a` in `n`  \n\\n\\n\---\n\\n\`Iface.m a`
 
     function void a.func(int i); endfunction
-                  ^ Ref -> **InterfacePort** `a` in `n`  \n\\n\\n\---\n\\n\`Iface.m a`
+                  ^ Ref -> ### InterfacePort`a` in `n`  \n\\n\\n\---\n\\n\`Iface.m a`
 
 
 
     function void a.foo(int i, real r);
-                  ^ Ref -> **InterfacePort** `a` in `n`  \n\\n\\n\---\n\\n\`Iface.m a`
+                  ^ Ref -> ### InterfacePort`a` in `n`  \n\\n\\n\---\n\\n\`Iface.m a`
 
     endfunction
 
@@ -884,25 +884,25 @@ module m4;
        ^^ Sym m4 : Definition
 
     Iface i1();
-    ^^^^^ Ref -> **Definition** `Iface`  \n\\n\\n\---\n\\n\`interface Iface;`
+    ^^^^^ Ref -> ### Definition`Iface`  \n\\n\\n\---\n\\n\`interface Iface;`
           ^^ Sym i1 : Instance
 
     n n1(i1);
-    ^ Ref -> **Definition** `n`  \n\\n\\n\---\n\\n\`module n(Iface.m a);`
+    ^ Ref -> ### Definition`n`  \n\\n\\n\---\n\\n\`module n(Iface.m a);`
       ^^ Sym n1 : Instance
-         ^^ Ref -> **Instance** `i1` in `m4`  \n\Type: Iface  \n\\n\\n\---\n\\n\`Iface i1();`
+         ^^ Ref -> ### Instance`i1` in `m4`  \n\Type: Iface  \n\\n\\n\---\n\\n\`Iface i1();`
 
 
 
     Iface i2();
-    ^^^^^ Ref -> **Definition** `Iface`  \n\\n\\n\---\n\\n\`interface Iface;`
+    ^^^^^ Ref -> ### Definition`Iface`  \n\\n\\n\---\n\\n\`interface Iface;`
           ^^ Sym i2 : Instance
 
     n n2(i2.m);
-    ^ Ref -> **Definition** `n`  \n\\n\\n\---\n\\n\`module n(Iface.m a);`
+    ^ Ref -> ### Definition`n`  \n\\n\\n\---\n\\n\`module n(Iface.m a);`
       ^^ Sym n2 : Instance
-         ^^ Ref -> **Instance** `i2` in `m4`  \n\Type: Iface  \n\\n\\n\---\n\\n\`Iface i2();`
-            ^ Ref -> **Modport** `m` in `Iface`  \n\\n\\n\---\n\\n\`modport m(export foo, function void bar(int, logic), task baz, export func);`
+         ^^ Ref -> ### Instance`i2` in `m4`  \n\Type: Iface  \n\\n\\n\---\n\\n\`Iface i2();`
+            ^ Ref -> ### Modport`m` in `Iface`  \n\\n\\n\---\n\\n\`modport m(export foo, function void bar(int, logic), task baz, export func);`
 
 
 
@@ -910,20 +910,20 @@ module m4;
                    ^^^ Sym baz : Parameter
 
     task i1.t2;
-         ^^ Ref -> **Instance** `i1` in `m4`  \n\Type: Iface  \n\\n\\n\---\n\\n\`Iface i1();`
+         ^^ Ref -> ### Instance`i1` in `m4`  \n\Type: Iface  \n\\n\\n\---\n\\n\`Iface i1();`
 
         static int i = baz;
-                       ^^^ Ref -> **Parameter** `baz` in `m4`  \n\Type: `int`  \n\Value: `3`  \n\\n\\n\---\n\\n\`localparam int baz = 3`
+                       ^^^ Ref -> ### Parameter`baz` in `m4`  \n\Type: `int`  \n\Value: `3`  \n\\n\\n\---\n\\n\`localparam int baz = 3`
 
     endtask
 
 
 
     task i2.t2;
-         ^^ Ref -> **Instance** `i2` in `m4`  \n\Type: Iface  \n\\n\\n\---\n\\n\`Iface i2();`
+         ^^ Ref -> ### Instance`i2` in `m4`  \n\Type: Iface  \n\\n\\n\---\n\\n\`Iface i2();`
 
         static int i = baz;
-                       ^^^ Ref -> **Parameter** `baz` in `m4`  \n\Type: `int`  \n\Value: `3`  \n\\n\\n\---\n\\n\`localparam int baz = 3`
+                       ^^^ Ref -> ### Parameter`baz` in `m4`  \n\Type: `int`  \n\Value: `3`  \n\\n\\n\---\n\\n\`localparam int baz = 3`
 
     endtask
 
@@ -975,17 +975,17 @@ checker assert_window1 (
            ^^^^^^^^^ Sym error_msg : AssertionPort
 
     coverage_level clevel = cover_all
-    ^^^^^^^^^^^^^^ Ref -> **TypeAlias** `coverage_level`  \n\Resolved Type: Enum `coverage_level` (`bit[31:0]`)  \n\Resolved Width: `32`  \n\\n\\n\---\n\\n\`typedef enum { cover_none, cover_all } coverage_level;`
+    ^^^^^^^^^^^^^^ Ref -> ### TypeAlias`coverage_level`  \n\Resolved Type: Enum `coverage_level` (`bit[31:0]`)  \n\Resolved Width: `32`  \n\\n\\n\---\n\\n\`typedef enum { cover_none, cover_all } coverage_level;`
                    ^^^^^^ Sym clevel : AssertionPort
-                            ^^^^^^^^^ Ref -> **EnumValue** `cover_all` in `coverage_level`  \n\Value: `1`  \n\\n\\n\---\n\\n\`typedef enum { cover_none, cover_all } coverage_level;`
+                            ^^^^^^^^^ Ref -> ### EnumValue`cover_all` in `coverage_level`  \n\Value: `1`  \n\\n\\n\---\n\\n\`typedef enum { cover_none, cover_all } coverage_level;`
 
 );
 
     default clocking @clock; endclocking
-                      ^^^^^ Ref -> **AssertionPort** `clock` in `assert_window1`  \n\\n\\n\---\n\\n\`event clock = $inferred_clock`
+                      ^^^^^ Ref -> ### AssertionPort`clock` in `assert_window1`  \n\\n\\n\---\n\\n\`event clock = $inferred_clock`
 
     default disable iff reset;
-                        ^^^^^ Ref -> **AssertionPort** `reset` in `assert_window1`  \n\\n\\n\---\n\\n\`logic reset = $inferred_disable`
+                        ^^^^^ Ref -> ### AssertionPort`reset` in `assert_window1`  \n\\n\\n\---\n\\n\`logic reset = $inferred_disable`
 
     bit window = 1'b0, next_window = 1'b1;
         ^^^^^^ Sym window : Variable
@@ -999,36 +999,36 @@ checker assert_window1 (
     always_comb begin
 
         if (reset || window && end_event)
-            ^^^^^ Ref -> **AssertionPort** `reset` in `assert_window1`  \n\\n\\n\---\n\\n\`logic reset = $inferred_disable`
-                     ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
-                               ^^^^^^^^^ Ref -> **AssertionPort** `end_event` in `assert_window1`  \n\\n\\n\---\n\\n\`untyped end_event`
+            ^^^^^ Ref -> ### AssertionPort`reset` in `assert_window1`  \n\\n\\n\---\n\\n\`logic reset = $inferred_disable`
+                     ^^^^^^ Ref -> ### Variable`window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+                               ^^^^^^^^^ Ref -> ### AssertionPort`end_event` in `assert_window1`  \n\\n\\n\---\n\\n\`untyped end_event`
 
             next_window = 1'b0;
-            ^^^^^^^^^^^ Ref -> **Variable** `next_window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+            ^^^^^^^^^^^ Ref -> ### Variable`next_window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
 
         else if (!window && start_event)
-                  ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
-                            ^^^^^^^^^^^ Ref -> **AssertionPort** `start_event` in `assert_window1`  \n\\n\\n\---\n\\n\`untyped start_event`
+                  ^^^^^^ Ref -> ### Variable`window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+                            ^^^^^^^^^^^ Ref -> ### AssertionPort`start_event` in `assert_window1`  \n\\n\\n\---\n\\n\`untyped start_event`
 
             next_window = 1'b1;
-            ^^^^^^^^^^^ Ref -> **Variable** `next_window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+            ^^^^^^^^^^^ Ref -> ### Variable`next_window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
 
         else
 
             next_window = window;
-            ^^^^^^^^^^^ Ref -> **Variable** `next_window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
-                          ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+            ^^^^^^^^^^^ Ref -> ### Variable`next_window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+                          ^^^^^^ Ref -> ### Variable`window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
 
     end
 
 
 
     always_ff @clock
-               ^^^^^ Ref -> **AssertionPort** `clock` in `assert_window1`  \n\\n\\n\---\n\\n\`event clock = $inferred_clock`
+               ^^^^^ Ref -> ### AssertionPort`clock` in `assert_window1`  \n\\n\\n\---\n\\n\`event clock = $inferred_clock`
 
         window <= next_window;
-        ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
-                  ^^^^^^^^^^^ Ref -> **Variable** `next_window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+        ^^^^^^ Ref -> ### Variable`window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+                  ^^^^^^^^^^^ Ref -> ### Variable`next_window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
 
 
 
@@ -1036,10 +1036,10 @@ checker assert_window1 (
              ^^^^^^^^ Sym p_window : Property
 
         start_event && !window |=> test_expr[+] ##0 end_event;
-        ^^^^^^^^^^^ Ref -> **AssertionPort** `start_event` in `assert_window1`  \n\\n\\n\---\n\\n\`untyped start_event`
-                        ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
-                                   ^^^^^^^^^ Ref -> **AssertionPort** `test_expr` in `assert_window1`  \n\\n\\n\---\n\\n\`logic test_expr`
-                                                    ^^^^^^^^^ Ref -> **AssertionPort** `end_event` in `assert_window1`  \n\\n\\n\---\n\\n\`untyped end_event`
+        ^^^^^^^^^^^ Ref -> ### AssertionPort`start_event` in `assert_window1`  \n\\n\\n\---\n\\n\`untyped start_event`
+                        ^^^^^^ Ref -> ### Variable`window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+                                   ^^^^^^^^^ Ref -> ### AssertionPort`test_expr` in `assert_window1`  \n\\n\\n\---\n\\n\`logic test_expr`
+                                                    ^^^^^^^^^ Ref -> ### AssertionPort`end_event` in `assert_window1`  \n\\n\\n\---\n\\n\`untyped end_event`
 
     endproperty
 
@@ -1047,20 +1047,20 @@ checker assert_window1 (
 
     a_window: assert property (p_window) else $error(error_msg);
     ^^^^^^^^ Sym a_window : StatementBlock
-                               ^^^^^^^^ Ref -> **Property** `p_window` in `assert_window1`  \n\\n\\n\---\n\\n\`property p_window;\n\    start_event && !window |=> test_expr[+] ##0 end_event;\n\endproperty`
-                                                     ^^^^^^^^^ Ref -> **AssertionPort** `error_msg` in `assert_window1`  \n\\n\\n\---\n\\n\`string error_msg = "violation"`
+                               ^^^^^^^^ Ref -> ### Property`p_window` in `assert_window1`  \n\\n\\n\---\n\\n\`property p_window;\n\    start_event && !window |=> test_expr[+] ##0 end_event;\n\endproperty`
+                                                     ^^^^^^^^^ Ref -> ### AssertionPort`error_msg` in `assert_window1`  \n\\n\\n\---\n\\n\`string error_msg = "violation"`
 
 
 
     generate if (clevel != cover_none) begin : cover_b
-                 ^^^^^^ Ref -> **AssertionPort** `clevel` in `assert_window1`  \n\\n\\n\---\n\\n\`coverage_level clevel = cover_all`
-                           ^^^^^^^^^^ Ref -> **EnumValue** `cover_none` in `coverage_level`  \n\Value: `0`  \n\\n\\n\---\n\\n\`typedef enum { cover_none, cover_all } coverage_level;`
+                 ^^^^^^ Ref -> ### AssertionPort`clevel` in `assert_window1`  \n\\n\\n\---\n\\n\`coverage_level clevel = cover_all`
+                           ^^^^^^^^^^ Ref -> ### EnumValue`cover_none` in `coverage_level`  \n\Value: `0`  \n\\n\\n\---\n\\n\`typedef enum { cover_none, cover_all } coverage_level;`
                                                ^^^^^^^ Sym cover_b : GenerateBlock
 
         cover_window_open: cover property (start_event && !window)
         ^^^^^^^^^^^^^^^^^ Sym cover_window_open : StatementBlock
-                                           ^^^^^^^^^^^ Ref -> **AssertionPort** `start_event` in `assert_window1`  \n\\n\\n\---\n\\n\`untyped start_event`
-                                                           ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+                                           ^^^^^^^^^^^ Ref -> ### AssertionPort`start_event` in `assert_window1`  \n\\n\\n\---\n\\n\`untyped start_event`
+                                                           ^^^^^^ Ref -> ### Variable`window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
 
         $display("window_open covered");
 
@@ -1068,16 +1068,16 @@ checker assert_window1 (
         ^^^^^^^^^^^^ Sym cover_window : StatementBlock
 
             start_event && !window
-            ^^^^^^^^^^^ Ref -> **AssertionPort** `start_event` in `assert_window1`  \n\\n\\n\---\n\\n\`untyped start_event`
-                            ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+            ^^^^^^^^^^^ Ref -> ### AssertionPort`start_event` in `assert_window1`  \n\\n\\n\---\n\\n\`untyped start_event`
+                            ^^^^^^ Ref -> ### Variable`window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
 
             ##1 (!end_event && window) [*]
-                  ^^^^^^^^^ Ref -> **AssertionPort** `end_event` in `assert_window1`  \n\\n\\n\---\n\\n\`untyped end_event`
-                               ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+                  ^^^^^^^^^ Ref -> ### AssertionPort`end_event` in `assert_window1`  \n\\n\\n\---\n\\n\`untyped end_event`
+                               ^^^^^^ Ref -> ### Variable`window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
 
             ##1 end_event && window
-                ^^^^^^^^^ Ref -> **AssertionPort** `end_event` in `assert_window1`  \n\\n\\n\---\n\\n\`untyped end_event`
-                             ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+                ^^^^^^^^^ Ref -> ### AssertionPort`end_event` in `assert_window1`  \n\\n\\n\---\n\\n\`untyped end_event`
+                             ^^^^^^ Ref -> ### Variable`window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
 
         ) $display("window covered");
 
@@ -1103,24 +1103,24 @@ module m5;
 
 
     default clocking @(posedge clk); endclocking
-                               ^^^ Ref -> **Variable** `clk` in `m5`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a, b, c, d, e, clk;`
+                               ^^^ Ref -> ### Variable`clk` in `m5`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a, b, c, d, e, clk;`
 
 
 
     assert_window1 aw1(1 + 1, a, b);
                    ^^^ Sym aw1 : CheckerInstance
-                              ^ Ref -> **Variable** `a` in `m5`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a, b, c, d, e, clk;`
-                                 ^ Ref -> **Variable** `b` in `m5`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a, b, c, d, e, clk;`
+                              ^ Ref -> ### Variable`a` in `m5`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a, b, c, d, e, clk;`
+                                 ^ Ref -> ### Variable`b` in `m5`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a, b, c, d, e, clk;`
 
 
 
     initial begin
 
         assert_window1 aw2(1 + 1, a, b);
-        ^^^^^^^^^^^^^^ Ref -> **Checker** `assert_window1`  \n\\n\\n\---\n\\n\`checker assert_window1 (\n\    logic test_expr,\n\    untyped start_event,\n\    untyped end_event,\n\    event clock = $inferred_clock,\n\    logic reset = $inferred_disable,\n\    string error_msg = "violation",\n\    coverage_level clevel = cover_all\n\);\n\    default clocking @clock; endclocking\n\    default disable iff reset;\n\    bit window = 1'b0, next_window = 1'b1;\n\    rand bit q;\n\    always_comb begin\n\        if (reset || window && end_event)\n\            next_window = 1'b0;\n\        else if (!window && start_event)\n\            next_window = 1'b1;\n\        else\n\            next_window = window;\n\    end\n\    always_ff @clock\n\        window <= next_window;\n\    property p_window;\n\        start_event && !window |=> test_expr[+] ##0 end_event;\n\    endproperty\n\    a_window: assert property (p_window) else $error(error_msg);\n\    generate if (clevel != cover_none) begin : cover_b\n\        cover_window_open: cover property (start_event && !window)\n\        $display("window_open covered");\n\        cover_window: cover property (\n\            start_event && !window\n\            ##1 (!end_event && window) [*]\n\            ##1 end_event && window\n\        ) $display("window covered");\n\    end : cover_b\n\    endgenerate\n\endchecker : assert_window1`
+        ^^^^^^^^^^^^^^ Ref -> ### Checker`assert_window1`  \n\\n\\n\---\n\\n\`checker assert_window1 (\n\    logic test_expr,\n\    untyped start_event,\n\    untyped end_event,\n\    event clock = $inferred_clock,\n\    logic reset = $inferred_disable,\n\    string error_msg = "violation",\n\    coverage_level clevel = cover_all\n\);\n\    default clocking @clock; endclocking\n\    default disable iff reset;\n\    bit window = 1'b0, next_window = 1'b1;\n\    rand bit q;\n\    always_comb begin\n\        if (reset || window && end_event)\n\            next_window = 1'b0;\n\        else if (!window && start_event)\n\            next_window = 1'b1;\n\        else\n\            next_window = window;\n\    end\n\    always_ff @clock\n\        window <= next_window;\n\    property p_window;\n\        start_event && !window |=> test_expr[+] ##0 end_event;\n\    endproperty\n\    a_window: assert property (p_window) else $error(error_msg);\n\    generate if (clevel != cover_none) begin : cover_b\n\        cover_window_open: cover property (start_event && !window)\n\        $display("window_open covered");\n\        cover_window: cover property (\n\            start_event && !window\n\            ##1 (!end_event && window) [*]\n\            ##1 end_event && window\n\        ) $display("window covered");\n\    end : cover_b\n\    endgenerate\n\endchecker : assert_window1`
                        ^^^ Sym aw2 : CheckerInstance
-                                  ^ Ref -> **Variable** `a` in `m5`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a, b, c, d, e, clk;`
-                                     ^ Ref -> **Variable** `b` in `m5`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a, b, c, d, e, clk;`
+                                  ^ Ref -> ### Variable`a` in `m5`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a, b, c, d, e, clk;`
+                                     ^ Ref -> ### Variable`b` in `m5`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a, b, c, d, e, clk;`
 
     end
 
@@ -1130,10 +1130,10 @@ module m5;
              ^^^ Sym abc : Sequence
 
         @(posedge clk) a ##1 b ##1 c;
-                  ^^^ Ref -> **Variable** `clk` in `m5`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a, b, c, d, e, clk;`
-                       ^ Ref -> **Variable** `a` in `m5`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a, b, c, d, e, clk;`
-                             ^ Ref -> **Variable** `b` in `m5`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a, b, c, d, e, clk;`
-                                   ^ Ref -> **Variable** `c` in `m5`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a, b, c, d, e, clk;`
+                  ^^^ Ref -> ### Variable`clk` in `m5`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a, b, c, d, e, clk;`
+                       ^ Ref -> ### Variable`a` in `m5`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a, b, c, d, e, clk;`
+                             ^ Ref -> ### Variable`b` in `m5`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a, b, c, d, e, clk;`
+                                   ^ Ref -> ### Variable`c` in `m5`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a, b, c, d, e, clk;`
 
     endsequence
 
@@ -1143,9 +1143,9 @@ module m5;
              ^^ Sym de : Sequence
 
         @(negedge clk) d ##[2:5] e;
-                  ^^^ Ref -> **Variable** `clk` in `m5`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a, b, c, d, e, clk;`
-                       ^ Ref -> **Variable** `d` in `m5`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a, b, c, d, e, clk;`
-                                 ^ Ref -> **Variable** `e` in `m5`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a, b, c, d, e, clk;`
+                  ^^^ Ref -> ### Variable`clk` in `m5`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a, b, c, d, e, clk;`
+                       ^ Ref -> ### Variable`d` in `m5`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a, b, c, d, e, clk;`
+                                 ^ Ref -> ### Variable`e` in `m5`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic a, b, c, d, e, clk;`
 
     endsequence
 
@@ -1157,16 +1157,16 @@ module m5;
         initial begin
 
             wait( abc.triggered || de.triggered );
-                  ^^^ Ref -> **Sequence** `abc` in `m5`  \n\\n\\n\---\n\\n\`sequence abc;\n\    @(posedge clk) a ##1 b ##1 c;\n\endsequence`
-                                   ^^ Ref -> **Sequence** `de` in `m5`  \n\\n\\n\---\n\\n\`sequence de;\n\    @(negedge clk) d ##[2:5] e;\n\endsequence`
+                  ^^^ Ref -> ### Sequence`abc` in `m5`  \n\\n\\n\---\n\\n\`sequence abc;\n\    @(posedge clk) a ##1 b ##1 c;\n\endsequence`
+                                   ^^ Ref -> ### Sequence`de` in `m5`  \n\\n\\n\---\n\\n\`sequence de;\n\    @(negedge clk) d ##[2:5] e;\n\endsequence`
 
             if( abc.triggered )
-                ^^^ Ref -> **Sequence** `abc` in `m5`  \n\\n\\n\---\n\\n\`sequence abc;\n\    @(posedge clk) a ##1 b ##1 c;\n\endsequence`
+                ^^^ Ref -> ### Sequence`abc` in `m5`  \n\\n\\n\---\n\\n\`sequence abc;\n\    @(posedge clk) a ##1 b ##1 c;\n\endsequence`
 
                 $display( "abc succeeded" );
 
             if( de.triggered )
-                ^^ Ref -> **Sequence** `de` in `m5`  \n\\n\\n\---\n\\n\`sequence de;\n\    @(negedge clk) d ##[2:5] e;\n\endsequence`
+                ^^ Ref -> ### Sequence`de` in `m5`  \n\\n\\n\---\n\\n\`sequence de;\n\    @(negedge clk) d ##[2:5] e;\n\endsequence`
 
                 $display( "de succeeded" );
 
@@ -1244,7 +1244,7 @@ endfunction
 
 class H #(int p);
       ^ Sym H : GenericClassDef
-              ^ Ref -> **Definition** `p`  \n\\n\\n\---\n\\n\`program p(a, b);`
+              ^ Ref -> ### Definition`p`  \n\\n\\n\---\n\\n\`program p(a, b);`
 
     extern function int foo;
 
@@ -1262,24 +1262,24 @@ module m7;
        ^^ Sym m7 : Definition
 
     G #(real) g1;
-    ^ Ref -> **ClassType** `G`  \n\Resolved Type: `G`  \n\\n\\n\---\n\\n\`class G #(type T);\n\    extern function T foo;\n\endclass`
+    ^ Ref -> ### ClassType`G`  \n\Resolved Type: `G`  \n\\n\\n\---\n\\n\`class G #(type T);\n\    extern function T foo;\n\endclass`
               ^^ Sym g1 : Variable
 
     G #(int) g2;
-    ^ Ref -> **ClassType** `G`  \n\Resolved Type: `G`  \n\\n\\n\---\n\\n\`class G #(type T);\n\    extern function T foo;\n\endclass`
+    ^ Ref -> ### ClassType`G`  \n\Resolved Type: `G`  \n\\n\\n\---\n\\n\`class G #(type T);\n\    extern function T foo;\n\endclass`
              ^^ Sym g2 : Variable
 
 
 
     int i = g2.foo();
         ^ Sym i : Variable
-            ^^ Ref -> **Variable** `g2` in `m7`  \n\Type: `G`  \n\\n\\n\---\n\\n\`G #(int) g2;`
-               ^^^ Ref -> **Subroutine** `foo` in `G`  \n\\n\\n\---\n\\n\`function G::T G::foo;\n\    return 0;\n\endfunction`
+            ^^ Ref -> ### Variable`g2` in `m7`  \n\Type: `G`  \n\\n\\n\---\n\\n\`G #(int) g2;`
+               ^^^ Ref -> ### Subroutine`foo` in `G`  \n\\n\\n\---\n\\n\`function G::T G::foo;\n\    return 0;\n\endfunction`
 
     real r = D::foo();
          ^ Sym r : Variable
-             ^ Ref -> **ClassType** `D`  \n\Resolved Type: `D`  \n\\n\\n\---\n\\n\`class D;\n\    extern static function real foo;\n\endclass`
-                ^^^ Ref -> **Subroutine** `foo` in `D`  \n\\n\\n\---\n\\n\`function real D::foo;\n\endfunction`
+             ^ Ref -> ### ClassType`D`  \n\Resolved Type: `D`  \n\\n\\n\---\n\\n\`class D;\n\    extern static function real foo;\n\endclass`
+                ^^^ Ref -> ### Subroutine`foo` in `D`  \n\\n\\n\---\n\\n\`function real D::foo;\n\endfunction`
 
 endmodule
 
@@ -1298,7 +1298,7 @@ class A;
                      ^ Sym f : Subroutine
 
         f = i;
-            ^ Ref -> **ClassProperty** `i` in `A`  \n\Type: `integer`  \n\Width: `32`  \n\\n\\n\---\n\\n\`integer i = 1;`
+            ^ Ref -> ### ClassProperty`i` in `A`  \n\Type: `integer`  \n\Width: `32`  \n\\n\\n\---\n\\n\`integer i = 1;`
 
     endfunction
 
@@ -1308,7 +1308,7 @@ endclass
 
 class B extends A;
       ^ Sym B : ClassType
-                ^ Ref -> **ClassType** `A`  \n\Resolved Type: `A`  \n\\n\\n\---\n\\n\`class A;\n\    integer i = 1;\n\    integer j = 2;\n\    function integer f();\n\        f = i;\n\    endfunction\n\endclass`
+                ^ Ref -> ### ClassType`A`  \n\Resolved Type: `A`  \n\\n\\n\---\n\\n\`class A;\n\    integer i = 1;\n\    integer j = 2;\n\    function integer f();\n\        f = i;\n\    endfunction\n\endclass`
 
     integer i = 2;
             ^ Sym i : ClassProperty
@@ -1317,20 +1317,20 @@ class B extends A;
                   ^ Sym f : Subroutine
 
         i = j;
-        ^ Ref -> **ClassProperty** `i` in `B`  \n\Type: `integer`  \n\Width: `32`  \n\\n\\n\---\n\\n\`integer i = 2;`
-            ^ Ref -> **ClassProperty** `j` in `A`  \n\Type: `integer`  \n\Width: `32`  \n\\n\\n\---\n\\n\`integer j = 2;`
+        ^ Ref -> ### ClassProperty`i` in `B`  \n\Type: `integer`  \n\Width: `32`  \n\\n\\n\---\n\\n\`integer i = 2;`
+            ^ Ref -> ### ClassProperty`j` in `A`  \n\Type: `integer`  \n\Width: `32`  \n\\n\\n\---\n\\n\`integer j = 2;`
 
         super.i = super.j;
-              ^ Ref -> **ClassProperty** `i` in `A`  \n\Type: `integer`  \n\Width: `32`  \n\\n\\n\---\n\\n\`integer i = 1;`
-                        ^ Ref -> **ClassProperty** `j` in `A`  \n\Type: `integer`  \n\Width: `32`  \n\\n\\n\---\n\\n\`integer j = 2;`
+              ^ Ref -> ### ClassProperty`i` in `A`  \n\Type: `integer`  \n\Width: `32`  \n\\n\\n\---\n\\n\`integer i = 1;`
+                        ^ Ref -> ### ClassProperty`j` in `A`  \n\Type: `integer`  \n\Width: `32`  \n\\n\\n\---\n\\n\`integer j = 2;`
 
         j = super.f();
-        ^ Ref -> **ClassProperty** `j` in `A`  \n\Type: `integer`  \n\Width: `32`  \n\\n\\n\---\n\\n\`integer j = 2;`
-                  ^ Ref -> **Subroutine** `f` in `A`  \n\\n\\n\---\n\\n\`function integer f();\n\    f = i;\n\endfunction`
+        ^ Ref -> ### ClassProperty`j` in `A`  \n\Type: `integer`  \n\Width: `32`  \n\\n\\n\---\n\\n\`integer j = 2;`
+                  ^ Ref -> ### Subroutine`f` in `A`  \n\\n\\n\---\n\\n\`function integer f();\n\    f = i;\n\endfunction`
 
         j = this.super.f();
-        ^ Ref -> **ClassProperty** `j` in `A`  \n\Type: `integer`  \n\Width: `32`  \n\\n\\n\---\n\\n\`integer j = 2;`
-                       ^ Ref -> **Subroutine** `f` in `A`  \n\\n\\n\---\n\\n\`function integer f();\n\    f = i;\n\endfunction`
+        ^ Ref -> ### ClassProperty`j` in `A`  \n\Type: `integer`  \n\Width: `32`  \n\\n\\n\---\n\\n\`integer j = 2;`
+                       ^ Ref -> ### Subroutine`f` in `A`  \n\\n\\n\---\n\\n\`function integer f();\n\    f = i;\n\endfunction`
 
     endfunction
 
@@ -1340,21 +1340,21 @@ endclass
 
 class C2 extends B;
       ^^ Sym C2 : ClassType
-                 ^ Ref -> **ClassType** `B`  \n\Resolved Type: `B`  \n\\n\\n\---\n\\n\`class B extends A;\n\    integer i = 2;\n\    function void f();\n\        i = j;\n\        super.i = super.j;\n\        j = super.f();\n\        j = this.super.f();\n\    endfunction\n\endclass`
+                 ^ Ref -> ### ClassType`B`  \n\Resolved Type: `B`  \n\\n\\n\---\n\\n\`class B extends A;\n\    integer i = 2;\n\    function void f();\n\        i = j;\n\        super.i = super.j;\n\        j = super.f();\n\        j = this.super.f();\n\    endfunction\n\endclass`
 
     function void g();
                   ^ Sym g : Subroutine
 
         f();
-        ^ Ref -> **Subroutine** `f` in `B`  \n\\n\\n\---\n\\n\`function void f();\n\    i = j;\n\    super.i = super.j;\n\    j = super.f();\n\    j = this.super.f();\n\endfunction`
+        ^ Ref -> ### Subroutine`f` in `B`  \n\\n\\n\---\n\\n\`function void f();\n\    i = j;\n\    super.i = super.j;\n\    j = super.f();\n\    j = this.super.f();\n\endfunction`
 
         i = j + C::j + A::f();
-        ^ Ref -> **ClassProperty** `i` in `B`  \n\Type: `integer`  \n\Width: `32`  \n\\n\\n\---\n\\n\`integer i = 2;`
-            ^ Ref -> **ClassProperty** `j` in `A`  \n\Type: `integer`  \n\Width: `32`  \n\\n\\n\---\n\\n\`integer j = 2;`
-                ^ Ref -> **ClassType** `C`  \n\Resolved Type: `C`  \n\\n\\n\---\n\\n\`class C;\n\    int i;\n\    static int j;\n\    extern function int foo(int bar, int baz = 1);\n\endclass`
-                   ^ Ref -> **ClassProperty** `j` in `C`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int j;`
-                       ^ Ref -> **ClassType** `A`  \n\Resolved Type: `A`  \n\\n\\n\---\n\\n\`class A;\n\    integer i = 1;\n\    integer j = 2;\n\    function integer f();\n\        f = i;\n\    endfunction\n\endclass`
-                          ^ Ref -> **Subroutine** `f` in `A`  \n\\n\\n\---\n\\n\`function integer f();\n\    f = i;\n\endfunction`
+        ^ Ref -> ### ClassProperty`i` in `B`  \n\Type: `integer`  \n\Width: `32`  \n\\n\\n\---\n\\n\`integer i = 2;`
+            ^ Ref -> ### ClassProperty`j` in `A`  \n\Type: `integer`  \n\Width: `32`  \n\\n\\n\---\n\\n\`integer j = 2;`
+                ^ Ref -> ### ClassType`C`  \n\Resolved Type: `C`  \n\\n\\n\---\n\\n\`class C;\n\    int i;\n\    static int j;\n\    extern function int foo(int bar, int baz = 1);\n\endclass`
+                   ^ Ref -> ### ClassProperty`j` in `C`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int j;`
+                       ^ Ref -> ### ClassType`A`  \n\Resolved Type: `A`  \n\\n\\n\---\n\\n\`class A;\n\    integer i = 1;\n\    integer j = 2;\n\    function integer f();\n\        f = i;\n\    endfunction\n\endclass`
+                          ^ Ref -> ### Subroutine`f` in `A`  \n\\n\\n\---\n\\n\`function integer f();\n\    f = i;\n\endfunction`
 
     endfunction
 
@@ -1370,13 +1370,13 @@ class C2 extends B;
                ^^^^^^^ Sym value_c : ConstraintBlock
 
         value[63] dist {0 :/ 70, 1 :/ 30};
-        ^^^^^ Ref -> **ClassProperty** `value` in `C2`  \n\Type: `bit[63:0]`  \n\Width: `64`  \n\\n\\n\---\n\\n\`bit [63:0] value;`
+        ^^^^^ Ref -> ### ClassProperty`value` in `C2`  \n\Type: `bit[63:0]`  \n\Width: `64`  \n\\n\\n\---\n\\n\`bit [63:0] value;`
 
         value[0] == 1'b0;
-        ^^^^^ Ref -> **ClassProperty** `value` in `C2`  \n\Type: `bit[63:0]`  \n\Width: `64`  \n\\n\\n\---\n\\n\`bit [63:0] value;`
+        ^^^^^ Ref -> ### ClassProperty`value` in `C2`  \n\Type: `bit[63:0]`  \n\Width: `64`  \n\\n\\n\---\n\\n\`bit [63:0] value;`
 
         value[15:8] inside {
-        ^^^^^ Ref -> **ClassProperty** `value` in `C2`  \n\Type: `bit[63:0]`  \n\Width: `64`  \n\\n\\n\---\n\\n\`bit [63:0] value;`
+        ^^^^^ Ref -> ### ClassProperty`value` in `C2`  \n\Type: `bit[63:0]`  \n\Width: `64`  \n\\n\\n\---\n\\n\`bit [63:0] value;`
 
             8'h0,
 
@@ -1385,21 +1385,21 @@ class C2 extends B;
         };
 
         solve value before q;
-              ^^^^^ Ref -> **ClassProperty** `value` in `C2`  \n\Type: `bit[63:0]`  \n\Width: `64`  \n\\n\\n\---\n\\n\`bit [63:0] value;`
-                           ^ Ref -> **ClassProperty** `q` in `C2`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic q;`
+              ^^^^^ Ref -> ### ClassProperty`value` in `C2`  \n\Type: `bit[63:0]`  \n\Width: `64`  \n\\n\\n\---\n\\n\`bit [63:0] value;`
+                           ^ Ref -> ### ClassProperty`q` in `C2`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic q;`
 
         soft value[3:1] > 1;
-             ^^^^^ Ref -> **ClassProperty** `value` in `C2`  \n\Type: `bit[63:0]`  \n\Width: `64`  \n\\n\\n\---\n\\n\`bit [63:0] value;`
+             ^^^^^ Ref -> ### ClassProperty`value` in `C2`  \n\Type: `bit[63:0]`  \n\Width: `64`  \n\\n\\n\---\n\\n\`bit [63:0] value;`
 
         q -> { value[4] == 0; }
-        ^ Ref -> **ClassProperty** `q` in `C2`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic q;`
-               ^^^^^ Ref -> **ClassProperty** `value` in `C2`  \n\Type: `bit[63:0]`  \n\Width: `64`  \n\\n\\n\---\n\\n\`bit [63:0] value;`
+        ^ Ref -> ### ClassProperty`q` in `C2`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic q;`
+               ^^^^^ Ref -> ### ClassProperty`value` in `C2`  \n\Type: `bit[63:0]`  \n\Width: `64`  \n\\n\\n\---\n\\n\`bit [63:0] value;`
 
         if (q) { foreach (value[b]) { value[b] == 0; } } else { disable soft value; }
-            ^ Ref -> **ClassProperty** `q` in `C2`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic q;`
-                          ^^^^^ Ref -> **ClassProperty** `value` in `C2`  \n\Type: `bit[63:0]`  \n\Width: `64`  \n\\n\\n\---\n\\n\`bit [63:0] value;`
-                                      ^^^^^ Ref -> **ClassProperty** `value` in `C2`  \n\Type: `bit[63:0]`  \n\Width: `64`  \n\\n\\n\---\n\\n\`bit [63:0] value;`
-                                                                             ^^^^^ Ref -> **ClassProperty** `value` in `C2`  \n\Type: `bit[63:0]`  \n\Width: `64`  \n\\n\\n\---\n\\n\`bit [63:0] value;`
+            ^ Ref -> ### ClassProperty`q` in `C2`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic q;`
+                          ^^^^^ Ref -> ### ClassProperty`value` in `C2`  \n\Type: `bit[63:0]`  \n\Width: `64`  \n\\n\\n\---\n\\n\`bit [63:0] value;`
+                                      ^^^^^ Ref -> ### ClassProperty`value` in `C2`  \n\Type: `bit[63:0]`  \n\Width: `64`  \n\\n\\n\---\n\\n\`bit [63:0] value;`
+                                                                             ^^^^^ Ref -> ### ClassProperty`value` in `C2`  \n\Type: `bit[63:0]`  \n\Width: `64`  \n\\n\\n\---\n\\n\`bit [63:0] value;`
 
     }
 
@@ -1411,20 +1411,20 @@ module m6;
        ^^ Sym m6 : Definition
 
     A a = new;
-    ^ Ref -> **ClassType** `A`  \n\Resolved Type: `A`  \n\\n\\n\---\n\\n\`class A;\n\    integer i = 1;\n\    integer j = 2;\n\    function integer f();\n\        f = i;\n\    endfunction\n\endclass`
+    ^ Ref -> ### ClassType`A`  \n\Resolved Type: `A`  \n\\n\\n\---\n\\n\`class A;\n\    integer i = 1;\n\    integer j = 2;\n\    function integer f();\n\        f = i;\n\    endfunction\n\endclass`
       ^ Sym a : Variable
 
     A b1 = B::new;
-    ^ Ref -> **ClassType** `A`  \n\Resolved Type: `A`  \n\\n\\n\---\n\\n\`class A;\n\    integer i = 1;\n\    integer j = 2;\n\    function integer f();\n\        f = i;\n\    endfunction\n\endclass`
+    ^ Ref -> ### ClassType`A`  \n\Resolved Type: `A`  \n\\n\\n\---\n\\n\`class A;\n\    integer i = 1;\n\    integer j = 2;\n\    function integer f();\n\        f = i;\n\    endfunction\n\endclass`
       ^^ Sym b1 : Variable
-           ^ Ref -> **ClassType** `B`  \n\Resolved Type: `B`  \n\\n\\n\---\n\\n\`class B extends A;\n\    integer i = 2;\n\    function void f();\n\        i = j;\n\        super.i = super.j;\n\        j = super.f();\n\        j = this.super.f();\n\    endfunction\n\endclass`
+           ^ Ref -> ### ClassType`B`  \n\Resolved Type: `B`  \n\\n\\n\---\n\\n\`class B extends A;\n\    integer i = 2;\n\    function void f();\n\        i = j;\n\        super.i = super.j;\n\        j = super.f();\n\        j = this.super.f();\n\    endfunction\n\endclass`
 
     B b2 = new;
-    ^ Ref -> **ClassType** `B`  \n\Resolved Type: `B`  \n\\n\\n\---\n\\n\`class B extends A;\n\    integer i = 2;\n\    function void f();\n\        i = j;\n\        super.i = super.j;\n\        j = super.f();\n\        j = this.super.f();\n\    endfunction\n\endclass`
+    ^ Ref -> ### ClassType`B`  \n\Resolved Type: `B`  \n\\n\\n\---\n\\n\`class B extends A;\n\    integer i = 2;\n\    function void f();\n\        i = j;\n\        super.i = super.j;\n\        j = super.f();\n\        j = this.super.f();\n\    endfunction\n\endclass`
       ^^ Sym b2 : Variable
 
     C2 c = new;
-    ^^ Ref -> **ClassType** `C2`  \n\Resolved Type: `C2`  \n\\n\\n\---\n\\n\`class C2 extends B;\n\    function void g();\n\        f();\n\        i = j + C::j + A::f();\n\    endfunction\n\    rand bit [63:0] value;\n\    rand logic q;\n\    constraint value_c {\n\        value[63] dist {0 :/ 70, 1 :/ 30};\n\        value[0] == 1'b0;\n\        value[15:8] inside {\n\            8'h0,\n\            8'hF\n\        };\n\        solve value before q;\n\        soft value[3:1] > 1;\n\        q -> { value[4] == 0; }\n\        if (q) { foreach (value[b]) { value[b] == 0; } } else { disable soft value; }\n\    }\n\endclass`
+    ^^ Ref -> ### ClassType`C2`  \n\Resolved Type: `C2`  \n\\n\\n\---\n\\n\`class C2 extends B;\n\    function void g();\n\        f();\n\        i = j + C::j + A::f();\n\    endfunction\n\    rand bit [63:0] value;\n\    rand logic q;\n\    constraint value_c {\n\        value[63] dist {0 :/ 70, 1 :/ 30};\n\        value[0] == 1'b0;\n\        value[15:8] inside {\n\            8'h0,\n\            8'hF\n\        };\n\        solve value before q;\n\        soft value[3:1] > 1;\n\        q -> { value[4] == 0; }\n\        if (q) { foreach (value[b]) { value[b] == 0; } } else { disable soft value; }\n\    }\n\endclass`
        ^ Sym c : Variable
 
     int depth;
@@ -1432,24 +1432,24 @@ module m6;
 
     integer i = b1.f();
             ^ Sym i : Variable
-                ^^ Ref -> **Variable** `b1` in `m6`  \n\Type: `A`  \n\\n\\n\---\n\\n\`A b1 = B::new;`
-                   ^ Ref -> **Subroutine** `f` in `A`  \n\\n\\n\---\n\\n\`function integer f();\n\    f = i;\n\endfunction`
+                ^^ Ref -> ### Variable`b1` in `m6`  \n\Type: `A`  \n\\n\\n\---\n\\n\`A b1 = B::new;`
+                   ^ Ref -> ### Subroutine`f` in `A`  \n\\n\\n\---\n\\n\`function integer f();\n\    f = i;\n\endfunction`
 
     initial begin
 
         b2.f();
-        ^^ Ref -> **Variable** `b2` in `m6`  \n\Type: `B`  \n\\n\\n\---\n\\n\`B b2 = new;`
-           ^ Ref -> **Subroutine** `f` in `B`  \n\\n\\n\---\n\\n\`function void f();\n\    i = j;\n\    super.i = super.j;\n\    j = super.f();\n\    j = this.super.f();\n\endfunction`
+        ^^ Ref -> ### Variable`b2` in `m6`  \n\Type: `B`  \n\\n\\n\---\n\\n\`B b2 = new;`
+           ^ Ref -> ### Subroutine`f` in `B`  \n\\n\\n\---\n\\n\`function void f();\n\    i = j;\n\    super.i = super.j;\n\    j = super.f();\n\    j = this.super.f();\n\endfunction`
 
         a = b2;
-        ^ Ref -> **Variable** `a` in `m6`  \n\Type: `A`  \n\\n\\n\---\n\\n\`A a = new;`
-            ^^ Ref -> **Variable** `b2` in `m6`  \n\Type: `B`  \n\\n\\n\---\n\\n\`B b2 = new;`
+        ^ Ref -> ### Variable`a` in `m6`  \n\Type: `A`  \n\\n\\n\---\n\\n\`A a = new;`
+            ^^ Ref -> ### Variable`b2` in `m6`  \n\Type: `B`  \n\\n\\n\---\n\\n\`B b2 = new;`
 
         c.i = c.j;
-        ^ Ref -> **Variable** `c` in `m6`  \n\Type: `C2`  \n\\n\\n\---\n\\n\`C2 c = new;`
-          ^ Ref -> **ClassProperty** `i` in `B`  \n\Type: `integer`  \n\Width: `32`  \n\\n\\n\---\n\\n\`integer i = 2;`
-              ^ Ref -> **Variable** `c` in `m6`  \n\Type: `C2`  \n\\n\\n\---\n\\n\`C2 c = new;`
-                ^ Ref -> **ClassProperty** `j` in `A`  \n\Type: `integer`  \n\Width: `32`  \n\\n\\n\---\n\\n\`integer j = 2;`
+        ^ Ref -> ### Variable`c` in `m6`  \n\Type: `C2`  \n\\n\\n\---\n\\n\`C2 c = new;`
+          ^ Ref -> ### ClassProperty`i` in `B`  \n\Type: `integer`  \n\Width: `32`  \n\\n\\n\---\n\\n\`integer i = 2;`
+              ^ Ref -> ### Variable`c` in `m6`  \n\Type: `C2`  \n\\n\\n\---\n\\n\`C2 c = new;`
+                ^ Ref -> ### ClassProperty`j` in `A`  \n\Type: `integer`  \n\Width: `32`  \n\\n\\n\---\n\\n\`integer j = 2;`
 
 
 
@@ -1466,11 +1466,11 @@ module m6;
 
             add : if (depth < 2) first else second;
             ^^^ Sym add : RandSeqProduction
-                      ^^^^^ Ref -> **Variable** `depth` in `m6`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int depth;`
+                      ^^^^^ Ref -> ### Variable`depth` in `m6`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int depth;`
 
             dec : case (depth & 7)
             ^^^ Sym dec : RandSeqProduction
-                        ^^^^^ Ref -> **Variable** `depth` in `m6`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int depth;`
+                        ^^^^^ Ref -> ### Variable`depth` in `m6`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int depth;`
 
                 0 : add;
 
@@ -1486,7 +1486,7 @@ module m6;
             fourth(string s = "done") : { if (depth) break; };
             ^^^^^^ Sym fourth : RandSeqProduction
                           ^ Sym s : FormalArgument
-                                              ^^^^^ Ref -> **Variable** `depth` in `m6`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int depth;`
+                                              ^^^^^ Ref -> ### Variable`depth` in `m6`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int depth;`
 
         endsequence
 
@@ -1520,35 +1520,35 @@ class C3;
 
     covergroup g2 (string instComment) @(posedge clk);
                           ^^^^^^^^^^^ Sym instComment : FormalArgument
-                                                 ^^^ Ref -> **ClassProperty** `clk` in `C3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic clk, x, y, c;`
+                                                 ^^^ Ref -> ### ClassProperty`clk` in `C3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic clk, x, y, c;`
 
         Offset: coverpoint pixel_offset;
         ^^^^^^ Sym Offset : Coverpoint
-                           ^^^^^^^^^^^^ Ref -> **ClassProperty** `pixel_offset` in `C3`  \n\Type: `bit[3:0]`  \n\Width: `4`  \n\\n\\n\---\n\\n\`bit [3:0] pixel_adr, pixel_offset, pixel_hue;`
+                           ^^^^^^^^^^^^ Ref -> ### ClassProperty`pixel_offset` in `C3`  \n\Type: `bit[3:0]`  \n\Width: `4`  \n\\n\\n\---\n\\n\`bit [3:0] pixel_adr, pixel_offset, pixel_hue;`
 
         Hue: coverpoint pixel_hue;
         ^^^ Sym Hue : Coverpoint
-                        ^^^^^^^^^ Ref -> **ClassProperty** `pixel_hue` in `C3`  \n\Type: `bit[3:0]`  \n\Width: `4`  \n\\n\\n\---\n\\n\`bit [3:0] pixel_adr, pixel_offset, pixel_hue;`
+                        ^^^^^^^^^ Ref -> ### ClassProperty`pixel_hue` in `C3`  \n\Type: `bit[3:0]`  \n\Width: `4`  \n\\n\\n\---\n\\n\`bit [3:0] pixel_adr, pixel_offset, pixel_hue;`
 
         AxC: cross color, pixel_adr;
         ^^^ Sym AxC : CoverCross
 
         all: cross color, Hue, Offset;
         ^^^ Sym all : CoverCross
-                          ^^^ Ref -> **Coverpoint** `Hue` in `C3`  \n\\n\\n\---\n\\n\`Hue: coverpoint pixel_hue;`
-                               ^^^^^^ Ref -> **Coverpoint** `Offset` in `C3`  \n\\n\\n\---\n\\n\`Offset: coverpoint pixel_offset;`
+                          ^^^ Ref -> ### Coverpoint`Hue` in `C3`  \n\\n\\n\---\n\\n\`Hue: coverpoint pixel_hue;`
+                               ^^^^^^ Ref -> ### Coverpoint`Offset` in `C3`  \n\\n\\n\---\n\\n\`Offset: coverpoint pixel_offset;`
 
 
 
         option.comment = instComment;
-                         ^^^^^^^^^^^ Ref -> **FormalArgument** `instComment` in `C3`  \n\Type: `string`  \n\\n\\n\---\n\\n\`string instComment`
+                         ^^^^^^^^^^^ Ref -> ### FormalArgument`instComment` in `C3`  \n\Type: `string`  \n\\n\\n\---\n\\n\`string instComment`
 
 
 
         e: coverpoint x iff (clk) {
         ^ Sym e : Coverpoint
-                      ^ Ref -> **ClassProperty** `x` in `C3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic clk, x, y, c;`
-                             ^^^ Ref -> **ClassProperty** `clk` in `C3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic clk, x, y, c;`
+                      ^ Ref -> ### ClassProperty`x` in `C3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic clk, x, y, c;`
+                             ^^^ Ref -> ### ClassProperty`clk` in `C3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic clk, x, y, c;`
 
             option.weight = 2;
 
@@ -1584,19 +1584,19 @@ class C3;
         }
 
         cross e, y {
-              ^ Ref -> **Coverpoint** `e` in `C3`  \n\\n\\n\---\n\\n\`e: coverpoint x iff (clk) {\n\    option.weight = 2;\n\    wildcard bins a = { [0:63],65 };\n\    bins b[] = { [127:150],[148:191] }; // note overlapping values\n\    bins c[] = { 200,201,202 };\n\    bins d = { [1000:$] };\n\    bins others[] = default;\n\    bins sa = (4 => 5 => 6), ([7:9],10 => 11,12);\n\    bins sb[] = (12 => 3 [* 1]);\n\    bins sc = (12 => 3 [-> 1]);\n\    bins sd = (12 => 3 [= 1:2]);\n\}`
+              ^ Ref -> ### Coverpoint`e` in `C3`  \n\\n\\n\---\n\\n\`e: coverpoint x iff (clk) {\n\    option.weight = 2;\n\    wildcard bins a = { [0:63],65 };\n\    bins b[] = { [127:150],[148:191] }; // note overlapping values\n\    bins c[] = { 200,201,202 };\n\    bins d = { [1000:$] };\n\    bins others[] = default;\n\    bins sa = (4 => 5 => 6), ([7:9],10 => 11,12);\n\    bins sb[] = (12 => 3 [* 1]);\n\    bins sc = (12 => 3 [-> 1]);\n\    bins sd = (12 => 3 [= 1:2]);\n\}`
 
             option.weight = c;
-                            ^ Ref -> **ClassProperty** `c` in `C3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic clk, x, y, c;`
+                            ^ Ref -> ### ClassProperty`c` in `C3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic clk, x, y, c;`
 
             bins one = '{ '{1,2}, '{3,4}, '{5,6} };
                  ^^^ Sym one : CoverageBin
 
             ignore_bins others = (!binsof(e.a) || !binsof(y) intersect {1}) with (e > 10);
                         ^^^^^^ Sym others : CoverageBin
-                                          ^ Ref -> **Coverpoint** `e` in `C3`  \n\\n\\n\---\n\\n\`e: coverpoint x iff (clk) {\n\    option.weight = 2;\n\    wildcard bins a = { [0:63],65 };\n\    bins b[] = { [127:150],[148:191] }; // note overlapping values\n\    bins c[] = { 200,201,202 };\n\    bins d = { [1000:$] };\n\    bins others[] = default;\n\    bins sa = (4 => 5 => 6), ([7:9],10 => 11,12);\n\    bins sb[] = (12 => 3 [* 1]);\n\    bins sc = (12 => 3 [-> 1]);\n\    bins sd = (12 => 3 [= 1:2]);\n\}`
-                                            ^ Ref -> **CoverageBin** `a` in `C3.e`  \n\\n\\n\---\n\\n\`wildcard bins a = { [0:63],65 };`
-                                                                                  ^ Ref -> **Coverpoint** `e` in `C3`  \n\\n\\n\---\n\\n\`e: coverpoint x iff (clk) {\n\    option.weight = 2;\n\    wildcard bins a = { [0:63],65 };\n\    bins b[] = { [127:150],[148:191] }; // note overlapping values\n\    bins c[] = { 200,201,202 };\n\    bins d = { [1000:$] };\n\    bins others[] = default;\n\    bins sa = (4 => 5 => 6), ([7:9],10 => 11,12);\n\    bins sb[] = (12 => 3 [* 1]);\n\    bins sc = (12 => 3 [-> 1]);\n\    bins sd = (12 => 3 [= 1:2]);\n\}`
+                                          ^ Ref -> ### Coverpoint`e` in `C3`  \n\\n\\n\---\n\\n\`e: coverpoint x iff (clk) {\n\    option.weight = 2;\n\    wildcard bins a = { [0:63],65 };\n\    bins b[] = { [127:150],[148:191] }; // note overlapping values\n\    bins c[] = { 200,201,202 };\n\    bins d = { [1000:$] };\n\    bins others[] = default;\n\    bins sa = (4 => 5 => 6), ([7:9],10 => 11,12);\n\    bins sb[] = (12 => 3 [* 1]);\n\    bins sc = (12 => 3 [-> 1]);\n\    bins sd = (12 => 3 [= 1:2]);\n\}`
+                                            ^ Ref -> ### CoverageBin`a` in `C3.e`  \n\\n\\n\---\n\\n\`wildcard bins a = { [0:63],65 };`
+                                                                                  ^ Ref -> ### Coverpoint`e` in `C3`  \n\\n\\n\---\n\\n\`e: coverpoint x iff (clk) {\n\    option.weight = 2;\n\    wildcard bins a = { [0:63],65 };\n\    bins b[] = { [127:150],[148:191] }; // note overlapping values\n\    bins c[] = { 200,201,202 };\n\    bins d = { [1000:$] };\n\    bins others[] = default;\n\    bins sa = (4 => 5 => 6), ([7:9],10 => 11,12);\n\    bins sb[] = (12 => 3 [* 1]);\n\    bins sc = (12 => 3 [-> 1]);\n\    bins sd = (12 => 3 [= 1:2]);\n\}`
 
         }
 
@@ -1642,14 +1642,14 @@ module m10;
 
         constraint G { len > 1; payload.size == len ; }
                    ^ Sym G : ConstraintBlock
-                       ^^^ Ref -> **ClassProperty** `len` in `m10.Packet`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int len;`
-                                ^^^^^^^ Ref -> **ClassProperty** `payload` in `m10.Packet`  \n\Type: `dynamic array of byte`  \n\\n\\n\---\n\\n\`byte payload[];`
-                                                ^^^ Ref -> **ClassProperty** `len` in `m10.Packet`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int len;`
+                       ^^^ Ref -> ### ClassProperty`len` in `m10.Packet`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int len;`
+                                ^^^^^^^ Ref -> ### ClassProperty`payload` in `m10.Packet`  \n\Type: `dynamic array of byte`  \n\\n\\n\---\n\\n\`byte payload[];`
+                                                ^^^ Ref -> ### ClassProperty`len` in `m10.Packet`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int len;`
 
         function void post_randomize; crc = payload.sum; endfunction
                       ^^^^^^^^^^^^^^ Sym post_randomize : Subroutine
-                                      ^^^ Ref -> **ClassProperty** `crc` in `m10.Packet`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int crc;`
-                                            ^^^^^^^ Ref -> **ClassProperty** `payload` in `m10.Packet`  \n\Type: `dynamic array of byte`  \n\\n\\n\---\n\\n\`byte payload[];`
+                                      ^^^ Ref -> ### ClassProperty`crc` in `m10.Packet`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int crc;`
+                                            ^^^^^^^ Ref -> ### ClassProperty`payload` in `m10.Packet`  \n\Type: `dynamic array of byte`  \n\\n\\n\---\n\\n\`byte payload[];`
 
     endclass
 
@@ -1661,26 +1661,26 @@ module m10;
              ^ Sym q : Variable
 
         automatic Packet p = new;
-                  ^^^^^^ Ref -> **ClassType** `Packet` in `m10`  \n\Resolved Type: `Packet`  \n\\n\\n\---\n\\n\`class Packet;\n\    rand int header;\n\    rand int len;\n\    rand byte payload[];\n\    int crc;\n\    constraint G { len > 1; payload.size == len ; }\n\    function void post_randomize; crc = payload.sum; endfunction\n\endclass`
+                  ^^^^^^ Ref -> ### ClassType`Packet` in `m10`  \n\Resolved Type: `Packet`  \n\\n\\n\---\n\\n\`class Packet;\n\    rand int header;\n\    rand int len;\n\    rand byte payload[];\n\    int crc;\n\    constraint G { len > 1; payload.size == len ; }\n\    function void post_randomize; crc = payload.sum; endfunction\n\endclass`
                          ^ Sym p : Variable
 
         {<< byte{ p.header, p.len, p.payload with [0 +: p.len], p.crc }} = stream;
-                  ^ Ref -> **Variable** `p` in `m10`  \n\Type: `Packet`  \n\\n\\n\---\n\\n\`automatic Packet p = new;`
-                    ^^^^^^ Ref -> **ClassProperty** `header` in `m10.Packet`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int header;`
-                            ^ Ref -> **Variable** `p` in `m10`  \n\Type: `Packet`  \n\\n\\n\---\n\\n\`automatic Packet p = new;`
-                              ^^^ Ref -> **ClassProperty** `len` in `m10.Packet`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int len;`
-                                   ^ Ref -> **Variable** `p` in `m10`  \n\Type: `Packet`  \n\\n\\n\---\n\\n\`automatic Packet p = new;`
-                                     ^^^^^^^ Ref -> **ClassProperty** `payload` in `m10.Packet`  \n\Type: `dynamic array of byte`  \n\\n\\n\---\n\\n\`byte payload[];`
-                                                        ^ Ref -> **Variable** `p` in `m10`  \n\Type: `Packet`  \n\\n\\n\---\n\\n\`automatic Packet p = new;`
-                                                          ^^^ Ref -> **ClassProperty** `len` in `m10.Packet`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int len;`
-                                                                ^ Ref -> **Variable** `p` in `m10`  \n\Type: `Packet`  \n\\n\\n\---\n\\n\`automatic Packet p = new;`
-                                                                  ^^^ Ref -> **ClassProperty** `crc` in `m10.Packet`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int crc;`
-                                                                           ^^^^^^ Ref -> **Variable** `stream` in `m10`  \n\Type: `queue of byte`  \n\\n\\n\---\n\\n\`byte stream[$];`
+                  ^ Ref -> ### Variable`p` in `m10`  \n\Type: `Packet`  \n\\n\\n\---\n\\n\`automatic Packet p = new;`
+                    ^^^^^^ Ref -> ### ClassProperty`header` in `m10.Packet`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int header;`
+                            ^ Ref -> ### Variable`p` in `m10`  \n\Type: `Packet`  \n\\n\\n\---\n\\n\`automatic Packet p = new;`
+                              ^^^ Ref -> ### ClassProperty`len` in `m10.Packet`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int len;`
+                                   ^ Ref -> ### Variable`p` in `m10`  \n\Type: `Packet`  \n\\n\\n\---\n\\n\`automatic Packet p = new;`
+                                     ^^^^^^^ Ref -> ### ClassProperty`payload` in `m10.Packet`  \n\Type: `dynamic array of byte`  \n\\n\\n\---\n\\n\`byte payload[];`
+                                                        ^ Ref -> ### Variable`p` in `m10`  \n\Type: `Packet`  \n\\n\\n\---\n\\n\`automatic Packet p = new;`
+                                                          ^^^ Ref -> ### ClassProperty`len` in `m10.Packet`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int len;`
+                                                                ^ Ref -> ### Variable`p` in `m10`  \n\Type: `Packet`  \n\\n\\n\---\n\\n\`automatic Packet p = new;`
+                                                                  ^^^ Ref -> ### ClassProperty`crc` in `m10.Packet`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int crc;`
+                                                                           ^^^^^^ Ref -> ### Variable`stream` in `m10`  \n\Type: `queue of byte`  \n\\n\\n\---\n\\n\`byte stream[$];`
 
         stream = stream[ $bits(p) / 8 : $ ];
-        ^^^^^^ Ref -> **Variable** `stream` in `m10`  \n\Type: `queue of byte`  \n\\n\\n\---\n\\n\`byte stream[$];`
-                 ^^^^^^ Ref -> **Variable** `stream` in `m10`  \n\Type: `queue of byte`  \n\\n\\n\---\n\\n\`byte stream[$];`
-                               ^ Ref -> **Variable** `p` in `m10`  \n\Type: `Packet`  \n\\n\\n\---\n\\n\`automatic Packet p = new;`
+        ^^^^^^ Ref -> ### Variable`stream` in `m10`  \n\Type: `queue of byte`  \n\\n\\n\---\n\\n\`byte stream[$];`
+                 ^^^^^^ Ref -> ### Variable`stream` in `m10`  \n\Type: `queue of byte`  \n\\n\\n\---\n\\n\`byte stream[$];`
+                               ^ Ref -> ### Variable`p` in `m10`  \n\Type: `Packet`  \n\\n\\n\---\n\\n\`automatic Packet p = new;`
 
     end
 

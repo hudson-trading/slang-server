@@ -32,7 +32,7 @@ Paragraph& Paragraph::appendHeader(std::string_view text, int level) {
     if (!buffer.empty() && buffer.back() != ' ') {
         buffer += " ";
     }
-    buffer += std::string(level, '#') + " " + std::string(text);
+    buffer += std::string(level, '#') + " " + std::string(text) + " ";
     return *this;
 }
 
