@@ -411,3 +411,51 @@ TEST_CASE("HierarchicalStructCompletion") {
     testCompletion("very_complex_struct.level1.");
     testCompletion("very_complex_struct.level1.inner.");
 }
+
+TEST_CASE("ArrayOfStructsCompletion") {
+    ServerHarness server("repo1");
+    JsonGoldenTest golden;
+
+    auto doc = server.openFile("array_struct_test.sv", R"(
+    typedef struct {
+        logic [7:0] addr;
+        logic [31:0] data;
+        logic valid;
+    } transaction_t;
+
+    typedef struct {
+        transaction_t txn;
+        logic [15:0] id;
+    } nested_transaction_t;
+
+    module array_struct_module;
+        transaction_t transactions[4];
+        transaction_t transactions_2d[2][3];
+        nested_transaction_t nested_arr[8];
+
+        initial begin
+            // Test completion on array element
+            transactions[0].;
+
+            // Test completion on 2D array element
+            transactions_2d[0][1].;
+
+            // Test completion on nested struct in array
+            nested_arr[3].;
+
+            // Test nested field access in array element
+            nested_arr[5].txn.;
+        end
+    endmodule
+    )");
+
+    auto testCompletion = [&](std::string s) {
+        auto completions = doc.after(s).getResolvedCompletions(".");
+        golden.record(s, completions);
+    };
+
+    testCompletion("transactions[0].");
+    testCompletion("transactions_2d[0][1].");
+    testCompletion("nested_arr[3].");
+    testCompletion("nested_arr[5].txn.");
+}
