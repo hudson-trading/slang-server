@@ -267,13 +267,25 @@ const syntax::SyntaxNode& selectDisplayNode(const syntax::SyntaxNode& node) {
     return *fmtNode;
 }
 
+inline void rtrim(std::string& s) {
+    s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) { return !std::isspace(ch); })
+                .base(),
+            s.end());
+}
+
 std::string formatDocComment(const syntax::SyntaxNode& node) {
     auto res = slang::syntax::SyntaxPrinter().printLeadingComments(node).str();
+
+    if (res.empty()) {
+        return "";
+    }
 
     // Apply formatting for clean display
     stripBlankLines(res);
     shiftIndent(res);
-    return res;
+    rtrim(res);
+
+    return res + "\n";
 }
 
 std::string formatCode(const syntax::SyntaxNode& node) {
@@ -292,7 +304,8 @@ std::string formatCode(const syntax::SyntaxNode& node) {
 
 std::string svCodeBlockString(const syntax::SyntaxNode& node) {
     const auto& fmtNode = selectDisplayNode(node);
-    return svCodeBlockString(formatDocComment(fmtNode) + formatCode(fmtNode));
+    const auto res = formatDocComment(fmtNode) + formatCode(fmtNode);
+    return svCodeBlockString(res);
 }
 
 lsp::MarkupContent svCodeBlock(const syntax::SyntaxNode& node) {
