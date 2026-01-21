@@ -172,12 +172,6 @@ std::string detailFormat(const syntax::SyntaxNode& node) {
     return res;
 }
 
-/*
-Hi
-*/
-// Yola
-/**
-YO */
 std::string stripDocComment(std::string_view input) {
     if (input.empty())
         return {};
