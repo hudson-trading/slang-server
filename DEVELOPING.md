@@ -78,11 +78,10 @@ You can use the auto-attach debug config by pointing your repo to the build/vsco
 Neovim tests require nlua and busted as [described here](https://mrcjkb.dev/posts/2023-06-06-luarocks-test.html).
 They can be configured and run via luarocks as follows:
 ```bash
-cd clients/neovim/
 luarocks --tree .luarocks install nlua
 luarocks --tree .luarocks --lua-version 5.1 install busted
 eval $(luarocks --tree .luarocks --lua-version 5.1 path)
-PATH=$PATH:../../build/bin luarocks --tree .luarocks --lua-version 5.1 test
+luarocks --tree .luarocks --lua-version 5.1 test clients/neovim/slang-server.nvim-scm-1.rockspec --test-type busted -- -C clients/neovim/
 ```
 
 ## lsp-rr-wrapper.py

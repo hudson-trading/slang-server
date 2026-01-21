@@ -107,6 +107,21 @@ jobs:
           uv sync
           pytest tests\system\ --binary build\${{ matrix.preset }}\bin\slang-server.exe
 
+      - name: Run Neovim plugin tests
+        # This should work on Windows as well, but there's some linker error
+        # that I don't feel like debugging via GH
+        # Also skip rockylinux since the container makes action-setup-vim sad
+        # This can easily be fixed by copying instead of moving the neovim install,
+        # unfortunately that uncovers the fact that the neovim builds from that
+        # GH action require a newer GLIBC version than rockylinux provides.
+        # Not going down that rabbit hole right now
+        if: runner.os != 'Windows' && matrix.container == ''
+        uses: nvim-neorocks/nvim-busted-action@v1
+        env:
+          SLANG_SERVER_BIN: ../../build/${{ matrix.preset }}/bin/slang-server
+        with:
+          luarocks_args: 'clients/neovim/slang-server.nvim-scm-1.rockspec --test-type busted -- -C clients/neovim/'
+
       # Artifact creation for releases
       - name: Strip binary (Linux)
         if: inputs.upload_artifacts && runner.os == 'Linux'
@@ -172,22 +187,3 @@ jobs:
             ${{ matrix.artifact_name }}.tar.gz
             ${{ matrix.artifact_name }}.zip
           retention-days: 7
-
-      # Making the neovim plugin the top-level dir below this point for busted action
-      # Moving the old checkout is easier than doing some Windows-portable rm -rf thing
-      - name: Move build
-        # Skip for container builds (Rocky Linux) as paths don't work the same way
-        if: matrix.container == ''
-        run: |
-          echo ${{ runner.temp }}/slang-build/bin >> $GITHUB_PATH
-          mv ${{ github.workspace }}/build/${{ matrix.preset }} ${{ runner.temp }}/slang-build
-          mv ${{ github.workspace }}/clients/neovim ${{ runner.temp }}/neovim-plugin
-          mv ${{ github.workspace }} ${{ runner.temp }}/slang-server-checkout
-          mv ${{ runner.temp }}/neovim-plugin ${{ github.workspace }}
-        working-directory: ${{ runner.temp }}
-      - name: Run Neovim plugin tests
-        # This should work on Windows as well, but there's some linker error
-        # that I don't feel like debugging via GH
-        # Skip for container builds (Rocky Linux) as paths don't work the same way
-        if: runner.os != 'Windows' && matrix.container == ''
-        uses: nvim-neorocks/nvim-busted-action@v1
