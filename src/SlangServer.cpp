@@ -573,7 +573,7 @@ void SlangServer::onDocDidOpen(const lsp::DidOpenTextDocumentParams& params) {
     // Add document to index
     auto doc = m_driver->getDocument(params.textDocument.uri);
     if (doc) {
-        m_indexer.openDocument(params.textDocument.uri, *doc->getSyntaxTree());
+        m_indexer.openDocument(params.textDocument.uri.path(), *doc->getSyntaxTree());
     }
 }
 
@@ -603,12 +603,12 @@ void SlangServer::onDocDidSave(const lsp::DidSaveTextDocumentParams& params) {
     m_driver->updateDoc(*doc, FileUpdateType::SAVE);
 
     // Update the indexer with new symbols
-    m_indexer.updateDocument(params.textDocument.uri, *doc->getSyntaxTree());
+    m_indexer.updateDocument(params.textDocument.uri.path(), *doc->getSyntaxTree());
 }
 
 void SlangServer::onDocDidClose(const lsp::DidCloseTextDocumentParams& params) {
     // Just remove from openDocuments tracking, but keep the saved content in the index
-    m_indexer.closeDocument(params.textDocument.uri);
+    m_indexer.closeDocument(params.textDocument.uri.path());
 
     // TODO: Add method in ServerDriver to check that the rc of the document is 1 before
     // removing (non-compilation mode)
@@ -626,9 +626,10 @@ SlangServer::getWorkspaceSymbol(const lsp::WorkspaceSymbolParams&) {
 
     for (const auto& [name, entries] : m_indexer.symbolToFiles) {
         for (const auto& entry : entries) {
-            result.emplace_back(lsp::WorkspaceSymbol{.location = lsp::LocationUriOnly{*entry.uri},
-                                                     .name = name,
-                                                     .kind = toSymbolKind(entry.kind)});
+            result.emplace_back(
+                lsp::WorkspaceSymbol{.location = lsp::LocationUriOnly{URI::fromFile(*entry.uri)},
+                                     .name = name,
+                                     .kind = toSymbolKind(entry.kind)});
         }
     }
 

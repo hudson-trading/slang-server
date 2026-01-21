@@ -27,7 +27,7 @@ struct Indexer {
     };
 
     struct IndexedPath {
-        std::string path;
+        std::filesystem::path path;
         std::vector<GlobalSymbol> symbols;
         std::vector<std::string> macros;
         std::vector<std::string> referencedSymbols;
@@ -46,27 +46,31 @@ struct Indexer {
     void removeDocuments(const std::vector<std::filesystem::path>& paths, uint32_t numThreads = 0);
 
     // For open document lifecycle
-    void openDocument(const URI& uri, const slang::syntax::SyntaxTree& tree);
-    void updateDocument(const URI& uri, const slang::syntax::SyntaxTree& tree);
-    void closeDocument(const URI& uri);
+    void openDocument(const std::filesystem::path& uri, const slang::syntax::SyntaxTree& tree);
+    void updateDocument(const std::filesystem::path& uri, const slang::syntax::SyntaxTree& tree);
+    void closeDocument(const std::filesystem::path& uri);
 
     // Threading API
     void waitForIndexingCompletion() const;
     struct GlobalSymbolLoc {
-        const URI* uri;
+        const std::filesystem::path* uri;
         slang::syntax::SyntaxKind kind{};
     };
 
     // Index storage, public for querying
     // Using SmallVector<2> to avoid heap allocations for the common case
     std::unordered_map<std::string, slang::SmallVector<GlobalSymbolLoc, 2>> symbolToFiles;
-    std::unordered_map<std::string, slang::SmallVector<const URI*, 2>> macroToFiles;
+    std::unordered_map<std::string, slang::SmallVector<const std::filesystem::path*, 2>>
+        macroToFiles;
 
     // Top level references; References tend to have more entries
-    std::unordered_map<std::string, std::vector<const URI*>> symbolReferences;
+    std::unordered_map<std::string, std::vector<const std::filesystem::path*>> symbolReferences;
+
+    // Map of filename -> fspath. Used for looking up incdirs
+    std::unordered_map<std::string, std::vector<const std::filesystem::path*>> fileMap;
 
     // Storage for unique URIs (all pointers in the index point here)
-    std::unordered_set<URI> uniqueUris;
+    std::unordered_set<std::filesystem::path> uniqueUris;
 
     std::vector<std::filesystem::path> getRelevantFilesForName(std::string_view name) const;
     std::vector<std::filesystem::path> getFilesForMacro(std::string_view name) const;
@@ -83,10 +87,10 @@ private:
     void resetIndexingComplete();
 
     // Intern a URI to get a stable pointer
-    const URI* internUri(const URI& uri);
+    const std::filesystem::path* internUri(const std::filesystem::path& uri);
 
     // Storage for open documents
-    std::unordered_map<URI, IndexedPath> openDocuments;
+    std::unordered_map<std::filesystem::path, IndexedPath> openDocuments;
 
     // Thread synchronization
     mutable std::condition_variable indexingCondition;
