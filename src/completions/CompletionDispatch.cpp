@@ -148,12 +148,12 @@ void CompletionDispatch::getTriggerCompletions(char triggerChar, char prevChar,
     }
     else if (triggerChar == '.') {
         // Member completions
-        auto exprToken = doc->getTokenAt(loc - 3);
+        auto exprToken = doc->getTokenAt(loc - 2);
         if (!exprToken) {
             WARN("No expression token found before '.'");
             return;
         }
-        auto sym = doc->getAnalysis().getSymbolAt(exprToken->location());
+        auto sym = doc->getAnalysis().getSymbolAtToken(exprToken);
         if (!sym) {
             WARN("No symbol found for token {}", exprToken->valueText());
             return;
