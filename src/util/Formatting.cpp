@@ -12,6 +12,7 @@
 #include "slang/ast/types/TypePrinter.h"
 #include "slang/syntax/AllSyntax.h"
 #include "slang/syntax/SyntaxKind.h"
+#include "slang/syntax/SyntaxNode.h"
 #include "slang/syntax/SyntaxPrinter.h"
 #include "slang/text/CharInfo.h"
 namespace server {
@@ -48,7 +49,7 @@ void shiftIndent(std::string& s) {
         return;
     }
 
-    // skip the first line, since it's whitepsace isn't included
+    // Skip the first line, since it's whitespace isn't included
     std::getline(stream, line);
     while (std::getline(stream, line)) {
         // Skip empty lines
@@ -171,6 +172,65 @@ std::string detailFormat(const syntax::SyntaxNode& node) {
     return res;
 }
 
+std::string stripDocComment(std::string_view input) {
+    if (input.empty())
+        return {};
+
+    fmt::memory_buffer out;
+    bool inBlock = false;
+
+    std::size_t pos = 0;
+    while (pos <= input.size()) {
+        // Get next line
+        std::size_t end = input.find('\n', pos);
+        if (end == std::string_view::npos)
+            end = input.size();
+
+        std::string_view line = input.substr(pos, end - pos);
+
+        // Trim leading whitespace
+        ltrim(line);
+
+        if (!inBlock) {
+            // Single-line doc comment
+            if (line.starts_with("///"))
+                line.remove_prefix(3);
+            else if (line.starts_with("//"))
+                line.remove_prefix(2);
+
+            // To be a valid doc comment, block comments must start
+            // at beginning of line
+            else if (line.starts_with("/*")) {
+                inBlock = true;
+                line.remove_prefix(2);
+            }
+        }
+
+        if (inBlock) {
+            // End of block comment
+            if (auto p = line.find("*/"); p != std::string_view::npos) {
+                line = line.substr(0, p);
+                inBlock = false;
+            }
+
+            // Check for leading '*'; ie:
+            /*
+             * <- Leading star
+             */
+            if (!line.empty() && line.front() == '*')
+                line.remove_prefix(1);
+
+            // Everything else if ignored, including single line comments. Single
+            // line comments are displayed as is in the doc comment.
+        }
+
+        fmt::format_to(fmt::appender(out), "{}\n", line);
+        pos = end + 1;
+    }
+
+    return fmt::to_string(out);
+}
+
 std::string svCodeBlockString(std::string_view code) {
     auto res = std::string{code};
     stripBlankLines(res);
@@ -179,7 +239,7 @@ std::string svCodeBlockString(std::string_view code) {
     return fmt::format("````systemverilog\n{}\n````", res);
 }
 
-std::string formatSyntaxNode(const syntax::SyntaxNode& node) {
+const syntax::SyntaxNode& selectDisplayNode(const syntax::SyntaxNode& node) {
     const syntax::SyntaxNode* fmtNode = &node;
     switch (node.kind) {
         // Adjust these to just be the header
@@ -189,7 +249,7 @@ std::string formatSyntaxNode(const syntax::SyntaxNode& node) {
         case syntax::SyntaxKind::InterfaceDeclaration:
             fmtNode = node.as<syntax::ModuleDeclarationSyntax>().header;
             break;
-        // adjust to include the type in the declaration
+        // Adjust to include the type in the declaration
         case syntax::SyntaxKind::Declarator:
         case syntax::SyntaxKind::HierarchicalInstance:
         case syntax::SyntaxKind::EnumType:
@@ -199,16 +259,41 @@ std::string formatSyntaxNode(const syntax::SyntaxNode& node) {
         default:
             break;
     }
+
     if (fmtNode->parent && fmtNode->parent->kind == syntax::SyntaxKind::TypedefDeclaration) {
         fmtNode = fmtNode->parent;
     }
 
-    auto res = slang::syntax::SyntaxPrinter().printExcludingLeadingComments(*fmtNode).str();
+    return *fmtNode;
+}
+
+inline void rtrim(std::string& s) {
+    s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) { return !std::isspace(ch); })
+                .base(),
+            s.end());
+}
+
+std::string formatDocComment(const syntax::SyntaxNode& node) {
+    auto res = slang::syntax::SyntaxPrinter().printLeadingComments(node).str();
+
+    if (res.empty()) {
+        return "";
+    }
+
+    // Apply formatting for clean display
+    stripBlankLines(res);
+    shiftIndent(res);
+    rtrim(res);
+
+    return res + "\n";
+}
+
+std::string formatCode(const syntax::SyntaxNode& node) {
+    auto res = slang::syntax::SyntaxPrinter().printExcludingLeadingComments(node).str();
+
     if (isSingleLine(res)) {
         squashSpaces(res);
     }
-
-    res = slang::syntax::SyntaxPrinter().printLeadingComments(*fmtNode).str() + res;
 
     // Apply formatting for clean display
     stripBlankLines(res);
@@ -218,7 +303,9 @@ std::string formatSyntaxNode(const syntax::SyntaxNode& node) {
 }
 
 std::string svCodeBlockString(const syntax::SyntaxNode& node) {
-    return svCodeBlockString(formatSyntaxNode(node));
+    const auto& fmtNode = selectDisplayNode(node);
+    const auto res = formatDocComment(fmtNode) + formatCode(fmtNode);
+    return svCodeBlockString(res);
 }
 
 lsp::MarkupContent svCodeBlock(const syntax::SyntaxNode& node) {
@@ -229,6 +316,14 @@ lsp::MarkupContent svCodeBlock(const syntax::SyntaxNode& node) {
 void ltrim(std::string& s) {
     s.erase(s.begin(),
             std::find_if(s.begin(), s.end(), [](unsigned char ch) { return !std::isspace(ch); }));
+}
+
+void ltrim(std::string_view& sv) {
+    std::size_t i = 0;
+    while (i < sv.size() && std::isspace(sv[i])) {
+        ++i;
+    }
+    sv.remove_prefix(i);
 }
 
 std::string toCamelCase(std::string_view str) {

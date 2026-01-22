@@ -33,7 +33,7 @@
 `define FOO(blah) blah
 
 `define BAR(blah) `FOO(blah)
-                  ^^^^ Ref -> DefineDirective FOO  \n\\n\\n\---\n\\n\`// Nested macro definitions\n\`define FOO(blah) blah`
+                  ^^^^ Ref -> DefineDirective FOO  \n\\n\\n\---\n\\n\ Nested macro definitions\n\\n\  \n\\n\\n\---\n\\n\``define FOO(blah) blah`
 
 `define BAZ(xy) xy
 
@@ -45,7 +45,7 @@
                                       ^^^^ Ref -> DefineDirective BAZ  \n\\n\\n\---\n\\n\``define BAZ(xy) xy`
 
 `define COMPLEX_BAR(blah, flurb) `COMPLEX_FOO(blah, flurb)
-                                 ^^^^^^^^^^^^ Ref -> DefineDirective COMPLEX_FOO  \n\\n\\n\---\n\\n\`// More complex nested macros\n\`define COMPLEX_FOO(blah, flurb) blah+`BAZ(flurb)`
+                                 ^^^^^^^^^^^^ Ref -> DefineDirective COMPLEX_FOO  \n\\n\\n\---\n\\n\ More complex nested macros\n\\n\  \n\\n\\n\---\n\\n\``define COMPLEX_FOO(blah, flurb) blah+`BAZ(flurb)`
 
 
 
@@ -56,7 +56,7 @@
 `define CLOSING_PAREN 1)
 
 `define COMBINED_MACRO `INCOMPLETE_PAREN + `CLOSING_PAREN ()
-                       ^^^^^^^^^^^^^^^^^ Ref -> DefineDirective INCOMPLETE_PAREN  \n\\n\\n\---\n\\n\`// Macros that create syntax issues\n\`define INCOMPLETE_PAREN (i`
+                       ^^^^^^^^^^^^^^^^^ Ref -> DefineDirective INCOMPLETE_PAREN  \n\\n\\n\---\n\\n\ Macros that create syntax issues\n\\n\  \n\\n\\n\---\n\\n\``define INCOMPLETE_PAREN (i`
                                            ^^^^^^^^^^^^^^ Ref -> DefineDirective CLOSING_PAREN  \n\\n\\n\---\n\\n\``define CLOSING_PAREN 1)`
 
 
@@ -132,7 +132,7 @@ module test;
         ^^^^^^^^ Sym test_var : Variable
 
     logic [`BUS_WIDTH-1:0] bus_signal;
-           ^^^^^^^^^^ Ref -> DefineDirective BUS_WIDTH  \n\\n\\n\---\n\\n\`// Use macros from common_macros.svh\n\`define BUS_WIDTH `WIDTH`
+           ^^^^^^^^^^ Ref -> DefineDirective BUS_WIDTH  \n\\n\\n\---\n\\n\ Use macros from common_macros.svh\n\\n\  \n\\n\\n\---\n\\n\``define BUS_WIDTH `WIDTH`
                            ^^^^^^^^^^ Sym bus_signal : Variable
 
     logic [`ADDR_BITS-1:0] address;
@@ -155,7 +155,7 @@ module test;
 
     localparam int SIMPLE_VAL = `SIMPLE_MACRO;
                    ^^^^^^^^^^ Sym SIMPLE_VAL : Parameter
-                                ^^^^^^^^^^^^^ Ref -> DefineDirective SIMPLE_MACRO  \n\\n\\n\---\n\\n\`// Basic macro definitions\n\`define SIMPLE_MACRO 42`
+                                ^^^^^^^^^^^^^ Ref -> DefineDirective SIMPLE_MACRO  \n\\n\\n\---\n\\n\ Basic macro definitions\n\\n\  \n\\n\\n\---\n\\n\``define SIMPLE_MACRO 42`
 
 
 
@@ -181,11 +181,11 @@ module test;
 
     `DECLARE_INT(some_int, 1)
     ^^^^^^^^^^^^ Ref -> DefineDirective DECLARE_INT  \n\\n\\n\---\n\\n\``define DECLARE_INT(name, val) localparam int name = val;`
-                 ^^^^^^^^ Ref -> **Parameter** `some_int` in `test`  \n\Type: `int`  \n\Value: `1`  \n\\n\\n\---\n\\n\`localparam int some_int = 1`\n\\n\---\n\\n\Expanded from   \n\``DECLARE_INT(some_int, 1)`
+                 ^^^^^^^^ Ref -> ### Parameter`some_int` in `test`  \n\Type: `int`  \n\Value: `1`  \n\\n\\n\---\n\\n\`localparam int some_int = 1`\n\\n\---\n\\n\Expanded from   \n\``DECLARE_INT(some_int, 1)`
 
     `DECLARE_INT(other_int, 2)
     ^^^^^^^^^^^^ Ref -> DefineDirective DECLARE_INT  \n\\n\\n\---\n\\n\``define DECLARE_INT(name, val) localparam int name = val;`
-                 ^^^^^^^^^ Ref -> **Parameter** `other_int` in `test`  \n\Type: `int`  \n\Value: `2`  \n\\n\\n\---\n\\n\`localparam int other_int = 2`\n\\n\---\n\\n\Expanded from   \n\``DECLARE_INT(other_int, 2)`
+                 ^^^^^^^^^ Ref -> ### Parameter`other_int` in `test`  \n\Type: `int`  \n\Value: `2`  \n\\n\\n\---\n\\n\`localparam int other_int = 2`\n\\n\---\n\\n\Expanded from   \n\``DECLARE_INT(other_int, 2)`
 
 
 
@@ -193,8 +193,8 @@ module test;
 
     `DECLARE_INT(log_int, $clog2(other_int))
     ^^^^^^^^^^^^ Ref -> DefineDirective DECLARE_INT  \n\\n\\n\---\n\\n\``define DECLARE_INT(name, val) localparam int name = val;`
-                 ^^^^^^^ Ref -> **Parameter** `log_int` in `test`  \n\Type: `int`  \n\Value: `1`  \n\\n\\n\---\n\\n\`localparam int log_int = $clog2(other_int)`\n\\n\---\n\\n\Expanded from   \n\``DECLARE_INT(log_int, $clog2(other_int))`
-                                 ^^^^^^^^^ Ref -> **Parameter** `other_int` in `test`  \n\Type: `int`  \n\Value: `2`  \n\\n\\n\---\n\\n\`localparam int other_int = 2`\n\\n\---\n\\n\Expanded from   \n\``DECLARE_INT(other_int, 2)`
+                 ^^^^^^^ Ref -> ### Parameter`log_int` in `test`  \n\Type: `int`  \n\Value: `1`  \n\\n\\n\---\n\\n\`localparam int log_int = $clog2(other_int)`\n\\n\---\n\\n\Expanded from   \n\``DECLARE_INT(log_int, $clog2(other_int))`
+                                 ^^^^^^^^^ Ref -> ### Parameter`other_int` in `test`  \n\Type: `int`  \n\Value: `2`  \n\\n\\n\---\n\\n\`localparam int other_int = 2`\n\\n\---\n\\n\Expanded from   \n\``DECLARE_INT(other_int, 2)`
 
 
 
@@ -202,13 +202,13 @@ module test;
 
     `DECLARE_INT(initial_state, STATE_IDLE)
     ^^^^^^^^^^^^ Ref -> DefineDirective DECLARE_INT  \n\\n\\n\---\n\\n\``define DECLARE_INT(name, val) localparam int name = val;`
-                 ^^^^^^^^^^^^^ Ref -> **Parameter** `initial_state` in `test`  \n\Type: `int`  \n\Value: `0`  \n\\n\\n\---\n\\n\`localparam int initial_state = STATE_IDLE`\n\\n\---\n\\n\Expanded from   \n\``DECLARE_INT(initial_state, STATE_IDLE)`
-                                ^^^^^^^^^^ Ref -> **EnumValue** `STATE_IDLE` in `test.state_t`  \n\Value: `0`  \n\\n\\n\---\n\\n\`// Enum for testing macro with enum values\n\typedef enum {\n\    STATE_IDLE = 0,\n\    STATE_ACTIVE = 1,\n\    STATE_WAIT = 2,\n\    STATE_DONE = 3\n\} state_t;`
+                 ^^^^^^^^^^^^^ Ref -> ### Parameter`initial_state` in `test`  \n\Type: `int`  \n\Value: `0`  \n\\n\\n\---\n\\n\`localparam int initial_state = STATE_IDLE`\n\\n\---\n\\n\Expanded from   \n\``DECLARE_INT(initial_state, STATE_IDLE)`
+                                ^^^^^^^^^^ Ref -> ### EnumValue`STATE_IDLE` in `test.state_t`  \n\Value: `0`  \n\\n\\n\---\n\\n\ Enum for testing macro with enum values\n\\n\  \n\\n\\n\---\n\\n\`typedef enum {\n\    STATE_IDLE = 0,\n\    STATE_ACTIVE = 1,\n\    STATE_WAIT = 2,\n\    STATE_DONE = 3\n\} state_t;`
 
     `DECLARE_INT(active_state, STATE_ACTIVE)
     ^^^^^^^^^^^^ Ref -> DefineDirective DECLARE_INT  \n\\n\\n\---\n\\n\``define DECLARE_INT(name, val) localparam int name = val;`
-                 ^^^^^^^^^^^^ Ref -> **Parameter** `active_state` in `test`  \n\Type: `int`  \n\Value: `1`  \n\\n\\n\---\n\\n\`localparam int active_state = STATE_ACTIVE`\n\\n\---\n\\n\Expanded from   \n\``DECLARE_INT(active_state, STATE_ACTIVE)`
-                               ^^^^^^^^^^^^ Ref -> **EnumValue** `STATE_ACTIVE` in `test.state_t`  \n\Value: `1`  \n\\n\\n\---\n\\n\`// Enum for testing macro with enum values\n\typedef enum {\n\    STATE_IDLE = 0,\n\    STATE_ACTIVE = 1,\n\    STATE_WAIT = 2,\n\    STATE_DONE = 3\n\} state_t;`
+                 ^^^^^^^^^^^^ Ref -> ### Parameter`active_state` in `test`  \n\Type: `int`  \n\Value: `1`  \n\\n\\n\---\n\\n\`localparam int active_state = STATE_ACTIVE`\n\\n\---\n\\n\Expanded from   \n\``DECLARE_INT(active_state, STATE_ACTIVE)`
+                               ^^^^^^^^^^^^ Ref -> ### EnumValue`STATE_ACTIVE` in `test.state_t`  \n\Value: `1`  \n\\n\\n\---\n\\n\ Enum for testing macro with enum values\n\\n\  \n\\n\\n\---\n\\n\`typedef enum {\n\    STATE_IDLE = 0,\n\    STATE_ACTIVE = 1,\n\    STATE_WAIT = 2,\n\    STATE_DONE = 3\n\} state_t;`
 
 
 
@@ -218,7 +218,7 @@ module test;
 
     localparam int x = some_int;
                    ^ Sym x : Parameter
-                       ^^^^^^^^ Ref -> **Parameter** `some_int` in `test`  \n\Type: `int`  \n\Value: `1`  \n\\n\\n\---\n\\n\`localparam int some_int = 1`\n\\n\---\n\\n\Expanded from   \n\``DECLARE_INT(some_int, 1)`
+                       ^^^^^^^^ Ref -> ### Parameter`some_int` in `test`  \n\Type: `int`  \n\Value: `1`  \n\\n\\n\---\n\\n\`localparam int some_int = 1`\n\\n\---\n\\n\Expanded from   \n\``DECLARE_INT(some_int, 1)`
 
 
 
@@ -232,9 +232,9 @@ module test;
     generate
 
         for (i = 0; i < `SIMPLE_MACRO; i++) begin : gen_block
-                    ^ Ref -> **Genvar** `i` in `test`  \n\\n\\n\---\n\\n\`i`
-                        ^^^^^^^^^^^^^ Ref -> DefineDirective SIMPLE_MACRO  \n\\n\\n\---\n\\n\`// Basic macro definitions\n\`define SIMPLE_MACRO 42`
-                                       ^ Ref -> **Genvar** `i` in `test`  \n\\n\\n\---\n\\n\`i`
+                    ^ Ref -> ### Genvar`i` in `test`  \n\\n\\n\---\n\\n\`i`
+                        ^^^^^^^^^^^^^ Ref -> DefineDirective SIMPLE_MACRO  \n\\n\\n\---\n\\n\ Basic macro definitions\n\\n\  \n\\n\\n\---\n\\n\``define SIMPLE_MACRO 42`
+                                       ^ Ref -> ### Genvar`i` in `test`  \n\\n\\n\---\n\\n\`i`
                                                     ^^^^^^^^^ Sym gen_block : GenerateBlockArray
 
             logic [`FUNC_MACRO(7):0] gen_signal;
@@ -252,15 +252,15 @@ module test;
     always_comb begin
 
         case (test_var)
-              ^^^^^^^^ Ref -> **Variable** `test_var` in `test`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`// Variables for testing - use macros from common_macros.svh\n\int test_var;`
+              ^^^^^^^^ Ref -> ### Variable`test_var` in `test`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\ Variables for testing - use macros from common_macros.svh\n\\n\  \n\\n\\n\---\n\\n\`int test_var;`
 
             `SIMPLE_MACRO: bus_signal = `TWO_ARG_MACRO(1, 2);
-            ^^^^^^^^^^^^^ Ref -> DefineDirective SIMPLE_MACRO  \n\\n\\n\---\n\\n\`// Basic macro definitions\n\`define SIMPLE_MACRO 42`
-                           ^^^^^^^^^^ Ref -> **Variable** `bus_signal` in `test`  \n\Type: `logic[-1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`logic [-1:0] bus_signal;`
+            ^^^^^^^^^^^^^ Ref -> DefineDirective SIMPLE_MACRO  \n\\n\\n\---\n\\n\ Basic macro definitions\n\\n\  \n\\n\\n\---\n\\n\``define SIMPLE_MACRO 42`
+                           ^^^^^^^^^^ Ref -> ### Variable`bus_signal` in `test`  \n\Type: `logic[-1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`logic [-1:0] bus_signal;`
                                         ^^^^^^^^^^^^^^ Ref -> DefineDirective TWO_ARG_MACRO  \n\\n\\n\---\n\\n\``define TWO_ARG_MACRO(a, b) (a + b)`
 
             default: bus_signal = `FUNC_MACRO(0);
-                     ^^^^^^^^^^ Ref -> **Variable** `bus_signal` in `test`  \n\Type: `logic[-1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`logic [-1:0] bus_signal;`
+                     ^^^^^^^^^^ Ref -> ### Variable`bus_signal` in `test`  \n\Type: `logic[-1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`logic [-1:0] bus_signal;`
                                   ^^^^^^^^^^^ Ref -> DefineDirective FUNC_MACRO  \n\\n\\n\---\n\\n\``define FUNC_MACRO(x) (x + 1)`
 
         endcase
@@ -297,7 +297,7 @@ module test;
     // Alternative implementation without memory_module
 
     test_struct my_struct;
-    ^^^^^^^^^^^ Ref -> **TypeAlias** `test_struct` in `test`  \n\Resolved Type: UnpackedStruct `test_struct`  \n\\n\\n\---\n\\n\`// Basic struct for testing member access\n\typedef struct {\n\    int i;\n\    logic [7:0] data;\n\} test_struct;`
+    ^^^^^^^^^^^ Ref -> ### TypeAlias`test_struct` in `test`  \n\Resolved Type: UnpackedStruct `test_struct`  \n\\n\\n\---\n\\n\ Basic struct for testing member access\n\\n\  \n\\n\\n\---\n\\n\`typedef struct {\n\    int i;\n\    logic [7:0] data;\n\} test_struct;`
                 ^^^^^^^^^ Sym my_struct : Variable
 
 `endif
@@ -309,7 +309,7 @@ module test;
     initial begin
 
         $display("Testing macro: %d", `SIMPLE_MACRO);
-                                      ^^^^^^^^^^^^^ Ref -> DefineDirective SIMPLE_MACRO  \n\\n\\n\---\n\\n\`// Basic macro definitions\n\`define SIMPLE_MACRO 42`
+                                      ^^^^^^^^^^^^^ Ref -> DefineDirective SIMPLE_MACRO  \n\\n\\n\---\n\\n\ Basic macro definitions\n\\n\  \n\\n\\n\---\n\\n\``define SIMPLE_MACRO 42`
 
         $display("Function macro result: %d", `FUNC_MACRO(25));
                                               ^^^^^^^^^^^ Ref -> DefineDirective FUNC_MACRO  \n\\n\\n\---\n\\n\``define FUNC_MACRO(x) (x + 1)`
