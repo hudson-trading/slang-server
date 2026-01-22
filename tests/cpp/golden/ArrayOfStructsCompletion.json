@@ -1,0 +1,117 @@
+[
+  {
+    "transactions[0].": [
+      {
+        "label": "addr",
+        "labelDetails": {
+          "detail": " logic[7:0]",
+          "description": "transaction_t"
+        },
+        "kind": "Property",
+        "filterText": "addr"
+      },
+      {
+        "label": "data",
+        "labelDetails": {
+          "detail": " logic[31:0]",
+          "description": "transaction_t"
+        },
+        "kind": "Property",
+        "filterText": "data"
+      },
+      {
+        "label": "valid",
+        "labelDetails": {
+          "detail": " logic",
+          "description": "transaction_t"
+        },
+        "kind": "Property",
+        "filterText": "valid"
+      }
+    ]
+  },
+  {
+    "transactions_2d[0][1].": [
+      {
+        "label": "addr",
+        "labelDetails": {
+          "detail": " logic[7:0]",
+          "description": "transaction_t"
+        },
+        "kind": "Property",
+        "filterText": "addr"
+      },
+      {
+        "label": "data",
+        "labelDetails": {
+          "detail": " logic[31:0]",
+          "description": "transaction_t"
+        },
+        "kind": "Property",
+        "filterText": "data"
+      },
+      {
+        "label": "valid",
+        "labelDetails": {
+          "detail": " logic",
+          "description": "transaction_t"
+        },
+        "kind": "Property",
+        "filterText": "valid"
+      }
+    ]
+  },
+  {
+    "nested_arr[3].": [
+      {
+        "label": "id",
+        "labelDetails": {
+          "detail": " logic[15:0]",
+          "description": "nested_transaction_t"
+        },
+        "kind": "Property",
+        "filterText": "id"
+      },
+      {
+        "label": "txn",
+        "labelDetails": {
+          "detail": " transaction_t",
+          "description": "nested_transaction_t"
+        },
+        "kind": "Property",
+        "filterText": "txn"
+      }
+    ]
+  },
+  {
+    "nested_arr[5].txn.": [
+      {
+        "label": "addr",
+        "labelDetails": {
+          "detail": " logic[7:0]",
+          "description": "transaction_t"
+        },
+        "kind": "Property",
+        "filterText": "addr"
+      },
+      {
+        "label": "data",
+        "labelDetails": {
+          "detail": " logic[31:0]",
+          "description": "transaction_t"
+        },
+        "kind": "Property",
+        "filterText": "data"
+      },
+      {
+        "label": "valid",
+        "labelDetails": {
+          "detail": " logic",
+          "description": "transaction_t"
+        },
+        "kind": "Property",
+        "filterText": "valid"
+      }
+    ]
+  }
+]

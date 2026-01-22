@@ -108,6 +108,7 @@ export class FileDiagnostic extends vscode.Diagnostic {
 
 export const VerilogLanguages = ['verilog', 'verilogheader']
 export const SystemVerilogLanguages = ['systemverilog', 'systemverilogheader']
+export const HDLFiles = ['verilog', 'systemverilog']
 export const AnyVerilogLanguages = [
   'verilog',
   'systemverilog',

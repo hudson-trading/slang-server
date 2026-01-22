@@ -122,7 +122,7 @@ public:
 
     /// @brief Creates a compilation from the given URI and top module name.
     /// @return True if the compilation was created successfully
-    bool createCompilation(const URI& uri, std::string_view top);
+    bool createCompilation(std::shared_ptr<SlangDoc> doc, std::string_view top);
 
     /// @brief Creates a compilation from the given syntax trees, typically when the .f already
     /// specifies the top level(s). Does not use the index.

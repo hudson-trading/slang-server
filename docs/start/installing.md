@@ -35,7 +35,9 @@ Install the extension [here](https://marketplace.visualstudio.com/items?itemName
 
 See [VSCode Options](https://github.com/hudson-trading/slang-server/blob/main/clients/vscode/CONFIG.md)
 
-An OpenVSX release is coming soon, but in the meantime it's possible to run `cd clients/vscode && pnpm install && pnpm run prepublishOnly` to create an installable vsix. OpenVSX is used by the Vscode forks.
+#### Vscode Forks (Cursor, Antigravity, VSCodium, etc.)
+
+Install from your editor, or download from the [OpenVSX Marketplace](https://open-vsx.org/extension/Hudson-River-Trading/vscode-slang)
 
 ### Neovim
 

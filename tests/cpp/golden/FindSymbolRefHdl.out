@@ -1081,6 +1081,7 @@ module StructAssignmentTest (
                                 ^^^^^ Ref -> **Field** `valid` in `StructAssignmentTest::simple_struct_t`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic valid;`
                                          ^^^^^^^^^ Ref -> **Variable** `pkg_array` in `StructAssignmentTest`  \n\Type: `unpacked array [3] of packet_t`  \n\\n\\n\---\n\\n\`test_pkg::packet_t pkg_array[3];`
                                                    ^^^^^ Ref -> **Variable** `index` in `StructAssignmentTest`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`logic [1:0] index;`
+                                                          ^^ Ref -> **Field** `id` in `test_pkg::packet_t`  \n\Type: `id_t` (aka `logic[31:0]`)  \n\Width: `32`  \n\\n\\n\---\n\\n\`id_t id;`
 
 
 
@@ -1160,6 +1161,7 @@ module StructAssignmentTest (
             ^^^^^^^^^^^^^ Ref -> **Variable** `nested_struct` in `StructAssignmentTest`  \n\Type: PackedStruct `nested_struct_t` (`logic[29:0]`)  \n\Width: `30`  \n\\n\\n\---\n\\n\`nested_struct_t nested_struct;`
                           ^^^ Ref -> **Field** `tag` in `StructAssignmentTest::nested_struct_t`  \n\Type: `logic[3:0]`  \n\Width: `4`  \n\\n\\n\---\n\\n\`logic [3:0] tag;`
                                 ^^^^^^^^^^^^ Ref -> **Variable** `struct_array` in `StructAssignmentTest`  \n\Type: `unpacked array [4] of simple_struct_t`  \n\\n\\n\---\n\\n\`simple_struct_t struct_array[4];`
+                                                ^^^^ Ref -> **Field** `addr` in `StructAssignmentTest::simple_struct_t`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`logic [7:0] addr;`
 
             nested_struct.enable = |pkg_struct.id;
             ^^^^^^^^^^^^^ Ref -> **Variable** `nested_struct` in `StructAssignmentTest`  \n\Type: PackedStruct `nested_struct_t` (`logic[29:0]`)  \n\Width: `30`  \n\\n\\n\---\n\\n\`nested_struct_t nested_struct;`
