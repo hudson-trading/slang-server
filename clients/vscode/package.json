@@ -42,6 +42,20 @@
     "LICENSE"
   ],
   "contributes": {
+    "configurationDefaults": {
+      "[systemverilog]": {
+        "editor.colorDecorators": false
+      },
+      "[verilog]": {
+        "editor.colorDecorators": false
+      },
+      "[verilogheader]": {
+        "editor.colorDecorators": false
+      },
+      "[systemverilogheader]": {
+        "editor.colorDecorators": false
+      }
+    },
     "jsonValidation": [
       {
         "fileMatch": [
