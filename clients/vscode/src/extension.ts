@@ -145,9 +145,7 @@ export class SlangExtension extends ActivityBarComponent {
     const envPath = process.env.SLANG_SERVER_PATH
 
     if (envPath) {
-      this.logger.info(
-        `Using slang-server from environment variable: ${envPath}`
-      )
+      this.logger.info(`Using slang-server from environment variable: ${envPath}`)
       return envPath
     }
 

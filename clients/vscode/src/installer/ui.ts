@@ -39,8 +39,7 @@ export class InstallerUI {
 
   async promptInstall(): Promise<boolean> {
     const msg =
-      `slang-server is required but was not found.\n` +
-      `Would you like to download and install it?`
+      `slang-server is required but was not found.\n` + `Would you like to download and install it?`
 
     const install = 'Install slang-server'
     const resp = await vscode.window.showInformationMessage(msg, install)
