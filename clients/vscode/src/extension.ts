@@ -140,21 +140,28 @@ export class SlangExtension extends ActivityBarComponent {
   /// The final config from slang-server json files
   slangConfig: slang.Config = {}
 
-  async setupLanguageClient(): Promise<void> {
-    this.logger.info('Starting language server')
-
+  private async resolveSlangServerPath(): Promise<string> {
     // Check for environment variable set in launch.json; set when debugging in vscode
-    let slangServerPath = process.env.SLANG_SERVER_PATH
+    const envPath = process.env.SLANG_SERVER_PATH
 
-    // If not set, use configured path in settings.json
-    if (!slangServerPath) {
-      slangServerPath = await this.path.findSlangServer()
-      this.logger.info(`Using slang-server at ${slangServerPath}`)
-    } else {
-      this.logger.info(`Using slang-server from environment variable: ${slangServerPath}`)
+    if (envPath) {
+      this.logger.info(
+        `Using slang-server from environment variable: ${envPath}`
+      )
+      return envPath
     }
 
-    if (slangServerPath === '') {
+    // If not set, use configured path in settings.json
+    const configuredPath = await this.path.findSlangServer()
+    if (configuredPath !== '') {
+      this.logger.info(`Using slang-server at ${configuredPath}`)
+      return configuredPath
+    }
+
+    let slangServerPath = ''
+
+    /// If not set in settings.json either, run installer
+    if (configuredPath === '') {
       const ui = new InstallerUI(this.context)
 
       try {
@@ -163,7 +170,7 @@ export class SlangExtension extends ActivityBarComponent {
           await vscode.window.showErrorMessage(
             'slang-server is required to run the language server.'
           )
-          return
+          return ''
         }
 
         // Persist installed path into settings
@@ -173,8 +180,19 @@ export class SlangExtension extends ActivityBarComponent {
         await vscode.window.showErrorMessage(
           `Failed to install slang-server: ${err?.message ?? err}`
         )
-        return
+        return ''
       }
+    }
+
+    return slangServerPath
+  }
+
+  async setupLanguageClient(): Promise<void> {
+    this.logger.info('Starting language server')
+
+    const slangServerPath = await this.resolveSlangServerPath()
+    if (slangServerPath === '') {
+      return
     }
 
     // this.logger.info("using path " + slangServerPath)
