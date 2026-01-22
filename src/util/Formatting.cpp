@@ -178,6 +178,7 @@ std::string stripDocComment(std::string_view input) {
 
     fmt::memory_buffer out;
     bool inBlock = false;
+    bool lastLineHadText = false;
 
     std::size_t pos = 0;
     while (pos <= input.size()) {
@@ -187,6 +188,12 @@ std::string stripDocComment(std::string_view input) {
             end = input.size();
 
         std::string_view line = input.substr(pos, end - pos);
+
+#ifdef _WIN32
+        // Trim trailing carriage return for Windows line endings
+        if (!line.empty() && line.back() == '\r')
+            line.remove_suffix(1);
+#endif
 
         // Trim leading whitespace
         ltrim(line);
@@ -224,7 +231,19 @@ std::string stripDocComment(std::string_view input) {
             // line comments are displayed as is in the doc comment.
         }
 
-        fmt::format_to(fmt::appender(out), "{}\n", line);
+        const bool hasText = !line.empty();
+
+        // Force markdown to respect newlines by replacing `\n` with `  \n`
+        if (lastLineHadText) {
+            fmt::format_to(fmt::appender(out), "  \n");
+        }
+        else if (!lastLineHadText && hasText) {
+            fmt::format_to(fmt::appender(out), "\n");
+        }
+
+        fmt::format_to(fmt::appender(out), "{}", line);
+        lastLineHadText = hasText;
+
         pos = end + 1;
     }
 
