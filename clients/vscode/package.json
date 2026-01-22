@@ -289,7 +289,7 @@
                 "items": {
                   "type": "string"
                 },
-                "description": "Directories to format"
+                "description": "Directories to format. Relative to workspace root, and must not overlap. Formats all if omitted."
               },
               "languageIds": {
                 "type": "array",
@@ -302,6 +302,10 @@
                     "verilogheader"
                   ]
                 },
+                "default": [
+                  "verilog",
+                  "systemverilog"
+                ],
                 "description": "Language IDs to format (e.g., \"systemverilog\", \"verilog\")"
               }
             }
@@ -492,7 +496,7 @@
       "activitybar": [
         {
           "id": "slang",
-          "title": "Slang",
+          "title": "slang",
           "icon": "$(chip)"
         }
       ],

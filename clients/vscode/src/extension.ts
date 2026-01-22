@@ -14,6 +14,7 @@ import {
   ExternalFormatter,
   DeprecatedExternalFormatter,
   ExternalFormatterConfig,
+  ValidatedFormatterConfig,
 } from './ExternalFormatter'
 import {
   ActivityBarComponent,
@@ -26,7 +27,7 @@ import {
 } from './lib/libconfig'
 import { ProjectComponent } from './sidebar/ProjectComponent'
 import * as slang from './SlangInterface'
-import { AnyVerilogLanguages, anyVerilogSelector, getWorkspaceFolder } from './utils'
+import { AnyVerilogLanguages, anyVerilogSelector, getWorkspaceFolder, HDLFiles } from './utils'
 import { glob } from 'glob'
 
 export var ext: SlangExtension
@@ -45,7 +46,9 @@ export class SlangExtension extends ActivityBarComponent {
   formatters: ConfigObject<Array<ExternalFormatterConfig>> = new ConfigObject({
     default: [],
     description:
-      'List of formatter configurations. Each entry specifies a command, directories to format, and language IDs. File input is sent to stdin, and formatted output is read from stdout.',
+      'List of formatter configurations. \
+Each entry specifies a command, directories to format, and language IDs. \
+File input is sent to stdin, and formatted output is read from stdout.',
     items: {
       type: 'object',
       properties: {
@@ -57,11 +60,13 @@ export class SlangExtension extends ActivityBarComponent {
         dirs: {
           type: 'array',
           items: { type: 'string' },
-          description: 'Directories to format',
+          description:
+            'Directories to format. Relative to workspace root, and must not overlap. Formats all if omitted.',
         },
         languageIds: {
           type: 'array',
           items: { type: 'string', enum: AnyVerilogLanguages },
+          default: HDLFiles,
           description: 'Language IDs to format (e.g., "systemverilog", "verilog")',
         },
       },
@@ -349,7 +354,14 @@ export class SlangExtension extends ActivityBarComponent {
     const configs = this.formatters.getValue()
     for (let i = 0; i < configs.length; i++) {
       const config = configs[i]
-      const formatter = new ExternalFormatter(config, this.logger)
+      if (config.command === undefined) {
+        await vscode.window.showErrorMessage(
+          `Formatter at index ${i} is missing "command" field. Skipping.`
+        )
+        continue
+      }
+
+      const formatter = new ExternalFormatter(config as ValidatedFormatterConfig, this.logger)
       this.activeFormatters.push(formatter)
     }
     if (configs.length === 0) {
