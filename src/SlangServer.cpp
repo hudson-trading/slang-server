@@ -246,22 +246,29 @@ std::monostate SlangServer::setTopLevel(const std::string& path) {
     m_topFile = path;
     // Get top name from shallow parse
     {
-        slang::ast::Compilation shallowCompilation;
-        shallowCompilation.addSyntaxTree(doc->getSyntaxTree());
-        if (shallowCompilation.getRoot().topInstances.empty()) {
-            m_client.showError("No top modules found in: " + path);
-            return std::monostate{};
-        }
-        for (auto& top : shallowCompilation.getRoot().topInstances.subspan(1)) {
-            WARN("Extra top module: {}", top->name);
-        }
-        if (shallowCompilation.getRoot().topInstances.size() == 0) {
-            m_client.showError("No top modules found in " + path);
-            return std::monostate{};
-        }
+        auto topTree = doc->getSyntaxTree();
 
-        auto top = shallowCompilation.getRoot().topInstances[0]->name;
-        m_driver->createCompilation(uri, top);
+        std::string_view topName;
+        if (topTree->getMetadata().nodeMeta.size() == 1) {
+            topName = topTree->getMetadata().nodeMeta[0].first->header->name.valueText();
+        }
+        else {
+            slang::ast::Compilation shallowCompilation;
+            shallowCompilation.addSyntaxTree(topTree);
+            if (shallowCompilation.getRoot().topInstances.empty()) {
+                m_client.showError("No top modules found in: " + path);
+                return std::monostate{};
+            }
+            for (auto& top : shallowCompilation.getRoot().topInstances.subspan(1)) {
+                WARN("Extra top module: {}", top->name);
+            }
+            if (shallowCompilation.getRoot().topInstances.size() == 0) {
+                m_client.showError("No top modules found in " + path);
+                return std::monostate{};
+            }
+            topName = shallowCompilation.getRoot().topInstances[0]->name;
+        }
+        m_driver->createCompilation(doc, topName);
     }
 
     return std::monostate{};
