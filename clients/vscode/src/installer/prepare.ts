@@ -40,7 +40,9 @@ export async function prepareSlangServer(ui: InstallerUI): Promise<string> {
   }
 
   const ok = await ui.promptInstall()
-  if (!ok) {return ''}
+  if (!ok) {
+    return ''
+  }
 
   const binaryPath = await ui.progress('Installing slang-server...', false, async () => {
     return installLatestSlang(ui.storagePath)
