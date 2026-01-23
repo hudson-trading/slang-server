@@ -18,7 +18,6 @@
 #include <string_view>
 
 #include "slang/analysis/AnalysisManager.h"
-#include "slang/analysis/AnalysisOptions.h"
 #include "slang/ast/ASTContext.h"
 #include "slang/ast/Compilation.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
@@ -61,8 +60,11 @@ ShallowAnalysis::ShallowAnalysis(SourceManager& sourceManager, slang::BufferID b
                                  std::shared_ptr<SyntaxTree> tree, slang::Bag options,
                                  const std::vector<std::shared_ptr<SyntaxTree>>& allTrees) :
     syntaxes(*tree), m_sourceManager(sourceManager), m_buffer(buffer), m_tree(tree),
-    m_allTrees(allTrees), m_driverAnalysis(options.getOrDefault<analysis::AnalysisOptions>()),
+    m_allTrees(allTrees), m_analysisOptions(options.getOrDefault<analysis::AnalysisOptions>()),
     m_symbolTreeVisitor(m_sourceManager), m_symbolIndexer(buffer) {
+    // Override numThreads to avoid persistent thread pool
+    // Analysis for shallow compilation should be quick and won't benefit as much from threading
+    m_analysisOptions.numThreads = 1;
 
     if (!m_tree) {
         ERROR("DocumentAnalysis initialized with null syntax tree");
@@ -588,12 +590,13 @@ Diagnostics ShallowAnalysis::getAnalysisDiags() {
         return {};
     }
 
+    slang::analysis::AnalysisManager driverAnalysis(m_analysisOptions);
     m_compilation->freeze();
-    m_driverAnalysis.analyze(*m_compilation);
+    driverAnalysis.analyze(*m_compilation);
     m_compilation->unfreeze();
 
     // filter out unused def diags. TODO: maybe make this a separate unused flag?
-    return m_driverAnalysis.getDiagnostics().filter({diag::UnusedDefinition});
+    return driverAnalysis.getDiagnostics().filter({diag::UnusedDefinition});
 }
 
 } // namespace server

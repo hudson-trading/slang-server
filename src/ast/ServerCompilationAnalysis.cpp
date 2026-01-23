@@ -11,6 +11,7 @@
 #include "util/Logging.h"
 #include <unordered_set>
 
+#include "slang/analysis/AnalysisManager.h"
 #include "slang/ast/Compilation.h"
 #include "slang/text/SourceManager.h"
 
@@ -18,7 +19,8 @@ namespace server {
 
 ServerCompilationAnalysis::ServerCompilationAnalysis(
     std::vector<std::shared_ptr<SlangDoc>>& documents, Bag& options, SourceManager& sourceManager) :
-    compilation(options) {
+    compilation(options),
+    m_analysisOptions(options.getOrDefault<slang::analysis::AnalysisOptions>()) {
     // Collect all buffer IDs from all syntax trees
     {
         std::vector<BufferID> allBuffers;
@@ -56,11 +58,13 @@ void ServerCompilationAnalysis::issueDiagnosticsTo(slang::DiagnosticEngine& diag
     }
 
     // Driver analysis diagnostics (multi-driven, unused, etc)
+    // Use stored options with numThreads=1 to avoid persistent thread pool
+    slang::analysis::AnalysisManager driverAnalysis(m_analysisOptions);
     compilation.freeze();
-    m_driverAnalysis.analyze(compilation);
+    driverAnalysis.analyze(compilation);
     compilation.unfreeze();
-    INFO("Driver analysis found {} diagnostics", m_driverAnalysis.getDiagnostics().size());
-    for (auto& diag : m_driverAnalysis.getDiagnostics()) {
+    INFO("Driver analysis found {} diagnostics", driverAnalysis.getDiagnostics().size());
+    for (auto& diag : driverAnalysis.getDiagnostics()) {
         diagEngine.issue(diag);
     }
 }

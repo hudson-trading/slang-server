@@ -18,7 +18,7 @@
 #include <string_view>
 #include <vector>
 
-#include "slang/analysis/AnalysisManager.h"
+#include "slang/analysis/AnalysisOptions.h"
 #include "slang/ast/ASTContext.h"
 #include "slang/ast/Compilation.h"
 #include "slang/ast/Lookup.h"
@@ -167,8 +167,8 @@ private:
     /// Compilation context for symbol resolution
     std::unique_ptr<slang::ast::Compilation> m_compilation;
 
-    /// Analysis manager for running driver and unused checks
-    slang::analysis::AnalysisManager m_driverAnalysis;
+    /// Analysis options for driver analysis (numThreads=1 to avoid persistent threads)
+    slang::analysis::AnalysisOptions m_analysisOptions;
 
     /// Symbol tree visitor for /documentSymbols
     /// Currently this is relies on syntax, but we should switch it to use the shallow compilation
