@@ -1,13 +1,11 @@
 import { readFile, writeFile } from 'fs/promises'
-import * as path from 'path'
 import * as process from 'process'
 import * as vscode from 'vscode'
-import which from 'which'
 import { JSONSchemaType } from './jsonSchema'
 import { Logger, StubLogger, createLogger } from './logger'
 import { IConfigurationPropertySchema } from './vscodeConfigs'
 import fs = require('fs')
-import { PlatformMap, getPlatform } from './platform'
+import { getPlatform } from './platform'
 
 export async function fileExists(filePath: string): Promise<boolean> {
   try {
@@ -559,15 +557,21 @@ export class ViewComponent extends ExtensionComponent {
   }
 }
 
+export interface ConfigObjectSpec extends IConfigurationPropertySchema {
+  // no additional fields for now
+  deprecationMessage?: string
+  [key: string]: any
+}
+
 ////////////////////////////////////////////////////
 // Config Leaf
 ////////////////////////////////////////////////////
 export class ConfigObject<T extends JSONSchemaType> extends ExtensionNode {
-  protected obj: any
+  protected obj: ConfigObjectSpec
   default: T
   cachedValue: T
 
-  constructor(obj: IConfigurationPropertySchema) {
+  constructor(obj: ConfigObjectSpec) {
     super()
     this.obj = obj
     this.default = obj.default
@@ -656,95 +660,6 @@ export class ConfigObject<T extends JSONSchemaType> extends ExtensionNode {
         out += `  - ${option}\n`
       }
     }
-    return out
-  }
-}
-
-type PathConfigSchema = Omit<IConfigurationPropertySchema, 'default'>
-export class PathConfigObject extends ConfigObject<string> {
-  platformDefaults: PlatformMap
-  constructor(obj: PathConfigSchema, platformDefaults: PlatformMap) {
-    super({
-      ...obj,
-      default: '',
-    })
-    this.platformDefaults = platformDefaults
-  }
-
-  compile(nodeName: string, parentNode?: ExtensionComponent | undefined): void {
-    super.compile(nodeName, parentNode)
-  }
-
-  getValue(): string {
-    let toolpath = vscode.workspace.getConfiguration().get(this.configPath!, '')
-    if (toolpath === '') {
-      return this.platformDefaults[getPlatform()]
-    }
-    return toolpath
-  }
-
-  async findSlangServer(): Promise<string> {
-    // get configured path from settings.json
-    let toolpath = vscode.workspace.getConfiguration().get(this.configPath!, '')
-
-    // path has not been configured in settings.json
-    if (toolpath === '') {
-      // start by checking to see if we have a cached value
-      if (path.isAbsolute(this.cachedValue)) {
-        return this.cachedValue
-      }
-
-      // if we don't have a cached value, then we check to see if its on the path
-      toolpath = this.platformDefaults[getPlatform()]
-      const whichResult = await which(toolpath, { nothrow: true })
-      if (whichResult !== '' && whichResult !== null) {
-        console.error(`which ${toolpath} found ${whichResult}`)
-        toolpath = whichResult
-
-        // we return early since we found it on the path and we don't
-        // need to do further checks (like existance and directory)
-        this.cachedValue = toolpath
-        return toolpath
-      } else {
-        // not found on path
-        console.error(`which ${toolpath} failed`)
-
-        return ''
-      }
-    }
-
-    this.cachedValue = toolpath
-
-    try {
-      const stats = await fs.promises.stat(toolpath)
-      if (!stats.isFile()) {
-        vscode.window.showErrorMessage(
-          `File "${this.configPath}: ${toolpath}" is not a file, please reconfigure`
-        )
-      }
-    } catch {
-      // I believe it only throws if the file DNE
-      // see: https://stackoverflow.com/a/53530146
-      // probably would be good to verify this though.
-      vscode.window.showErrorMessage(
-        `File "${this.configPath}: ${toolpath}" doesn't exist, please reconfigure`
-      )
-    }
-
-    return toolpath
-  }
-
-  getMarkdownString(): string {
-    // Skip deprecated configs from documentation
-    if ('deprecationMessage' in this.obj) {
-      return ''
-    }
-
-    let out = `- \`${this.configPath}\`: path\n\n`
-    out += `  Platform Defaults:\n\n`
-    out += `    linux:   \`${this.platformDefaults.linux}\`\n\n`
-    out += `    mac:     \`${this.platformDefaults.mac}\`\n\n`
-    out += `    windows: \`${this.platformDefaults.windows}\`\n\n`
     return out
   }
 }
