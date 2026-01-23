@@ -21,18 +21,20 @@
 #include "slang/syntax/SyntaxKind.h"
 #include "slang/syntax/SyntaxNode.h"
 #include "slang/util/Util.h"
+#include "slang/syntax/SyntaxFacts.h"
 
 namespace server {
 
-/// Find the name token in a syntax node, 1 layer deep.
-const slang::parsing::Token* findName(std::string_view name,
-                                      const slang::syntax::SyntaxNode& node) {
+/// Returns all identifiers matching the given name, preserving order.
+std::vector<const slang::parsing::Token*> findAllNames(std::string_view name,
+                                                       const slang::syntax::SyntaxNode& node) {
+    std::vector<const slang::parsing::Token*> results;
     // Look through tokens first
     for (size_t childInd = 0; childInd < node.getChildCount(); childInd++) {
         auto child = const_cast<slang::syntax::SyntaxNode&>(node).childTokenPtr(childInd);
         if (child && child->kind == slang::parsing::TokenKind::Identifier) {
             if (child->valueText() == name) {
-                return child;
+                results.push_back(child);
             }
         }
     }
@@ -40,13 +42,18 @@ const slang::parsing::Token* findName(std::string_view name,
     for (size_t childInd = 0; childInd < node.getChildCount(); childInd++) {
         auto child = node.childNode(childInd);
         if (child) {
-            auto nameTok = findName(name, *child);
-            if (nameTok) {
-                return nameTok;
-            }
+            auto allNames = findAllNames(name, *child);
+            results.insert(results.end(), allNames.begin(), allNames.end());
         }
     }
-    return nullptr;
+    return results;
+}
+
+/// Find the name token in a syntax node, 1 layer deep.
+const slang::parsing::Token* findName(std::string_view name,
+                                      const slang::syntax::SyntaxNode& node) {
+    auto allNames = findAllNames(name, node);
+    return allNames.empty() ? nullptr : allNames.front();
 }
 
 SymbolIndexer::SymbolIndexer(slang::BufferID buffer) : m_buffer(buffer) {
@@ -160,8 +167,9 @@ void SymbolIndexer::indexSymbolName(const slang::ast::Symbol& symbol) {
 
         auto& syntax = *symbol.getSyntax();
         if (syntax.sourceRange().start().buffer() == m_buffer) {
-            auto nameTok = findName(symbol.name, syntax);
-            if (nameTok) {
+            // Index all occurrences of the symbol name (e.g., declaration + endblock label)
+            auto allNames = findAllNames(symbol.name, syntax);
+            for (auto nameTok : allNames) {
                 symdex[nameTok] = &symbol;
             }
         }
