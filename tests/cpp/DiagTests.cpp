@@ -120,6 +120,48 @@ TEST_CASE("PartialElaboration") {
     golden.record(diags);
 }
 
+TEST_CASE("RecursiveModuleRegression") {
+    ServerHarness server;
+
+    auto doc = server.openFile("recursive.sv", R"(
+module Nbitaddr #(parameter N = 8) (
+    input  logic [N-1:0] a,
+    input  logic [N-1:0] b,
+    input  logic         cin,
+    output logic [N-1:0] sum,
+    output logic         cout
+);
+    logic carry_mid;
+    Nbitaddr #(.N(N/2)) lo (
+        .a(a[N/2-1:0]),
+        .b(b[N/2-1:0]),
+        .cin(cin),
+        .sum(sum[N/2-1:0]),
+        .cout(carry_mid)
+    );
+    Nbitaddr #(.N(N - N/2)) hi (
+        .a(a[N-1:N/2]),
+        .b(b[N-1:N/2]),
+        .cin(carry_mid),
+        .sum(sum[N-1:N/2]),
+        .cout(cout)
+    );
+endmodule
+
+module Top #()();
+    Nbitaddr #(.N(8)) u_addr (
+    .a(8'hFF),
+    .b(8'h01),
+    .cin(1'b0),
+    .sum(),
+    .cout()
+);
+
+)");
+
+    CHECK(doc.getDiagnostics().size() > 0);
+}
+
 TEST_CASE("CompilationDiagnostics") {
     ServerHarness server("comp_repo");
 

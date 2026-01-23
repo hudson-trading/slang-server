@@ -18,7 +18,6 @@
 #include <string_view>
 
 #include "slang/analysis/AnalysisManager.h"
-#include "slang/analysis/AnalysisOptions.h"
 #include "slang/ast/ASTContext.h"
 #include "slang/ast/Compilation.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
@@ -61,8 +60,11 @@ ShallowAnalysis::ShallowAnalysis(SourceManager& sourceManager, slang::BufferID b
                                  std::shared_ptr<SyntaxTree> tree, slang::Bag options,
                                  const std::vector<std::shared_ptr<SyntaxTree>>& allTrees) :
     syntaxes(*tree), m_sourceManager(sourceManager), m_buffer(buffer), m_tree(tree),
-    m_allTrees(allTrees), m_driverAnalysis(options.getOrDefault<analysis::AnalysisOptions>()),
+    m_allTrees(allTrees), m_analysisOptions(options.getOrDefault<analysis::AnalysisOptions>()),
     m_symbolTreeVisitor(m_sourceManager), m_symbolIndexer(buffer) {
+    // Override numThreads to avoid persistent thread pool
+    // Analysis for shallow compilation should be quick and won't benefit as much from threading
+    m_analysisOptions.numThreads = 1;
 
     if (!m_tree) {
         ERROR("DocumentAnalysis initialized with null syntax tree");
@@ -280,12 +282,12 @@ const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declT
         auto lastToken = macroArgSyntax.getLastToken();
         size_t startOffset = firstToken.location().offset();
         size_t endOffset = lastToken.location().offset() + lastToken.rawText().size();
-
-        std::string_view macroArg{firstToken.rawText().data(), endOffset - startOffset};
+        auto macroArgText = m_sourceManager.getText(SourceRange{
+            SourceLocation(m_buffer, startOffset), SourceLocation(m_buffer, endOffset)});
 
         // These will overwrite the same assigned source, but it's ok since they are temporary,
         // and the source manager should be thread safe (for when we do threaded async)
-        tokTree = SyntaxTree::fromText(macroArg, m_sourceManager);
+        tokTree = SyntaxTree::fromText(macroArgText, m_sourceManager);
         tokTree->root().parent = macroArgSyntax.parent;
         OffsetFinder visitor(declTok->location().offset() -
                              macroArgSyntax.getFirstToken().location().offset());
@@ -362,6 +364,10 @@ const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declT
                             return nullptr;
                         }
                         cur = scope->find(member->name);
+
+                        if (member->nameRange == declTok->range()) {
+                            return cur;
+                        }
                     }
                     else {
                         const ast::Type* type = nullptr;
@@ -386,6 +392,18 @@ const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declT
                     }
                 }
                 return cur;
+            }
+            // with IdentifierSelectNameSyntax (instance arrays) result.found will be the final
+            // element, when we may want the array. In the case of the selectors being the token, we
+            // do want the element for completions
+            if (syntax->kind == syntax::SyntaxKind::IdentifierSelectName &&
+                (result.found->kind == slang::ast::SymbolKind::Instance ||
+                 result.found->kind == slang::ast::SymbolKind::GenerateBlock)) {
+                auto& idSelect = syntax->as<syntax::IdentifierSelectNameSyntax>();
+                if (idSelect.identifier == *declTok) {
+                    return result.path.at(result.path.size() - 1 - idSelect.selectors.size())
+                        .symbol.get();
+                }
             }
             return result.found;
         }
@@ -572,12 +590,13 @@ Diagnostics ShallowAnalysis::getAnalysisDiags() {
         return {};
     }
 
+    slang::analysis::AnalysisManager driverAnalysis(m_analysisOptions);
     m_compilation->freeze();
-    m_driverAnalysis.analyze(*m_compilation);
+    driverAnalysis.analyze(*m_compilation);
     m_compilation->unfreeze();
 
     // filter out unused def diags. TODO: maybe make this a separate unused flag?
-    return m_driverAnalysis.getDiagnostics().filter({diag::UnusedDefinition});
+    return driverAnalysis.getDiagnostics().filter({diag::UnusedDefinition});
 }
 
 } // namespace server

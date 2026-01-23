@@ -30,7 +30,7 @@ The `unittests` target is also buildable and runnable, to ensure any temporary u
 
 ## Vscode Testing
 
-Install the Slang Extension on either the [Vscode Marketplace](TODO) or [OpenVSX](TODO)
+Install the Slang Extension on either the [Vscode Marketplace](https://marketplace.visualstudio.com/items?itemName=Hudson-River-Trading.vscode-slang) or [OpenVSX](https://open-vsx.org/extension/Hudson-River-Trading/vscode-slang)
 
 Add this to `.vscode/settings.json` to use slang-server
 
@@ -78,11 +78,10 @@ You can use the auto-attach debug config by pointing your repo to the build/vsco
 Neovim tests require nlua and busted as [described here](https://mrcjkb.dev/posts/2023-06-06-luarocks-test.html).
 They can be configured and run via luarocks as follows:
 ```bash
-cd clients/neovim/
 luarocks --tree .luarocks install nlua
 luarocks --tree .luarocks --lua-version 5.1 install busted
 eval $(luarocks --tree .luarocks --lua-version 5.1 path)
-PATH=$PATH:../../build/bin luarocks --tree .luarocks --lua-version 5.1 test
+luarocks --tree .luarocks --lua-version 5.1 test clients/neovim/slang-server.nvim-scm-1.rockspec --test-type busted -- -C clients/neovim/
 ```
 
 ## lsp-rr-wrapper.py

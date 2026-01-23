@@ -32,20 +32,22 @@ jobs:
       - name: Install dependencies
         working-directory: clients/vscode
         run: pnpm install --frozen-lockfile
-      - name: Install vsce
-        run: pnpm install -g @vscode/vsce
       - name: Configure git
         run: |
           git config --global user.email "${{ github.actor }}@users.noreply.github.com"
           git config --global user.name "${{ github.actor }}"
+      - name: Validate vsce packaging
+        working-directory: clients/vscode
+        run: pnpm dlx @vscode/vsce package --no-dependencies --packageManager pnpm
+      - name: Validate ovsx packaging
+        working-directory: clients/vscode
+        run: pnpm dlx ovsx publish --packageManager pnpm --dry-run
       - name: Publish to Visual Studio Marketplace
         working-directory: clients/vscode
-        run: vsce publish ${{ inputs.kind }} ${{ inputs.prerelease && '--pre-release' || '' }} --no-dependencies --pat ${{ secrets.VS_MARKETPLACE_TOKEN }}
-      # - name: Install ovsx
-      #   run: pnpm install -g ovsx
-      # - name: Publish to Open Vsix
-      #   working-directory: clients/vscode
-      #   run: npx ovsx publish ${{ inputs.prerelease && '--pre-release' || '' }} --pat ${{ secrets.OPEN_VSX_TOKEN }}
+        run: pnpm dlx @vscode/vsce publish ${{ inputs.kind }} ${{ inputs.prerelease && '--pre-release' || '' }} --no-dependencies --packageManager pnpm --pat ${{ secrets.VS_MARKETPLACE_TOKEN }}
+      - name: Publish to Open Vsix
+        working-directory: clients/vscode
+        run: pnpm dlx ovsx publish ${{ inputs.prerelease && '--pre-release' || '' }} --packageManager pnpm --pat ${{ secrets.OPEN_VSX_TOKEN }}
       - name: Commit and push version bump
         run: |
           git add clients/vscode/package.json

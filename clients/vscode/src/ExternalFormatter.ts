@@ -18,25 +18,34 @@ export class DeprecatedExternalFormatter extends ExtensionComponent {
 }
 
 export interface ExternalFormatterConfig {
+  command?: string
+  dirs?: string[]
+  languageIds: string[]
+}
+
+export interface ValidatedFormatterConfig {
   command: string
-  dirs: string[]
+  dirs?: string[]
   languageIds: string[]
 }
 
 export class ExternalFormatter implements vscode.DocumentFormattingEditProvider {
-  private config: ExternalFormatterConfig
+  private config: ValidatedFormatterConfig
   provider: vscode.Disposable
   logger: Logger
 
-  constructor(config: ExternalFormatterConfig, logger: Logger) {
+  constructor(config: ValidatedFormatterConfig, logger: Logger) {
     this.config = config
     this.logger = logger
 
     let selectors: vscode.DocumentFilter[]
-    if (config.dirs.length > 0) {
+    if (config.dirs && config.dirs.length > 0) {
       selectors = []
       for (const language of config.languageIds) {
-        for (const dir of config.dirs) {
+        for (let dir of config.dirs) {
+          if (dir.endsWith('/')) {
+            dir = dir.slice(0, -1)
+          }
           selectors.push({
             scheme: 'file',
             language: language,
@@ -48,8 +57,11 @@ export class ExternalFormatter implements vscode.DocumentFormattingEditProvider 
       selectors = config.languageIds.map((language) => ({
         scheme: 'file',
         language: language,
+        pattern: `${getWorkspaceFolder()}/**/*`,
       }))
     }
+
+    this.logger.info(`Registering external formatter with config: ${JSON.stringify(config)}`)
 
     this.provider = vscode.languages.registerDocumentFormattingEditProvider(selectors, this)
   }

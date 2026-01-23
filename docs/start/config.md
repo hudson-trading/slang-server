@@ -1,104 +1,97 @@
 # Configuration
 
-The server is configurable through server.json files
+The server uses a hierarchical configuration system, layering configs in this order:
 
-## Configuration Files
+1. `~/.slang/server.json`
+2. `${workspaceFolder}/.slang/server.json` (should be in source control)
+3. `${workspaceFolder}/.slang/local/server.json` (`.slang/local` should be ignored by source control)
 
-The server uses a hierarchical configuration system, layering options in this order:
+Each option value overrides the value set in previous configs. The exception for this is lists, which are appended.
 
-- `~/.slang/server.json`
-- `${workspaceFolder}/.slang/server.json` (should be on source control)
-- `${workspaceFolder}/.slang/local/server.json` (`.slang/local` should be ignored by source control)
+## Config Options
 
-A set config option overrides the existing value in the previous config, except for lists, which are appended.
+All configuration options are optional and have sensible defaults. In VSCode, there are completions and hovers for `server.json` files. For other editors, you may be able to associate the [config schema](https://github.com/hudson-trading/slang-server/blob/main/clients/vscode/resources/config.schema.json) with these config files to get these features.
 
-## Config options
+---
 
-All configuration options are optional and have sensible defaults. In Vscode, the configuration files are self-documenting via a generated json schema, meaning that there are completions and hovers for the server.json files.
+### `index`
 
+:   **Type:** `list[IndexConfig]`
 
-### `indexGlobs`
-Configuring this and excludeDirs are **highly** recommended, as narrowing these can dramatically reduce the indexing time. Crawling a directory can actually take more time than actually indexing the files, so avoiding build dirs and software dirs to reduce that time. If there's rewritten or generated verilog in build dirs that get indexed, it can slow down the language server and make features like gotos and completions inaccurate.
+    ```typescript
+    interface IndexConfig {
+      /** Directories to index */
+      dirs?: string[]
+      /** Directories to exclude; only supports single directory names and applies to all path levels */
+      excludeDirs?: string[] | null
+    }
+    ```
 
-**Type:** `array of strings`
+    Which directories to index; By default it indexes the entire workspace. It's **highly** recommended to configure this for your repo, especially if there are generated build directories and non-hardware directories that can be skipped.
 
-**Default:** `["./.../*.sv*"]`
-
-**Description:** SV Globs of what to index. Supports recursive patterns with `...` \
-
-**Example:**
-
-```json
-{
-  "indexGlobs": ["./src/.../*.sv", "./tb/.../*.sv", "./include/.../*.svh"]
-}
-```
-
-### `excludeDirs`
-
-**Type:** `array of strings`
-
-**Description:** Directories to exclude from indexing
-
-**Example:**
-
-```json
-{
-  "excludeDirs": ["build", "temp", "old_code"]
-}
-```
+---
 
 ### `flags`
-It's recommended to keep your slang flags in a flag file, that way it can be shared by both CI and the language server. Another nice setup is having slang.f contain your CI flags, then have slang-server.f include that file (via `-f path/to/slang.f`), then add more warnings in `slang-server.f`. This way more pedantic checks will show as yellow underlines in your editor.
 
-**Type:** `string`
+:   **Type:** `string`
 
-**Description:** Flags to pass to slang
+    Flags to pass to slang.
 
-**Example:** `"-f path/to/slang_flags.f`
+    It's recommended to keep your slang flags in a flag file, that way it can be shared by both CI and the language server. Another nice setup is having `slang.f` contain your CI flags, then have `slang-server.f` include that file (via `-f path/to/slang.f`), along with more warnings in `slang-server.f`. That way more pedantic checks will show as yellow underlines in your editor.
 
+    **Example:** `"-f path/to/slang_flags.f"`
+
+---
 
 ### `indexingThreads`
 
-**Type:** `integer`
+:   **Type:** `integer`
 
-**Default:** `0` (auto-detect)
+    **Default:** `0` (auto-detect)
 
-**Description:** Thread count to use for indexing. When set to 0, automatically detects the optimal number of threads based on system capabilities.
+    Thread count to use for indexing. When set to 0, automatically detects the optimal number of threads based on system capabilities.
+
+---
 
 ### `parsingThreads`
 
-**Type:** `integer`
+:   **Type:** `integer`
 
-**Default:** `8`
+    **Default:** `8`
 
-**Description:** Thread count to use for parsing SystemVerilog files for compilations.
+    Thread count to use for parsing SystemVerilog files for compilations.
 
+---
 
 ### `build`
 
-**Type:** `string` (optional)
+:   **Type:** `string`
 
-**Description:** Build file to automatically open on start
+    Build file to automatically open on start.
 
-**Example:** `"./build/compile.f"`
+    **Example:** `"./build/compile.f"`
 
+---
 
 ### `buildPattern`
 
-**Type:** `string` (optional)
+:   **Type:** `string` (glob pattern)
 
-**Description:** Build file pattern used to find the a .f file given a the name of a waveform file. (e.g. /tmp/{}.fst with builds/{}.f looks for build/foo.f to load the compilation). This is also used to look for .f files in the vscode client when selecting a .f file.
+    Build file pattern used to find a `.f` file given the name of a waveform file. For example, `/tmp/{}.fst` with `builds/{}.f` looks for `build/foo.f` to load the compilation. This is also used to look for `.f` files in the VSCode client when selecting a `.f` file.
 
-**Example:** `"builds/{}.f"`
+    **Example:** `"builds/{}.f"`
+
+---
 
 ### `wcpCommand`
 
-**Type:** `string`
+:   **Type:** `string`
 
-**Description:** Waveform viewer command where `{}` will be replaced with the WCP port
+    Waveform viewer command where `{}` will be replaced with the WCP port.
 
-**Example:** `"surfer --wcp-initiate {}"`
+    **Example:** `"surfer --wcp-initiate {}"`
+
+---
 
 ## Example Configuration
 

@@ -383,9 +383,9 @@ module TestModule #(
 
     assign inst_array_test = sub_inst[0].data_out + sub_inst[1].data_out;
            ^^^^^^^^^^^^^^^ Ref -> **Variable** `inst_array_test` in `TestModule`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\\n\\n\---\n\\n\`// Test instance array access - goto on sub_inst[0] should go to sub_inst declaration\n\logic [15:0] inst_array_test;`
-                             ^^^^^^^^ Ref -> **Instance** `` in `TestModule.sub_inst`  \n\Type: Sub  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(16)) sub_inst [NUM_SUBS] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(sub_data_in),\n\    .data_out(sub_data_out)\n\);`
+                             ^^^^^^^^ Ref -> **InstanceArray** `sub_inst` in `TestModule`  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(16)) sub_inst [NUM_SUBS] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(sub_data_in),\n\    .data_out(sub_data_out)\n\);`
                                          ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
-                                                    ^^^^^^^^ Ref -> **Instance** `` in `TestModule.sub_inst`  \n\Type: Sub  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(16)) sub_inst [NUM_SUBS] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(sub_data_in),\n\    .data_out(sub_data_out)\n\);`
+                                                    ^^^^^^^^ Ref -> **InstanceArray** `sub_inst` in `TestModule`  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(16)) sub_inst [NUM_SUBS] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(sub_data_in),\n\    .data_out(sub_data_out)\n\);`
                                                                 ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
 
 
@@ -623,9 +623,9 @@ module NoDefaults #(
 
     assign test_2d_access = sub_2d[0][1].data_out + sub_2d[1][2].data_out;
            ^^^^^^^^^^^^^^ Ref -> **Variable** `test_2d_access` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`// Test 2D instance array access\n\logic [WIDTH-1:0] test_2d_access;`
-                            ^^^^^^ Ref -> **Instance** `` in `NoDefaults.sub_2d`  \n\Type: Sub  \n\\n\\n\---\n\\n\`// 2D instance array\n\Sub #(.WIDTH(WIDTH)) sub_2d [2][3] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(data_in),\n\    .data_out()\n\);`
+                            ^^^^^^ Ref -> **InstanceArray** `` in `NoDefaults.sub_2d`  \n\\n\\n\---\n\\n\`// 2D instance array\n\Sub #(.WIDTH(WIDTH)) sub_2d [2][3] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(data_in),\n\    .data_out()\n\);`
                                          ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
-                                                    ^^^^^^ Ref -> **Instance** `` in `NoDefaults.sub_2d`  \n\Type: Sub  \n\\n\\n\---\n\\n\`// 2D instance array\n\Sub #(.WIDTH(WIDTH)) sub_2d [2][3] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(data_in),\n\    .data_out()\n\);`
+                                                    ^^^^^^ Ref -> **InstanceArray** `` in `NoDefaults.sub_2d`  \n\\n\\n\---\n\\n\`// 2D instance array\n\Sub #(.WIDTH(WIDTH)) sub_2d [2][3] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(data_in),\n\    .data_out()\n\);`
                                                                  ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
 
 
@@ -673,8 +673,8 @@ module NoDefaults #(
 
     assign test_gen_array_access = gen_loop_2[0].gen_sub_array[2].data_out;
            ^^^^^^^^^^^^^^^^^^^^^ Ref -> **Variable** `test_gen_array_access` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`// Test instance array inside generate scope access\n\logic [WIDTH-1:0] test_gen_array_access;`
-                                   ^^^^^^^^^^ Ref -> **GenerateBlock** `` in `NoDefaults.gen_loop_2`  \n\\n\\n\---\n\\n\`begin : gen_loop_2\n\    Sub #(.WIDTH(WIDTH)) gen_sub_array [4] (\n\        .clk(clk),\n\        .rst(rst),\n\        .data_in(data_in),\n\        .data_out()\n\    );\n\end`
-                                                 ^^^^^^^^^^^^^ Ref -> **Instance** `` in `NoDefaults.gen_loop_2.gen_sub_array`  \n\Type: Sub  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(WIDTH)) gen_sub_array [4] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(data_in),\n\    .data_out()\n\);`
+                                   ^^^^^^^^^^ Ref -> **GenerateBlockArray** `gen_loop_2` in `NoDefaults`  \n\\n\\n\---\n\\n\`for(j = 0; j < 3; j++) begin : gen_loop_2\n\    Sub #(.WIDTH(WIDTH)) gen_sub_array [4] (\n\        .clk(clk),\n\        .rst(rst),\n\        .data_in(data_in),\n\        .data_out()\n\    );\n\end`
+                                                 ^^^^^^^^^^^^^ Ref -> **InstanceArray** `gen_sub_array` in `NoDefaults.gen_loop_2`  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(WIDTH)) gen_sub_array [4] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(data_in),\n\    .data_out()\n\);`
                                                                   ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
 
 
@@ -1081,6 +1081,7 @@ module StructAssignmentTest (
                                 ^^^^^ Ref -> **Field** `valid` in `StructAssignmentTest::simple_struct_t`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic valid;`
                                          ^^^^^^^^^ Ref -> **Variable** `pkg_array` in `StructAssignmentTest`  \n\Type: `unpacked array [3] of packet_t`  \n\\n\\n\---\n\\n\`test_pkg::packet_t pkg_array[3];`
                                                    ^^^^^ Ref -> **Variable** `index` in `StructAssignmentTest`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`logic [1:0] index;`
+                                                          ^^ Ref -> **Field** `id` in `test_pkg::packet_t`  \n\Type: `id_t` (aka `logic[31:0]`)  \n\Width: `32`  \n\\n\\n\---\n\\n\`id_t id;`
 
 
 
@@ -1160,6 +1161,7 @@ module StructAssignmentTest (
             ^^^^^^^^^^^^^ Ref -> **Variable** `nested_struct` in `StructAssignmentTest`  \n\Type: PackedStruct `nested_struct_t` (`logic[29:0]`)  \n\Width: `30`  \n\\n\\n\---\n\\n\`nested_struct_t nested_struct;`
                           ^^^ Ref -> **Field** `tag` in `StructAssignmentTest::nested_struct_t`  \n\Type: `logic[3:0]`  \n\Width: `4`  \n\\n\\n\---\n\\n\`logic [3:0] tag;`
                                 ^^^^^^^^^^^^ Ref -> **Variable** `struct_array` in `StructAssignmentTest`  \n\Type: `unpacked array [4] of simple_struct_t`  \n\\n\\n\---\n\\n\`simple_struct_t struct_array[4];`
+                                                ^^^^ Ref -> **Field** `addr` in `StructAssignmentTest::simple_struct_t`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`logic [7:0] addr;`
 
             nested_struct.enable = |pkg_struct.id;
             ^^^^^^^^^^^^^ Ref -> **Variable** `nested_struct` in `StructAssignmentTest`  \n\Type: PackedStruct `nested_struct_t` (`logic[29:0]`)  \n\Width: `30`  \n\\n\\n\---\n\\n\`nested_struct_t nested_struct;`

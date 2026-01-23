@@ -1,6 +1,6 @@
 # Slang Server
 
-`slang-server` is a [Language Server](https://microsoft.github.io/language-server-protocol/) for SystemVerilog based on the [Slang](https://github.com/MikePopoloski/slang) library, providing useful language features for editors like Vscode and Neovim.
+`slang-server` is a [Language Server](https://microsoft.github.io/language-server-protocol/) for SystemVerilog based on the [Slang](https://github.com/MikePopoloski/slang) library, providing useful language features for editors like VS Code and Neovim.
 
 See [the docs](https://hudson-trading.github.io/slang-server) for instructions on [installing](https://hudson-trading.github.io/slang-server/start/installing/) and [configuring](https://hudson-trading.github.io/slang-server/start/config/).
 
@@ -10,18 +10,26 @@ Contributions are welcome! See [DEVELOPING.md](DEVELOPING.md)
 
 Quick, high quality lint messages on every keystroke, with links to the [Slang warning reference](https://sv-lang.com/warning-ref.html).
 
-![](clients/vscode/images/lints.gif)
+![](docs/assets/images/lints.gif)
 
 Informative hovers and gotos on nearly every symbol across your workspace and libraries.
 
-![](clients/vscode/images/hovers.gif)
+![](docs/assets/images/hovers.gif)
+
+Find references across your entire workspace.
+
+![](docs/assets/images/gotorefs.gif)
+
+Configurable inlay hints that provide useful information.
+
+![](docs/assets/images/all_inlays.png)
 
 Intuitive completions for module instances and macros, as well as scope members of packages, modules, structs, and more.
 
-![](clients/vscode/images/completions.gif)
+![](docs/assets/images/completions.gif)
 
 HDL-specific features that allow you to easily set a filelist or top level for a design, browse the elaborated hierarchy, and go back and forth with a waveform viewer.
 
-![](clients/vscode/images/hdl.gif)
+![](docs/assets/images/hdl.gif)
 
 For more detailed feature info, see [the docs](https://hudson-trading.github.io/slang-server/features/features/).

@@ -128,6 +128,60 @@
       {
         "range": {
           "start": {
+            "line": 11,
+            "character": 35
+          },
+          "end": {
+            "line": 11,
+            "character": 44
+          }
+        },
+        "severity": "Warning",
+        "code": "undriven-port",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#undriven-port"
+        },
+        "message": "undriven output port 'mem_wdata'"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 13,
+            "character": 36
+          },
+          "end": {
+            "line": 13,
+            "character": 42
+          }
+        },
+        "severity": "Warning",
+        "code": "undriven-port",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#undriven-port"
+        },
+        "message": "undriven output port 'mem_we'"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 25,
+            "character": 27
+          },
+          "end": {
+            "line": 25,
+            "character": 40
+          }
+        },
+        "severity": "Warning",
+        "code": "unassigned-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unassigned-variable"
+        },
+        "message": "variable 'register_file' is never assigned a value"
+      },
+      {
+        "range": {
+          "start": {
             "line": 48,
             "character": 19
           },
@@ -188,6 +242,321 @@
             "message": "declared here"
           }
         ]
+      },
+      {
+        "range": {
+          "start": {
+            "line": 54,
+            "character": 27
+          },
+          "end": {
+            "line": 54,
+            "character": 37
+          }
+        },
+        "severity": "Warning",
+        "code": "unused-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unused-variable"
+        },
+        "message": "unused variable 'alu_result'",
+        "tags": [
+          "Unnecessary"
+        ]
+      },
+      {
+        "range": {
+          "start": {
+            "line": 55,
+            "character": 10
+          },
+          "end": {
+            "line": 55,
+            "character": 18
+          }
+        },
+        "severity": "Warning",
+        "code": "unused-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unused-variable"
+        },
+        "message": "unused variable 'alu_zero'",
+        "tags": [
+          "Unnecessary"
+        ]
+      },
+      {
+        "range": {
+          "start": {
+            "line": 55,
+            "character": 20
+          },
+          "end": {
+            "line": 55,
+            "character": 32
+          }
+        },
+        "severity": "Warning",
+        "code": "unused-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unused-variable"
+        },
+        "message": "unused variable 'alu_overflow'",
+        "tags": [
+          "Unnecessary"
+        ]
+      },
+      {
+        "range": {
+          "start": {
+            "line": 58,
+            "character": 27
+          },
+          "end": {
+            "line": 58,
+            "character": 38
+          }
+        },
+        "severity": "Warning",
+        "code": "unassigned-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unassigned-variable"
+        },
+        "message": "variable 'alu_array_a' is never assigned a value"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 59,
+            "character": 27
+          },
+          "end": {
+            "line": 59,
+            "character": 38
+          }
+        },
+        "severity": "Warning",
+        "code": "unassigned-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unassigned-variable"
+        },
+        "message": "variable 'alu_array_b' is never assigned a value"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 60,
+            "character": 27
+          },
+          "end": {
+            "line": 60,
+            "character": 43
+          }
+        },
+        "severity": "Warning",
+        "code": "unused-but-set-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unused-but-set-variable"
+        },
+        "message": "variable 'alu_array_result' is assigned but its value is never used"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 61,
+            "character": 13
+          },
+          "end": {
+            "line": 61,
+            "character": 25
+          }
+        },
+        "severity": "Warning",
+        "code": "unassigned-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unassigned-variable"
+        },
+        "message": "variable 'alu_array_op' is never assigned a value"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 62,
+            "character": 10
+          },
+          "end": {
+            "line": 62,
+            "character": 24
+          }
+        },
+        "severity": "Warning",
+        "code": "unused-but-set-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unused-but-set-variable"
+        },
+        "message": "variable 'alu_array_zero' is assigned but its value is never used"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 63,
+            "character": 10
+          },
+          "end": {
+            "line": 63,
+            "character": 28
+          }
+        },
+        "severity": "Warning",
+        "code": "unused-but-set-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unused-but-set-variable"
+        },
+        "message": "variable 'alu_array_overflow' is assigned but its value is never used"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 77,
+            "character": 10
+          },
+          "end": {
+            "line": 77,
+            "character": 24
+          }
+        },
+        "severity": "Warning",
+        "code": "unassigned-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unassigned-variable"
+        },
+        "message": "variable 'counter_enable' is never assigned a value"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 78,
+            "character": 16
+          },
+          "end": {
+            "line": 78,
+            "character": 29
+          }
+        },
+        "severity": "Warning",
+        "code": "unused-but-set-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unused-but-set-variable"
+        },
+        "message": "variable 'counter_count' is assigned but its value is never used"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 93,
+            "character": 35
+          },
+          "end": {
+            "line": 93,
+            "character": 44
+          }
+        },
+        "severity": "Warning",
+        "code": "unassigned-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unassigned-variable"
+        },
+        "message": "variable 'gen_alu_a' is never assigned a value"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 93,
+            "character": 46
+          },
+          "end": {
+            "line": 93,
+            "character": 55
+          }
+        },
+        "severity": "Warning",
+        "code": "unassigned-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unassigned-variable"
+        },
+        "message": "variable 'gen_alu_b' is never assigned a value"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 93,
+            "character": 57
+          },
+          "end": {
+            "line": 93,
+            "character": 71
+          }
+        },
+        "severity": "Warning",
+        "code": "unused-but-set-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unused-but-set-variable"
+        },
+        "message": "variable 'gen_alu_result' is assigned but its value is never used"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 94,
+            "character": 21
+          },
+          "end": {
+            "line": 94,
+            "character": 31
+          }
+        },
+        "severity": "Warning",
+        "code": "unassigned-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unassigned-variable"
+        },
+        "message": "variable 'gen_alu_op' is never assigned a value"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 95,
+            "character": 18
+          },
+          "end": {
+            "line": 95,
+            "character": 30
+          }
+        },
+        "severity": "Warning",
+        "code": "unused-but-set-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unused-but-set-variable"
+        },
+        "message": "variable 'gen_alu_zero' is assigned but its value is never used"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 95,
+            "character": 32
+          },
+          "end": {
+            "line": 95,
+            "character": 48
+          }
+        },
+        "severity": "Warning",
+        "code": "unused-but-set-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unused-but-set-variable"
+        },
+        "message": "variable 'gen_alu_overflow' is assigned but its value is never used"
       }
     ]
   },
@@ -320,6 +689,60 @@
       {
         "range": {
           "start": {
+            "line": 11,
+            "character": 35
+          },
+          "end": {
+            "line": 11,
+            "character": 44
+          }
+        },
+        "severity": "Warning",
+        "code": "undriven-port",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#undriven-port"
+        },
+        "message": "undriven output port 'mem_wdata'"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 13,
+            "character": 36
+          },
+          "end": {
+            "line": 13,
+            "character": 42
+          }
+        },
+        "severity": "Warning",
+        "code": "undriven-port",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#undriven-port"
+        },
+        "message": "undriven output port 'mem_we'"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 25,
+            "character": 27
+          },
+          "end": {
+            "line": 25,
+            "character": 40
+          }
+        },
+        "severity": "Warning",
+        "code": "unassigned-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unassigned-variable"
+        },
+        "message": "variable 'register_file' is never assigned a value"
+      },
+      {
+        "range": {
+          "start": {
             "line": 48,
             "character": 19
           },
@@ -380,6 +803,321 @@
             "message": "declared here"
           }
         ]
+      },
+      {
+        "range": {
+          "start": {
+            "line": 54,
+            "character": 27
+          },
+          "end": {
+            "line": 54,
+            "character": 37
+          }
+        },
+        "severity": "Warning",
+        "code": "unused-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unused-variable"
+        },
+        "message": "unused variable 'alu_result'",
+        "tags": [
+          "Unnecessary"
+        ]
+      },
+      {
+        "range": {
+          "start": {
+            "line": 55,
+            "character": 10
+          },
+          "end": {
+            "line": 55,
+            "character": 18
+          }
+        },
+        "severity": "Warning",
+        "code": "unused-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unused-variable"
+        },
+        "message": "unused variable 'alu_zero'",
+        "tags": [
+          "Unnecessary"
+        ]
+      },
+      {
+        "range": {
+          "start": {
+            "line": 55,
+            "character": 20
+          },
+          "end": {
+            "line": 55,
+            "character": 32
+          }
+        },
+        "severity": "Warning",
+        "code": "unused-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unused-variable"
+        },
+        "message": "unused variable 'alu_overflow'",
+        "tags": [
+          "Unnecessary"
+        ]
+      },
+      {
+        "range": {
+          "start": {
+            "line": 58,
+            "character": 27
+          },
+          "end": {
+            "line": 58,
+            "character": 38
+          }
+        },
+        "severity": "Warning",
+        "code": "unassigned-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unassigned-variable"
+        },
+        "message": "variable 'alu_array_a' is never assigned a value"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 59,
+            "character": 27
+          },
+          "end": {
+            "line": 59,
+            "character": 38
+          }
+        },
+        "severity": "Warning",
+        "code": "unassigned-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unassigned-variable"
+        },
+        "message": "variable 'alu_array_b' is never assigned a value"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 60,
+            "character": 27
+          },
+          "end": {
+            "line": 60,
+            "character": 43
+          }
+        },
+        "severity": "Warning",
+        "code": "unused-but-set-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unused-but-set-variable"
+        },
+        "message": "variable 'alu_array_result' is assigned but its value is never used"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 61,
+            "character": 13
+          },
+          "end": {
+            "line": 61,
+            "character": 25
+          }
+        },
+        "severity": "Warning",
+        "code": "unassigned-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unassigned-variable"
+        },
+        "message": "variable 'alu_array_op' is never assigned a value"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 62,
+            "character": 10
+          },
+          "end": {
+            "line": 62,
+            "character": 24
+          }
+        },
+        "severity": "Warning",
+        "code": "unused-but-set-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unused-but-set-variable"
+        },
+        "message": "variable 'alu_array_zero' is assigned but its value is never used"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 63,
+            "character": 10
+          },
+          "end": {
+            "line": 63,
+            "character": 28
+          }
+        },
+        "severity": "Warning",
+        "code": "unused-but-set-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unused-but-set-variable"
+        },
+        "message": "variable 'alu_array_overflow' is assigned but its value is never used"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 77,
+            "character": 10
+          },
+          "end": {
+            "line": 77,
+            "character": 24
+          }
+        },
+        "severity": "Warning",
+        "code": "unassigned-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unassigned-variable"
+        },
+        "message": "variable 'counter_enable' is never assigned a value"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 78,
+            "character": 16
+          },
+          "end": {
+            "line": 78,
+            "character": 29
+          }
+        },
+        "severity": "Warning",
+        "code": "unused-but-set-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unused-but-set-variable"
+        },
+        "message": "variable 'counter_count' is assigned but its value is never used"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 93,
+            "character": 35
+          },
+          "end": {
+            "line": 93,
+            "character": 44
+          }
+        },
+        "severity": "Warning",
+        "code": "unassigned-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unassigned-variable"
+        },
+        "message": "variable 'gen_alu_a' is never assigned a value"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 93,
+            "character": 46
+          },
+          "end": {
+            "line": 93,
+            "character": 55
+          }
+        },
+        "severity": "Warning",
+        "code": "unassigned-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unassigned-variable"
+        },
+        "message": "variable 'gen_alu_b' is never assigned a value"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 93,
+            "character": 57
+          },
+          "end": {
+            "line": 93,
+            "character": 71
+          }
+        },
+        "severity": "Warning",
+        "code": "unused-but-set-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unused-but-set-variable"
+        },
+        "message": "variable 'gen_alu_result' is assigned but its value is never used"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 94,
+            "character": 21
+          },
+          "end": {
+            "line": 94,
+            "character": 31
+          }
+        },
+        "severity": "Warning",
+        "code": "unassigned-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unassigned-variable"
+        },
+        "message": "variable 'gen_alu_op' is never assigned a value"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 95,
+            "character": 18
+          },
+          "end": {
+            "line": 95,
+            "character": 30
+          }
+        },
+        "severity": "Warning",
+        "code": "unused-but-set-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unused-but-set-variable"
+        },
+        "message": "variable 'gen_alu_zero' is assigned but its value is never used"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 95,
+            "character": 32
+          },
+          "end": {
+            "line": 95,
+            "character": 48
+          }
+        },
+        "severity": "Warning",
+        "code": "unused-but-set-variable",
+        "codeDescription": {
+          "href": "https://sv-lang.com/warning-ref.html#unused-but-set-variable"
+        },
+        "message": "variable 'gen_alu_overflow' is assigned but its value is never used"
       }
     ]
   }
