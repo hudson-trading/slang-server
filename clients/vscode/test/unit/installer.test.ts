@@ -6,8 +6,6 @@ import * as tmp from 'tmp-promise'
 import { createFakeAssets, withFakeGitHub } from './harness'
 import { fakeGithubReleaseURL, fakePlatform, installLatestSlang } from '../../src/installer/install'
 
-const assetsRoot = path.resolve(process.cwd(), 'test', 'unit', 'assets')
-
 tape('install: linux', async (assert) => {
   await tmp.withDir(
     async (dir) => {
@@ -49,7 +47,7 @@ tape('install: windows', async (assert) => {
       fakeGithubReleaseURL('http://127.0.0.1:9999/release.json')
 
       await withFakeGitHub(assetsDir, async () => {
-        const binPath = await installLatestSlang(dir.path)
+        const binPath = await installLatestSlang(installDir)
         assert.true(fs.existsSync(binPath), 'binary exists')
         assert.ok(binPath.endsWith('slang-server.exe'), 'correct binary name')
       })

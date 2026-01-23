@@ -55,6 +55,8 @@ export function withFakeGitHub(assetsRoot: string, body: () => Promise<void>): P
           return
         }
 
+        res.setHeader('Connection', 'close')
+
         const { pathname } = new URL(req.url, 'http://localhost')
         const filePath = path.join(assetsRoot, pathname)
 
@@ -74,7 +76,7 @@ export function withFakeGitHub(assetsRoot: string, body: () => Promise<void>): P
         } catch (e) {
           reject(e)
         } finally {
-          server.close()
+          await new Promise<void>((r) => server.close(() => r()))
         }
       })
   })

@@ -55,4 +55,17 @@ export class InstallerUI {
       vscode.commands.executeCommand('slang.restartLanguageServer')
     }
   }
+
+  async promptUpdate(installedVersion: string, latestVersion: string): Promise<boolean> {
+    const message =
+      `A newer version of slang-server is available.\n\n` +
+      `Installed: ${installedVersion}\n` +
+      `Latest: ${latestVersion}`
+
+    const update = 'Update slang-server'
+
+    const result = await vscode.window.showInformationMessage(message, update)
+
+    return result === update
+  }
 }
