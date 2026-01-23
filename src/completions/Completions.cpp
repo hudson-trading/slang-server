@@ -165,11 +165,6 @@ void resolveModule(const slang::syntax::ModuleHeaderSyntax& header, lsp::Complet
                    bool excludeName) {
 
     SnippetString output;
-    if (!excludeName) {
-        output.appendText(header.name.valueText());
-        output.appendText(" #");
-    }
-    output.appendText("(\n");
 
     // get params
     size_t maxLen = 0;
@@ -181,6 +176,17 @@ void resolveModule(const slang::syntax::ModuleHeaderSyntax& header, lsp::Complet
         names = std::move(visitor.names);
         defaults = std::move(visitor.defaults);
         maxLen = visitor.maxLen;
+    }
+
+    if (!excludeName) {
+        output.appendText(header.name.valueText());
+        if (names.size() > 0) {
+            output.appendText(" #");
+        }
+    }
+
+    if (names.size() > 0) {
+        output.appendText("(\n");
     }
 
     // append params
@@ -203,7 +209,10 @@ void resolveModule(const slang::syntax::ModuleHeaderSyntax& header, lsp::Complet
             output.appendText("\n ");
         }
     }
-    output.appendText(") ");
+    if (names.size() > 0) {
+        output.appendText(")");
+    }
+    output.appendText(" ");
     output.appendPlaceholder(toCamelCase(header.name.valueText()));
     output.appendText(" (\n");
 

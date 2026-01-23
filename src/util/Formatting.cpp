@@ -3,6 +3,7 @@
 
 #include "util/Formatting.h"
 
+#include <cctype>
 #include <fmt/format.h>
 #include <sstream>
 
@@ -235,10 +236,27 @@ std::string toCamelCase(std::string_view str) {
     if (str.empty()) {
         return "";
     }
-    std::string result;
-    result.reserve(str.size());
-    result.push_back(static_cast<char>(std::tolower(str[0])));
-    result.append(str.substr(1));
+
+    std::string result(str);
+    std::size_t n = result.size();
+
+    std::size_t i = 0;
+    while (i < n && std::isupper(static_cast<unsigned char>(result[i]))) {
+        ++i;
+    }
+
+    if (i == n) {
+        for (char& c : result)
+            c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        return result;
+    }
+
+    std::size_t end = (i > 1 && std::islower(static_cast<unsigned char>(result[i]))) ? i - 1 : i;
+
+    for (std::size_t j = 0; j < end; ++j) {
+        result[j] = static_cast<char>(std::tolower(static_cast<unsigned char>(result[j])));
+    }
+
     return result;
 }
 
