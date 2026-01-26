@@ -1,12 +1,11 @@
 import { readFile, writeFile } from 'fs/promises'
-import * as path from 'path'
 import * as process from 'process'
 import * as vscode from 'vscode'
-import which from 'which'
 import { JSONSchemaType } from './jsonSchema'
 import { Logger, StubLogger, createLogger } from './logger'
 import { IConfigurationPropertySchema } from './vscodeConfigs'
 import fs = require('fs')
+import { getPlatform } from './platform'
 
 export async function fileExists(filePath: string): Promise<boolean> {
   try {
@@ -558,15 +557,21 @@ export class ViewComponent extends ExtensionComponent {
   }
 }
 
+export interface ConfigObjectSpec extends IConfigurationPropertySchema {
+  // no additional fields for now
+  deprecationMessage?: string
+  [key: string]: any
+}
+
 ////////////////////////////////////////////////////
 // Config Leaf
 ////////////////////////////////////////////////////
 export class ConfigObject<T extends JSONSchemaType> extends ExtensionNode {
-  protected obj: any
+  protected obj: ConfigObjectSpec
   default: T
   cachedValue: T
 
-  constructor(obj: IConfigurationPropertySchema) {
+  constructor(obj: ConfigObjectSpec) {
     super()
     this.obj = obj
     this.default = obj.default
@@ -576,12 +581,6 @@ export class ConfigObject<T extends JSONSchemaType> extends ExtensionNode {
   getValue(): T {
     this.cachedValue = vscode.workspace.getConfiguration().get(this.configPath!, this.default!)
     return this.cachedValue
-  }
-
-  listen(): void {
-    this.onConfigUpdated(() => {
-      this.getValue()
-    })
   }
 
   private inferSchema(value: any): any {
@@ -662,110 +661,6 @@ export class ConfigObject<T extends JSONSchemaType> extends ExtensionNode {
       }
     }
     return out
-  }
-}
-
-type Platform = 'windows' | 'linux' | 'mac'
-
-type PlatformMap = { [key in Platform]: string }
-
-type PathConfigSchema = Omit<IConfigurationPropertySchema, 'default'>
-export class PathConfigObject extends ConfigObject<string> {
-  platformDefaults: PlatformMap
-  constructor(obj: PathConfigSchema, platformDefaults: PlatformMap) {
-    super({
-      ...obj,
-      default: '',
-    })
-    this.platformDefaults = platformDefaults
-    this.onConfigUpdated(async () => {
-      await this.checkPathNotify()
-    })
-  }
-
-  compile(nodeName: string, parentNode?: ExtensionComponent | undefined): void {
-    super.compile(nodeName, parentNode)
-  }
-
-  getValue(): string {
-    let toolpath = vscode.workspace.getConfiguration().get(this.configPath!, '')
-    if (toolpath === '') {
-      return this.platformDefaults[getPlatform()]
-    }
-    return toolpath
-  }
-
-  async getValueAsync(): Promise<string> {
-    let toolpath = vscode.workspace.getConfiguration().get(this.configPath!, '')
-
-    // if we already performed which, use that
-    if (toolpath === '' && path.isAbsolute(this.cachedValue)) {
-      return this.cachedValue
-    }
-
-    if (toolpath === '') {
-      // if it's a platform default, check the path
-      toolpath = this.platformDefaults[getPlatform()]
-
-      if (!path.isAbsolute(toolpath)) {
-        const whichResult = await which(toolpath, { nothrow: true })
-        if (whichResult === '' || whichResult === null) {
-          console.error(`which ${toolpath} failed`)
-        } else {
-          console.error(`which ${toolpath} found ${whichResult}`)
-          toolpath = whichResult
-        }
-      }
-    }
-
-    this.cachedValue = toolpath
-
-    return toolpath
-  }
-
-  async checkPathNotify(): Promise<boolean> {
-    let toolpath = await this.getValueAsync()
-    if (toolpath === '') {
-      await vscode.window.showErrorMessage(
-        `"${toolpath}" not found. Configure abs path at ${this.configPath}, add to PATH, or disable in config.`
-      )
-      return false
-    }
-    // check if it exists
-    const exists = await fileExists(toolpath)
-    if (!exists) {
-      vscode.window.showErrorMessage(
-        `File "${this.configPath}: ${toolpath}" doesn't exist, please reconfigure`
-      )
-      return false
-    }
-    return true
-  }
-
-  getMarkdownString(): string {
-    // Skip deprecated configs from documentation
-    if ('deprecationMessage' in this.obj) {
-      return ''
-    }
-
-    let out = `- \`${this.configPath}\`: path\n\n`
-    out += `  Platform Defaults:\n\n`
-    out += `    linux:   \`${this.platformDefaults.linux}\`\n\n`
-    out += `    mac:     \`${this.platformDefaults.mac}\`\n\n`
-    out += `    windows: \`${this.platformDefaults.windows}\`\n\n`
-    return out
-  }
-}
-
-export function getPlatform(): Platform {
-  switch (process.platform) {
-    case 'win32':
-      return 'windows'
-    case 'darwin':
-      return 'mac'
-    default:
-      // includes WSL
-      return 'linux'
   }
 }
 

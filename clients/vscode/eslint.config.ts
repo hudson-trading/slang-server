@@ -1,8 +1,8 @@
 import eslint from '@eslint/js'
-// @ts-expect-error - TS can't resolve this with current moduleResolution but it works at runtime
 import tsparser from '@typescript-eslint/parser'
 import tseslint from '@typescript-eslint/eslint-plugin'
 import unusedImports from 'eslint-plugin-unused-imports'
+import globals from 'globals'
 
 export default [
   {
@@ -19,7 +19,7 @@ export default [
         project: './tsconfig.json',
       },
       globals: {
-        console: 'readonly',
+        ...globals.nodeBuiltin,
       },
     },
     plugins: {

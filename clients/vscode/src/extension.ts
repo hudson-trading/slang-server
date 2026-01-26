@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: MIT
 import * as vscode from 'vscode'
 
-import * as child_process from 'child_process'
-
 import path from 'path'
-import * as process from 'process'
 import * as semver from 'semver'
 import * as fs from 'fs'
 
@@ -21,10 +18,9 @@ import {
   CommandNode,
   ConfigObject,
   EditorButton,
-  fileExists,
-  PathConfigObject,
   ViewContainerSpec,
 } from './lib/libconfig'
+import { PathConfigObject } from './lib/pathConfig'
 import { ProjectComponent } from './sidebar/ProjectComponent'
 import * as slang from './SlangInterface'
 import { AnyVerilogLanguages, anyVerilogSelector, getWorkspaceFolder, HDLFiles } from './utils'
@@ -124,12 +120,23 @@ File input is sent to stdin, and formatted output is read from stdout.',
 
   path: PathConfigObject = new PathConfigObject(
     {
-      description: 'Path to the slang-server (not slang)',
+      description: 'Path to slang-server (not slang)',
     },
     {
       windows: 'slang-server.exe',
       linux: 'slang-server',
       mac: 'slang-server',
+    },
+    {
+      envVar: 'SLANG_SERVER_PATH',
+      installer: {
+        githubRepo: 'hudson-trading/slang-server',
+        assetNames: {
+          windows: 'slang-server-windows-x64.zip',
+          linux: 'slang-server-linux-x64-gcc.tar.gz',
+          mac: 'slang-server-macos.tar.gz',
+        },
+      },
     }
   )
 
@@ -148,31 +155,12 @@ File input is sent to stdin, and formatted output is read from stdout.',
   slangConfig: slang.Config = {}
 
   async setupLanguageClient(): Promise<void> {
+    const slangServerPath = await this.path.resolveToolPath(this.context, this.logger)
+    if (!slangServerPath) {
+      return
+    }
     this.logger.info('Starting language server')
 
-    // Check for environment variable set in launch.json; set when debugging in vscode
-    let slangServerPath = process.env.SLANG_SERVER_PATH
-    if (!slangServerPath) {
-      slangServerPath = await this.path.getValueAsync()
-      this.logger.info(`Using slang-server at ${slangServerPath}`)
-    } else {
-      this.logger.info(`Using slang-server from environment variable: ${slangServerPath}`)
-    }
-
-    if (slangServerPath === '') {
-      await vscode.window.showErrorMessage(
-        `"slang.path not configured. Configure the abs path at slang.path, add to PATH, or disable in config.`
-      )
-      return
-    }
-    // check if it exists
-    const exists = await fileExists(slangServerPath)
-    if (!exists) {
-      vscode.window.showErrorMessage(
-        `File "${slangServerPath}" set for slang.path doesn't exist, please reconfigure`
-      )
-      return
-    }
     // this.logger.info("using path " + slangServerPath)
     const serverOptions: ServerOptions = {
       run: { command: slangServerPath, args: this.args.getValue() },
@@ -214,6 +202,8 @@ File input is sent to stdin, and formatted output is read from stdout.',
     )
 
     await this.client.start()
+    this.logger.info('Language server started')
+    await this.project.onStart()
 
     // Log and check version compatibility
     const clientVersion = vscode.extensions.getExtension('Hudson-River-Trading.vscode-slang')
@@ -223,43 +213,69 @@ File input is sent to stdin, and formatted output is read from stdout.',
     const serverInfo = this.client.initializeResult?.serverInfo
     const serverFullVersion = serverInfo?.version?.trim()
 
+    const showManagedInstallInfo = async () => {
+      await vscode.window.showInformationMessage(
+        'Managed slang-server installations can be installed now if `slang.path` is not set.'
+      )
+    }
+
     if (!serverInfo || !serverFullVersion) {
       this.logger.warn('Using old version of slang server without version info.')
       await vscode.window.showWarningMessage(
         'You are using an old version of slang-server without version information. ' +
           'Please update your slang-server installation to ensure all features work correctly.'
       )
-    } else {
-      this.logger.info(`Using ${serverInfo.name} v${serverFullVersion}`)
+      await showManagedInstallInfo()
+      return
+    }
 
-      // Extract semver part (before '+' git hash): "1.2.3+hash" -> "1.2.3"
-      const serverVersion = serverFullVersion.split('+')[0]
+    this.logger.info(`Using ${serverInfo.name} v${serverFullVersion}`)
+    // Extract semver part (before '+' git hash): "1.2.3+hash" -> "1.2.3"
+    const serverVersion = serverFullVersion.split('+')[0] ?? null
 
-      if (clientVersion && serverVersion) {
-        const parsedServer = semver.coerce(serverVersion)
-        const parsedClient = semver.coerce(clientVersion)
+    if (clientVersion) {
+      const parsedServer = semver.coerce(serverVersion)
+      const parsedClient = semver.coerce(clientVersion)
 
-        if (!parsedServer || !parsedClient) {
-          this.logger.warn(
-            `Failed to parse versions: server=${serverVersion}, client=${clientVersion}`
+      if (!parsedServer || !parsedClient) {
+        this.logger.warn(
+          `Failed to parse versions: server=${serverVersion}, client=${clientVersion}`
+        )
+      } else {
+        // Server must have at least client's major.minor version
+        const minRequiredVersion = `${parsedClient.major}.${parsedClient.minor}.0`
+        const serverMajorMinor = `${parsedServer.major}.${parsedServer.minor}.0`
+
+        if (semver.lt(serverMajorMinor, minRequiredVersion)) {
+          vscode.window.showWarningMessage(
+            `Slang server v${serverVersion} is older than minimum required v${minRequiredVersion}. ` +
+              `Please update your server installation.`
           )
-        } else {
-          // Server must have at least client's major.minor version
-          const minRequiredVersion = `${parsedClient.major}.${parsedClient.minor}.0`
-          const serverMajorMinor = `${parsedServer.major}.${parsedServer.minor}.0`
-
-          if (semver.lt(serverMajorMinor, minRequiredVersion)) {
-            vscode.window.showWarningMessage(
-              `Slang server v${serverVersion} is older than minimum required v${minRequiredVersion}. ` +
-                `Please update your server installation.`
-            )
-          }
+          await showManagedInstallInfo()
         }
       }
     }
 
-    this.logger.info('Language server started')
-    await this.project.onStart()
+    // Check for updates in the background (only for managed installs)
+    if (this.path.managedInstall) {
+      void this.checkForUpdates(serverVersion)
+    }
+  }
+
+  private async checkForUpdates(installedVersion: string | null): Promise<void> {
+    const updated = await this.path.maybeInstallUpdate(this.context, this.logger, installedVersion)
+    if (!updated) {
+      return
+    }
+
+    const restart = 'Restart Now'
+    const resp = await vscode.window.showInformationMessage(
+      'slang-server has been updated. Restart the language server to use the new version.',
+      restart
+    )
+    if (resp === restart) {
+      await this.restartLanguageServer.func()
+    }
   }
 
   restartLanguageServer: CommandNode = new CommandNode(

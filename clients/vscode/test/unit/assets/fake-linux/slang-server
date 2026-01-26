@@ -1,0 +1,2 @@
+#!/bin/sh
+echo "slang-server version 0.1.0"
