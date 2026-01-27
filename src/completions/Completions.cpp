@@ -186,7 +186,7 @@ void resolveModule(const slang::syntax::ModuleHeaderSyntax& header, lsp::Complet
     if (names.size() > 0) {
         if (!excludeName)
             output.appendText(" #");
-        
+
         output.appendText("(\n");
 
         // append params
