@@ -34,12 +34,13 @@
 
 ---@class slang-server.navigation.State
 ---@field open boolean
----@field scope string?
----@field split NuiSplit?
----@field tree NuiTree?
----@field hover NuiPopup?
 ---@field sv_buf vim.fn.getbufinfo.ret.item?
 ---@field sv_win vim.fn.getwininfo.ret.item?
+
+---@class slang-server.navigation.hierarchy.State
+---@field hover NuiPopup?
+---@field split NuiSplit?
+---@field tree NuiTree?
 
 ---@class slang-server.navigation.cells.State
 -- NOCOMMIT -- remove "cell"

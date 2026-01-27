@@ -46,6 +46,7 @@ end
 ---@param node slang-server.navigation.ScopeNode
 local function scope_jump(node)
    local navigation = require("slang-server.navigation")
+   local hier = require("slang-server.navigation/hierarchy")
    local instPath = nil
    if node and node.instLoc then
       util.jump_loc(node.instLoc, navigation.state.sv_win.winnr)
@@ -67,7 +68,7 @@ local function scope_jump(node)
 
    -- NOCOMMIT -- crosstalk between cells and hier -- how?
    -- cells object contains a reference to the parent object which contains the hier object?
-   navigation.open_remainder(nil, true, instPath, true)
+   hier.open_remainder(nil, true, instPath, true)
 end
 
 ---@param insts slang-server.lsp.QualifiedInstance[]
@@ -128,7 +129,7 @@ local function map_cell_keys(split, tree)
                   vim.notify("No SV buffer", vim.log.levels.ERROR)
                end
 
-               client.getInstancesOfModule(M.state.sv_buf.bufnr, {
+               client.getInstancesOfModule(navigation.state.sv_buf.bufnr, {
                   on_success = function(resp)
                      show_insts(resp, node, true)
                   end,
@@ -191,11 +192,12 @@ end
 
 function M.show()
    local navigation = require("slang-server.navigation")
+   local hier = require("slang-server.navigation/hierarchy")
    -- NOCOMMIT -- scrub for unnecessary "cell"
    local cellSplit = ui.NuiSplit({
       relative = {
          type = "win",
-         winid = navigation.state.split.winid,
+         winid = hier.state.split.winid,
       },
       position = "bottom",
       size = "40%",

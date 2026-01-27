@@ -27,7 +27,7 @@ local function wait_on(buf_name)
       end
       return true
    end)
-   assert(success)
+   assert(success, lines)
 
    return lines
 end
