@@ -15,6 +15,7 @@
 #include "slang/ast/ASTVisitor.h"
 #include "slang/ast/Scope.h"
 #include "slang/ast/Symbol.h"
+#include "slang/ast/symbols/BlockSymbols.h"
 #include "slang/ast/symbols/CompilationUnitSymbols.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
 #include "slang/ast/symbols/MemberSymbols.h"
@@ -26,9 +27,6 @@ namespace server {
 
 using Symdex = std::unordered_map<const slang::parsing::Token*, const slang::ast::Symbol*>;
 using Syntex = std::unordered_map<const slang::syntax::SyntaxNode*, const slang::ast::Symbol*>;
-
-/// Find the name token in a syntax node, 1 layer deep.
-const slang::parsing::Token* findName(std::string_view name, const slang::syntax::SyntaxNode& node);
 
 struct SymbolIndexer : public slang::ast::ASTVisitor<SymbolIndexer, false, false, true> {
 public:
@@ -64,8 +62,18 @@ public:
     void handle(const slang::ast::InstanceSymbol& sym);
     void handle(const slang::ast::InstanceArraySymbol& sym);
 
-    // Types
+    void handle(const slang::ast::GenerateBlockSymbol& sym) {
+        if (!sym.isUnnamed) {
+            indexSymbolName(sym);
+        }
+        visitDefault(sym);
+    }
 
+    // Types
+    void handle(const slang::ast::EnumType& sym) {
+        // Enum types' syntax doesn't include the name
+        visitDefault(sym);
+    }
     void handle(const slang::ast::TypeParameterSymbol& sym) { sym.getTypeAlias().visit(*this); }
     void handle(const slang::ast::TypeAliasType& sym);
     // Anonymous types (no typedef)
