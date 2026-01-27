@@ -30,9 +30,9 @@
 
 --- Hierarchy view types
 
----@alias slang-server.hierarchy.Path string
+---@alias slang-server.navigation.Path string
 
----@class slang-server.hierarchy.State
+---@class slang-server.navigation.State
 ---@field open boolean
 ---@field scope string?
 ---@field split NuiSplit?
@@ -43,7 +43,7 @@
 ---@field sv_buf vim.fn.getbufinfo.ret.item?
 ---@field sv_win vim.fn.getwininfo.ret.item?
 
----@class slang-server.hierarchy.TreeNode: NuiTree.Node
+---@class slang-server.navigation.TreeNode: NuiTree.Node
 ---@field path string
 ---@field _uid string
 ---@field _populated boolean
@@ -52,30 +52,30 @@
 ---@field instLoc slang-server.ScopedRange
 ---@field type string?
 ---@field value string?
----@field children slang-server.hierarchy.TreeNode[]?
+---@field children slang-server.navigation.TreeNode[]?
 ---@field declName string?
 ---@field declLoc slang-server.ScopedRange?
 
----@class slang-server.hierarchy.MessageNode: NuiTree.Node
+---@class slang-server.navigation.MessageNode: NuiTree.Node
 ---@field text string
 ---@field _uid string
 
----@alias slang-server.hierarchy.HierNode slang-server.hierarchy.TreeNode | slang-server.hierarchy.MessageNode
+---@alias slang-server.navigation.HierNode slang-server.navigation.TreeNode | slang-server.navigation.MessageNode
 
----@class slang-server.hierarchy.InstNode: NuiTree.Node
+---@class slang-server.navigation.InstNode: NuiTree.Node
 ---@field instPath string
 ---@field instLoc slang-server.SourceLoc
 ---@field last boolean
 ---@field _uid string
 
----@class slang-server.hierarchy.CellNode: NuiTree.Node
+---@class slang-server.navigation.CellNode: NuiTree.Node
 ---@field declName string
 ---@field declLoc slang-server.SourceLoc
 ---@field instCount integer
 ---@field _uid string
 
----@alias slang-server.hierarchy.ScopeNode slang-server.hierarchy.InstNode | slang-server.hierarchy.CellNode | slang-server.hierarchy.MessageNode
----@alias slang-server.hierarchy.Node slang-server.hierarchy.HierNode | slang-server.hierarchy.ScopeNode
+---@alias slang-server.navigation.ScopeNode slang-server.navigation.InstNode | slang-server.navigation.CellNode | slang-server.navigation.MessageNode
+---@alias slang-server.navigation.Node slang-server.navigation.HierNode | slang-server.navigation.ScopeNode
 
 --- UI types
 
@@ -84,6 +84,6 @@
 ---@field complete? string | fun(subcmd_arg_lead: string): string[]
 
 ---@class slang-server.ui.Mapping
----@field impl fun(node:slang-server.hierarchy.Node?)
+---@field impl fun(node:slang-server.navigation.Node?)
 ---@field opts table
 ---@field desc string

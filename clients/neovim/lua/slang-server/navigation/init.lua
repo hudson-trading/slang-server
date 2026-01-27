@@ -4,10 +4,12 @@ local ui = require("slang-server._core.ui")
 local client = require("slang-server._lsp.client")
 local handlers = require("slang-server.handlers")
 local util = require("slang-server.util")
+local hier = require("slang-server.navigation/hierarchy")
+local cells = require("slang-server.navigation/cells")
 
 local M = {}
 
----@type slang-server.hierarchy.State
+---@type slang-server.navigation.State
 M.state = { open = false }
 
 -- M.state.sv_buf returns the most recently focused SV buffer info
@@ -31,7 +33,7 @@ local function map_keys(split, tree, mappings)
    for map, spec in pairs(mappings) do
       split:map("n", map, function()
          local node = tree:get_node()
-         ---@cast node slang-server.hierarchy.Node
+         ---@cast node slang-server.navigation.Node
          spec.impl(node)
       end, spec.opts)
    end
@@ -40,6 +42,9 @@ end
 ---@param tree NuiTree
 ---@param msg string
 ---@param opts {parent: NuiTree.Node?, hl: string?}?
+-- NOCOMMIT -- used by both hier and cells, how to handle this?
+-- do hier and cells objects contain a reference to the parent object?
+-- do I pass a function pointer down?
 local function message(tree, msg, opts)
    if not tree then
       return
@@ -169,7 +174,7 @@ local function show_insts(insts, cell, render)
 
       inst_node = vim.tbl_deep_extend("error", inst_node, inst)
 
-      ---@cast inst_node slang-server.hierarchy.InstNode
+      ---@cast inst_node slang-server.navigation.InstNode
 
       nodes[#nodes + 1] = ui.NuiTree.Node(inst_node)
    end
@@ -182,9 +187,9 @@ local function show_insts(insts, cell, render)
    end
 end
 
----@param parent slang-server.hierarchy.TreeNode?
+---@param parent slang-server.navigation.TreeNode?
 ---@param root boolean?
----@param remaining_path slang-server.hierarchy.Path?
+---@param remaining_path slang-server.navigation.Path?
 ---@param from_cell boolean?
 local function open_remainder(parent, root, remaining_path, from_cell)
    local path = parent and parent.path or ""
@@ -199,7 +204,7 @@ local function open_remainder(parent, root, remaining_path, from_cell)
    end
 end
 
----@param node slang-server.hierarchy.ScopeNode
+---@param node slang-server.navigation.ScopeNode
 local function scope_jump(node)
    local instPath = nil
    if node and node.instLoc then
@@ -220,6 +225,8 @@ local function scope_jump(node)
       return
    end
 
+   -- NOCOMMIT -- crosstalk between cells and hier -- how?
+   -- cells object contains a reference to the parent object which contains the hier object?
    open_remainder(nil, true, instPath, true)
 end
 
@@ -331,8 +338,8 @@ local function make_comment_line(node, line)
    line:append(node.text, "Comment")
 end
 
----@param node slang-server.hierarchy.HierNode
----@param parent_node slang-server.hierarchy.TreeNode?
+---@param node slang-server.navigation.HierNode
+---@param parent_node slang-server.navigation.TreeNode?
 local function prepare_node(node, parent_node)
    local line = ui.NuiLine()
 
@@ -391,8 +398,8 @@ local function prepare_node(node, parent_node)
    return line
 end
 
----@param node slang-server.hierarchy.ScopeNode
----@param parent_node slang-server.hierarchy.CellNode?
+---@param node slang-server.navigation.ScopeNode
+---@param parent_node slang-server.navigation.CellNode?
 local function prepare_cell_node(node, parent_node)
    local line = ui.NuiLine()
 
@@ -418,7 +425,7 @@ local function prepare_cell_node(node, parent_node)
    return line
 end
 
----@param node slang-server.hierarchy.Node
+---@param node slang-server.navigation.Node
 ---@return string
 local function get_node_id(node)
    return node._uid
@@ -426,8 +433,8 @@ end
 
 -- Convert LSP nodes to TreeNodes
 ---@param nodes slang-server.lsp.Node[]
----@param parent_node slang-server.hierarchy.TreeNode?
----@return slang-server.hierarchy.TreeNode[]
+---@param parent_node slang-server.navigation.TreeNode?
+---@return slang-server.navigation.TreeNode[]
 local function parse_nodes(nodes, parent_node)
    local nui_nodes = {}
    for _, node in ipairs(nodes) do
@@ -445,7 +452,7 @@ local function parse_nodes(nodes, parent_node)
 
       treeNode = vim.tbl_deep_extend("error", treeNode, node)
 
-      ---@cast treeNode slang-server.hierarchy.TreeNode
+      ---@cast treeNode slang-server.navigation.TreeNode
 
       nui_nodes[#nui_nodes + 1] = ui.NuiTree.Node(treeNode, parse_nodes(treeNode.children or {}, treeNode))
    end
@@ -454,9 +461,9 @@ local function parse_nodes(nodes, parent_node)
 end
 
 ---@param nodes slang-server.lsp.Node[]
----@param parent slang-server.hierarchy.TreeNode?
+---@param parent slang-server.navigation.TreeNode?
 ---@param root boolean?
----@param remaining_path slang-server.hierarchy.Path?
+---@param remaining_path slang-server.navigation.Path?
 ---@param from_cell boolean?
 local function show_nodes(nodes, parent, root, remaining_path, from_cell)
    if not M.state.open then
@@ -489,8 +496,8 @@ local function show_nodes(nodes, parent, root, remaining_path, from_cell)
    open_remainder(parent, root, remaining_path, from_cell)
 end
 
----@param cells slang-server.lsp.InstanceSet[]
-local function show_cells(cells)
+---@param insts slang-server.lsp.InstanceSet[]
+local function show_cells(insts)
    if not M.state.open then
       return
    end
@@ -499,13 +506,13 @@ local function show_cells(cells)
       M.state.cellTree:remove_node(node:get_id())
    end
 
-   for _, cell in ipairs(cells) do
+   for _, cell in ipairs(insts) do
       local cell_node = {}
       cell_node._uid = "__DECL__" .. cell.declName
 
       cell_node = vim.tbl_deep_extend("error", cell_node, cell)
 
-      ---@cast cell_node slang-server.hierarchy.CellNode
+      ---@cast cell_node slang-server.navigation.CellNode
 
       local cell_nui_node = ui.NuiTree.Node(cell_node)
       M.state.cellTree:add_node(cell_nui_node)
@@ -529,16 +536,16 @@ end
 -- `path` can be string or nil, with nil representing $root and returning the first top level instance (TODO:)
 -- If `path` is given and does not exist in the hierarchy, it is treated as a root node
 -- If `path` is given and exists in the hierarchy, it is considered a subscope to be populated
----@param path_or_node slang-server.hierarchy.Path | slang-server.hierarchy.TreeNode
+---@param path_or_node slang-server.navigation.Path | slang-server.navigation.TreeNode
 ---@param root boolean?
----@param remaining_path slang-server.hierarchy.Path?
+---@param remaining_path slang-server.navigation.Path?
 ---@param from_cell boolean?
 function M._lazy_open(path_or_node, root, remaining_path, from_cell)
    local node
    local path
 
    if type(path_or_node) == "string" then
-      node = M.state.tree:get_node(path_or_node) --[[@as slang-server.hierarchy.TreeNode?]]
+      node = M.state.tree:get_node(path_or_node) --[[@as slang-server.navigation.TreeNode?]]
       path = path_or_node
    else
       node = path_or_node
@@ -572,7 +579,7 @@ function M._lazy_open(path_or_node, root, remaining_path, from_cell)
    end
 end
 
----@param top slang-server.hierarchy.Path The top level at which to initialise the hierarchy
+---@param top slang-server.navigation.Path The top level at which to initialise the hierarchy
 function M.show(top)
    if M.state.open then
       return
@@ -612,6 +619,8 @@ function M.show(top)
    M.state.tree = tree
 
    M._lazy_open("", true, top)
+
+   cells.show()
 
    local cellSplit = ui.NuiSplit({
       relative = {
