@@ -239,12 +239,6 @@ std::string toCamelCase(std::string_view str) {
     std::string result(str);
     std::size_t n = result.size();
 
-<<<<<<< HEAD
-=======
-    std::string result(str);
-    std::size_t n = result.size();
-
->>>>>>> parent of 1753e30 (walk back camelCase to see if tests pass)
     std::size_t i = 0;
     while (i < n && std::isupper(static_cast<unsigned char>(result[i]))) {
         ++i;
