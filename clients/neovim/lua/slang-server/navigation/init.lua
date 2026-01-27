@@ -29,7 +29,7 @@ setmetatable(M.state, {
 ---@param split NuiSplit
 ---@param tree NuiTree
 ---@param mappings table<string, slang-server.ui.Mapping>
-local function map_keys(split, tree, mappings)
+function M.map_keys(split, tree, mappings)
    for map, spec in pairs(mappings) do
       split:map("n", map, function()
          local node = tree:get_node()
@@ -45,7 +45,7 @@ end
 -- NOCOMMIT -- used by both hier and cells, how to handle this?
 -- do hier and cells objects contain a reference to the parent object?
 -- do I pass a function pointer down?
-local function message(tree, msg, opts)
+function M.message(tree, msg, opts)
    if not tree then
       return
    end
@@ -155,43 +155,14 @@ local function map_hier_keys(split, tree)
       },
    }
 
-   map_keys(split, tree, mappings)
-end
-
----@param insts slang-server.lsp.QualifiedInstance[]
----@param cell NuiTree.Node
----@param render boolean?
-local function show_insts(insts, cell, render)
-   if not M.state.open then
-      return
-   end
-
-   local nodes = {}
-   for idx, inst in ipairs(insts) do
-      local inst_node = {}
-      inst_node._uid = inst.instPath
-      inst_node.last = idx == #insts
-
-      inst_node = vim.tbl_deep_extend("error", inst_node, inst)
-
-      ---@cast inst_node slang-server.navigation.InstNode
-
-      nodes[#nodes + 1] = ui.NuiTree.Node(inst_node)
-   end
-
-   M.state.cellTree:set_nodes(nodes, cell:get_id())
-   cell:expand()
-
-   if render then
-      M.state.cellTree:render()
-   end
+   M.map_keys(split, tree, mappings)
 end
 
 ---@param parent slang-server.navigation.TreeNode?
 ---@param root boolean?
 ---@param remaining_path slang-server.navigation.Path?
 ---@param from_cell boolean?
-local function open_remainder(parent, root, remaining_path, from_cell)
+function M.open_remainder(parent, root, remaining_path, from_cell)
    local path = parent and parent.path or ""
    if remaining_path ~= nil and remaining_path ~= "" then
       local sep_loc = string.find(remaining_path, "[.[]", 2) or (string.len(remaining_path) + 1)
@@ -204,102 +175,15 @@ local function open_remainder(parent, root, remaining_path, from_cell)
    end
 end
 
----@param node slang-server.navigation.ScopeNode
-local function scope_jump(node)
-   local instPath = nil
-   if node and node.instLoc then
-      util.jump_loc(node.instLoc, M.state.sv_win.winnr)
-      instPath = node.instPath
-   elseif node and node.declLoc then
-      util.jump_loc(node.declLoc, M.state.sv_win.winnr)
-      local children = node:get_child_ids()
-      if children then
-         local child = M.state.cellTree:get_node(children[1])
-         if child and child.instPath then
-            instPath = child.instPath
-         end
-      end
-   end
-
-   if not instPath then
-      return
-   end
-
-   -- NOCOMMIT -- crosstalk between cells and hier -- how?
-   -- cells object contains a reference to the parent object which contains the hier object?
-   open_remainder(nil, true, instPath, true)
-end
-
----@param split NuiSplit
----@param tree NuiTree
-local function map_cell_keys(split, tree)
-   ---@type table<string, slang-server.ui.Mapping[]>
-   local mappings
-   mappings = {
-      ["<cr>"] = {
-         impl = scope_jump,
-         opts = { noremap = true },
-         desc = "Jump to node in source",
-      },
-      ["<space>"] = {
-         impl = function(node)
-            if not node or not node.declName then
-               return
-            end
-
-            if node:is_expanded() and node:collapse() then
-               tree:render()
-            elseif node:has_children() then
-               node:expand()
-               tree:render()
-            else
-               if not M.state.sv_buf then
-                  vim.notify("No SV buffer", vim.log.levels.ERROR)
-               end
-
-               client.getInstancesOfModule(M.state.sv_buf.bufnr, {
-                  on_success = function(resp)
-                     show_insts(resp, node, true)
-                  end,
-                  on_failure = handlers.defaultOnFailure,
-               }, { moduleName = node.declName })
-
-               message(M.state.cellTree, "Loading instances...", { parent = node, hl = hl.HIER_SUBTLE })
-            end
-         end,
-         opts = { noremap = true },
-         desc = "Expand / collapse node",
-      },
-      ["q"] = {
-         impl = function()
-            split:unmount()
-         end,
-         opts = { noremap = true },
-         desc = "Close",
-      },
-      ["?"] = {
-         impl = function()
-            util.show_help(mappings, "Cell view")
-         end,
-         opts = { noremap = true },
-         desc = "Show help",
-      },
-   }
-
-   map_keys(split, tree, mappings)
-end
-
-local function on_close()
+function M.on_close()
    if not M.state.open then
       return
    end
    vim.api.nvim_buf_delete(M.state.split.bufnr, { force = true })
-   vim.api.nvim_buf_delete(M.state.cellSplit.bufnr, { force = true })
    M.state.tree = nil
    M.state.split = nil
-   M.state.cellTree = nil
-   M.state.cellSplit = nil
    M.state.open = false
+   cells.on_close()
 end
 
 local function on_hover()
@@ -332,7 +216,7 @@ end
 
 ---@param node NuiTree.Node
 ---@param line NuiLine
-local function make_comment_line(node, line)
+function M.make_comment_line(node, line)
    line:append(string.rep("  ", node:get_depth() - 1) .. " └╴", hl.HIER_SUBTLE)
    line:append(" ")
    line:append(node.text, "Comment")
@@ -344,7 +228,7 @@ local function prepare_node(node, parent_node)
    local line = ui.NuiLine()
 
    if node.text then
-      make_comment_line(node, line)
+      M.make_comment_line(node, line)
    else
       local decoration = config.kinds[string.lower(node.kind)]
       local expander = " "
@@ -398,36 +282,9 @@ local function prepare_node(node, parent_node)
    return line
 end
 
----@param node slang-server.navigation.ScopeNode
----@param parent_node slang-server.navigation.CellNode?
-local function prepare_cell_node(node, parent_node)
-   local line = ui.NuiLine()
-
-   if node.text then
-      make_comment_line(node, line)
-   elseif node.instPath then
-      line:append(node.last and "   └╴" or "   ├╴", hl.HIER_SUBTLE)
-      line:append(node.instPath, hl.HIER_INSTANCE)
-   else
-      local expander
-      if not node:is_expanded() then
-         expander = "  "
-      else
-         expander = "  "
-      end
-      line:append(expander, hl.HIER_NORMAL)
-      line:append(node.declName, hl.HIER_SCOPE)
-      line:append(" (")
-      line:append(tostring(node.instCount), hl.HIER_VALUE)
-      line:append(")")
-   end
-
-   return line
-end
-
 ---@param node slang-server.navigation.Node
 ---@return string
-local function get_node_id(node)
+function M.get_node_id(node)
    return node._uid
 end
 
@@ -493,35 +350,7 @@ local function show_nodes(nodes, parent, root, remaining_path, from_cell)
    end
 
    M.state.tree:render()
-   open_remainder(parent, root, remaining_path, from_cell)
-end
-
----@param insts slang-server.lsp.InstanceSet[]
-local function show_cells(insts)
-   if not M.state.open then
-      return
-   end
-
-   for _, node in ipairs(M.state.cellTree:get_nodes()) do
-      M.state.cellTree:remove_node(node:get_id())
-   end
-
-   for _, cell in ipairs(insts) do
-      local cell_node = {}
-      cell_node._uid = "__DECL__" .. cell.declName
-
-      cell_node = vim.tbl_deep_extend("error", cell_node, cell)
-
-      ---@cast cell_node slang-server.navigation.CellNode
-
-      local cell_nui_node = ui.NuiTree.Node(cell_node)
-      M.state.cellTree:add_node(cell_nui_node)
-      if cell.inst then
-         show_insts({ cell.inst }, cell_nui_node)
-      end
-   end
-
-   M.state.cellTree:render()
+   M.open_remainder(parent, root, remaining_path, from_cell)
 end
 
 ---@param node NuiTree.Node
@@ -559,9 +388,9 @@ function M._lazy_open(path_or_node, root, remaining_path, from_cell)
       if from_cell then
          focus_hier_tree(node)
       end
-      open_remainder(node, root, remaining_path, from_cell)
+      M.open_remainder(node, root, remaining_path, from_cell)
    else
-      message(M.state.tree, "Loading scope...", { parent = node, hl = hl.HIER_SUBTLE })
+      M.message(M.state.tree, "Loading scope...", { parent = node, hl = hl.HIER_SUBTLE })
       if node and from_cell then
          focus_hier_tree(node)
       end
@@ -598,8 +427,8 @@ function M.show(top)
    })
 
    local event = require("nui.utils.autocmd").event
-   split:on(event.BufUnload, on_close, { once = true })
-   split:on(event.WinClosed, on_close, { once = true })
+   split:on(event.BufUnload, M.on_close, { once = true })
+   split:on(event.WinClosed, M.on_close, { once = true })
    split:on(event.CursorMoved, on_hover)
 
    split:mount()
@@ -608,7 +437,7 @@ function M.show(top)
 
    local tree = ui.NuiTree({
       prepare_node = prepare_node,
-      get_node_id = get_node_id,
+      get_node_id = M.get_node_id,
       bufnr = split.bufnr,
    })
 
@@ -622,50 +451,6 @@ function M.show(top)
 
    cells.show()
 
-   local cellSplit = ui.NuiSplit({
-      relative = {
-         type = "win",
-         winid = split.winid,
-      },
-      position = "bottom",
-      size = "40%",
-      win_options = {
-         signcolumn = "no",
-         number = false,
-         relativenumber = false,
-      },
-   })
-
-   cellSplit:on(event.BufUnload, on_close, { once = true })
-   cellSplit:on(event.WinClosed, on_close, { once = true })
-
-   cellSplit:mount()
-
-   local cellTree = ui.NuiTree({
-      prepare_node = prepare_cell_node,
-      get_node_id = get_node_id,
-      bufnr = cellSplit.bufnr,
-   })
-
-   map_cell_keys(cellSplit, cellTree)
-
-   M.state.cellSplit = cellSplit
-   M.state.cellTree = cellTree
-
-   if not M.state.sv_buf then
-      vim.notify("No SV buffer", vim.log.levels.ERROR)
-   end
-
-   message(cellTree, "Loading cells...", { hl = hl.HIER_SUBTLE })
-
-   client.getScopesByModule(M.state.sv_buf.bufnr, {
-      on_success = function(resp)
-         show_cells(resp)
-      end,
-      on_failure = handlers.defaultOnFailure,
-   })
-
-   vim.api.nvim_buf_set_name(cellSplit.bufnr, "Slang-server: Cells")
    vim.api.nvim_set_current_win(split.winid)
 end
 

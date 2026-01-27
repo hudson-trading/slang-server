@@ -28,7 +28,7 @@
 
 ---@alias slang-server.config.Highlights table<string, vim.api.keyset.highlight>
 
---- Hierarchy view types
+--- Navigation types
 
 ---@alias slang-server.navigation.Path string
 
@@ -38,10 +38,13 @@
 ---@field split NuiSplit?
 ---@field tree NuiTree?
 ---@field hover NuiPopup?
----@field cellTree NuiTree?
----@field cellSplit NuiSplit?
 ---@field sv_buf vim.fn.getbufinfo.ret.item?
 ---@field sv_win vim.fn.getwininfo.ret.item?
+
+---@class slang-server.navigation.cells.State
+-- NOCOMMIT -- remove "cell"
+---@field cellTree NuiTree?
+---@field cellSplit NuiSplit?
 
 ---@class slang-server.navigation.TreeNode: NuiTree.Node
 ---@field path string
