@@ -236,12 +236,10 @@ std::string toCamelCase(std::string_view str) {
     if (str.empty()) {
         return "";
     }
-
     std::string result;
     result.reserve(str.size());
     result.push_back(static_cast<char>(std::tolower(str[0])));
     result.append(str.substr(1));
-
     return result;
 }
 
