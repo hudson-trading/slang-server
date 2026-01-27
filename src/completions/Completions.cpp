@@ -178,16 +178,16 @@ void resolveModule(const slang::syntax::ModuleHeaderSyntax& header, lsp::Complet
         maxLen = visitor.maxLen;
     }
 
+    bool emptyParams = names.size() == 0;
+
     if (!excludeName) {
         output.appendText(header.name.valueText());
-        if (names.size() > 0) {
+        if (!emptyParams)
             output.appendText(" #");
-        }
     }
 
-    if (names.size() > 0) {
+    if (!emptyParams)
         output.appendText("(\n");
-    }
 
     // append params
     for (size_t i = 0; i < names.size(); ++i) {
@@ -209,9 +209,9 @@ void resolveModule(const slang::syntax::ModuleHeaderSyntax& header, lsp::Complet
             output.appendText("\n ");
         }
     }
-    if (names.size() > 0) {
+    if (!emptyParams)
         output.appendText(")");
-    }
+
     output.appendText(" ");
     output.appendPlaceholder(toCamelCase(header.name.valueText()));
     output.appendText(" (\n");
