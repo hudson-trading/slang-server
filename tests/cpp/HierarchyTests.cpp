@@ -56,6 +56,20 @@ TEST_CASE("GetScopeNested") {
     golden.record("mem_ctrl_scope", memCtrlScope);
 }
 
+TEST_CASE("GetScopeBranches") {
+    ServerHarness server("comp_repo");
+    JsonGoldenTest golden;
+
+    auto hdl = server.openFile("generate_branch.sv");
+
+    server.setTopLevel(std::string{hdl.m_uri.getPath()});
+
+    // Get only instantiated branches
+    auto children = server.getScope("top.the_sub");
+
+    golden.record("children", children);
+}
+
 TEST_CASE("GetScopesByModule") {
     ServerHarness server("comp_repo");
     JsonGoldenTest golden;
