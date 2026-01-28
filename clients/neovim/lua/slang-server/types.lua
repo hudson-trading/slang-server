@@ -43,9 +43,8 @@
 ---@field tree NuiTree?
 
 ---@class slang-server.navigation.cells.State
--- NOCOMMIT -- remove "cell"
----@field cellTree NuiTree?
----@field cellSplit NuiSplit?
+---@field tree NuiTree?
+---@field split NuiSplit?
 
 ---@class slang-server.navigation.TreeNode: NuiTree.Node
 ---@field path string

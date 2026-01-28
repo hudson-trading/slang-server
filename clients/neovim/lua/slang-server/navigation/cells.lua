@@ -10,14 +10,14 @@ local M = {}
 M.state = {}
 
 function M.on_close()
-   vim.api.nvim_buf_delete(M.state.cellSplit.bufnr, { force = true })
-   M.state.cellTree = nil
-   M.state.cellSplit = nil
+   vim.api.nvim_buf_delete(M.state.split.bufnr, { force = true })
+   M.state.tree = nil
+   M.state.split = nil
 end
 
 ---@param node slang-server.navigation.ScopeNode
 ---@param parent_node slang-server.navigation.CellNode?
-local function prepare_cell_node(node, parent_node)
+local function prepare_node(node, parent_node)
    local navigation = require("slang-server.navigation")
    local line = ui.NuiLine()
 
@@ -55,7 +55,7 @@ local function scope_jump(node)
       util.jump_loc(node.declLoc, navigation.state.sv_win.winnr)
       local children = node:get_child_ids()
       if children then
-         local child = M.state.cellTree:get_node(children[1])
+         local child = M.state.tree:get_node(children[1])
          if child and child.instPath then
             instPath = child.instPath
          end
@@ -66,8 +66,6 @@ local function scope_jump(node)
       return
    end
 
-   -- NOCOMMIT -- crosstalk between cells and hier -- how?
-   -- cells object contains a reference to the parent object which contains the hier object?
    hier.open_remainder(nil, true, instPath, true)
 end
 
@@ -93,17 +91,17 @@ local function show_insts(insts, cell, render)
       nodes[#nodes + 1] = ui.NuiTree.Node(inst_node)
    end
 
-   M.state.cellTree:set_nodes(nodes, cell:get_id())
+   M.state.tree:set_nodes(nodes, cell:get_id())
    cell:expand()
 
    if render then
-      M.state.cellTree:render()
+      M.state.tree:render()
    end
 end
 
 ---@param split NuiSplit
 ---@param tree NuiTree
-local function map_cell_keys(split, tree)
+local function map_keys(split, tree)
    local navigation = require("slang-server.navigation")
    ---@type table<string, slang-server.ui.Mapping[]>
    local mappings
@@ -136,7 +134,7 @@ local function map_cell_keys(split, tree)
                   on_failure = handlers.defaultOnFailure,
                }, { moduleName = node.declName })
 
-               navigation.message(M.state.cellTree, "Loading instances...", { parent = node, hl = hl.HIER_SUBTLE })
+               navigation.message(M.state.tree, "Loading instances...", { parent = node, hl = hl.HIER_SUBTLE })
             end
          end,
          opts = { noremap = true },
@@ -162,14 +160,14 @@ local function map_cell_keys(split, tree)
 end
 
 ---@param insts slang-server.lsp.InstanceSet[]
-local function show_cells(insts)
+local function show_nodes(insts)
    local navigation = require("slang-server.navigation")
    if not navigation.state.open then
       return
    end
 
-   for _, node in ipairs(M.state.cellTree:get_nodes()) do
-      M.state.cellTree:remove_node(node:get_id())
+   for _, node in ipairs(M.state.tree:get_nodes()) do
+      M.state.tree:remove_node(node:get_id())
    end
 
    for _, cell in ipairs(insts) do
@@ -181,20 +179,19 @@ local function show_cells(insts)
       ---@cast cell_node slang-server.navigation.CellNode
 
       local cell_nui_node = ui.NuiTree.Node(cell_node)
-      M.state.cellTree:add_node(cell_nui_node)
+      M.state.tree:add_node(cell_nui_node)
       if cell.inst then
          show_insts({ cell.inst }, cell_nui_node)
       end
    end
 
-   M.state.cellTree:render()
+   M.state.tree:render()
 end
 
 function M.show()
    local navigation = require("slang-server.navigation")
    local hier = require("slang-server.navigation/hierarchy")
-   -- NOCOMMIT -- scrub for unnecessary "cell"
-   local cellSplit = ui.NuiSplit({
+   local split = ui.NuiSplit({
       relative = {
          type = "win",
          winid = hier.state.split.winid,
@@ -209,36 +206,36 @@ function M.show()
    })
 
    local event = require("nui.utils.autocmd").event
-   cellSplit:on(event.BufUnload, navigation.on_close, { once = true })
-   cellSplit:on(event.WinClosed, navigation.on_close, { once = true })
+   split:on(event.BufUnload, navigation.on_close, { once = true })
+   split:on(event.WinClosed, navigation.on_close, { once = true })
 
-   cellSplit:mount()
+   split:mount()
 
-   local cellTree = ui.NuiTree({
-      prepare_node = prepare_cell_node,
+   local tree = ui.NuiTree({
+      prepare_node = prepare_node,
       get_node_id = navigation.get_node_id,
-      bufnr = cellSplit.bufnr,
+      bufnr = split.bufnr,
    })
 
-   map_cell_keys(cellSplit, cellTree)
+   map_keys(split, tree)
 
-   M.state.cellSplit = cellSplit
-   M.state.cellTree = cellTree
+   M.state.split = split
+   M.state.tree = tree
 
    if not navigation.state.sv_buf then
       vim.notify("No SV buffer", vim.log.levels.ERROR)
    end
 
-   navigation.message(cellTree, "Loading cells...", { hl = hl.HIER_SUBTLE })
+   navigation.message(tree, "Loading cells...", { hl = hl.HIER_SUBTLE })
 
    client.getScopesByModule(navigation.state.sv_buf.bufnr, {
       on_success = function(resp)
-         show_cells(resp)
+         show_nodes(resp)
       end,
       on_failure = handlers.defaultOnFailure,
    })
 
-   vim.api.nvim_buf_set_name(cellSplit.bufnr, "Slang-server: Cells")
+   vim.api.nvim_buf_set_name(split.bufnr, "Slang-server: Cells")
 end
 
 return M

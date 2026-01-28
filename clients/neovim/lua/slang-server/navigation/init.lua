@@ -39,9 +39,6 @@ end
 ---@param tree NuiTree
 ---@param msg string
 ---@param opts {parent: NuiTree.Node?, hl: string?}?
--- NOCOMMIT -- used by both hier and cells, how to handle this?
--- do hier and cells objects contain a reference to the parent object?
--- do I pass a function pointer down?
 function M.message(tree, msg, opts)
    if not tree then
       return

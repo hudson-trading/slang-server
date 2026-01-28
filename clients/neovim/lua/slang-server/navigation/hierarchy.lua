@@ -18,7 +18,7 @@ end
 
 ---@param split NuiSplit
 ---@param tree NuiTree
-local function map_hier_keys(split, tree)
+local function map_keys(split, tree)
    local navigation = require("slang-server.navigation")
    ---@type table<string, slang-server.ui.Mapping>
    local mappings
@@ -109,23 +109,12 @@ end
 ---@param from_cell boolean?
 function M.open_remainder(parent, root, remaining_path, from_cell)
    local path = parent and parent.path or ""
-   print("OPEN REMAINDER -- " .. path .. " -- " .. remaining_path) -- NOCOMMIT
    if remaining_path ~= nil and remaining_path ~= "" then
       local sep_loc = string.find(remaining_path, "[.[]", 2) or (string.len(remaining_path) + 1)
       local is_bracket = string.sub(remaining_path, sep_loc, sep_loc) == "["
       local before_sep = string.sub(remaining_path, 0, sep_loc - 1)
       local after_sep = string.sub(remaining_path, sep_loc + (is_bracket and 0 or 1))
       local before_is_bracket = string.sub(before_sep, 1, 1) == "["
-      print(
-         "ROOT = "
-            .. tostring(root)
-            .. " BEFORE SEP = "
-            .. before_sep
-            .. " AFTER SEP = "
-            .. after_sep
-            .. " PATH = "
-            .. path
-      ) -- NOCOMMIT
       path = path .. ((before_is_bracket or root) and "" or ".") .. before_sep
       M._lazy_open(path, false, after_sep, from_cell)
    end
@@ -234,22 +223,18 @@ local function show_nodes(nodes, parent, root, remaining_path, from_cell)
 
    local tree_nodes
    if root then
-      print("SHOW NODES ROOT") -- NOCOMMIT
       for _, node in ipairs(nodes) do
-         -- NOCOMMIT -- node is unused, loop is weird
          tree_nodes = parse_nodes(nodes)
          M.state.tree:set_nodes(tree_nodes)
       end
    -- If the parent_path is already in the tree, we want to append children to the existing node
    elseif parent then
-      print("SHOW NODES PARENT -- " .. parent.path) -- NOCOMMIT
       tree_nodes = parse_nodes(nodes, parent)
       M.state.tree:set_nodes(tree_nodes, parent:get_id())
 
       parent._populated = true
       parent:expand()
    else
-      print("SHOW NODES OTHER ROOT?") -- NOCOMMIT
       tree_nodes = parse_nodes(nodes)
       M.state.tree:set_nodes(tree_nodes)
 
@@ -259,17 +244,11 @@ local function show_nodes(nodes, parent, root, remaining_path, from_cell)
    end
 
    M.state.tree:render()
-   -- NOCOMMIT
-   if parent then
-      print("SHOW NODES -- " .. parent.path .. " REMAINING -- " .. remaining_path)
-   else
-      print("SHOW NODES -- nil" .. " REMAINING -- " .. remaining_path)
-   end
    M.open_remainder(parent, root, remaining_path, from_cell)
 end
 
 ---@param node NuiTree.Node
-local function focus_hier_tree(node)
+local function focus_tree(node)
    local _, start_linenr = M.state.tree:get_node(node:get_id())
    vim.api.nvim_win_set_cursor(M.state.split.winid, { start_linenr, 0 })
    vim.api.nvim_win_call(M.state.split.winid, function()
@@ -292,7 +271,6 @@ function M._lazy_open(path_or_node, root, remaining_path, from_cell)
    if type(path_or_node) == "string" then
       node = M.state.tree:get_node(path_or_node) --[[@as slang-server.navigation.TreeNode?]]
       path = path_or_node
-      print("PATH -- " .. path .. " NODE IS NIL " .. tostring(node == nil)) -- NOCOMMIT
    else
       node = path_or_node
       path = node.path
@@ -303,25 +281,19 @@ function M._lazy_open(path_or_node, root, remaining_path, from_cell)
       node:expand()
       M.state.tree:render()
       if from_cell then
-         focus_hier_tree(node)
+         focus_tree(node)
       end
-      print("OPEN POPULATED -- " .. node.path) -- NOCOMMIT
       M.open_remainder(node, root, remaining_path, from_cell)
    else
       navigation.message(M.state.tree, "Loading scope...", { parent = node, hl = hl.HIER_SUBTLE })
       if node and from_cell then
-         focus_hier_tree(node)
+         focus_tree(node)
       end
 
       if not navigation.state.sv_buf then
          vim.notify("No SV buffer", vim.log.levels.ERROR)
       end
 
-      if node then
-         print("GET SCOPE -- " .. node.path) -- NOCOMMIT
-      else
-         print("GET SCOPE -- nil" .. " ROOT -- " .. tostring(root)) -- NOCOMMIT
-      end
       client.getScope(navigation.state.sv_buf.bufnr, {
          on_success = function(resp)
             show_nodes(resp, node, root, remaining_path, from_cell)
@@ -386,12 +358,11 @@ function M.show(top)
 
    local tree = ui.NuiTree({
       prepare_node = prepare_node,
-      -- NOCOMMIT -- annoying bug was here -- why didn't M.get_node_id cause an error?
       get_node_id = navigation.get_node_id,
       bufnr = split.bufnr,
    })
 
-   map_hier_keys(split, tree)
+   map_keys(split, tree)
 
    M.state.split = split
    M.state.tree = tree
