@@ -165,11 +165,6 @@ void resolveModule(const slang::syntax::ModuleHeaderSyntax& header, lsp::Complet
                    bool excludeName) {
 
     SnippetString output;
-    if (!excludeName) {
-        output.appendText(header.name.valueText());
-        output.appendText(" #");
-    }
-    output.appendText("(\n");
 
     // get params
     size_t maxLen = 0;
@@ -183,27 +178,42 @@ void resolveModule(const slang::syntax::ModuleHeaderSyntax& header, lsp::Complet
         maxLen = visitor.maxLen;
     }
 
-    // append params
-    for (size_t i = 0; i < names.size(); ++i) {
-        auto name = std::string{names[i]};
-        auto nameFmt = name + std::string(maxLen - name.length(), ' ');
-        output.appendText("\t." + nameFmt + "(");
-        if (defaults[i].empty()) {
-            output.appendPlaceholder(name);
-        }
-        else {
-            // TODO: We should use textDocument/signatureHelp to show types and default values
-            output.appendPlaceholder(fmt::format("{} /* default {} */", name, defaults[i]));
-        }
-        output.appendText(")");
-        if (i < names.size() - 1) {
-            output.appendText(",\n");
-        }
-        else {
-            output.appendText("\n ");
-        }
+    if (!excludeName) {
+        output.appendText(header.name.valueText());
     }
-    output.appendText(") ");
+
+    // Append parameter list if and only if the module has parameters
+    if (names.size() > 0) {
+        if (!excludeName)
+            output.appendText(" #");
+
+        output.appendText("(\n");
+
+        // append params
+        for (size_t i = 0; i < names.size(); ++i) {
+            auto name = std::string{names[i]};
+            auto nameFmt = name + std::string(maxLen - name.length(), ' ');
+            output.appendText("\t." + nameFmt + "(");
+            if (defaults[i].empty()) {
+                output.appendPlaceholder(name);
+            }
+            else {
+                // TODO: We should use textDocument/signatureHelp to show types and default values
+                output.appendPlaceholder(fmt::format("{} /* default {} */", name, defaults[i]));
+            }
+            output.appendText(")");
+            if (i < names.size() - 1) {
+                output.appendText(",\n");
+            }
+            else {
+                output.appendText("\n ");
+            }
+        }
+
+        output.appendText(")");
+    }
+
+    output.appendText(" ");
     output.appendPlaceholder(toCamelCase(header.name.valueText()));
     output.appendText(" (\n");
 
