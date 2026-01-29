@@ -5,6 +5,8 @@
 #include "lsp/LspTypes.h"
 #include "utils/ServerHarness.h"
 #include <cstdlib>
+#include <filesystem>
+#include <fstream>
 
 using namespace server;
 
@@ -198,4 +200,194 @@ TEST_CASE("GotoDefinition_TwoLayerIncludeModification") {
     auto& newDef = newDefs[0];
     CHECK(newDef.targetUri.str().find("base_defs.svh") != std::string::npos);
     CHECK(newDef.targetRange.start.line == originalLine + 2);
+}
+
+TEST_CASE("ExternalFileChange_ReReadBuffer") {
+    /// Test that external file changes are detected and the buffer is re-read from disk
+    auto tempDir = std::filesystem::temp_directory_path() / "slang_test_external";
+    std::filesystem::create_directories(tempDir);
+
+    // Create a temporary file
+    auto tempFile = tempDir / "external_test.sv";
+    {
+        std::ofstream out(tempFile);
+        out << R"(module original;
+    logic [7:0] data;
+endmodule
+)";
+    }
+
+    // Set up server with temp directory as workspace
+    ServerHarness server(lsp::InitializeParams{
+        .workspaceFolders = {
+            {lsp::WorkspaceFolder{.uri = URI::fromFile(tempDir), .name = "test"}}}});
+
+    // Open the file via LSP
+    auto uri = URI::fromFile(tempFile);
+    std::ifstream in(tempFile);
+    std::string originalText((std::istreambuf_iterator<char>(in)),
+                             std::istreambuf_iterator<char>());
+    in.close();
+
+    server.onDocDidOpen(
+        lsp::DidOpenTextDocumentParams{.textDocument = lsp::TextDocumentItem{
+                                           .uri = uri,
+                                           .languageId = lsp::LanguageKind::make<"systemverilog">(),
+                                           .version = 1,
+                                           .text = originalText}});
+
+    // Verify initial content
+    auto doc = server.getDoc(uri);
+    REQUIRE(doc != nullptr);
+    CHECK(doc->getText().find("original") != std::string::npos);
+    CHECK(doc->getText().find("modified") == std::string::npos);
+
+    // Modify the file on disk (external change)
+    {
+        std::ofstream out(tempFile);
+        out << R"(module modified;
+    logic [15:0] wider_data;
+    logic extra_signal;
+endmodule
+)";
+    }
+
+    // Trigger external file change notification
+    server.onWorkspaceDidChangeWatchedFiles(lsp::DidChangeWatchedFilesParams{
+        .changes = {{lsp::FileEvent{.uri = uri, .type = lsp::FileChangeType::Changed}}}});
+
+    // Verify the buffer was re-read from disk
+    doc = server.getDoc(uri);
+    REQUIRE(doc != nullptr);
+    CHECK(doc->getText().find("modified") != std::string::npos);
+    CHECK(doc->getText().find("original") == std::string::npos);
+    CHECK(doc->getText().find("wider_data") != std::string::npos);
+    CHECK(doc->getText().find("extra_signal") != std::string::npos);
+
+    // Clean up
+    std::filesystem::remove_all(tempDir);
+}
+
+TEST_CASE("ExternalFileChange_DiagnosticsUpdate") {
+    /// Test that diagnostics are updated after an external file change
+    auto tempDir = std::filesystem::temp_directory_path() / "slang_test_diag";
+    std::filesystem::create_directories(tempDir);
+
+    // Create a file with an error
+    auto tempFile = tempDir / "diag_test.sv";
+    {
+        std::ofstream out(tempFile);
+        out << R"(module with_error;
+    logic [7:0] data;
+    assign data = undefined_signal; // Error: undefined
+endmodule
+)";
+    }
+
+    ServerHarness server(lsp::InitializeParams{
+        .workspaceFolders = {
+            {lsp::WorkspaceFolder{.uri = URI::fromFile(tempDir), .name = "test"}}}});
+
+    auto uri = URI::fromFile(tempFile);
+    std::ifstream in(tempFile);
+    std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+    in.close();
+
+    server.onDocDidOpen(
+        lsp::DidOpenTextDocumentParams{.textDocument = lsp::TextDocumentItem{
+                                           .uri = uri,
+                                           .languageId = lsp::LanguageKind::make<"systemverilog">(),
+                                           .version = 1,
+                                           .text = text}});
+
+    // Should have diagnostics for undefined signal
+    auto initialDiags = server.client.getDiagnostics(uri);
+    auto hasUndefinedError = [](const std::vector<lsp::Diagnostic>& diags) {
+        for (const auto& d : diags) {
+            if (d.message.find("undefined_signal") != std::string::npos)
+                return true;
+        }
+        return false;
+    };
+    CHECK(hasUndefinedError(initialDiags));
+
+    // Fix the error on disk
+    {
+        std::ofstream out(tempFile);
+        out << R"(module fixed;
+    logic [7:0] data;
+    assign data = 8'hFF; // Fixed
+endmodule
+)";
+    }
+
+    // Trigger external file change
+    server.onWorkspaceDidChangeWatchedFiles(lsp::DidChangeWatchedFilesParams{
+        .changes = {{lsp::FileEvent{.uri = uri, .type = lsp::FileChangeType::Changed}}}});
+
+    // The undefined_signal error should be gone after the fix
+    auto newDiags = server.client.getDiagnostics(uri);
+    CHECK(!hasUndefinedError(newDiags));
+
+    std::filesystem::remove_all(tempDir);
+}
+
+TEST_CASE("ExternalFileChange_SyntaxTreeInvalidation") {
+    /// Test that the syntax tree is invalidated and reparsed after external changes
+    auto tempDir = std::filesystem::temp_directory_path() / "slang_test_syntax";
+    std::filesystem::create_directories(tempDir);
+
+    auto tempFile = tempDir / "syntax_test.sv";
+    {
+        std::ofstream out(tempFile);
+        out << R"(module one_module;
+endmodule
+)";
+    }
+
+    ServerHarness server(lsp::InitializeParams{
+        .workspaceFolders = {
+            {lsp::WorkspaceFolder{.uri = URI::fromFile(tempDir), .name = "test"}}}});
+
+    auto uri = URI::fromFile(tempFile);
+    std::ifstream in(tempFile);
+    std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+    in.close();
+
+    server.onDocDidOpen(
+        lsp::DidOpenTextDocumentParams{.textDocument = lsp::TextDocumentItem{
+                                           .uri = uri,
+                                           .languageId = lsp::LanguageKind::make<"systemverilog">(),
+                                           .version = 1,
+                                           .text = text}});
+
+    // Get initial symbols
+    auto doc = server.getDoc(uri);
+    REQUIRE(doc != nullptr);
+    auto initialSymbols = doc->getSymbols();
+    CHECK(initialSymbols.size() == 1);
+    CHECK(initialSymbols[0].name == "one_module");
+
+    // Add another module on disk
+    {
+        std::ofstream out(tempFile);
+        out << R"(module first_module;
+endmodule
+
+module second_module;
+endmodule
+)";
+    }
+
+    // Trigger external change
+    server.onWorkspaceDidChangeWatchedFiles(lsp::DidChangeWatchedFilesParams{
+        .changes = {{lsp::FileEvent{.uri = uri, .type = lsp::FileChangeType::Changed}}}});
+
+    // Should now have two modules
+    doc = server.getDoc(uri);
+    REQUIRE(doc != nullptr);
+    auto newSymbols = doc->getSymbols();
+    CHECK(newSymbols.size() == 2);
+
+    std::filesystem::remove_all(tempDir);
 }

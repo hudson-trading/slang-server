@@ -208,6 +208,28 @@ void ServerDriver::closeDocument(const URI& uri) {
     }
 }
 
+void ServerDriver::reloadDocument(const URI& uri) {
+    // Only reload if this is an open document
+    if (m_openDocs.find(uri) == m_openDocs.end()) {
+        return;
+    }
+
+    auto doc = getDocument(uri);
+    if (!doc) {
+        WARN("Document {} not found for reload", uri.getPath());
+        return;
+    }
+
+    if (!doc->reloadBuffer()) {
+        return;
+    }
+
+    INFO("Reloaded document {} from disk", uri.getPath());
+
+    // Update the document (reparse and issue diagnostics)
+    updateDoc(*doc, FileUpdateType::CHANGE);
+}
+
 std::vector<std::shared_ptr<SlangDoc>> ServerDriver::getDependentDocs(
     std::shared_ptr<SyntaxTree> tree) {
     std::vector<std::shared_ptr<SlangDoc>> result;

@@ -86,6 +86,7 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     // Workspace Features
     registerWorkspaceExecuteCommand();
     registerWorkspaceSymbol();
+    registerWorkspaceDidChangeWatchedFiles();
 
     // LSP Lifecycle
     registerInitialized();
@@ -620,6 +621,28 @@ void SlangServer::onDocDidClose(const lsp::DidCloseTextDocumentParams& params) {
     // TODO: Add method in ServerDriver to check that the rc of the document is 1 before
     // removing (non-compilation mode)
     m_driver->closeDocument(params.textDocument.uri);
+}
+
+void SlangServer::onWorkspaceDidChangeWatchedFiles(const lsp::DidChangeWatchedFilesParams& params) {
+    // Handle external file changes (e.g., from git operations)
+    for (const auto& change : params.changes) {
+        switch (change.type) {
+            case lsp::FileChangeType::Created:
+                // File was created externally - no action needed for open docs
+                break;
+            case lsp::FileChangeType::Changed:
+                // File was modified externally (e.g., git restore, cherry-pick)
+                // Reload from disk to sync with the external changes
+                INFO("File {} changed externally, reloading from disk", change.uri.getPath());
+                m_driver->reloadDocument(change.uri);
+                break;
+            case lsp::FileChangeType::Deleted:
+                // File was deleted externally - close the document
+                INFO("File {} deleted externally, closing doc", change.uri.getPath());
+                m_driver->closeDocument(change.uri);
+                break;
+        }
+    }
 }
 
 rfl::Variant<std::vector<lsp::SymbolInformation>, std::vector<lsp::WorkspaceSymbol>, std::monostate>

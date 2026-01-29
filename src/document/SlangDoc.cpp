@@ -193,6 +193,17 @@ void SlangDoc::onChange(const std::vector<lsp::TextDocumentContentChangeEvent>& 
     m_tree.reset();
     m_analysis.reset();
 }
+bool SlangDoc::reloadBuffer() {
+    auto result = m_sourceManager.reloadBuffer(m_buffer.id);
+    if (!result) {
+        ERROR("Failed to re-read buffer for {}: {}", m_uri.getPath(), result.error().message());
+        return false;
+    }
+    m_buffer = *result;
+    m_tree.reset();
+    m_analysis.reset();
+    return true;
+}
 
 void SlangDoc::issueParseDiagnostics(DiagnosticEngine& diagEngine) {
     for (auto& diag : getSyntaxTree()->diagnostics()) {

@@ -73,6 +73,9 @@ public:
     /// @brief Close a document and remove it from the open docs set
     void closeDocument(const URI& uri);
 
+    /// @brief Reload a document from disk, used when external tools modify open files
+    void reloadDocument(const URI& uri);
+
     void onDocDidChange(const lsp::DidChangeTextDocumentParams& params);
 
     void updateDoc(SlangDoc& doc, FileUpdateType type);
