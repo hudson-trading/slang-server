@@ -576,9 +576,12 @@ markup::Paragraph ShallowAnalysis::getDebugHover(const parsing::Token& tok) cons
         // Check if we've reached a symbol
         auto sym = m_symbolIndexer.getSymbol(nodePtr);
         if (sym) {
-            para.appendBold("Symbol:").appendCode(sym->name);
-            para.appendText(" (").appendText(toString(sym->kind)).appendText(")");
-            break;
+            para.appendText("  - ")
+                .appendText(toString(sym->kind))
+                .appendText(" ")
+                .appendCode(sym->name)
+                .newLine()
+                .newLine();
         }
     }
 
