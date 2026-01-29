@@ -15,24 +15,26 @@
 #include "slang/ast/symbols/CompilationUnitSymbols.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
 #include "slang/ast/symbols/PortSymbols.h"
-#include "slang/ast/symbols/ValueSymbol.h"
 #include "slang/ast/types/AllTypes.h"
 #include "slang/syntax/AllSyntax.h"
 #include "slang/syntax/SyntaxKind.h"
 #include "slang/syntax/SyntaxNode.h"
+#include "slang/util/SmallVector.h"
 #include "slang/util/Util.h"
 
 namespace server {
 
+using namespace slang;
+
 /// Find the name token in a syntax node, 1 layer deep.
-const slang::parsing::Token* findName(std::string_view name,
-                                      const slang::syntax::SyntaxNode& node) {
+void findNames(SmallVector<const parsing::Token*>& result, std::string_view name,
+               const slang::syntax::SyntaxNode& node) {
     // Look through tokens first
     for (size_t childInd = 0; childInd < node.getChildCount(); childInd++) {
         auto child = const_cast<slang::syntax::SyntaxNode&>(node).childTokenPtr(childInd);
         if (child && child->kind == slang::parsing::TokenKind::Identifier) {
             if (child->valueText() == name) {
-                return child;
+                result.push_back(child);
             }
         }
     }
@@ -40,13 +42,11 @@ const slang::parsing::Token* findName(std::string_view name,
     for (size_t childInd = 0; childInd < node.getChildCount(); childInd++) {
         auto child = node.childNode(childInd);
         if (child) {
-            auto nameTok = findName(name, *child);
-            if (nameTok) {
-                return nameTok;
+            if (result.size() == 0 || child->kind == slang::syntax::SyntaxKind::NamedBlockClause) {
+                findNames(result, name, *child);
             }
         }
     }
-    return nullptr;
 }
 
 SymbolIndexer::SymbolIndexer(slang::BufferID buffer) : m_buffer(buffer) {
@@ -159,10 +159,17 @@ void SymbolIndexer::indexSymbolName(const slang::ast::Symbol& symbol) {
         syntex[symbol.getSyntax()] = &symbol;
 
         auto& syntax = *symbol.getSyntax();
-        if (syntax.sourceRange().start().buffer() == m_buffer) {
-            auto nameTok = findName(symbol.name, syntax);
-            if (nameTok) {
-                symdex[nameTok] = &symbol;
+        if (syntax.sourceRange().start().buffer() == m_buffer && !symbol.name.empty()) {
+            SmallVector<const parsing::Token*> tokens;
+            findNames(tokens, symbol.name, syntax);
+            if (tokens.size() == 0) {
+                // We want to avoid this case, since we may recurse through many layers
+                WARN("No tokens found for symbol '{} : {}' with syntax kind {}", symbol.name,
+                     toString(symbol.kind), toString(syntax.kind));
+            }
+
+            for (auto* tok : tokens) {
+                symdex[tok] = &symbol;
             }
         }
     }
@@ -245,6 +252,10 @@ void SymbolIndexer::handle(const slang::ast::EnumValueSymbol& sym) {
 
 void SymbolIndexer::handle(const slang::ast::TypeAliasType& value) {
     if (value.location.buffer() != m_buffer) {
+        return;
+    }
+    // Check if already indexed to prevent infinite loops with circular type references
+    if (value.getSyntax() && syntex.find(value.getSyntax()) != syntex.end()) {
         return;
     }
     indexSymbolName(value);

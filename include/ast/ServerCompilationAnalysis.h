@@ -14,6 +14,7 @@
 #include <memory>
 #include <vector>
 
+#include "slang/analysis/AnalysisOptions.h"
 #include "slang/util/Bag.h"
 
 namespace server {
@@ -75,7 +76,8 @@ private:
     /// Retained buffer data to prevent deallocation while this compilation exists
     std::vector<std::shared_ptr<void>> m_retainedBuffers;
 
-    slang::analysis::AnalysisManager m_driverAnalysis;
+    /// Analysis options from the bag, used for driver analysis
+    slang::analysis::AnalysisOptions m_analysisOptions;
 
     /// Index of value symbol -> uses (e.g. processes or continuous assignments)
     std::optional<ReferenceIndexer> m_references = std::nullopt;

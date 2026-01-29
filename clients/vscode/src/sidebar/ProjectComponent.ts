@@ -477,7 +477,11 @@ export class ProjectComponent
   isRevalingFile: boolean = false
 
   async onStart(): Promise<void> {
-    await this.refreshSlangCompilation()
+    await this.refreshSlangCompilation({
+      revealHierarchy: false,
+      revealFile: false,
+      revealInstance: false,
+    })
   }
 
   //////////////////////////////////////////////////////////////////

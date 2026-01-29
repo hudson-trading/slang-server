@@ -259,6 +259,8 @@ static std::vector<HierItem_t> getScopeChildren(const slang::ast::Scope& scope,
                                                 const SourceManager& sm) {
     std::vector<HierItem_t> result;
     for (auto& sym : scope.members()) {
+        if (!sym.isInstantiated())
+            continue;
         if (auto inst = sym.as_if<slang::ast::InstanceSymbol>()) {
             handleInstance(result, *inst, sm);
         }

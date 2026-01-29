@@ -1,0 +1,22 @@
+{
+  "name": "v0.2.1",
+  "tag_name": "v0.2.1",
+  "assets": [
+    {
+      "name": "slang-server-linux-x64-gcc.tar.gz",
+      "browser_download_url": "http://127.0.0.1:9999/slang-server-linux-x64-gcc.tar.gz"
+    },
+    {
+      "name": "slang-server-linux-x64-clang.tar.gz",
+      "browser_download_url": "http://127.0.0.1:9999/slang-server-linux-x64-clang.tar.gz"
+    },
+    {
+      "name": "slang-server-windows-x64.zip",
+      "browser_download_url": "http://127.0.0.1:9999/slang-server-windows-x64.zip"
+    },
+    {
+      "name": "slang-server-macos.tar.gz",
+      "browser_download_url": "http://127.0.0.1:9999/slang-server-macos.tar.gz"
+    }
+  ]
+}
