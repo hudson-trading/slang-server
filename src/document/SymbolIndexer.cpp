@@ -254,6 +254,10 @@ void SymbolIndexer::handle(const slang::ast::TypeAliasType& value) {
     if (value.location.buffer() != m_buffer) {
         return;
     }
+    // Check if already indexed to prevent infinite loops with circular type references
+    if (value.getSyntax() && syntex.find(value.getSyntax()) != syntex.end()) {
+        return;
+    }
     indexSymbolName(value);
     value.getDeclaredType()->getType().visit(*this);
 }
