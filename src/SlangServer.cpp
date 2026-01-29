@@ -220,6 +220,26 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     return result;
 }
 
+void SlangServer::onInitialized(const lsp::InitializedParams&) {
+    INFO("Server initialized at {}", m_workspaceFolder ? m_workspaceFolder->uri.getPath() : "none");
+    m_indexer.waitForIndexingCompletion();
+    m_client.setConfig(m_config);
+
+    auto options = lsp::DidChangeWatchedFilesRegistrationOptions{
+        .watchers{lsp::FileSystemWatcher{
+            // .globPattern = lsp::Pattern{"**/*.{sv,svh,v,vh}"},
+            .globPattern = lsp::RelativePattern{.baseUri = m_workspaceFolder->uri,
+                                                .pattern = "**/*.{sv,svh,v,vh}"},
+            .kind = lsp::WatchKind::Change}},
+    };
+
+    m_client.getClientRegisterCapability(lsp::RegistrationParams{.registrations{lsp::Registration{
+        .id = "slang-server-file-watcher",
+        .method = "workspace/didChangeWatchedFiles",
+        .registerOptions = rfl::to_generic<rfl::UnderlyingEnums>(options),
+    }}});
+}
+
 void SlangServer::setExplore() {
     // Clear any existing diagnostics and set mode to explore
     m_buildfile = std::nullopt;
@@ -562,12 +582,6 @@ SlangServer::getDocDocumentSymbol(const lsp::DocumentSymbolParams& params) {
     return std::vector<lsp::SymbolInformation>{};
 }
 
-void SlangServer::onInitialized(const lsp::InitializedParams&) {
-    INFO("Server initialized at {}", m_workspaceFolder ? m_workspaceFolder->uri.getPath() : "none");
-    m_indexer.waitForIndexingCompletion();
-    m_client.setConfig(m_config);
-}
-
 std::monostate SlangServer::onShutdown(const std::nullopt_t&) {
     INFO("Server shutting down");
     return std::monostate{};
@@ -624,22 +638,16 @@ void SlangServer::onDocDidClose(const lsp::DidCloseTextDocumentParams& params) {
 }
 
 void SlangServer::onWorkspaceDidChangeWatchedFiles(const lsp::DidChangeWatchedFilesParams& params) {
-    // Handle external file changes (e.g., from git operations)
+    // Handle external file changes (from git, formatters, etc)
     for (const auto& change : params.changes) {
         switch (change.type) {
-            case lsp::FileChangeType::Created:
-                // File was created externally - no action needed for open docs
-                break;
             case lsp::FileChangeType::Changed:
-                // File was modified externally (e.g., git restore, cherry-pick)
-                // Reload from disk to sync with the external changes
-                INFO("File {} changed externally, reloading from disk", change.uri.getPath());
                 m_driver->reloadDocument(change.uri);
                 break;
             case lsp::FileChangeType::Deleted:
-                // File was deleted externally - close the document
-                INFO("File {} deleted externally, closing doc", change.uri.getPath());
                 m_driver->closeDocument(change.uri);
+                break;
+            case lsp::FileChangeType::Created:
                 break;
         }
     }

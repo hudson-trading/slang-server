@@ -17,4 +17,10 @@ public:
     void setConfig(const Config& params) {
         lsp::sendNotification("slang/setConfig", rfl::to_generic(params));
     }
+
+    std::monostate getClientRegisterCapability(const lsp::RegistrationParams& params) override {
+        lsp::sendRequest("client/registerCapability",
+                         rfl::to_generic<rfl::UnderlyingEnums>(params));
+        return std::monostate{};
+    }
 };
