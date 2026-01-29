@@ -369,6 +369,7 @@ macromodule m3;
                       ^^^ Sym foo : StatementBlock
 
     end : foo
+          ^^^ Ref -> **StatementBlock** `foo` in `m3`  \n\\n\\n\---\n\\n\`begin : foo\n\end : foo`
 
 
 
@@ -539,7 +540,7 @@ macromodule m3;
                                ^ Ref -> **Genvar** `i` in `m3.genblk1`  \n\\n\\n\---\n\\n\`i`
 
         if (i == 7) begin
-            ^ Ref -> **Parameter** `i` in `m3.genblk1`  \n\Type: `integer`  \n\Value: `8`  \n\\n\\n\---\n\\n\`i`
+            ^ Ref -> **Genvar** `i` in `m3.genblk1`  \n\\n\\n\---\n\\n\`i`
 
         end
 
@@ -1082,10 +1083,12 @@ checker assert_window1 (
         ) $display("window covered");
 
     end : cover_b
+          ^^^^^^^ Ref -> **GenerateBlock** `cover_b` in `assert_window1`  \n\\n\\n\---\n\\n\`begin : cover_b\n\    cover_window_open: cover property (start_event && !window)\n\    $display("window_open covered");\n\    cover_window: cover property (\n\        start_event && !window\n\        ##1 (!end_event && window) [*]\n\        ##1 end_event && window\n\    ) $display("window covered");\n\end : cover_b`
 
     endgenerate
 
 endchecker : assert_window1
+             ^^^^^^^^^^^^^^ Ref -> **CheckerInstanceBody** `assert_window1`  \n\\n\\n\---\n\\n\`checker assert_window1 (\n\    logic test_expr,\n\    untyped start_event,\n\    untyped end_event,\n\    event clock = $inferred_clock,\n\    logic reset = $inferred_disable,\n\    string error_msg = "violation",\n\    coverage_level clevel = cover_all\n\);\n\    default clocking @clock; endclocking\n\    default disable iff reset;\n\    bit window = 1'b0, next_window = 1'b1;\n\    rand bit q;\n\    always_comb begin\n\        if (reset || window && end_event)\n\            next_window = 1'b0;\n\        else if (!window && start_event)\n\            next_window = 1'b1;\n\        else\n\            next_window = window;\n\    end\n\    always_ff @clock\n\        window <= next_window;\n\    property p_window;\n\        start_event && !window |=> test_expr[+] ##0 end_event;\n\    endproperty\n\    a_window: assert property (p_window) else $error(error_msg);\n\    generate if (clevel != cover_none) begin : cover_b\n\        cover_window_open: cover property (start_event && !window)\n\        $display("window_open covered");\n\        cover_window: cover property (\n\            start_event && !window\n\            ##1 (!end_event && window) [*]\n\            ##1 end_event && window\n\        ) $display("window covered");\n\    end : cover_b\n\    endgenerate\n\endchecker : assert_window1`
 
 
 
