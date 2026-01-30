@@ -1,12 +1,15 @@
 // SPDX-FileCopyrightText: Hudson River Trading
 // SPDX-License-Identifier: MIT
 
-#include "document/SlangDoc.h"
 #include "lsp/LspTypes.h"
+#include "utils/GoldenTest.h"
 #include "utils/ServerHarness.h"
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <rfl/Variant.hpp>
+
+#include "slang/diagnostics/AnalysisDiags.h"
 
 using namespace server;
 
@@ -394,6 +397,128 @@ endmodule
     REQUIRE(doc != nullptr);
     auto newSymbols = doc->getSymbols();
     CHECK(newSymbols.size() == 2);
+
+    std::filesystem::remove_all(tempDir);
+}
+
+TEST_CASE("ExternalFileChange_MultipleFilesUpdatedAtomically") {
+    /// Test that when multiple files are changed externally, all buffers are updated
+    /// before diagnostics are computed. This prevents transient errors when related
+    /// files are modified together (e.g., adding a port to a child and parent).
+    auto tempDir = std::filesystem::temp_directory_path() / "slang_test_atomic";
+    std::filesystem::create_directories(tempDir);
+
+    // Create child module
+    auto childFile = tempDir / "child.sv";
+    {
+        std::ofstream out(childFile);
+        out << R"(module child(
+    input logic clk
+);
+endmodule
+)";
+    }
+
+    // Create parent module that instantiates child
+    auto parentFile = tempDir / "parent.sv";
+    {
+        std::ofstream out(parentFile);
+        out << R"(module parent(
+    input logic clk
+);
+    child u_child(
+        .clk(clk)
+    );
+endmodule
+)";
+    }
+
+    ServerHarness server(lsp::InitializeParams{
+        .workspaceFolders = {
+            {lsp::WorkspaceFolder{.uri = URI::fromFile(tempDir), .name = "test"}}}});
+
+    auto childUri = URI::fromFile(childFile);
+    auto parentUri = URI::fromFile(parentFile);
+
+    // Open both files
+    auto readFile = [](const std::filesystem::path& path) {
+        std::ifstream in(path);
+        return std::string((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+    };
+
+    server.onDocDidOpen(
+        lsp::DidOpenTextDocumentParams{.textDocument = lsp::TextDocumentItem{
+                                           .uri = childUri,
+                                           .languageId = lsp::LanguageKind::make<"systemverilog">(),
+                                           .version = 1,
+                                           .text = readFile(childFile)}});
+
+    server.onDocDidOpen(
+        lsp::DidOpenTextDocumentParams{.textDocument = lsp::TextDocumentItem{
+                                           .uri = parentUri,
+                                           .languageId = lsp::LanguageKind::make<"systemverilog">(),
+                                           .version = 1,
+                                           .text = readFile(parentFile)}});
+
+    // Verify both files are loaded correctly and no errors
+    auto childDoc = server.getDoc(childUri);
+    auto parentDoc = server.getDoc(parentUri);
+    CHECK(server.client.getDiagnostics(childUri).size() == 1); // Unused port
+    REQUIRE(childDoc != nullptr);
+    REQUIRE(parentDoc != nullptr);
+
+    // Now externally modify BOTH files to add a new port
+    // Child gets a new 'reset' port
+    {
+        std::ofstream out(childFile);
+        out << R"(module child(
+    input logic clk,
+    input logic reset
+);
+endmodule
+)";
+    }
+
+    // Parent connects the new 'reset' port
+    {
+        std::ofstream out(parentFile);
+        out << R"(module parent(
+    input logic clk,
+    input logic reset
+);
+    child u_child(
+        .clk(clk),
+        .reset(reset)
+    );
+endmodule
+)";
+    }
+
+    // Trigger external change for BOTH files in a single notification
+    // This simulates what happens when git checkout or a formatter modifies multiple files
+    server.onWorkspaceDidChangeWatchedFiles(lsp::DidChangeWatchedFilesParams{
+        .changes = {{lsp::FileEvent{.uri = childUri, .type = lsp::FileChangeType::Changed}},
+                    {lsp::FileEvent{.uri = parentUri, .type = lsp::FileChangeType::Changed}}}});
+
+    // Verify both files were updated
+    childDoc = server.getDoc(childUri);
+    parentDoc = server.getDoc(parentUri);
+    REQUIRE(childDoc != nullptr);
+    REQUIRE(parentDoc != nullptr);
+
+    CHECK(childDoc->getText().find("reset") != std::string::npos);
+    CHECK(parentDoc->getText().find("reset") != std::string::npos);
+
+    // There should be no diagnostics about mismatched ports
+    // If buffers were updated one at a time with diagnostics computed between,
+    // we might see transient errors about missing/extra ports
+    auto childDiags = server.client.getDiagnostics(childUri);
+    CHECK(childDiags.size() == 2);
+    for (const auto& diag : childDiags) {
+        CHECK(rfl::get<std::string>(*diag.code) == "unused-port");
+    }
+    auto parentDiags = server.client.getDiagnostics(parentUri);
+    CHECK(parentDiags.empty());
 
     std::filesystem::remove_all(tempDir);
 }

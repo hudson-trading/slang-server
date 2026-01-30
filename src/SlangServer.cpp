@@ -641,18 +641,7 @@ void SlangServer::onDocDidClose(const lsp::DidCloseTextDocumentParams& params) {
 
 void SlangServer::onWorkspaceDidChangeWatchedFiles(const lsp::DidChangeWatchedFilesParams& params) {
     // Handle external file changes (from git, formatters, etc)
-    for (const auto& change : params.changes) {
-        switch (change.type) {
-            case lsp::FileChangeType::Changed:
-                m_driver->reloadDocument(change.uri);
-                break;
-            case lsp::FileChangeType::Deleted:
-                m_driver->closeDocument(change.uri);
-                break;
-            case lsp::FileChangeType::Created:
-                break;
-        }
-    }
+    m_driver->onWorkspaceDidChangeWatchedFiles(params);
 }
 
 rfl::Variant<std::vector<lsp::SymbolInformation>, std::vector<lsp::WorkspaceSymbol>, std::monostate>

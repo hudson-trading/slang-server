@@ -230,6 +230,47 @@ void ServerDriver::reloadDocument(const URI& uri) {
     updateDoc(*doc, FileUpdateType::CHANGE);
 }
 
+void ServerDriver::onWorkspaceDidChangeWatchedFiles(
+    const lsp::DidChangeWatchedFilesParams& params) {
+    // Collect docs that need updating after all buffers are reloaded
+    std::vector<std::shared_ptr<SlangDoc>> updatedDocs;
+
+    for (const auto& change : params.changes) {
+        switch (change.type) {
+            case lsp::FileChangeType::Changed: {
+                // Only reload if this is an open document
+                if (m_openDocs.find(change.uri) == m_openDocs.end()) {
+                    continue;
+                }
+
+                auto doc = getDocument(change.uri);
+                if (!doc) {
+                    WARN("Document {} not found for reload", change.uri.getPath());
+                    continue;
+                }
+
+                if (!doc->reloadBuffer()) {
+                    continue;
+                }
+
+                INFO("Reloaded document {} from disk", change.uri.getPath());
+                updatedDocs.push_back(doc);
+                break;
+            }
+            case lsp::FileChangeType::Deleted:
+                closeDocument(change.uri);
+                break;
+            case lsp::FileChangeType::Created:
+                break;
+        }
+    }
+
+    // Update all open docs after all buffers have been reloaded
+    for (auto& doc : updatedDocs) {
+        updateDoc(*doc, FileUpdateType::CHANGE);
+    }
+}
+
 std::vector<std::shared_ptr<SlangDoc>> ServerDriver::getDependentDocs(
     std::shared_ptr<SyntaxTree> tree) {
     std::vector<std::shared_ptr<SlangDoc>> result;

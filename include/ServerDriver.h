@@ -78,6 +78,10 @@ public:
 
     void onDocDidChange(const lsp::DidChangeTextDocumentParams& params);
 
+    /// @brief Handle workspace file change notifications from the file watcher
+    /// Reloads all changed buffers first, then updates open documents
+    void onWorkspaceDidChangeWatchedFiles(const lsp::DidChangeWatchedFilesParams& params);
+
     void updateDoc(SlangDoc& doc, FileUpdateType type);
 
     std::shared_ptr<SlangDoc> getDocument(const URI& uri);
