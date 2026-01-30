@@ -6,7 +6,7 @@ local M = {}
 M.hierarchy = {
    impl = function(args, opts)
       local top = args[1]
-      require("slang-server.hierarchy").show(top or "")
+      require("slang-server.navigation").show(top or "")
    end,
 }
 
