@@ -224,10 +224,12 @@ endmodule
 
     // Open the file via LSP
     auto uri = URI::fromFile(tempFile);
-    std::ifstream in(tempFile);
-    std::string originalText((std::istreambuf_iterator<char>(in)),
-                             std::istreambuf_iterator<char>());
-    in.close();
+    std::string originalText;
+    {
+        std::ifstream in(tempFile);
+        originalText = std::string((std::istreambuf_iterator<char>(in)),
+                                   std::istreambuf_iterator<char>());
+    }
 
     server.onDocDidOpen(
         lsp::DidOpenTextDocumentParams{.textDocument = lsp::TextDocumentItem{
@@ -289,9 +291,11 @@ endmodule
             {lsp::WorkspaceFolder{.uri = URI::fromFile(tempDir), .name = "test"}}}});
 
     auto uri = URI::fromFile(tempFile);
-    std::ifstream in(tempFile);
-    std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
-    in.close();
+    std::string text;
+    {
+        std::ifstream in(tempFile);
+        text = std::string((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+    }
 
     server.onDocDidOpen(
         lsp::DidOpenTextDocumentParams{.textDocument = lsp::TextDocumentItem{
@@ -350,9 +354,11 @@ endmodule
             {lsp::WorkspaceFolder{.uri = URI::fromFile(tempDir), .name = "test"}}}});
 
     auto uri = URI::fromFile(tempFile);
-    std::ifstream in(tempFile);
-    std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
-    in.close();
+    std::string text;
+    {
+        std::ifstream in(tempFile);
+        text = std::string((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+    }
 
     server.onDocDidOpen(
         lsp::DidOpenTextDocumentParams{.textDocument = lsp::TextDocumentItem{
