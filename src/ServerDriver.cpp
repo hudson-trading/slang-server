@@ -448,7 +448,7 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
     if (!declTok) {
         return {};
     }
-    const syntax::SyntaxNode* declSyntax = analysis.syntaxes.getSyntaxAt(declTok);
+    const syntax::SyntaxNode* declSyntax = analysis.syntaxes.getTokenParent(declTok);
     if (!declSyntax) {
         return {};
     }
@@ -563,13 +563,9 @@ std::optional<lsp::Hover> ServerDriver::getDocHover(const URI& uri, const lsp::P
 #ifdef SLANG_DEBUG
         // Shows debug info for the token under cursor when debugging
         auto& analysis = doc->getAnalysis();
-        auto tok = analysis.getTokenAt(loc.value());
-        if (tok == nullptr) {
-            return {};
-        }
-        markup::Document doc;
-        doc.addParagraph(analysis.getDebugHover(*tok));
-        return lsp::Hover{.contents = doc.build()};
+        markup::Document markup;
+        markup.addParagraph(analysis.getDebugHover(loc.value()));
+        return lsp::Hover{.contents = markup.build()};
 #endif
         return {};
     }

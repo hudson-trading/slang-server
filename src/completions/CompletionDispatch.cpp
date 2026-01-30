@@ -8,14 +8,18 @@
 
 #include "completions/CompletionDispatch.h"
 
+#include "completions/CompletionContext.h"
 #include "completions/Completions.h"
 #include "lsp/LspTypes.h"
 #include "util/Converters.h"
+#include "util/Formatting.h"
 #include "util/Logging.h"
 #include <filesystem>
 
 #include "slang/ast/Compilation.h"
+#include "slang/ast/Lookup.h"
 #include "slang/syntax/SyntaxTree.h"
+#include "slang/text/SourceLocation.h"
 #include "slang/util/Util.h"
 
 namespace fs = std::filesystem;
@@ -29,46 +33,32 @@ CompletionDispatch::CompletionDispatch(const Indexer& indexer, SourceManager& so
 }
 
 void CompletionDispatch::getInvokedCompletions(std::vector<lsp::CompletionItem>& results,
-                                               std::shared_ptr<SlangDoc> doc, bool isLhs,
-                                               slang::SourceLocation loc) {
+                                               std::shared_ptr<SlangDoc> doc,
+                                               const SourceLocation& loc) {
     // Invoked happens when an identifier is starting to be typed or when the user presses a
     // shortcut
-    // TODO:
-    // - Add ids from import pkg::* syntax
-    // - filter based on syntax context
-    // - filter based on starting character? (already done client-side)
 
-    auto scope = doc->getScopeAt(loc);
+    auto ctx = CompletionContext::fromLocation(*doc, loc);
 
-    // Add local members first
+    auto scope = ctx.scope;
+
+    // Track scope for later resolution
     if (scope) {
         m_lastScope = scope->asSymbol().getHierarchicalPath();
         m_lastDoc = doc;
-        completions::getMemberCompletions(results, scope, isLhs, scope);
+    }
+    INFO("Invoked completions with context: {}", toString(ctx.kind));
+
+    completions::addIndexedCompletions(results, m_indexer, ctx);
+
+    if (scope) {
+        bool isLhs = (ctx.kind == CompletionContextKind::PortList ||
+                      ctx.kind == CompletionContextKind::Procedural ||
+                      ctx.kind == CompletionContextKind::ModuleMember);
+        completions::addMemberCompletions(results, scope, isLhs, scope);
     }
 
-    if (isLhs) {
-        // Add modules for lhs
-        for (auto& [name, entries] : m_indexer.symbolToFiles) {
-            if (!entries.empty()) {
-                results.push_back(completions::getModuleCompletion(name, entries[0].kind));
-            }
-        }
-        // also add keywords as well
-        completions::getKeywordCompletions(results);
-        INFO("Returning {} module completions", results.size());
-    }
-    else {
-        // Add packages as completions, because we may grab a value from those
-        // Add these after though, since local vars are the common case
-        // TODO: add these when we can sort completions
-        for (auto& [name, entries] : m_indexer.symbolToFiles) {
-            if (!entries.empty() &&
-                entries[0].kind == slang::syntax::SyntaxKind::PackageDeclaration) {
-                results.push_back(completions::getModuleCompletion(name, entries[0].kind));
-            }
-        }
-    }
+    INFO("Returning {} completions in {} context", results.size(), toString(ctx.kind));
 }
 
 void CompletionDispatch::getTriggerCompletions(char triggerChar, char prevChar,
@@ -97,7 +87,7 @@ void CompletionDispatch::getTriggerCompletions(char triggerChar, char prevChar,
         }
 
         auto& entry = it->second[0];
-        auto completion = completions::getModuleCompletion(std::string{name}, entry.kind);
+        auto completion = completions::getInstanceCompletion(std::string{name}, entry.kind);
         resolveModuleCompletion(completion, *entry.uri, true);
         results.push_back(completion);
     }
@@ -130,7 +120,7 @@ void CompletionDispatch::getTriggerCompletions(char triggerChar, char prevChar,
         m_lastDoc = doc;
         m_lastScope = pkg->getHierarchicalPath();
         auto originalScope = doc->getScopeAt(loc);
-        completions::getMemberCompletions(results, pkg, false, originalScope);
+        completions::addMemberCompletions(results, pkg, false, originalScope);
     }
     else if (triggerChar == '`') {
         // Add local macros
@@ -158,6 +148,22 @@ void CompletionDispatch::getTriggerCompletions(char triggerChar, char prevChar,
             WARN("No symbol found for token {}", exprToken->valueText());
             return;
         }
+        if (ast::DefinitionSymbol::isKind(sym->kind)) {
+            auto& def = sym->as<ast::DefinitionSymbol>();
+            if (def.definitionKind == ast::DefinitionKind::Interface) {
+                for (auto& modport : def.modports) {
+                    results.push_back(lsp::CompletionItem{.label = std::string(modport),
+                                                          .kind = lsp::CompletionItemKind::Field,
+                                                          .documentation = svCodeBlock(
+                                                              fmt::format("modport {}", modport))});
+                }
+            }
+            else {
+                WARN("Definition {} is not an interface, can't get hierarchical completions",
+                     def.name);
+            }
+            return;
+        }
         auto scope = ShallowAnalysis::getScopeFromSym(sym);
         if (!scope) {
             WARN("No scope found for sym {}: {}", sym->getHierarchicalPath(), toString(sym->kind));
@@ -173,7 +179,7 @@ void CompletionDispatch::getTriggerCompletions(char triggerChar, char prevChar,
     }
     else {
         // Scope-based completions
-        getInvokedCompletions(results, doc, false, loc);
+        getInvokedCompletions(results, doc, loc);
     }
 }
 
@@ -199,8 +205,7 @@ void CompletionDispatch::resolveModuleCompletion(lsp::CompletionItem& item,
         WARN("Failed to load syntax tree for module {} from {}", name, file.string());
         return;
     }
-    auto tree = maybeTree.value();
-    completions::resolveModule(*tree, name, item, excludeName);
+    completions::resolveModule(*maybeTree.value(), name, item, excludeName);
 }
 
 void CompletionDispatch::resolveMacroCompletion(lsp::CompletionItem& item) {
@@ -229,6 +234,7 @@ void CompletionDispatch::resolveMacroCompletion(lsp::CompletionItem& item) {
 }
 
 void CompletionDispatch::getCompletionItemResolve(lsp::CompletionItem& item) {
+    INFO("Resolving completion item: {}", item.label);
     switch (*item.kind) {
         case lsp::CompletionItemKind::Constant: {
             resolveMacroCompletion(item);
@@ -239,8 +245,6 @@ void CompletionDispatch::getCompletionItemResolve(lsp::CompletionItem& item) {
             break;
         }
         default: {
-            // TODO: grab a shared ptr to the old compilation, so we don't have to do lookups
-            // again
             SLANG_ASSERT(m_lastDoc != nullptr);
             auto& comp = m_lastDoc->getCompilation();
             if (!comp) {
