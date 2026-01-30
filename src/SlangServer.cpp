@@ -225,19 +225,21 @@ void SlangServer::onInitialized(const lsp::InitializedParams&) {
     m_indexer.waitForIndexingCompletion();
     m_client.setConfig(m_config);
 
-    auto options = lsp::DidChangeWatchedFilesRegistrationOptions{
-        .watchers{lsp::FileSystemWatcher{
-            // .globPattern = lsp::Pattern{"**/*.{sv,svh,v,vh}"},
-            .globPattern = lsp::RelativePattern{.baseUri = m_workspaceFolder->uri,
-                                                .pattern = "**/*.{sv,svh,v,vh}"},
-            .kind = lsp::WatchKind::Change}},
-    };
+    if (m_workspaceFolder) {
+        auto options = lsp::DidChangeWatchedFilesRegistrationOptions{
+            .watchers{lsp::FileSystemWatcher{
+                .globPattern = lsp::RelativePattern{.baseUri = m_workspaceFolder->uri,
+                                                    .pattern = "**/*.{sv,svh,v,vh}"},
+                .kind = lsp::WatchKind::Change}},
+        };
 
-    m_client.getClientRegisterCapability(lsp::RegistrationParams{.registrations{lsp::Registration{
-        .id = "slang-server-file-watcher",
-        .method = "workspace/didChangeWatchedFiles",
-        .registerOptions = rfl::to_generic<rfl::UnderlyingEnums>(options),
-    }}});
+        m_client.getClientRegisterCapability(
+            lsp::RegistrationParams{.registrations{lsp::Registration{
+                .id = "slang-server-file-watcher",
+                .method = "workspace/didChangeWatchedFiles",
+                .registerOptions = rfl::to_generic<rfl::UnderlyingEnums>(options),
+            }}});
+    }
 }
 
 void SlangServer::setExplore() {
