@@ -9,6 +9,7 @@
 #pragma once
 
 #include "Indexer.h"
+#include "completions/CompletionContext.h"
 #include "document/SlangDoc.h"
 #include "lsp/LspTypes.h"
 #include <filesystem>
@@ -36,8 +37,7 @@ public:
     CompletionDispatch(const Indexer& indexer, SourceManager& sourceManager, slang::Bag& options);
 
     void getInvokedCompletions(std::vector<lsp::CompletionItem>& results,
-                               std::shared_ptr<SlangDoc> doc, bool isLhs,
-                               slang::SourceLocation loc);
+                               std::shared_ptr<SlangDoc> doc, const SourceLocation& loc);
 
     void getTriggerCompletions(char triggerChar, char prevChar, std::shared_ptr<SlangDoc> doc,
                                slang::SourceLocation loc,

@@ -7,6 +7,7 @@
 //------------------------------------------------------------------------------
 #pragma once
 
+#include "completions/CompletionContext.h"
 #include <vector>
 
 #include "slang/parsing/Token.h"
@@ -15,6 +16,7 @@
 #include "slang/syntax/SyntaxTree.h"
 #include "slang/text/SourceLocation.h"
 #include "slang/util/FlatMap.h"
+
 namespace server {
 
 /// Indexes the syntax nodes and tokens for an Analysis
@@ -55,8 +57,20 @@ public:
 
     const slang::parsing::Token* getTokenAt(slang::SourceLocation loc) const;
 
-    const slang::syntax::SyntaxNode* getSyntaxAt(const slang::parsing::Token* tok) const;
+    const slang::syntax::SyntaxNode* getTokenParent(const slang::parsing::Token* tok) const;
 
+    const slang::syntax::SyntaxNode* getSyntaxBefore(slang::SourceLocation loc) const;
+
+    struct SyntaxContext {
+        // First syntax node that contains both tokens before and after the location
+        const slang::syntax::SyntaxNode* syntax = nullptr;
+        const slang::parsing::Token* beforeToken = nullptr;
+        // Populated if we're not in a token
+        const slang::parsing::Token* afterToken = nullptr;
+    };
+
+    /// Get the syntax node containing both the token before and after the location, useful for
+    /// completions
     const slang::syntax::SyntaxNode* getSyntaxAt(slang::SourceLocation loc) const;
 };
 } // namespace server
