@@ -86,6 +86,7 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     // Workspace Features
     registerWorkspaceExecuteCommand();
     registerWorkspaceSymbol();
+    registerWorkspaceDidChangeWatchedFiles();
 
     // LSP Lifecycle
     registerInitialized();
@@ -217,6 +218,28 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     INFO("Initialize result: {} ", rfl::json::write(result));
 
     return result;
+}
+
+void SlangServer::onInitialized(const lsp::InitializedParams&) {
+    INFO("Server initialized at {}", m_workspaceFolder ? m_workspaceFolder->uri.getPath() : "none");
+    m_indexer.waitForIndexingCompletion();
+    m_client.setConfig(m_config);
+
+    if (m_workspaceFolder) {
+        auto options = lsp::DidChangeWatchedFilesRegistrationOptions{
+            .watchers{lsp::FileSystemWatcher{
+                .globPattern = lsp::RelativePattern{.baseUri = m_workspaceFolder->uri,
+                                                    .pattern = "**/*.{sv,svh,v,vh}"},
+                .kind = lsp::WatchKind::Change}},
+        };
+
+        m_client.getClientRegisterCapability(
+            lsp::RegistrationParams{.registrations{lsp::Registration{
+                .id = "slang-server-file-watcher",
+                .method = "workspace/didChangeWatchedFiles",
+                .registerOptions = rfl::to_generic<rfl::UnderlyingEnums>(options),
+            }}});
+    }
 }
 
 void SlangServer::setExplore() {
@@ -561,12 +584,6 @@ SlangServer::getDocDocumentSymbol(const lsp::DocumentSymbolParams& params) {
     return std::vector<lsp::SymbolInformation>{};
 }
 
-void SlangServer::onInitialized(const lsp::InitializedParams&) {
-    INFO("Server initialized at {}", m_workspaceFolder ? m_workspaceFolder->uri.getPath() : "none");
-    m_indexer.waitForIndexingCompletion();
-    m_client.setConfig(m_config);
-}
-
 std::monostate SlangServer::onShutdown(const std::nullopt_t&) {
     INFO("Server shutting down");
     return std::monostate{};
@@ -620,6 +637,11 @@ void SlangServer::onDocDidClose(const lsp::DidCloseTextDocumentParams& params) {
     // TODO: Add method in ServerDriver to check that the rc of the document is 1 before
     // removing (non-compilation mode)
     m_driver->closeDocument(params.textDocument.uri);
+}
+
+void SlangServer::onWorkspaceDidChangeWatchedFiles(const lsp::DidChangeWatchedFilesParams& params) {
+    // Handle external file changes (from git, formatters, etc)
+    m_driver->onWorkspaceDidChangeWatchedFiles(params);
 }
 
 rfl::Variant<std::vector<lsp::SymbolInformation>, std::vector<lsp::WorkspaceSymbol>, std::monostate>
