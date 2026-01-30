@@ -7,12 +7,13 @@
 //------------------------------------------------------------------------------
 #include "completions/Completions.h"
 
+#include "Indexer.h"
+#include "completions/CompletionContext.h"
 #include "lsp/LspTypes.h"
 #include "lsp/SnippetString.h"
 #include "util/Converters.h"
 #include "util/Formatting.h"
 #include "util/Logging.h"
-#include <exception>
 #include <fmt/format.h>
 #include <rfl/Result.hpp>
 
@@ -35,14 +36,6 @@
 
 namespace server::completions {
 using namespace slang;
-
-/// List of SystemVerilog keywords suitable for prepending to the LHS of an expression
-const std::vector<std::string> SV_LHS_KEYWORDS = {
-    "logic",
-    "assign",
-    "wire",
-    "reg",
-};
 
 //------------------------------------------------------------------------------
 // Macros
@@ -87,42 +80,8 @@ void resolveMacro(const syntax::DefineDirectiveSyntax& macro, lsp::CompletionIte
 }
 
 //------------------------------------------------------------------------------
-// Modules, Interfaces, Packages
+// Module instantiation resolution
 //------------------------------------------------------------------------------
-lsp::CompletionItem getModuleCompletion(std::string name, const syntax::SyntaxKind& kind) {
-    // Convert SyntaxKind to user-friendly display string
-    std::string detail;
-    switch (kind) {
-        case syntax::SyntaxKind::ModuleDeclaration:
-            detail = " Module";
-            break;
-        case syntax::SyntaxKind::InterfaceDeclaration:
-            detail = " Interface";
-            break;
-        case syntax::SyntaxKind::PackageDeclaration:
-            detail = " Package";
-            break;
-        case syntax::SyntaxKind::ProgramDeclaration:
-            detail = " Program";
-            break;
-        case syntax::SyntaxKind::ClassDeclaration:
-            detail = " Class";
-            break;
-        default:
-            detail = std::string{toString(kind)};
-            break;
-    }
-
-    return lsp::CompletionItem{
-        .label = name,
-        .labelDetails =
-            lsp::CompletionItemLabelDetails{
-                .detail = detail,
-            },
-        .kind = lsp::CompletionItemKind::Module,
-        .filterText = name,
-    };
-}
 
 class PortVisitor : public slang::syntax::SyntaxVisitor<PortVisitor> {
 public:
@@ -161,8 +120,14 @@ public:
     }
 };
 
-void resolveModule(const slang::syntax::ModuleHeaderSyntax& header, lsp::CompletionItem& ret,
-                   bool excludeName) {
+void resolveModuleInstance(const slang::syntax::ModuleHeaderSyntax& header,
+                           lsp::CompletionItem& ret, bool excludeName) {
+
+    ret.documentation = svCodeBlock(header);
+
+    // Interfaces in a type context will already have this inserted
+    if (ret.insertText.has_value())
+        return;
 
     SnippetString output;
 
@@ -246,7 +211,6 @@ void resolveModule(const slang::syntax::ModuleHeaderSyntax& header, lsp::Complet
 
     ret.insertText = output.getValue();
     ret.insertTextFormat = lsp::InsertTextFormat::Snippet;
-    ret.documentation = svCodeBlock(header);
 }
 
 void resolveModule(const slang::syntax::SyntaxTree& tree, std::string_view moduleName,
@@ -259,7 +223,7 @@ void resolveModule(const slang::syntax::SyntaxTree& tree, std::string_view modul
         switch (module->kind) {
             case slang::syntax::SyntaxKind::InterfaceDeclaration:
             case slang::syntax::SyntaxKind::ModuleDeclaration: {
-                resolveModule(header, ret, excludeName);
+                resolveModuleInstance(header, ret, excludeName);
             } break;
             default: {
                 // Packages and programs- just do the name. For packages we may want to
@@ -496,7 +460,7 @@ void resolveMemberCompletion(const slang::ast::Scope& scope, lsp::CompletionItem
 }
 
 /// Get completions for members in a scope, recursing up until hitting a module instance
-void getMemberCompletions(std::vector<lsp::CompletionItem>& results, const slang::ast::Scope* scope,
+void addMemberCompletions(std::vector<lsp::CompletionItem>& results, const slang::ast::Scope* scope,
                           bool isLhs, const slang::ast::Scope* originalScope, bool isOriginalCall) {
 
     if (!scope) {
@@ -551,7 +515,7 @@ void getMemberCompletions(std::vector<lsp::CompletionItem>& results, const slang
                     auto package = import->getPackage();
                     if (package != nullptr) {
                         INFO("Adding wildcard imports from package {}", package->name);
-                        getMemberCompletions(results, package, isLhs, originalScope, false);
+                        addMemberCompletions(results, package, isLhs, originalScope, false);
                     }
                 }
             }
@@ -570,8 +534,18 @@ void getMemberCompletions(std::vector<lsp::CompletionItem>& results, const slang
     }
 }
 
-void getKeywordCompletions(std::vector<lsp::CompletionItem>& results) {
-    for (const auto& kw : SV_LHS_KEYWORDS) {
+// TODO: move keyword completions to their own file, implement all keyword -> syntax mappings
+
+/// List of SystemVerilog keywords suitable for prepending to the LHS of an expression
+const std::vector<std::string> SV_MODULE_MEMBER_KEYWORDS = {
+    "logic",
+    "assign",
+    "wire",
+    "reg",
+};
+
+void addModuleMemberKwCompletions(std::vector<lsp::CompletionItem>& results) {
+    for (const auto& kw : SV_MODULE_MEMBER_KEYWORDS) {
         results.emplace_back(lsp::CompletionItem{
             .label = kw,
             .kind = lsp::CompletionItemKind::Keyword,
@@ -605,6 +579,82 @@ void getKeywordCompletions(std::vector<lsp::CompletionItem>& results) {
         .insertText = "always_latch begin\n\t$0\nend",
         .insertTextFormat = lsp::InsertTextFormat::Snippet,
     });
+}
+
+//------------------------------------------------------------------------------
+// Index-based completions
+//------------------------------------------------------------------------------
+
+lsp::CompletionItem getInstanceCompletion(std::string name, const syntax::SyntaxKind& kind) {
+    // Convert SyntaxKind to user-friendly display string
+    std::string detail;
+    switch (kind) {
+        case syntax::SyntaxKind::ModuleDeclaration:
+            detail = " Module";
+            break;
+        case syntax::SyntaxKind::InterfaceDeclaration:
+            detail = " Interface";
+            break;
+        default:
+            detail = std::string{toString(kind)};
+            break;
+    }
+
+    return lsp::CompletionItem{
+        .label = name,
+        .labelDetails =
+            lsp::CompletionItemLabelDetails{
+                .detail = detail,
+            },
+        .kind = lsp::CompletionItemKind::Module,
+        .filterText = name,
+    };
+}
+
+void addIndexedCompletions(std::vector<lsp::CompletionItem>& results, const Indexer& indexer,
+                           const CompletionContext& ctx) {
+    for (auto& [name, entries] : indexer.symbolToFiles) {
+        if (entries.empty())
+            continue;
+        auto entryKind = entries[0].kind;
+        // Interfaces, packages, classes are valid in type positions (like port lists)
+        std::string detail;
+        std::optional<std::string> insertText;
+        switch (entryKind) {
+            case syntax::SyntaxKind::ModuleDeclaration: {
+                if (ctx.kind != CompletionContextKind::ModuleMember) {
+                    continue;
+                }
+                detail = " Module";
+            } break;
+            case syntax::SyntaxKind::InterfaceDeclaration: {
+                detail = " Interface";
+                if (ctx.kind != CompletionContextKind::ModuleMember) {
+                    // Designates this completion as a type rather than an instance
+                    insertText = name;
+                }
+            } break;
+            case syntax::SyntaxKind::PackageDeclaration:
+                detail = " Package";
+                // Looks like a package icon
+                break;
+            case syntax::SyntaxKind::ClassDeclaration:
+                detail = " Class";
+                break;
+            default:
+                continue;
+        }
+        results.push_back(lsp::CompletionItem{
+            .label = name,
+            .labelDetails =
+                lsp::CompletionItemLabelDetails{
+                    .detail = detail,
+                },
+            .kind = lsp::CompletionItemKind::Module,
+            .filterText = name,
+            .insertText = insertText,
+        });
+    }
 }
 
 } // namespace server::completions

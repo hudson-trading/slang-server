@@ -684,8 +684,6 @@ rfl::Variant<std::vector<lsp::CompletionItem>, lsp::CompletionList, std::monosta
     INFO("Completion triggered by: ['{}','{}']", prevChar, triggerChar);
     auto maybeLoc = doc->getLocation(params.position);
 
-    // TODO: be more precise with this, this is just a heuristic atm
-    bool isLhs = prevText.size() >= 2 && std::all_of(prevText.begin(), prevText.end() - 1, isspace);
     if (!maybeLoc) {
         WARN("No location found for position {},{}", params.position.line,
              params.position.character);
@@ -693,7 +691,7 @@ rfl::Variant<std::vector<lsp::CompletionItem>, lsp::CompletionList, std::monosta
     }
     auto loc = maybeLoc.value();
     if (params.context->triggerKind == lsp::CompletionTriggerKind::Invoked) {
-        m_driver->completions.getInvokedCompletions(results, doc, isLhs, loc);
+        m_driver->completions.getInvokedCompletions(results, doc, loc);
     }
     else {
         m_driver->completions.getTriggerCompletions(triggerChar, prevChar, doc, loc, results);

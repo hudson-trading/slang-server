@@ -43,9 +43,9 @@ std::string detailFormat(const syntax::SyntaxNode& node);
 std::string formatSyntaxNode(const syntax::SyntaxNode& node);
 
 std::string svCodeBlockString(std::string_view code);
-
 std::string svCodeBlockString(const syntax::SyntaxNode& node);
 
+lsp::MarkupContent svCodeBlock(std::string_view code);
 lsp::MarkupContent svCodeBlock(const syntax::SyntaxNode& node);
 
 void ltrim(std::string& s);

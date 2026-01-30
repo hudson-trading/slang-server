@@ -1,0 +1,67 @@
+[
+  {
+    "port_list": [
+      {
+        "label": "base_pkg",
+        "labelDetails": {
+          "detail": " Package"
+        },
+        "kind": "Module",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\npackage base_pkg;\n````"
+        },
+        "filterText": "base_pkg",
+        "insertText": "base_pkg",
+        "insertTextFormat": "PlainText"
+      },
+      {
+        "label": "test_intf",
+        "labelDetails": {
+          "detail": " Interface"
+        },
+        "kind": "Module",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\ninterface test_intf;\n````"
+        },
+        "filterText": "test_intf",
+        "insertText": "test_intf"
+      },
+      {
+        "label": "util_pkg",
+        "labelDetails": {
+          "detail": " Package"
+        },
+        "kind": "Module",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\npackage util_pkg;\n````"
+        },
+        "filterText": "util_pkg",
+        "insertText": "util_pkg",
+        "insertTextFormat": "PlainText"
+      }
+    ]
+  },
+  {
+    "modports": [
+      {
+        "label": "follower",
+        "kind": "Field",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nmodport follower\n````"
+        }
+      },
+      {
+        "label": "leader",
+        "kind": "Field",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nmodport leader\n````"
+        }
+      }
+    ]
+  }
+]

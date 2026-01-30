@@ -12,10 +12,12 @@
 
 #include "slang/parsing/Token.h"
 #include "slang/parsing/TokenKind.h"
+#include "slang/syntax/SyntaxFacts.h"
 #include "slang/syntax/SyntaxKind.h"
 #include "slang/syntax/SyntaxNode.h"
 #include "slang/syntax/SyntaxTree.h"
 #include "slang/text/SourceLocation.h"
+#include "slang/util/SmallMap.h"
 #include "slang/util/Util.h"
 
 namespace server {
@@ -155,7 +157,7 @@ const slang::parsing::Token* SyntaxIndexer::getTokenAt(slang::SourceLocation loc
     return nullptr;
 }
 
-const syntax::SyntaxNode* SyntaxIndexer::getSyntaxAt(const parsing::Token* tok) const {
+const syntax::SyntaxNode* SyntaxIndexer::getTokenParent(const parsing::Token* tok) const {
     auto it = tokenToParent.find(tok);
     if (it == tokenToParent.end()) {
         return nullptr;
@@ -163,7 +165,7 @@ const syntax::SyntaxNode* SyntaxIndexer::getSyntaxAt(const parsing::Token* tok) 
     return it->second;
 }
 
-const syntax::SyntaxNode* SyntaxIndexer::getSyntaxAt(slang::SourceLocation loc) const {
+const syntax::SyntaxNode* SyntaxIndexer::getSyntaxBefore(slang::SourceLocation loc) const {
     auto ind = tokenIndexBefore(loc);
     if (ind == -1) {
         return nullptr;
@@ -174,5 +176,40 @@ const syntax::SyntaxNode* SyntaxIndexer::getSyntaxAt(slang::SourceLocation loc) 
         return nullptr;
     }
     return node->second;
+}
+
+// SyntaxContext has syntax node, before and after token, and index into syntax. Only before token
+// if it's in a token.
+
+const syntax::SyntaxNode* SyntaxIndexer::getSyntaxAt(slang::SourceLocation loc) const {
+    auto ind = tokenIndexBefore(loc);
+    if (ind == -1) {
+        return nullptr;
+    }
+    auto beforeToken = collected[ind];
+    // After last token
+    if (ind + 1 >= static_cast<int>(collected.size())) {
+        // return root
+        return nullptr;
+    }
+    // Inside a token
+    if (loc < beforeToken->range().end()) {
+        return getTokenParent(beforeToken);
+    }
+
+    // Find mutual ancestor
+    auto beforeSyntax = getTokenParent(beforeToken);
+    auto afterSyntax = getTokenParent(collected[ind + 1]);
+    SmallSet<const syntax::SyntaxNode*, 16> beforeParents;
+    for (auto ptr = beforeSyntax; ptr != nullptr; ptr = ptr->parent) {
+        beforeParents.insert(ptr);
+    }
+    for (auto ptr = afterSyntax; ptr != nullptr; ptr = ptr->parent) {
+        if (beforeParents.contains(ptr)) {
+            return ptr;
+        }
+    }
+    return nullptr;
+    // find surrounding tokens, get common syntax node if we're not in the syntax
 }
 } // namespace server
