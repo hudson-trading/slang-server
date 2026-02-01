@@ -187,6 +187,10 @@ std::shared_ptr<SlangDoc> ServerDriver::getDocument(const URI& uri) {
     return doc;
 }
 
+bool ServerDriver::isDocumentOpen(const URI& uri) {
+    return m_openDocs.find(uri) != m_openDocs.end();
+}
+
 void ServerDriver::onDocDidChange(const lsp::DidChangeTextDocumentParams& params) {
     std::string_view path = params.textDocument.uri.getPath();
     auto doc = getDocument(params.textDocument.uri);
