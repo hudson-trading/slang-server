@@ -78,6 +78,9 @@ public:
 
     void onDocDidChange(const lsp::DidChangeTextDocumentParams& params);
 
+    /// @brief Checks if a document is open
+    bool isDocumentOpen(const URI& uri);
+
     /// @brief Handle workspace file change notifications from the file watcher
     /// Reloads all changed buffers first, then updates open documents
     void onWorkspaceDidChangeWatchedFiles(const lsp::DidChangeWatchedFilesParams& params);

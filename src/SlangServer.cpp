@@ -608,6 +608,11 @@ void SlangServer::onDocDidChange(const lsp::DidChangeTextDocumentParams& params)
 void SlangServer::onDocDidSave(const lsp::DidSaveTextDocumentParams& params) {
     m_indexer.waitForIndexingCompletion();
 
+    // Only process documents that have been explicitly opened by the client
+    if (!m_driver->isDocumentOpen(params.textDocument.uri)) {
+        return;
+    }
+
     auto doc = m_driver->getDocument(params.textDocument.uri);
     if (!doc) {
         throw std::runtime_error(
