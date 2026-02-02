@@ -3,8 +3,10 @@
 
 #include "util/Formatting.h"
 
+#include "lsp/LspTypes.h"
 #include <fmt/format.h>
 #include <sstream>
+#include <string>
 
 #include "slang/ast/symbols/PortSymbols.h"
 #include "slang/ast/symbols/ValueSymbol.h"
@@ -177,6 +179,11 @@ std::string svCodeBlockString(std::string_view code) {
     shiftIndent(res);
     // We use quad backticks since in sv triple can be used for macro concatenations
     return fmt::format("````systemverilog\n{}\n````", res);
+}
+
+lsp::MarkupContent svCodeBlock(const std::string_view code) {
+    return lsp::MarkupContent{.kind = lsp::MarkupKind::make<"markdown">(),
+                              .value = svCodeBlockString(code)};
 }
 
 std::string formatSyntaxNode(const syntax::SyntaxNode& node) {
