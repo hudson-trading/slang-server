@@ -445,7 +445,7 @@ const ast::Symbol* ShallowAnalysis::getSymbolAt(SourceLocation loc) const {
 }
 
 const ast::Scope* ShallowAnalysis::getScopeAt(SourceLocation loc) const {
-    auto syntax = syntaxes.getSyntaxBefore(loc);
+    auto syntax = syntaxes.getSyntaxAt(loc);
     if (!syntax) {
         return nullptr;
     }

@@ -165,51 +165,38 @@ const syntax::SyntaxNode* SyntaxIndexer::getTokenParent(const parsing::Token* to
     return it->second;
 }
 
-const syntax::SyntaxNode* SyntaxIndexer::getSyntaxBefore(slang::SourceLocation loc) const {
-    auto ind = tokenIndexBefore(loc);
-    if (ind == -1) {
-        return nullptr;
-    }
-    auto tok = collected[ind];
-    auto node = tokenToParent.find(tok);
-    if (node == tokenToParent.end()) {
-        return nullptr;
-    }
-    return node->second;
-}
-
-// SyntaxContext has syntax node, before and after token, and index into syntax. Only before token
-// if it's in a token.
-
 const syntax::SyntaxNode* SyntaxIndexer::getSyntaxAt(slang::SourceLocation loc) const {
-    auto ind = tokenIndexBefore(loc);
-    if (ind == -1) {
+    auto beforeIndex = tokenIndexBefore(loc);
+
+    // Before first token
+    if (beforeIndex == -1) {
         return nullptr;
     }
-    auto beforeToken = collected[ind];
-    // After last token
-    if (ind + 1 >= static_cast<int>(collected.size())) {
-        // return root
-        return nullptr;
-    }
+
+    auto beforeToken = collected[beforeIndex];
+
     // Inside a token
     if (loc < beforeToken->range().end()) {
         return getTokenParent(beforeToken);
     }
 
-    // Find mutual ancestor
+    // After last token
+    if (beforeIndex + 1 >= static_cast<int>(collected.size())) {
+        return nullptr;
+    }
+
+    // Find first common ancestor
     auto beforeSyntax = getTokenParent(beforeToken);
-    auto afterSyntax = getTokenParent(collected[ind + 1]);
     SmallSet<const syntax::SyntaxNode*, 16> beforeParents;
     for (auto ptr = beforeSyntax; ptr != nullptr; ptr = ptr->parent) {
         beforeParents.insert(ptr);
     }
+    auto afterSyntax = getTokenParent(collected[beforeIndex + 1]);
     for (auto ptr = afterSyntax; ptr != nullptr; ptr = ptr->parent) {
         if (beforeParents.contains(ptr)) {
             return ptr;
         }
     }
     return nullptr;
-    // find surrounding tokens, get common syntax node if we're not in the syntax
 }
 } // namespace server
