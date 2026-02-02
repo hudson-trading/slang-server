@@ -54,13 +54,12 @@ public:
 
     bool operator==(URI const& other) const;
 
+private:
     std::string_view scheme() const;
     std::string_view authority() const;
     std::string_view path() const;
     std::string_view query() const;
     std::string_view fragment() const;
-
-private:
     // Storing these as std::string_view is great...until URI is moved for whatever reason,
     // which moves `underlying_`. Then using these as string_views gives at best a bunch of
     // gibberish, and at worst segfault.

@@ -8,6 +8,7 @@
 #pragma once
 
 #include "Config.h"
+#include "lsp/LspTypes.h"
 #include "lsp/URI.h"
 #include <condition_variable>
 #include <mutex>
@@ -27,7 +28,7 @@ struct Indexer {
     };
 
     struct IndexedPath {
-        std::filesystem::path path;
+        const std::filesystem::path* path = nullptr;
         std::vector<GlobalSymbol> symbols;
         std::vector<std::string> macros;
         std::vector<std::string> referencedSymbols;
@@ -43,12 +44,10 @@ struct Indexer {
 
     // For workspace changes
     void addDocuments(const std::vector<std::filesystem::path>& paths, uint32_t numThreads = 0);
-    void removeDocuments(const std::vector<std::filesystem::path>& paths, uint32_t numThreads = 0);
+    void onWorkspaceDidChangeWatchedFiles(const lsp::DidChangeWatchedFilesParams& params);
 
     // For open document lifecycle
-    void openDocument(const std::filesystem::path& uri, const slang::syntax::SyntaxTree& tree);
     void updateDocument(const std::filesystem::path& uri, const slang::syntax::SyntaxTree& tree);
-    void closeDocument(const std::filesystem::path& uri);
 
     // Threading API
     void waitForIndexingCompletion() const;
@@ -58,7 +57,7 @@ struct Indexer {
     };
 
     // Index storage, public for querying
-    // Using SmallVector<2> to avoid heap allocations for the common case
+    // Using SmallVector<2> to avoid extra indirection for the common case
     std::unordered_map<std::string, slang::SmallVector<GlobalSymbolLoc, 2>> symbolToFiles;
     std::unordered_map<std::string, slang::SmallVector<const std::filesystem::path*, 2>>
         macroToFiles;
@@ -81,16 +80,19 @@ struct Indexer {
 private:
     friend struct IndexGuard;
 
-    void indexPath(IndexedPath& indexedFile);
+    void indexPath(const std::filesystem::path& path, IndexedPath& indexedFile);
     void indexAndReport(std::vector<std::filesystem::path> pathsToIndex, uint32_t numThreads);
     void notifyIndexingComplete();
     void resetIndexingComplete();
 
+    // Remove all index entries for a path without needing the file contents
+    void removePathFromIndex(const std::filesystem::path* pathPtr);
+
     // Intern a URI to get a stable pointer
     const std::filesystem::path* internUri(const std::filesystem::path& uri);
 
-    // Storage for open documents
-    std::unordered_map<std::filesystem::path, IndexedPath> openDocuments;
+    // Storage for all indexed files (for efficient removal)
+    std::unordered_map<const std::filesystem::path*, IndexedPath> indexedFiles;
 
     // Thread synchronization
     mutable std::condition_variable indexingCondition;

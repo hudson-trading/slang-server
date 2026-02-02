@@ -593,12 +593,6 @@ void SlangServer::onDocDidOpen(const lsp::DidOpenTextDocumentParams& params) {
     m_indexer.waitForIndexingCompletion();
     /// @brief Cache syntax tree of the document
     m_driver->openDocument(params.textDocument.uri, params.textDocument.text);
-
-    // Add document to index
-    auto doc = m_driver->getDocument(params.textDocument.uri);
-    if (doc) {
-        m_indexer.openDocument(params.textDocument.uri.path(), *doc->getSyntaxTree());
-    }
 }
 
 void SlangServer::onDocDidChange(const lsp::DidChangeTextDocumentParams& params) {
@@ -632,13 +626,10 @@ void SlangServer::onDocDidSave(const lsp::DidSaveTextDocumentParams& params) {
     m_driver->updateDoc(*doc, FileUpdateType::SAVE);
 
     // Update the indexer with new symbols
-    m_indexer.updateDocument(params.textDocument.uri.path(), *doc->getSyntaxTree());
+    m_indexer.updateDocument(params.textDocument.uri.getPath(), *doc->getSyntaxTree());
 }
 
 void SlangServer::onDocDidClose(const lsp::DidCloseTextDocumentParams& params) {
-    // Just remove from openDocuments tracking, but keep the saved content in the index
-    m_indexer.closeDocument(params.textDocument.uri.path());
-
     // TODO: Add method in ServerDriver to check that the rc of the document is 1 before
     // removing (non-compilation mode)
     m_driver->closeDocument(params.textDocument.uri);
@@ -646,7 +637,11 @@ void SlangServer::onDocDidClose(const lsp::DidCloseTextDocumentParams& params) {
 
 void SlangServer::onWorkspaceDidChangeWatchedFiles(const lsp::DidChangeWatchedFilesParams& params) {
     // Handle external file changes (from git, formatters, etc)
+
+    // Update changes for open documents first
     m_driver->onWorkspaceDidChangeWatchedFiles(params);
+    // Update indexer. There may be some overlap, but it's likely not worth checking
+    m_indexer.onWorkspaceDidChangeWatchedFiles(params);
 }
 
 rfl::Variant<std::vector<lsp::SymbolInformation>, std::vector<lsp::WorkspaceSymbol>, std::monostate>
