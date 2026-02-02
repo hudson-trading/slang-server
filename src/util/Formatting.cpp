@@ -12,6 +12,7 @@
 #include "slang/ast/symbols/ValueSymbol.h"
 #include "slang/ast/types/Type.h"
 #include "slang/ast/types/TypePrinter.h"
+#include "slang/numeric/ConstantValue.h"
 #include "slang/syntax/AllSyntax.h"
 #include "slang/syntax/SyntaxKind.h"
 #include "slang/syntax/SyntaxPrinter.h"
@@ -310,5 +311,98 @@ std::string getTypeStringImpl(const ast::ValueSymbol& value) {
 
 template std::string getTypeStringImpl<true>(const ast::ValueSymbol& value);
 template std::string getTypeStringImpl<false>(const ast::ValueSymbol& value);
+
+bool isValidUtf8(std::string_view s) {
+    size_t i = 0;
+    while (i < s.size()) {
+        unsigned char c = static_cast<unsigned char>(s[i]);
+        int seqLen = utf8Len(c);
+
+        // utf8Len returns 0 for invalid leading bytes
+        if (seqLen == 0) {
+            return false;
+        }
+
+        // Check if we have enough bytes remaining
+        if (i + seqLen > s.size()) {
+            return false;
+        }
+
+        // Validate continuation bytes (must be 10xxxxxx)
+        for (int j = 1; j < seqLen; j++) {
+            unsigned char cont = static_cast<unsigned char>(s[i + j]);
+            if ((cont & 0xC0) != 0x80) {
+                return false;
+            }
+        }
+
+        i += seqLen;
+    }
+
+    return true;
+}
+
+// Escape invalid UTF-8 bytes as \xNN, preserving valid ASCII/UTF-8
+std::string escapeInvalidUtf8(std::string_view s) {
+    std::string result;
+    result.reserve(s.size());
+
+    size_t i = 0;
+    while (i < s.size()) {
+        unsigned char c = static_cast<unsigned char>(s[i]);
+        int seqLen = utf8Len(c);
+
+        // utf8Len returns 0 for invalid leading bytes
+        if (seqLen == 0) {
+            result += fmt::format("\\x{:02x}", c);
+            i++;
+            continue;
+        }
+
+        // Check if we have enough bytes remaining
+        if (i + static_cast<size_t>(seqLen) > s.size()) {
+            result += fmt::format("\\x{:02x}", c);
+            i++;
+            continue;
+        }
+
+        // Validate continuation bytes (must be 10xxxxxx)
+        bool valid = true;
+        for (int j = 1; j < seqLen; j++) {
+            unsigned char cont = static_cast<unsigned char>(s[i + j]);
+            if ((cont & 0xC0) != 0x80) {
+                valid = false;
+                break;
+            }
+        }
+
+        if (valid) {
+            result.append(s.substr(i, seqLen));
+            i += seqLen;
+        }
+        else {
+            result += fmt::format("\\x{:02x}", c);
+            i++;
+        }
+    }
+
+    return result;
+}
+
+std::string formatConstantValue(const ConstantValue& value) {
+    if (value.isString()) {
+        const auto& str = value.str();
+        if (isValidUtf8(str)) {
+            // Valid UTF-8 string, display normally
+            return value.toString();
+        }
+        else {
+            // Invalid UTF-8: show escaped string and hex value
+            return escapeInvalidUtf8(str);
+        }
+    }
+    // For non-string values, use default toString
+    return value.toString();
+}
 
 } // namespace server

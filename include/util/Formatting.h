@@ -9,6 +9,10 @@
 
 #include "slang/syntax/SyntaxNode.h"
 
+namespace slang {
+class ConstantValue;
+} // namespace slang
+
 namespace slang::ast {
 class Type;
 class ValueSymbol;
@@ -51,6 +55,10 @@ lsp::MarkupContent svCodeBlock(const syntax::SyntaxNode& node);
 void ltrim(std::string& s);
 
 std::string toCamelCase(std::string_view str);
+
+/// @brief Format a ConstantValue for display in hovers
+/// For string values, shows escaped invalid UTF-8 characters
+std::string formatConstantValue(const slang::ConstantValue& value);
 
 // Print the canonical type nicely, if it's a type alias
 template<bool isMarkdown>
