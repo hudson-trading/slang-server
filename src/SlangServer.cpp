@@ -73,6 +73,7 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     registerDocDocumentLink();
     registerDocCompletion();
     registerCompletionItemResolve();
+    registerDocDocumentHighlight();
 
     registerDocInlayHint();
     registerDocReferences();
@@ -189,6 +190,7 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
                     .hoverProvider = true,
                     .definitionProvider = true,
                     .referencesProvider = true,
+                    .documentHighlightProvider = true,
                     .documentSymbolProvider = true,
                     .documentLinkProvider =
                         lsp::DocumentLinkOptions{
@@ -582,6 +584,11 @@ SlangServer::getDocDocumentSymbol(const lsp::DocumentSymbolParams& params) {
     }
     ERROR("Document {} not found", params.textDocument.uri.getPath());
     return std::vector<lsp::SymbolInformation>{};
+}
+
+std::optional<std::vector<lsp::DocumentHighlight>> SlangServer::getDocDocumentHighlight(
+    const lsp::DocumentHighlightParams& params) {
+    return {};
 }
 
 std::monostate SlangServer::onShutdown(const std::nullopt_t&) {
