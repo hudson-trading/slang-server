@@ -28,6 +28,7 @@
 #include "slang/ast/symbols/ValueSymbol.h"
 #include "slang/ast/symbols/VariableSymbols.h"
 #include "slang/ast/types/AllTypes.h"
+#include "slang/parsing/TokenKind.h"
 #include "slang/syntax/SyntaxKind.h"
 #include "slang/syntax/SyntaxNode.h"
 #include "slang/syntax/SyntaxPrinter.h"
@@ -99,26 +100,43 @@ public:
     }
 };
 
-class ParamVisitor : public slang::syntax::SyntaxVisitor<ParamVisitor> {
-public:
-    std::vector<std::string_view> names;
-    std::vector<std::string> defaults;
-    size_t maxLen = 0;
+/// Collect non-local parameters from a parameter port list.
+/// Mirrors the logic from ParameterBuilder::createDecls, but can't reuse that since it requires a
+/// scope
+void collectParams(const syntax::ParameterPortListSyntax& paramList,
+                   std::vector<std::string_view>& names, std::vector<std::string>& defaults,
+                   size_t& maxLen) {
+    bool lastLocal = false;
+    for (auto declaration : paramList.declarations) {
+        if (declaration->keyword) {
+            lastLocal = declaration->keyword.kind == parsing::TokenKind::LocalParamKeyword;
+        }
+        if (lastLocal)
+            continue;
 
-    void handle(const slang::syntax::DeclaratorSyntax& param) {
-        names.push_back(param.name.valueText());
-        defaults.push_back(param.initializer ? param.initializer->expr->toString() : "");
-        ltrim(defaults.back());
-        maxLen = std::max(maxLen, param.name.valueText().length());
+        if (declaration->kind == syntax::SyntaxKind::ParameterDeclaration) {
+            auto& paramSyntax = declaration->as<syntax::ParameterDeclarationSyntax>();
+            for (auto decl : paramSyntax.declarators) {
+                names.push_back(decl->name.valueText());
+                std::string defaultVal = decl->initializer ? decl->initializer->expr->toString()
+                                                           : "";
+                ltrim(defaultVal);
+                defaults.push_back(std::move(defaultVal));
+                maxLen = std::max(maxLen, decl->name.valueText().length());
+            }
+        }
+        else {
+            auto& paramSyntax = declaration->as<syntax::TypeParameterDeclarationSyntax>();
+            for (auto decl : paramSyntax.declarators) {
+                names.push_back(decl->name.valueText());
+                std::string defaultVal = decl->assignment ? decl->assignment->type->toString() : "";
+                ltrim(defaultVal);
+                defaults.push_back(std::move(defaultVal));
+                maxLen = std::max(maxLen, decl->name.valueText().length());
+            }
+        }
     }
-
-    void handle(const slang::syntax::TypeAssignmentSyntax& param) {
-        names.push_back(param.name.valueText());
-        defaults.push_back(param.assignment ? param.assignment->type->toString() : "");
-        ltrim(defaults.back());
-        maxLen = std::max(maxLen, param.name.valueText().length());
-    }
-};
+}
 
 void resolveModuleInstance(const slang::syntax::ModuleHeaderSyntax& header,
                            lsp::CompletionItem& ret, bool excludeName) {
@@ -131,16 +149,12 @@ void resolveModuleInstance(const slang::syntax::ModuleHeaderSyntax& header,
 
     SnippetString output;
 
-    // get params
+    // get params excluding localparams
     size_t maxLen = 0;
     std::vector<std::string_view> names;
     std::vector<std::string> defaults;
     if (header.parameters) {
-        ParamVisitor visitor;
-        header.parameters->visit(visitor);
-        names = std::move(visitor.names);
-        defaults = std::move(visitor.defaults);
-        maxLen = visitor.maxLen;
+        collectParams(*header.parameters, names, defaults, maxLen);
     }
 
     if (!excludeName) {
