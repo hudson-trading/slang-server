@@ -70,7 +70,7 @@ lsp::MarkupContent getHover(const SourceManager& sm, const BufferID docBuffer,
             auto& param = info.symbol->as<ast::ParameterSymbol>();
             auto value = param.getValue();
             if (!value.bad()) {
-                infoPg.appendText("Value: ").appendCode(value.toString()).newLine();
+                infoPg.appendText("Value: ").appendCode(formatConstantValue(value)).newLine();
             }
         }
         else if (ast::Type::isKind(info.symbol->kind)) {
