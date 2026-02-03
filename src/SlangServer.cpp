@@ -588,7 +588,7 @@ SlangServer::getDocDocumentSymbol(const lsp::DocumentSymbolParams& params) {
 
 std::optional<std::vector<lsp::DocumentHighlight>> SlangServer::getDocDocumentHighlight(
     const lsp::DocumentHighlightParams& params) {
-    return {};
+    return m_driver->getDocDocumentHighlight(params.textDocument.uri, params.position);
 }
 
 std::monostate SlangServer::onShutdown(const std::nullopt_t&) {
