@@ -627,17 +627,22 @@ lsp::CompletionItem getInstanceCompletion(std::string name, const syntax::Syntax
 
 void addIndexedCompletions(std::vector<lsp::CompletionItem>& results, const Indexer& indexer,
                            const CompletionContext& ctx) {
-    for (auto& [name, entries] : indexer.symbolToFiles) {
-        if (entries.empty())
-            continue;
-        auto entryKind = entries[0].kind;
+    std::unordered_set<std::string_view> seenNames;
+
+    indexer.forEachSymbol([&](const std::string& name, const Indexer::GlobalSymbolLoc& entry) {
+        // Only process first entry for each unique name
+        if (seenNames.count(name))
+            return;
+        seenNames.insert(name);
+
+        auto entryKind = entry.kind;
         // Interfaces, packages, classes are valid in type positions (like port lists)
         std::string detail;
         std::optional<std::string> insertText;
         switch (entryKind) {
             case syntax::SyntaxKind::ModuleDeclaration: {
                 if (ctx.kind != CompletionContextKind::ModuleMember) {
-                    continue;
+                    return;
                 }
                 detail = " Module";
             } break;
@@ -656,7 +661,7 @@ void addIndexedCompletions(std::vector<lsp::CompletionItem>& results, const Inde
                 detail = " Class";
                 break;
             default:
-                continue;
+                return;
         }
         results.push_back(lsp::CompletionItem{
             .label = name,
@@ -668,7 +673,7 @@ void addIndexedCompletions(std::vector<lsp::CompletionItem>& results, const Inde
             .filterText = name,
             .insertText = insertText,
         });
-    }
+    });
 }
 
 } // namespace server::completions

@@ -56,7 +56,6 @@ struct Config {
                      std::vector<std::string>>
         excludeDirs;
     rfl::Description<"Thread count to use for indexing", int> indexingThreads = 0;
-    rfl::Description<"Thread count to use for parsing", int> parsingThreads = 8;
     rfl::Description<"Build file to use", std::optional<std::string>> build;
     rfl::Description<"Build file glob pattern, e.g. `builds/{}.f`. Used for selecting build files.",
                      std::optional<std::string>>
