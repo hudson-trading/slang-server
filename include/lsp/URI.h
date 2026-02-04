@@ -54,10 +54,22 @@ public:
 
     bool operator==(URI const& other) const;
 
+    /// @brief Returns a string_view of the `scheme` component of the URI.
     std::string_view scheme() const;
+
+    /// @brief Returns a string_view of the `authority` component of the URI.
     std::string_view authority() const;
+
+    /// @brief Returns a `string_view` of the `path` component of the URI,
+    ///         not in platform format.
+    /// @note If then end goal is to access the file system,
+    //          use `getPath()` instead.
     std::string_view path() const;
+
+    /// @brief Returns a string_view of the `query` component of the URI.
     std::string_view query() const;
+
+    /// @brief Returns a string_view of the `fragment` component of the URI.
     std::string_view fragment() const;
 
 private:
