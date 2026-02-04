@@ -76,19 +76,15 @@ void CompletionDispatch::getTriggerCompletions(char triggerChar, char prevChar,
             return;
         }
         auto name = moduleToken->valueText();
-        auto it = m_indexer.symbolToFiles.find(std::string(name));
-        if (it == m_indexer.symbolToFiles.end() || it->second.empty()) {
+        auto symbolLoc = m_indexer.getFirstSymbolLoc(name);
+        if (!symbolLoc) {
             ERROR("No module found for {}", name);
             WARN("With line {}", doc->getPrevText(toPosition(loc, m_sourceManager)));
             return;
         }
-        else if (it->second.size() > 1) {
-            WARN("Multiple modules found for {}: {}", name, it->second.size());
-        }
 
-        auto& entry = it->second[0];
-        auto completion = completions::getInstanceCompletion(std::string{name}, entry.kind);
-        resolveModuleCompletion(completion, *entry.uri, true);
+        auto completion = completions::getInstanceCompletion(std::string{name}, symbolLoc->kind);
+        resolveModuleCompletion(completion, *symbolLoc->uri, true);
         results.push_back(completion);
     }
     else if (triggerChar == ':' && prevChar == ':') {
@@ -132,7 +128,7 @@ void CompletionDispatch::getTriggerCompletions(char triggerChar, char prevChar,
             results.push_back(completions::getMacroCompletion(*macro));
         }
         // Add global macros
-        for (auto& [name, _info] : m_indexer.macroToFiles) {
+        for (const auto& name : m_indexer.getAllMacroNames()) {
             results.push_back(completions::getMacroCompletion(name));
         }
     }
@@ -188,7 +184,7 @@ void CompletionDispatch::resolveModuleCompletion(lsp::CompletionItem& item,
                                                  bool excludeName) {
     auto name = item.label;
     if (modulePath == std::nullopt) {
-        auto files = m_indexer.getRelevantFilesForName(name);
+        auto files = m_indexer.getFilesForSymbol(name);
         if (files.size() == 0) {
             WARN("No files found for module {}", name);
             return;

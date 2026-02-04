@@ -538,7 +538,7 @@ TEST_CASE("WatchedFiles_CreatedFileAddedToIndex") {
     auto& indexer = server.m_indexer;
 
     // Initially the indexer should have no entries for our module
-    auto files = indexer.getRelevantFilesForName("NewModule");
+    auto files = indexer.getFilesForSymbol("NewModule");
     CHECK(files.empty());
 
     // Create a new file on disk
@@ -558,7 +558,7 @@ endmodule
                                     .type = lsp::FileChangeType::Created}}}});
 
     // Now the indexer should have an entry for NewModule
-    files = indexer.getRelevantFilesForName("NewModule");
+    files = indexer.getFilesForSymbol("NewModule");
     CHECK(files.size() == 1);
     CHECK(files[0] == newFile);
 
@@ -588,8 +588,8 @@ endmodule
     auto& indexer = server.m_indexer;
 
     // Server auto-indexes workspace, so the file should already be indexed
-    CHECK(indexer.getRelevantFilesForName("OldName").size() == 1);
-    CHECK(indexer.getRelevantFilesForName("NewName").empty());
+    CHECK(indexer.getFilesForSymbol("OldName").size() == 1);
+    CHECK(indexer.getFilesForSymbol("NewName").empty());
 
     // Change the file on disk
     {
@@ -606,8 +606,8 @@ endmodule
                                     .type = lsp::FileChangeType::Changed}}}});
 
     // OldName should be gone, NewName should be present
-    CHECK(indexer.getRelevantFilesForName("OldName").empty());
-    CHECK(indexer.getRelevantFilesForName("NewName").size() == 1);
+    CHECK(indexer.getFilesForSymbol("OldName").empty());
+    CHECK(indexer.getFilesForSymbol("NewName").size() == 1);
 
     std::filesystem::remove_all(tempDir);
 }
@@ -635,7 +635,7 @@ endmodule
     auto& indexer = server.m_indexer;
 
     // Server auto-indexes workspace
-    CHECK(indexer.getRelevantFilesForName("ToBeDeleted").size() == 1);
+    CHECK(indexer.getFilesForSymbol("ToBeDeleted").size() == 1);
 
     // Delete the file on disk
     std::filesystem::remove(testFile);
@@ -646,7 +646,7 @@ endmodule
                                     .type = lsp::FileChangeType::Deleted}}}});
 
     // ToBeDeleted should be gone
-    CHECK(indexer.getRelevantFilesForName("ToBeDeleted").empty());
+    CHECK(indexer.getFilesForSymbol("ToBeDeleted").empty());
 
     std::filesystem::remove_all(tempDir);
 }
@@ -678,8 +678,8 @@ TEST_CASE("WatchedFiles_MultipleChangesProcessed") {
     auto& indexer = server.m_indexer;
 
     // Server auto-indexes workspace
-    CHECK(indexer.getRelevantFilesForName("Module1").size() == 1);
-    CHECK(indexer.getRelevantFilesForName("Module2").size() == 1);
+    CHECK(indexer.getFilesForSymbol("Module1").size() == 1);
+    CHECK(indexer.getFilesForSymbol("Module2").size() == 1);
 
     // Delete file1, change file2, create file3
     std::filesystem::remove(file1);
@@ -705,10 +705,10 @@ TEST_CASE("WatchedFiles_MultipleChangesProcessed") {
             {lsp::FileEvent{.uri = URI::fromFile(file3), .type = lsp::FileChangeType::Created}}}});
 
     // Verify final state
-    CHECK(indexer.getRelevantFilesForName("Module1").empty());
-    CHECK(indexer.getRelevantFilesForName("Module2").empty());
-    CHECK(indexer.getRelevantFilesForName("Module2Renamed").size() == 1);
-    CHECK(indexer.getRelevantFilesForName("Module3").size() == 1);
+    CHECK(indexer.getFilesForSymbol("Module1").empty());
+    CHECK(indexer.getFilesForSymbol("Module2").empty());
+    CHECK(indexer.getFilesForSymbol("Module2Renamed").size() == 1);
+    CHECK(indexer.getFilesForSymbol("Module3").size() == 1);
 
     std::filesystem::remove_all(tempDir);
 }
