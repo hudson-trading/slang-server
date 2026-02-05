@@ -85,6 +85,17 @@ end
 M.getScopesByModule = function(bufnr, handlers)
    lsp_execute(bufnr, {
       command = "slang.getScopesByModule",
+      arguments = {},
+   }, handlers)
+end
+
+---@param bufnr integer
+---@param handlers RespHandlers
+---@param params { moduleName: string }
+M.getInstancesOfModule = function(bufnr, handlers, params)
+   lsp_execute(bufnr, {
+      command = "slang.getInstancesOfModule",
+      arguments = { params.moduleName },
    }, handlers)
 end
 
