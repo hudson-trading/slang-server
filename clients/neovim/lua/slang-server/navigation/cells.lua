@@ -191,6 +191,11 @@ end
 function M.show()
    local navigation = require("slang-server.navigation")
    local hier = require("slang-server.navigation/hierarchy")
+
+   if not hier.state.split then
+      return
+   end
+
    local split = ui.NuiSplit({
       relative = {
          type = "win",
