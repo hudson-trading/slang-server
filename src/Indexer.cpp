@@ -18,13 +18,17 @@
 #include <unordered_map>
 
 #include "slang/driver/SourceLoader.h"
+#include "slang/parsing/Parser.h"
+#include "slang/parsing/ParserMetadata.h"
 #include "slang/parsing/Preprocessor.h"
 #include "slang/syntax/AllSyntax.h"
 #include "slang/syntax/SyntaxKind.h"
 #include "slang/syntax/SyntaxNode.h"
 #include "slang/syntax/SyntaxTree.h"
+#include "slang/text/SourceLocation.h"
 #include "slang/text/SourceManager.h"
 #include "slang/util/Bag.h"
+#include "slang/util/OS.h"
 #include "slang/util/Util.h"
 
 namespace fs = std::filesystem;
@@ -46,10 +50,9 @@ bool isNestedModule(const slang::syntax::SyntaxNode& node) {
     return node.parent && slang::syntax::ModuleDeclarationSyntax::isKind(node.parent->kind);
 }
 
-void extractDataFromTree(const slang::syntax::SyntaxTree& tree, Indexer::IndexedPath& dest) {
-
-    const auto& meta = tree.getMetadata();
-
+// Extract symbols, classes, and references from parser metadata
+inline void extractFromMetadata(const slang::parsing::ParserMetadata& meta,
+                                Indexer::IndexedPath& dest) {
     // Extract symbols: modules, interfaces, packages, programs (skip nested ones - they're private)
     for (auto& [node, _] : meta.nodeMeta) {
         std::string_view name = node->header->name.valueText();
@@ -73,37 +76,58 @@ void extractDataFromTree(const slang::syntax::SyntaxTree& tree, Indexer::Indexed
         if (!ref.empty())
             dest.referencedSymbols.push_back(std::string(ref));
     }
+}
 
-    // Extract macros (only if no global symbols were found)
-    if (meta.classDecls.empty() && meta.nodeMeta.empty()) {
-        const auto& macros = tree.getDefinedMacros();
-        for (const auto macro : macros) {
-            if (!macro)
-                continue;
+// Extract macros from a list of macro definitions
+template<typename MacroRange>
+void extractMacros(const MacroRange& macros, Indexer::IndexedPath& dest) {
+    for (const auto* macro : macros) {
+        if (!macro)
+            continue;
 
-            // Only add macros defined in this file (not included files)
-            // This won't happen in the intial index because of the lack of incdirs,
-            // but may occur in open document reindexing
-            if (macro->name.location().buffer() != tree.getSourceBufferIds()[0])
-                continue;
+        // Only add macros defined in this file (not included files)
+        if (macro->name.location() == slang::SourceLocation::NoLocation)
+            continue;
 
-            dest.macros.push_back(std::string(macro->name.valueText()));
-        }
+        dest.macros.push_back(std::string(macro->name.valueText()));
     }
 }
 
 void populateIndexForSingleFile(const fs::path& path, Indexer::IndexedPath& dest,
                                 slang::SourceManager& sourceManager, const slang::Bag& options) {
     // Don't set dest.path here - it will be interned in indexPath
+    using namespace slang;
+    using namespace parsing;
 
-    // Don't expand includes - we only want symbols defined in this file
-    auto tree = slang::syntax::SyntaxTree::fromFile(path.string(), sourceManager, options);
-    if (!tree) {
-        ERROR("Error parsing file for indexing: {}", path.string());
+    SmallVector<char> bufferData;
+    if (std::error_code ec = slang::OS::readFile(path, bufferData)) {
         return;
     }
+    SourceBuffer buffer{.data = std::string_view(bufferData.data(), bufferData.size()),
+                        .library = nullptr,
+                        .id = BufferID::getPlaceholder()
 
-    extractDataFromTree(*tree->get(), dest);
+    };
+
+    BumpAllocator alloc;
+    Diagnostics diagnostics;
+    Preprocessor preprocessor(sourceManager, alloc, diagnostics, options, {});
+    preprocessor.pushSource(buffer);
+    Parser parser(preprocessor, options);
+
+    parser.parseCompilationUnit();
+
+    const auto& meta = parser.getMetadata();
+
+    // Extract symbols and references from metadata
+
+    // Extract macros only if no global symbols were found (header files)
+    if (meta.classDecls.empty() && meta.nodeMeta.empty()) {
+        extractMacros(preprocessor.getDefinedMacros(), dest);
+    }
+    else {
+        extractFromMetadata(meta, dest);
+    }
 }
 
 std::vector<Indexer::IndexedPath> indexPaths(const std::vector<fs::path>& paths,
@@ -206,7 +230,12 @@ void Indexer::updateDocument(const fs::path& path, const slang::syntax::SyntaxTr
     // Extract new data
     IndexedPath newPath;
     newPath.path = uriPtr;
-    extractDataFromTree(tree, newPath);
+    extractFromMetadata(tree.getMetadata(), newPath);
+
+    // Extract macros only if no global symbols were found (header files)
+    if (newPath.symbols.empty()) {
+        extractMacros(tree.getDefinedMacros(), newPath);
+    }
 
     // Add all new entries to the global index
     for (const auto& newItem : newPath.symbols)
