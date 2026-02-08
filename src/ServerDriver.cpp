@@ -299,36 +299,33 @@ std::vector<std::shared_ptr<SlangDoc>> ServerDriver::getDependentDocs(
 
             // Don't try multiple times
             knownNames.emplace(name);
-            auto data = m_indexer.symbolToFiles.find(std::string{name});
-            if (data == m_indexer.symbolToFiles.end())
+            auto symbolLoc = m_indexer.getFirstSymbolLoc(name);
+            if (!symbolLoc)
                 return;
 
-            auto paths = data->second;
-            if (!paths.empty()) {
-                std::string filePath = paths[0].uri->string();
+            std::string filePath = symbolLoc->uri->string();
 
-                // Check if we've already processed this file to avoid cycles
-                if (processedFiles.find(filePath) != processedFiles.end())
-                    return;
+            // Check if we've already processed this file to avoid cycles
+            if (processedFiles.find(filePath) != processedFiles.end())
+                return;
 
-                processedFiles.insert(filePath);
+            processedFiles.insert(filePath);
 
-                auto newdoc = getDocument(URI::fromFile(filePath));
-                if (newdoc) {
-                    result.push_back(newdoc);
-                    docs[newdoc->getURI()] = newdoc;
+            auto newdoc = getDocument(URI::fromFile(filePath));
+            if (newdoc) {
+                result.push_back(newdoc);
+                docs[newdoc->getURI()] = newdoc;
 
-                    // Only add packages to the queue for recursive processing
-                    for (auto& [decl, _] : newdoc->getSyntaxTree()->getMetadata().nodeMeta) {
-                        if (decl->kind == syntax::SyntaxKind::PackageDeclaration) {
-                            treesToProcess.push(newdoc->getSyntaxTree());
-                            break;
-                        }
+                // Only add packages to the queue for recursive processing
+                for (auto& [decl, _] : newdoc->getSyntaxTree()->getMetadata().nodeMeta) {
+                    if (decl->kind == syntax::SyntaxKind::PackageDeclaration) {
+                        treesToProcess.push(newdoc->getSyntaxTree());
+                        break;
                     }
                 }
-                else {
-                    ERROR("No doc found for {}", filePath);
-                }
+            }
+            else {
+                ERROR("No doc found for {}", filePath);
             }
         });
     }
@@ -365,7 +362,7 @@ bool ServerDriver::createCompilation(std::shared_ptr<SlangDoc> doc, std::string_
     driver::SourceLoader::loadTrees(
         syntaxTrees,
         [this](std::string_view name) {
-            auto paths = m_indexer.getRelevantFilesForName(name);
+            auto paths = m_indexer.getFilesForSymbol(name);
             if (!paths.empty()) {
                 auto maybeBuf = sm.readSource(paths[0], /* library */ nullptr);
                 if (maybeBuf) {
@@ -490,7 +487,7 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
         symbol = analysis.getSymbolAtToken(declTok);
         if (!symbol) {
             // check the index
-            auto symbols = m_indexer.getRelevantFilesForName(declTok->rawText());
+            auto symbols = m_indexer.getFilesForSymbol(declTok->rawText());
             if (symbols.empty()) {
                 return {};
             }
