@@ -94,7 +94,7 @@ void extractDataFromTree(const slang::syntax::SyntaxTree& tree, Indexer::Indexed
 
 void populateIndexForSingleFile(const fs::path& path, Indexer::IndexedPath& dest,
                                 slang::SourceManager& sourceManager, const slang::Bag& options) {
-    dest.path = path.string();
+    // Don't set dest.path here - it will be interned in indexPath
 
     // Don't expand includes - we only want symbols defined in this file
     auto tree = slang::syntax::SyntaxTree::fromFile(path.string(), sourceManager, options);
@@ -157,109 +157,74 @@ const fs::path* Indexer::internUri(const fs::path& path) {
     return &(*it);
 }
 
-void Indexer::openDocument(const fs::path& path, const slang::syntax::SyntaxTree& tree) {
-    IndexGuard guard(*this);
-
-    IndexedPath indexedPath;
-    extractDataFromTree(tree, indexedPath);
-
-    // Store the indexed path for this document, but don't add to global index yet
-    // Entries will be added to the global index when the document is saved
-    openDocuments[path] = std::move(indexedPath);
-}
-
 void Indexer::updateDocument(const fs::path& path, const slang::syntax::SyntaxTree& tree) {
     IndexGuard guard(*this);
-
-    // Extract new data
-    IndexedPath newPath;
-    extractDataFromTree(tree, newPath);
 
     // Intern the URI once for all operations
     const fs::path* uriPtr = internUri(path);
 
-    // Get the old indexed path
-    auto it = openDocuments.find(path);
-    if (it == openDocuments.end()) {
-        // Document wasn't open, just add all entries and store it
-        for (const auto& item : newPath.symbols)
-            symbolToFiles[item.name].push_back(GlobalSymbolLoc{.uri = uriPtr, .kind = item.kind});
+    // Remove old entries if this file was previously indexed
+    auto it = indexedFiles.find(uriPtr);
+    if (it != indexedFiles.end()) {
+        const IndexedPath& oldPath = it->second;
 
-        for (const auto& name : newPath.macros)
-            macroToFiles[name].push_back(uriPtr);
+        for (const auto& oldItem : oldPath.symbols) {
+            auto mapIt = symbolToFiles.find(oldItem.name);
+            if (mapIt != symbolToFiles.end()) {
+                auto& vec = mapIt->second;
+                vec.erase(std::remove_if(vec.begin(), vec.end(),
+                                         [&](const GlobalSymbolLoc& loc) {
+                                             return loc.uri == uriPtr && loc.kind == oldItem.kind;
+                                         }),
+                          vec.end());
+                if (vec.empty())
+                    symbolToFiles.erase(mapIt);
+            }
+        }
 
-        for (const auto& ref : newPath.referencedSymbols)
-            symbolReferences[ref].push_back(uriPtr);
+        for (const auto& oldMacro : oldPath.macros) {
+            auto mapIt = macroToFiles.find(oldMacro);
+            if (mapIt != macroToFiles.end()) {
+                auto& vec = mapIt->second;
+                vec.erase(std::remove(vec.begin(), vec.end(), uriPtr), vec.end());
+                if (vec.empty())
+                    macroToFiles.erase(mapIt);
+            }
+        }
 
-        openDocuments[path] = std::move(newPath);
-        return;
-    }
-
-    // Make a copy of the old path to avoid issues with map modification
-    IndexedPath oldPath = it->second;
-
-    // Remove all old entries for this URI from the global index
-    for (const auto& oldItem : oldPath.symbols) {
-        auto mapIt = symbolToFiles.find(oldItem.name);
-        if (mapIt != symbolToFiles.end()) {
-            auto& vec = mapIt->second;
-            vec.erase(std::remove_if(vec.begin(), vec.end(),
-                                     [&](const GlobalSymbolLoc& loc) {
-                                         return loc.uri == uriPtr && loc.kind == oldItem.kind;
-                                     }),
-                      vec.end());
-            if (vec.empty())
-                symbolToFiles.erase(mapIt);
+        for (const auto& oldRef : oldPath.referencedSymbols) {
+            auto mapIt = symbolReferences.find(oldRef);
+            if (mapIt != symbolReferences.end()) {
+                auto& vec = mapIt->second;
+                vec.erase(std::remove(vec.begin(), vec.end(), uriPtr), vec.end());
+                if (vec.empty())
+                    symbolReferences.erase(mapIt);
+            }
         }
     }
 
-    for (const auto& oldMacro : oldPath.macros) {
-        auto mapIt = macroToFiles.find(oldMacro);
-        if (mapIt != macroToFiles.end()) {
-            auto& vec = mapIt->second;
-            vec.erase(std::remove(vec.begin(), vec.end(), uriPtr), vec.end());
-            if (vec.empty())
-                macroToFiles.erase(mapIt);
-        }
-    }
-
-    for (const auto& oldRef : oldPath.referencedSymbols) {
-        auto mapIt = symbolReferences.find(oldRef);
-        if (mapIt != symbolReferences.end()) {
-            auto& vec = mapIt->second;
-            vec.erase(std::remove(vec.begin(), vec.end(), uriPtr), vec.end());
-            if (vec.empty())
-                symbolReferences.erase(mapIt);
-        }
-    }
+    // Extract new data
+    IndexedPath newPath;
+    newPath.path = uriPtr;
+    extractDataFromTree(tree, newPath);
 
     // Add all new entries to the global index
-    for (const auto& newItem : newPath.symbols) {
+    for (const auto& newItem : newPath.symbols)
         symbolToFiles[newItem.name].push_back(GlobalSymbolLoc{.uri = uriPtr, .kind = newItem.kind});
-    }
 
-    for (const auto& newMacro : newPath.macros) {
+    for (const auto& newMacro : newPath.macros)
         macroToFiles[newMacro].push_back(uriPtr);
-    }
 
-    for (const auto& newRef : newPath.referencedSymbols) {
+    for (const auto& newRef : newPath.referencedSymbols)
         symbolReferences[newRef].push_back(uriPtr);
-    }
 
-    // Replace the stored indexed path
-    it->second = std::move(newPath);
+    // Store the new indexed path
+    indexedFiles[uriPtr] = std::move(newPath);
 }
 
-void Indexer::closeDocument(const std::filesystem::path& uri) {
-    IndexGuard guard(*this);
-
-    // Just remove from open documents tracking
-    // Keep the saved content in the global index
-    openDocuments.erase(uri);
-}
-
-void Indexer::indexPath(IndexedPath& indexedFile) {
-    const fs::path* uriPtr = internUri(indexedFile.path);
+void Indexer::indexPath(const fs::path& path, IndexedPath& indexedFile) {
+    const fs::path* uriPtr = internUri(path);
+    indexedFile.path = uriPtr;
 
     for (const auto& item : indexedFile.symbols)
         symbolToFiles[item.name].push_back(GlobalSymbolLoc{.uri = uriPtr, .kind = item.kind});
@@ -269,60 +234,66 @@ void Indexer::indexPath(IndexedPath& indexedFile) {
 
     for (const auto& ref : indexedFile.referencedSymbols)
         symbolReferences[ref].push_back(uriPtr);
+
+    // Store the indexed path for efficient removal later
+    indexedFiles[uriPtr] = std::move(indexedFile);
 }
 
 void Indexer::addDocuments(const std::vector<fs::path>& paths, uint32_t numThreads) {
     IndexGuard guard(*this);
 
     auto indexedPaths = indexPaths(paths, numThreads);
-    for (auto& indexedFile : indexedPaths)
-        indexPath(indexedFile);
+    for (size_t i = 0; i < indexedPaths.size(); ++i)
+        indexPath(paths[i], indexedPaths[i]);
 }
 
-void Indexer::removeDocuments(const std::vector<fs::path>& paths, uint32_t numThreads) {
-    IndexGuard guard(*this);
+void Indexer::removePathFromIndex(const fs::path* pathPtr) {
+    // Look up the stored IndexedPath for efficient targeted removal
+    auto it = indexedFiles.find(pathPtr);
+    if (it == indexedFiles.end())
+        return;
 
-    auto indexedPaths = indexPaths(paths, numThreads);
-    for (const auto& entry : indexedPaths) {
-        const fs::path* pathPtr = internUri(entry.path);
+    const IndexedPath& entry = it->second;
 
-        // Remove symbols
-        for (const auto& item : entry.symbols) {
-            auto mapIt = symbolToFiles.find(item.name);
-            if (mapIt != symbolToFiles.end()) {
-                auto& vec = mapIt->second;
-                vec.erase(std::remove_if(vec.begin(), vec.end(),
-                                         [&](const GlobalSymbolLoc& loc) {
-                                             return loc.uri == pathPtr && loc.kind == item.kind;
-                                         }),
-                          vec.end());
-                if (vec.empty())
-                    symbolToFiles.erase(mapIt);
-            }
-        }
-
-        // Remove macros
-        for (const auto& name : entry.macros) {
-            auto mapIt = macroToFiles.find(name);
-            if (mapIt != macroToFiles.end()) {
-                auto& vec = mapIt->second;
-                vec.erase(std::remove(vec.begin(), vec.end(), pathPtr), vec.end());
-                if (vec.empty())
-                    macroToFiles.erase(mapIt);
-            }
-        }
-
-        // Remove references
-        for (const auto& ref : entry.referencedSymbols) {
-            auto mapIt = symbolReferences.find(ref);
-            if (mapIt != symbolReferences.end()) {
-                auto& vec = mapIt->second;
-                vec.erase(std::remove(vec.begin(), vec.end(), pathPtr), vec.end());
-                if (vec.empty())
-                    symbolReferences.erase(mapIt);
-            }
+    // Remove symbols
+    for (const auto& item : entry.symbols) {
+        auto mapIt = symbolToFiles.find(item.name);
+        if (mapIt != symbolToFiles.end()) {
+            auto& vec = mapIt->second;
+            vec.erase(std::remove_if(vec.begin(), vec.end(),
+                                     [&](const GlobalSymbolLoc& loc) {
+                                         return loc.uri == pathPtr && loc.kind == item.kind;
+                                     }),
+                      vec.end());
+            if (vec.empty())
+                symbolToFiles.erase(mapIt);
         }
     }
+
+    // Remove macros
+    for (const auto& name : entry.macros) {
+        auto mapIt = macroToFiles.find(name);
+        if (mapIt != macroToFiles.end()) {
+            auto& vec = mapIt->second;
+            vec.erase(std::remove(vec.begin(), vec.end(), pathPtr), vec.end());
+            if (vec.empty())
+                macroToFiles.erase(mapIt);
+        }
+    }
+
+    // Remove references
+    for (const auto& ref : entry.referencedSymbols) {
+        auto mapIt = symbolReferences.find(ref);
+        if (mapIt != symbolReferences.end()) {
+            auto& vec = mapIt->second;
+            vec.erase(std::remove(vec.begin(), vec.end(), pathPtr), vec.end());
+            if (vec.empty())
+                symbolReferences.erase(mapIt);
+        }
+    }
+
+    // Remove from indexedFiles
+    indexedFiles.erase(it);
 }
 
 bool isExcluded(const std::string& path, const std::vector<std::string>& excludeDirs) {
@@ -373,6 +344,51 @@ std::vector<fs::path> Indexer::getFilesReferencingSymbol(std::string_view name) 
 bool isSystemVerilogFile(const fs::path& path) {
     auto ext = path.extension().string();
     return ext == ".v" || ext == ".sv" || ext == ".svh" || ext == ".vh";
+}
+
+void Indexer::onWorkspaceDidChangeWatchedFiles(const lsp::DidChangeWatchedFilesParams& params) {
+    IndexGuard guard(*this);
+
+    std::vector<fs::path> pathsToAdd;
+
+    for (const auto& change : params.changes) {
+        fs::path path = change.uri.getPath();
+
+        switch (change.type) {
+            case lsp::FileChangeType::Created: {
+                // Add new file to index
+                pathsToAdd.push_back(path);
+                break;
+            }
+            case lsp::FileChangeType::Changed: {
+                // Re-index the file: remove old entries, add new ones
+                auto it = uniqueUris.find(path);
+                if (it != uniqueUris.end()) {
+                    removePathFromIndex(&(*it));
+                }
+
+                // Re-add with new content
+                if (fs::exists(path))
+                    pathsToAdd.push_back(path);
+                break;
+            }
+            case lsp::FileChangeType::Deleted: {
+                // Remove all entries for this file
+                auto it = uniqueUris.find(path);
+                if (it != uniqueUris.end()) {
+                    removePathFromIndex(&(*it));
+                }
+                break;
+            }
+        }
+    }
+
+    // Parse all new/changed files potentially in thread pool
+    if (!pathsToAdd.empty()) {
+        auto indexedPaths = indexPaths(pathsToAdd, 1);
+        for (size_t i = 0; i < indexedPaths.size(); ++i)
+            indexPath(pathsToAdd[i], indexedPaths[i]);
+    }
 }
 
 void collectFilesFromDirectory(const fs::path& dir, const std::vector<std::string>& excludeDirs,
