@@ -8,6 +8,7 @@
 
 #include "completions/CompletionDispatch.h"
 
+#include "ServerDriver.h"
 #include "completions/CompletionContext.h"
 #include "completions/Completions.h"
 #include "lsp/LspTypes.h"
@@ -27,9 +28,9 @@ namespace ast = slang::ast;
 
 namespace server {
 
-CompletionDispatch::CompletionDispatch(const Indexer& indexer, SourceManager& sourceManager,
-                                       slang::Bag& options) :
-    m_indexer(indexer), m_sourceManager(sourceManager), m_options(options) {
+CompletionDispatch::CompletionDispatch(ServerDriver& driver, const Indexer& indexer,
+                                       SourceManager& sourceManager, slang::Bag& options) :
+    m_driver(driver), m_indexer(indexer), m_sourceManager(sourceManager), m_options(options) {
 }
 
 void CompletionDispatch::getInvokedCompletions(std::vector<lsp::CompletionItem>& results,
@@ -141,8 +142,22 @@ void CompletionDispatch::getTriggerCompletions(char triggerChar, char prevChar,
         }
         auto sym = doc->getAnalysis().getSymbolAtToken(exprToken);
         if (!sym) {
-            WARN("No symbol found for token {}", exprToken->valueText());
-            return;
+            WARN("No symbol found for token {}, checking index.", exprToken->valueText());
+            // return;
+            auto symbolLoc = m_indexer.getFirstSymbolLoc(exprToken->valueText());
+            if (!symbolLoc) {
+                WARN("No symbol found in index for {}", exprToken->valueText());
+                return;
+            }
+            auto doc = m_driver.getDocument(URI::fromFile(*symbolLoc->uri));
+            if (!doc) {
+                return;
+            }
+            sym = doc->getAnalysis().getDefinition(exprToken->valueText());
+            if (!sym) {
+                WARN("No symbol found in compilation for {}", exprToken->valueText());
+                return;
+            }
         }
         if (ast::DefinitionSymbol::isKind(sym->kind)) {
             auto& def = sym->as<ast::DefinitionSymbol>();
