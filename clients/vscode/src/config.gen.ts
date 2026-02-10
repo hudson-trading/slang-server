@@ -16,8 +16,6 @@ export interface Config {
   excludeDirs?: string[]
   /** Thread count to use for indexing */
   indexingThreads?: number
-  /** Thread count to use for parsing */
-  parsingThreads?: number
   /** Build file to use */
   build?: string | null
   /** Build file glob pattern, e.g. `builds/{}.f`. Used for selecting build files. */

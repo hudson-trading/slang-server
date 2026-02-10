@@ -522,3 +522,191 @@ endmodule
 
     std::filesystem::remove_all(tempDir);
 }
+
+TEST_CASE("WatchedFiles_CreatedFileAddedToIndex") {
+    /// Test that newly created files are added to the indexer
+    auto tempDir = std::filesystem::temp_directory_path() / "slang_test_created";
+    std::filesystem::create_directories(tempDir);
+    tempDir = std::filesystem::canonical(tempDir); // Normalize path for Windows
+
+    ServerHarness server(lsp::InitializeParams{
+        .workspaceFolders = {
+            {lsp::WorkspaceFolder{.uri = URI::fromFile(tempDir), .name = "test"}}}});
+
+    auto& indexer = server.m_indexer;
+
+    // Initially the indexer should have no entries for our module
+    auto files = indexer.getFilesForSymbol("NewModule");
+    CHECK(files.empty());
+
+    // Create a new file on disk
+    auto newFile = tempDir / "new_module.sv";
+    {
+        std::ofstream out(newFile);
+        out << R"(module NewModule;
+    logic data;
+endmodule
+)";
+        out.flush();
+    }
+
+    // Notify the server about the new file
+    server.onWorkspaceDidChangeWatchedFiles(lsp::DidChangeWatchedFilesParams{
+        .changes = {{lsp::FileEvent{.uri = URI::fromFile(newFile),
+                                    .type = lsp::FileChangeType::Created}}}});
+
+    // Now the indexer should have an entry for NewModule
+    files = indexer.getFilesForSymbol("NewModule");
+    CHECK(files.size() == 1);
+    CHECK(files[0] == newFile);
+
+    std::filesystem::remove_all(tempDir);
+}
+
+TEST_CASE("WatchedFiles_ChangedFileReindexed") {
+    /// Test that changed files are re-indexed with new symbols
+    auto tempDir = std::filesystem::temp_directory_path() / "slang_test_changed";
+    std::filesystem::create_directories(tempDir);
+    tempDir = std::filesystem::canonical(tempDir); // Normalize path for Windows
+
+    // Create initial file
+    auto testFile = tempDir / "changing.sv";
+    {
+        std::ofstream out(testFile);
+        out << R"(module OldName;
+endmodule
+)";
+        out.flush();
+    }
+
+    ServerHarness server(lsp::InitializeParams{
+        .workspaceFolders = {
+            {lsp::WorkspaceFolder{.uri = URI::fromFile(tempDir), .name = "test"}}}});
+
+    auto& indexer = server.m_indexer;
+
+    // Server auto-indexes workspace, so the file should already be indexed
+    CHECK(indexer.getFilesForSymbol("OldName").size() == 1);
+    CHECK(indexer.getFilesForSymbol("NewName").empty());
+
+    // Change the file on disk
+    {
+        std::ofstream out(testFile);
+        out << R"(module NewName;
+endmodule
+)";
+        out.flush();
+    }
+
+    // Notify the server about the change
+    server.onWorkspaceDidChangeWatchedFiles(lsp::DidChangeWatchedFilesParams{
+        .changes = {{lsp::FileEvent{.uri = URI::fromFile(testFile),
+                                    .type = lsp::FileChangeType::Changed}}}});
+
+    // OldName should be gone, NewName should be present
+    CHECK(indexer.getFilesForSymbol("OldName").empty());
+    CHECK(indexer.getFilesForSymbol("NewName").size() == 1);
+
+    std::filesystem::remove_all(tempDir);
+}
+
+TEST_CASE("WatchedFiles_DeletedFileRemovedFromIndex") {
+    /// Test that deleted files are removed from the indexer
+    auto tempDir = std::filesystem::temp_directory_path() / "slang_test_deleted";
+    std::filesystem::create_directories(tempDir);
+    tempDir = std::filesystem::canonical(tempDir); // Normalize path for Windows
+
+    // Create file
+    auto testFile = tempDir / "to_delete.sv";
+    {
+        std::ofstream out(testFile);
+        out << R"(module ToBeDeleted;
+endmodule
+)";
+        out.flush();
+    }
+
+    ServerHarness server(lsp::InitializeParams{
+        .workspaceFolders = {
+            {lsp::WorkspaceFolder{.uri = URI::fromFile(tempDir), .name = "test"}}}});
+
+    auto& indexer = server.m_indexer;
+
+    // Server auto-indexes workspace
+    CHECK(indexer.getFilesForSymbol("ToBeDeleted").size() == 1);
+
+    // Delete the file on disk
+    std::filesystem::remove(testFile);
+
+    // Notify the server about the deletion
+    server.onWorkspaceDidChangeWatchedFiles(lsp::DidChangeWatchedFilesParams{
+        .changes = {{lsp::FileEvent{.uri = URI::fromFile(testFile),
+                                    .type = lsp::FileChangeType::Deleted}}}});
+
+    // ToBeDeleted should be gone
+    CHECK(indexer.getFilesForSymbol("ToBeDeleted").empty());
+
+    std::filesystem::remove_all(tempDir);
+}
+
+TEST_CASE("WatchedFiles_MultipleChangesProcessed") {
+    /// Test that multiple file changes are processed correctly
+    auto tempDir = std::filesystem::temp_directory_path() / "slang_test_multi";
+    std::filesystem::create_directories(tempDir);
+    tempDir = std::filesystem::canonical(tempDir); // Normalize path for Windows
+
+    // Create initial files
+    auto file1 = tempDir / "module1.sv";
+    auto file2 = tempDir / "module2.sv";
+    {
+        std::ofstream out(file1);
+        out << "module Module1; endmodule\n";
+        out.flush();
+    }
+    {
+        std::ofstream out(file2);
+        out << "module Module2; endmodule\n";
+        out.flush();
+    }
+
+    ServerHarness server(lsp::InitializeParams{
+        .workspaceFolders = {
+            {lsp::WorkspaceFolder{.uri = URI::fromFile(tempDir), .name = "test"}}}});
+
+    auto& indexer = server.m_indexer;
+
+    // Server auto-indexes workspace
+    CHECK(indexer.getFilesForSymbol("Module1").size() == 1);
+    CHECK(indexer.getFilesForSymbol("Module2").size() == 1);
+
+    // Delete file1, change file2, create file3
+    std::filesystem::remove(file1);
+
+    {
+        std::ofstream out(file2);
+        out << "module Module2Renamed; endmodule\n";
+        out.flush();
+    }
+
+    auto file3 = tempDir / "module3.sv";
+    {
+        std::ofstream out(file3);
+        out << "module Module3; endmodule\n";
+        out.flush();
+    }
+
+    // Send all changes in one notification
+    server.onWorkspaceDidChangeWatchedFiles(lsp::DidChangeWatchedFilesParams{
+        .changes = {
+            {lsp::FileEvent{.uri = URI::fromFile(file1), .type = lsp::FileChangeType::Deleted}},
+            {lsp::FileEvent{.uri = URI::fromFile(file2), .type = lsp::FileChangeType::Changed}},
+            {lsp::FileEvent{.uri = URI::fromFile(file3), .type = lsp::FileChangeType::Created}}}});
+
+    // Verify final state
+    CHECK(indexer.getFilesForSymbol("Module1").empty());
+    CHECK(indexer.getFilesForSymbol("Module2").empty());
+    CHECK(indexer.getFilesForSymbol("Module2Renamed").size() == 1);
+    CHECK(indexer.getFilesForSymbol("Module3").size() == 1);
+
+    std::filesystem::remove_all(tempDir);
+}

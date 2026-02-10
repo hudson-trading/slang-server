@@ -222,7 +222,6 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
 
 void SlangServer::onInitialized(const lsp::InitializedParams&) {
     INFO("Server initialized at {}", m_workspaceFolder ? m_workspaceFolder->uri.getPath() : "none");
-    m_indexer.waitForIndexingCompletion();
     m_client.setConfig(m_config);
 
     if (m_workspaceFolder) {
@@ -257,8 +256,6 @@ std::monostate SlangServer::setTopLevel(const std::string& path) {
         setExplore();
         return std::monostate{};
     }
-    m_indexer.waitForIndexingCompletion();
-
     INFO("Setting top level to {}", path);
     auto uri = URI::fromFile(path);
     auto doc = m_driver->getDocument(uri);
@@ -348,7 +345,7 @@ bool SlangServer::expandMacros(ExpandMacroArgs args) {
 
 std::vector<std::string> SlangServer::getFilesContainingModule(const std::string moduleName) {
     // lookup in index
-    auto paths = m_indexer.getRelevantFilesForName(moduleName);
+    auto paths = m_indexer.getFilesForSymbol(moduleName);
     auto transformed = paths | std::ranges::views::transform(
                                    [](const auto& path) { return path.string(); });
     return std::vector<std::string>(transformed.begin(), transformed.end());
@@ -511,8 +508,8 @@ void SlangServer::loadConfig(const Config& config, bool forceIndexing) {
                 indexGlobs = std::move(filtered);
             }
             INFO("Indexing with globs: {}", fmt::join(indexGlobs, ", "));
-            m_indexer.startIndexing(indexGlobs, m_config.excludeDirs.value(),
-                                    m_config.indexingThreads.value());
+            m_indexer.setNumThreads(m_config.indexingThreads.value());
+            m_indexer.startIndexing(indexGlobs, m_config.excludeDirs.value());
         }
     }
     else {
@@ -521,8 +518,8 @@ void SlangServer::loadConfig(const Config& config, bool forceIndexing) {
                              ? std::optional<std::string_view>(m_workspaceFolder->uri.getPath())
                              : std::nullopt;
 
-        m_indexer.startIndexing(m_config.index.value(), maybePath,
-                                m_config.indexingThreads.value());
+        m_indexer.setNumThreads(m_config.indexingThreads.value());
+        m_indexer.startIndexing(m_config.index.value(), maybePath);
     }
 
     // Send config to editor client if it needs to parse general configs
@@ -590,15 +587,7 @@ std::monostate SlangServer::onShutdown(const std::nullopt_t&) {
 }
 
 void SlangServer::onDocDidOpen(const lsp::DidOpenTextDocumentParams& params) {
-    m_indexer.waitForIndexingCompletion();
-    /// @brief Cache syntax tree of the document
     m_driver->openDocument(params.textDocument.uri, params.textDocument.text);
-
-    // Add document to index
-    auto doc = m_driver->getDocument(params.textDocument.uri);
-    if (doc) {
-        m_indexer.openDocument(params.textDocument.uri.path(), *doc->getSyntaxTree());
-    }
 }
 
 void SlangServer::onDocDidChange(const lsp::DidChangeTextDocumentParams& params) {
@@ -606,8 +595,6 @@ void SlangServer::onDocDidChange(const lsp::DidChangeTextDocumentParams& params)
 }
 
 void SlangServer::onDocDidSave(const lsp::DidSaveTextDocumentParams& params) {
-    m_indexer.waitForIndexingCompletion();
-
     // Only process documents that have been explicitly opened by the client
     if (!m_driver->isDocumentOpen(params.textDocument.uri)) {
         return;
@@ -632,13 +619,10 @@ void SlangServer::onDocDidSave(const lsp::DidSaveTextDocumentParams& params) {
     m_driver->updateDoc(*doc, FileUpdateType::SAVE);
 
     // Update the indexer with new symbols
-    m_indexer.updateDocument(params.textDocument.uri.path(), *doc->getSyntaxTree());
+    m_indexer.updateDocument(params.textDocument.uri.getPath(), *doc->getSyntaxTree());
 }
 
 void SlangServer::onDocDidClose(const lsp::DidCloseTextDocumentParams& params) {
-    // Just remove from openDocuments tracking, but keep the saved content in the index
-    m_indexer.closeDocument(params.textDocument.uri.path());
-
     // TODO: Add method in ServerDriver to check that the rc of the document is 1 before
     // removing (non-compilation mode)
     m_driver->closeDocument(params.textDocument.uri);
@@ -646,26 +630,25 @@ void SlangServer::onDocDidClose(const lsp::DidCloseTextDocumentParams& params) {
 
 void SlangServer::onWorkspaceDidChangeWatchedFiles(const lsp::DidChangeWatchedFilesParams& params) {
     // Handle external file changes (from git, formatters, etc)
+
+    // Update changes for open documents first
     m_driver->onWorkspaceDidChangeWatchedFiles(params);
+    // Update indexer. There may be some overlap, but it's likely not worth checking
+    m_indexer.onWorkspaceDidChangeWatchedFiles(params);
 }
 
 rfl::Variant<std::vector<lsp::SymbolInformation>, std::vector<lsp::WorkspaceSymbol>, std::monostate>
 SlangServer::getWorkspaceSymbol(const lsp::WorkspaceSymbolParams&) {
     slang::TimeTraceScope _timeScope("getWorkspaceSymbol", "");
 
-    // Convert from slang SyntaxKind to LSP SymbolKind
-
     std::vector<lsp::WorkspaceSymbol> result;
-    result.reserve(m_indexer.symbolToFiles.size());
 
-    for (const auto& [name, entries] : m_indexer.symbolToFiles) {
-        for (const auto& entry : entries) {
-            result.emplace_back(
-                lsp::WorkspaceSymbol{.location = lsp::LocationUriOnly{URI::fromFile(*entry.uri)},
-                                     .name = name,
-                                     .kind = toSymbolKind(entry.kind)});
-        }
-    }
+    m_indexer.forEachSymbol([&](const std::string& name, const Indexer::GlobalSymbolLoc& entry) {
+        result.emplace_back(
+            lsp::WorkspaceSymbol{.location = lsp::LocationUriOnly{URI::fromFile(*entry.uri)},
+                                 .name = name,
+                                 .kind = toSymbolKind(entry.kind)});
+    });
 
     return result;
 }
