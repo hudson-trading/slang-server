@@ -38,16 +38,19 @@ jobs:
           git config --global user.name "${{ github.actor }}"
       - name: Validate vsce packaging
         working-directory: clients/vscode
-        run: pnpm dlx @vscode/vsce package --no-dependencies --packageManager pnpm
+        run: pnpm dlx @vscode/vsce package --no-dependencies
       - name: Validate ovsx packaging
         working-directory: clients/vscode
-        run: pnpm dlx ovsx publish --packageManager pnpm --dry-run
+        run: |
+          OUTPUT=$(pnpm dlx ovsx publish --no-dependencies --pat INVALID_TOKEN 2>&1 || true)
+          echo "$OUTPUT"
+          echo "$OUTPUT" | grep -q 'DONE  Packaged:' || { echo "ERROR: ovsx packaging validation failed"; exit 1; }
       - name: Publish to Visual Studio Marketplace
         working-directory: clients/vscode
-        run: pnpm dlx @vscode/vsce publish ${{ inputs.kind }} ${{ inputs.prerelease && '--pre-release' || '' }} --no-dependencies --packageManager pnpm --pat ${{ secrets.VS_MARKETPLACE_TOKEN }}
-      - name: Publish to Open Vsix
+        run: pnpm dlx @vscode/vsce publish --no-dependencies ${{ inputs.kind }} ${{ inputs.prerelease && '--pre-release' || '' }} --pat ${{ secrets.VS_MARKETPLACE_TOKEN }}
+      - name: Publish to OpenVSX Marketplace
         working-directory: clients/vscode
-        run: pnpm dlx ovsx publish ${{ inputs.prerelease && '--pre-release' || '' }} --packageManager pnpm --pat ${{ secrets.OPEN_VSX_TOKEN }}
+        run: pnpm dlx ovsx publish --no-dependencies ${{ inputs.prerelease && '--pre-release' || '' }} --pat ${{ secrets.OPEN_VSX_TOKEN }}
       - name: Commit and push version bump
         run: |
           git add clients/vscode/package.json
