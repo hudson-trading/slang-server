@@ -44,7 +44,7 @@ jobs:
         run: |
           OUTPUT=$(pnpm dlx ovsx publish --no-dependencies --pat INVALID_TOKEN 2>&1 || true)
           echo "$OUTPUT"
-          echo "$OUTPUT" | grep -q 'DONE  Packaged:' || { echo "ERROR: ovsx packaging validation failed"; exit 1; }
+          echo "$OUTPUT" | grep -q 'Packaged:' || { echo "ERROR: ovsx packaging validation failed"; exit 1; }
       - name: Publish to Visual Studio Marketplace
         working-directory: clients/vscode
         run: pnpm dlx @vscode/vsce publish --no-dependencies ${{ inputs.kind }} ${{ inputs.prerelease && '--pre-release' || '' }} --pat ${{ secrets.VS_MARKETPLACE_TOKEN }}
