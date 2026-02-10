@@ -54,6 +54,7 @@ public:
 
     bool operator==(URI const& other) const;
 
+private:
     /// @brief Returns a string_view of the `scheme` component of the URI.
     std::string_view scheme() const;
 
