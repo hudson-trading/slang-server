@@ -179,7 +179,7 @@ std::string detailFormat(const syntax::SyntaxNode& node) {
 }
 
 /// Copied from `Slang::SyntaxPrinter::printLeadingComments` with minor adjustments
-/// Licensed under MIT; see LICENSE.txt in external/slang
+/// Licensed under MIT; see external/slang/LICENSE
 std::optional<std::span<const parsing::Trivia>::iterator> findLeadingDocCommentStart(
     const syntax::SyntaxNode& node) {
     auto triviaSpan = node.getFirstToken().trivia();
