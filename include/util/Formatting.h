@@ -46,7 +46,7 @@ std::string detailFormat(const syntax::SyntaxNode& node);
 /// Strip the comment markers from a doc comment so we can
 /// display the documentation nicely (and depending on the ide
 /// render markdown)
-std::string stripDocComment(std::string_view input);
+std::string stripDocComment(const syntax::SyntaxNode& node);
 
 /// Select the best syntax node to display for hover/code snippets
 const syntax::SyntaxNode& selectDisplayNode(const syntax::SyntaxNode& node);

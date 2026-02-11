@@ -13,11 +13,14 @@
 #include "slang/ast/types/Type.h"
 #include "slang/ast/types/TypePrinter.h"
 #include "slang/numeric/ConstantValue.h"
+#include "slang/parsing/Token.h"
+#include "slang/parsing/TokenKind.h"
 #include "slang/syntax/AllSyntax.h"
 #include "slang/syntax/SyntaxKind.h"
 #include "slang/syntax/SyntaxNode.h"
 #include "slang/syntax/SyntaxPrinter.h"
 #include "slang/text/CharInfo.h"
+
 namespace server {
 using namespace slang;
 
@@ -175,29 +178,58 @@ std::string detailFormat(const syntax::SyntaxNode& node) {
     return res;
 }
 
-std::string stripDocComment(std::string_view input) {
-    if (input.empty())
+inline std::optional<std::span<const parsing::Trivia>::iterator> findLeadingDocCommentStart(
+    const syntax::SyntaxNode& node) {
+    auto triviaSpan = node.getFirstToken().trivia();
+    using Iterator = std::span<const parsing::Trivia>::iterator;
+    std::optional<Iterator> lastComment;
+    std::optional<Iterator> leadingCommentStart;
+
+    // Walk backwards through trivia until
+    // - block comment
+    // - double new line after seeing a comment
+    // This misses leading trivia at first line, although that's typically for license/file
+    auto findDocBoundary = [&]() {
+        bool lastIsNewline = false;
+        for (auto it = triviaSpan.rbegin(); it != triviaSpan.rend(); it++) {
+            const auto& trivia = *it;
+            switch (trivia.kind) {
+                case parsing::TriviaKind::EndOfLine:
+                    if (lastIsNewline && lastComment) {
+                        // found a double newline after a comment, stop here
+                        return;
+                    }
+                    leadingCommentStart = lastComment;
+                    lastIsNewline = true;
+                    break;
+                case parsing::TriviaKind::BlockComment:
+                    // the first block comment is the start
+                    leadingCommentStart = it.base() - 1;
+                    return;
+                case parsing::TriviaKind::LineComment:
+                    lastComment = it.base() - 1;
+                    [[fallthrough]];
+                default:
+                    lastIsNewline = false;
+            }
+        }
+    };
+    findDocBoundary();
+
+    return leadingCommentStart;
+}
+
+std::string stripDocComment(const syntax::SyntaxNode& node) {
+    auto triviaSpan = node.getFirstToken().trivia();
+    auto start = findLeadingDocCommentStart(node);
+    if (!start)
         return {};
 
     fmt::memory_buffer out;
     bool inBlock = false;
     bool lastLineHadText = false;
 
-    std::size_t pos = 0;
-    while (pos <= input.size()) {
-        // Get next line
-        std::size_t end = input.find('\n', pos);
-        if (end == std::string_view::npos)
-            end = input.size();
-
-        std::string_view line = input.substr(pos, end - pos);
-
-#ifdef _WIN32
-        // Trim trailing carriage return for Windows line endings
-        if (!line.empty() && line.back() == '\r')
-            line.remove_suffix(1);
-#endif
-
+    auto appendLine = [&](std::string_view line) {
         // Trim leading whitespace
         ltrim(line);
 
@@ -246,8 +278,35 @@ std::string stripDocComment(std::string_view input) {
 
         fmt::format_to(fmt::appender(out), "{}", line);
         lastLineHadText = hasText;
+    };
 
-        pos = end + 1;
+    for (auto it = *start; it != triviaSpan.end(); ++it) {
+        const auto& t = *it;
+
+        if (t.kind == parsing::TriviaKind::LineComment ||
+            t.kind == parsing::TriviaKind::BlockComment) {
+
+            std::string_view text = t.getRawText();
+
+            std::size_t pos = 0;
+            while (pos <= text.size()) {
+                std::size_t end = text.find('\n', pos);
+                if (end == std::string_view::npos)
+                    end = text.size();
+
+                std::string_view line = text.substr(pos, end - pos);
+#ifdef _WIN32
+                if (!line.empty() && line.back() == '\r')
+                    line.remove_suffix(1);
+#endif
+                appendLine(line);
+
+                pos = end + 1;
+            }
+        }
+        else if (t.kind == parsing::TriviaKind::EndOfLine) {
+            appendLine("");
+        }
     }
 
     return fmt::to_string(out);
