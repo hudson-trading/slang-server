@@ -126,6 +126,10 @@ public:
 
     void onChange(const std::vector<lsp::TextDocumentContentChangeEvent>& contentChanges);
 
+    /// @brief Re-read the buffer from disk (used for external file changes)
+    /// @return true if successful, false if the read failed
+    bool reloadBuffer();
+
     bool textMatches(std::string_view text);
     ////////////////////////////////////////////////
     /// Lsp Functions

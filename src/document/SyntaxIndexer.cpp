@@ -12,10 +12,12 @@
 
 #include "slang/parsing/Token.h"
 #include "slang/parsing/TokenKind.h"
+#include "slang/syntax/SyntaxFacts.h"
 #include "slang/syntax/SyntaxKind.h"
 #include "slang/syntax/SyntaxNode.h"
 #include "slang/syntax/SyntaxTree.h"
 #include "slang/text/SourceLocation.h"
+#include "slang/util/SmallMap.h"
 #include "slang/util/Util.h"
 
 namespace server {
@@ -155,7 +157,7 @@ const slang::parsing::Token* SyntaxIndexer::getTokenAt(slang::SourceLocation loc
     return nullptr;
 }
 
-const syntax::SyntaxNode* SyntaxIndexer::getSyntaxAt(const parsing::Token* tok) const {
+const syntax::SyntaxNode* SyntaxIndexer::getTokenParent(const parsing::Token* tok) const {
     auto it = tokenToParent.find(tok);
     if (it == tokenToParent.end()) {
         return nullptr;
@@ -164,15 +166,37 @@ const syntax::SyntaxNode* SyntaxIndexer::getSyntaxAt(const parsing::Token* tok) 
 }
 
 const syntax::SyntaxNode* SyntaxIndexer::getSyntaxAt(slang::SourceLocation loc) const {
-    auto ind = tokenIndexBefore(loc);
-    if (ind == -1) {
+    auto beforeIndex = tokenIndexBefore(loc);
+
+    // Before first token
+    if (beforeIndex == -1) {
         return nullptr;
     }
-    auto tok = collected[ind];
-    auto node = tokenToParent.find(tok);
-    if (node == tokenToParent.end()) {
+
+    auto beforeToken = collected[beforeIndex];
+
+    // Inside a token
+    if (loc < beforeToken->range().end()) {
+        return getTokenParent(beforeToken);
+    }
+
+    // After last token
+    if (beforeIndex + 1 >= static_cast<int>(collected.size())) {
         return nullptr;
     }
-    return node->second;
+
+    // Find first common ancestor
+    auto beforeSyntax = getTokenParent(beforeToken);
+    SmallSet<const syntax::SyntaxNode*, 16> beforeParents;
+    for (auto ptr = beforeSyntax; ptr != nullptr; ptr = ptr->parent) {
+        beforeParents.insert(ptr);
+    }
+    auto afterSyntax = getTokenParent(collected[beforeIndex + 1]);
+    for (auto ptr = afterSyntax; ptr != nullptr; ptr = ptr->parent) {
+        if (beforeParents.contains(ptr)) {
+            return ptr;
+        }
+    }
+    return nullptr;
 }
 } // namespace server

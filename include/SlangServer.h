@@ -162,6 +162,12 @@ public:
     void onDocDidSave(const lsp::DidSaveTextDocumentParams&) override;
 
     ////////////////////////////////////////////////
+    /// Workspace features
+    ////////////////////////////////////////////////
+
+    void onWorkspaceDidChangeWatchedFiles(const lsp::DidChangeWatchedFilesParams&) override;
+
+    ////////////////////////////////////////////////
     /// Document features (core lsp feautres)
     ////////////////////////////////////////////////
 

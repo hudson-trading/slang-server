@@ -86,6 +86,7 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     // Workspace Features
     registerWorkspaceExecuteCommand();
     registerWorkspaceSymbol();
+    registerWorkspaceDidChangeWatchedFiles();
 
     // LSP Lifecycle
     registerInitialized();
@@ -217,6 +218,28 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     INFO("Initialize result: {} ", rfl::json::write(result));
 
     return result;
+}
+
+void SlangServer::onInitialized(const lsp::InitializedParams&) {
+    INFO("Server initialized at {}", m_workspaceFolder ? m_workspaceFolder->uri.getPath() : "none");
+    m_indexer.waitForIndexingCompletion();
+    m_client.setConfig(m_config);
+
+    if (m_workspaceFolder) {
+        auto options = lsp::DidChangeWatchedFilesRegistrationOptions{
+            .watchers{lsp::FileSystemWatcher{
+                .globPattern = lsp::RelativePattern{.baseUri = m_workspaceFolder->uri,
+                                                    .pattern = "**/*.{sv,svh,v,vh}"},
+                .kind = lsp::WatchKind::Change}},
+        };
+
+        m_client.getClientRegisterCapability(
+            lsp::RegistrationParams{.registrations{lsp::Registration{
+                .id = "slang-server-file-watcher",
+                .method = "workspace/didChangeWatchedFiles",
+                .registerOptions = rfl::to_generic<rfl::UnderlyingEnums>(options),
+            }}});
+    }
 }
 
 void SlangServer::setExplore() {
@@ -561,12 +584,6 @@ SlangServer::getDocDocumentSymbol(const lsp::DocumentSymbolParams& params) {
     return std::vector<lsp::SymbolInformation>{};
 }
 
-void SlangServer::onInitialized(const lsp::InitializedParams&) {
-    INFO("Server initialized at {}", m_workspaceFolder ? m_workspaceFolder->uri.getPath() : "none");
-    m_indexer.waitForIndexingCompletion();
-    m_client.setConfig(m_config);
-}
-
 std::monostate SlangServer::onShutdown(const std::nullopt_t&) {
     INFO("Server shutting down");
     return std::monostate{};
@@ -590,6 +607,11 @@ void SlangServer::onDocDidChange(const lsp::DidChangeTextDocumentParams& params)
 
 void SlangServer::onDocDidSave(const lsp::DidSaveTextDocumentParams& params) {
     m_indexer.waitForIndexingCompletion();
+
+    // Only process documents that have been explicitly opened by the client
+    if (!m_driver->isDocumentOpen(params.textDocument.uri)) {
+        return;
+    }
 
     auto doc = m_driver->getDocument(params.textDocument.uri);
     if (!doc) {
@@ -620,6 +642,11 @@ void SlangServer::onDocDidClose(const lsp::DidCloseTextDocumentParams& params) {
     // TODO: Add method in ServerDriver to check that the rc of the document is 1 before
     // removing (non-compilation mode)
     m_driver->closeDocument(params.textDocument.uri);
+}
+
+void SlangServer::onWorkspaceDidChangeWatchedFiles(const lsp::DidChangeWatchedFilesParams& params) {
+    // Handle external file changes (from git, formatters, etc)
+    m_driver->onWorkspaceDidChangeWatchedFiles(params);
 }
 
 rfl::Variant<std::vector<lsp::SymbolInformation>, std::vector<lsp::WorkspaceSymbol>, std::monostate>
@@ -662,8 +689,6 @@ rfl::Variant<std::vector<lsp::CompletionItem>, lsp::CompletionList, std::monosta
     INFO("Completion triggered by: ['{}','{}']", prevChar, triggerChar);
     auto maybeLoc = doc->getLocation(params.position);
 
-    // TODO: be more precise with this, this is just a heuristic atm
-    bool isLhs = prevText.size() >= 2 && std::all_of(prevText.begin(), prevText.end() - 1, isspace);
     if (!maybeLoc) {
         WARN("No location found for position {},{}", params.position.line,
              params.position.character);
@@ -671,7 +696,7 @@ rfl::Variant<std::vector<lsp::CompletionItem>, lsp::CompletionList, std::monosta
     }
     auto loc = maybeLoc.value();
     if (params.context->triggerKind == lsp::CompletionTriggerKind::Invoked) {
-        m_driver->completions.getInvokedCompletions(results, doc, isLhs, loc);
+        m_driver->completions.getInvokedCompletions(results, doc, loc);
     }
     else {
         m_driver->completions.getTriggerCompletions(triggerChar, prevChar, doc, loc, results);
