@@ -178,6 +178,7 @@ std::string detailFormat(const syntax::SyntaxNode& node) {
     return res;
 }
 
+/// Copied from `Slang::SyntaxPrinter::printFile` with minor adjustments
 inline std::optional<std::span<const parsing::Trivia>::iterator> findLeadingDocCommentStart(
     const syntax::SyntaxNode& node) {
     auto triviaSpan = node.getFirstToken().trivia();
