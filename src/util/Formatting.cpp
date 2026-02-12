@@ -228,7 +228,6 @@ std::string stripDocComment(const syntax::SyntaxNode& node) {
         return {};
 
     fmt::memory_buffer out;
-    bool inBlock = false;
 
     auto appendLine = [&](std::string_view line, parsing::TriviaKind kind) {
 #ifdef _WIN32
