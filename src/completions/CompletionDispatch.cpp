@@ -8,6 +8,7 @@
 
 #include "completions/CompletionDispatch.h"
 
+#include "ServerDriver.h"
 #include "completions/CompletionContext.h"
 #include "completions/Completions.h"
 #include "lsp/LspTypes.h"
@@ -27,9 +28,9 @@ namespace ast = slang::ast;
 
 namespace server {
 
-CompletionDispatch::CompletionDispatch(const Indexer& indexer, SourceManager& sourceManager,
-                                       slang::Bag& options) :
-    m_indexer(indexer), m_sourceManager(sourceManager), m_options(options) {
+CompletionDispatch::CompletionDispatch(ServerDriver& driver, const Indexer& indexer,
+                                       SourceManager& sourceManager, slang::Bag& options) :
+    m_driver(driver), m_indexer(indexer), m_sourceManager(sourceManager), m_options(options) {
 }
 
 void CompletionDispatch::getInvokedCompletions(std::vector<lsp::CompletionItem>& results,
@@ -76,19 +77,15 @@ void CompletionDispatch::getTriggerCompletions(char triggerChar, char prevChar,
             return;
         }
         auto name = moduleToken->valueText();
-        auto it = m_indexer.symbolToFiles.find(std::string(name));
-        if (it == m_indexer.symbolToFiles.end() || it->second.empty()) {
+        auto symbolLoc = m_indexer.getFirstSymbolLoc(name);
+        if (!symbolLoc) {
             ERROR("No module found for {}", name);
             WARN("With line {}", doc->getPrevText(toPosition(loc, m_sourceManager)));
             return;
         }
-        else if (it->second.size() > 1) {
-            WARN("Multiple modules found for {}: {}", name, it->second.size());
-        }
 
-        auto& entry = it->second[0];
-        auto completion = completions::getInstanceCompletion(std::string{name}, entry.kind);
-        resolveModuleCompletion(completion, *entry.uri, true);
+        auto completion = completions::getInstanceCompletion(std::string{name}, symbolLoc->kind);
+        resolveModuleCompletion(completion, *symbolLoc->uri, true);
         results.push_back(completion);
     }
     else if (triggerChar == ':' && prevChar == ':') {
@@ -132,7 +129,7 @@ void CompletionDispatch::getTriggerCompletions(char triggerChar, char prevChar,
             results.push_back(completions::getMacroCompletion(*macro));
         }
         // Add global macros
-        for (auto& [name, _info] : m_indexer.macroToFiles) {
+        for (const auto& name : m_indexer.getAllMacroNames()) {
             results.push_back(completions::getMacroCompletion(name));
         }
     }
@@ -145,8 +142,22 @@ void CompletionDispatch::getTriggerCompletions(char triggerChar, char prevChar,
         }
         auto sym = doc->getAnalysis().getSymbolAtToken(exprToken);
         if (!sym) {
-            WARN("No symbol found for token {}", exprToken->valueText());
-            return;
+            WARN("No symbol found for token {}, checking index.", exprToken->valueText());
+            // return;
+            auto symbolLoc = m_indexer.getFirstSymbolLoc(exprToken->valueText());
+            if (!symbolLoc) {
+                WARN("No symbol found in index for {}", exprToken->valueText());
+                return;
+            }
+            auto doc = m_driver.getDocument(URI::fromFile(*symbolLoc->uri));
+            if (!doc) {
+                return;
+            }
+            sym = doc->getAnalysis().getDefinition(exprToken->valueText());
+            if (!sym) {
+                WARN("No symbol found in compilation for {}", exprToken->valueText());
+                return;
+            }
         }
         if (ast::DefinitionSymbol::isKind(sym->kind)) {
             auto& def = sym->as<ast::DefinitionSymbol>();
@@ -188,7 +199,7 @@ void CompletionDispatch::resolveModuleCompletion(lsp::CompletionItem& item,
                                                  bool excludeName) {
     auto name = item.label;
     if (modulePath == std::nullopt) {
-        auto files = m_indexer.getRelevantFilesForName(name);
+        auto files = m_indexer.getFilesForSymbol(name);
         if (files.size() == 0) {
             WARN("No files found for module {}", name);
             return;

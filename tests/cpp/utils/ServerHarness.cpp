@@ -418,6 +418,12 @@ std::vector<lsp::LocationLink> Cursor::getDefinitions() {
     return {};
 }
 
+std::vector<lsp::DocumentHighlight> Cursor::getHighlights() {
+    auto maybeHighlights = m_doc.m_server.getDocDocumentHighlight(
+        lsp::DocumentHighlightParams{.textDocument = {getUri()}, .position = getPosition()});
+    return maybeHighlights.value_or(std::vector<lsp::DocumentHighlight>{});
+}
+
 std::optional<slang::SourceLocation> DocumentHandle::getLocation(lsp::uint offset) {
     return doc->getSourceManager().getSourceLocation(doc->getBuffer(), offset);
 }

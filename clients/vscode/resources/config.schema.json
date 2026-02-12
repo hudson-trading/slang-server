@@ -34,10 +34,6 @@
           "type": "integer",
           "description": "Thread count to use for indexing"
         },
-        "parsingThreads": {
-          "type": "integer",
-          "description": "Thread count to use for parsing"
-        },
         "build": {
           "description": "Build file to use",
           "anyOf": [

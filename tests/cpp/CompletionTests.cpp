@@ -481,7 +481,6 @@ TEST_CASE("PortListCompletion") {
         input logic clk,
         // cursor in port list
     );
-        test_intf intf_inst();
 
     endmodule
 
@@ -489,7 +488,6 @@ TEST_CASE("PortListCompletion") {
     module test_modpor_comps (
         test_intf.
     );
-        test_intf intf_inst();
     endmodule
     )");
 

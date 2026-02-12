@@ -436,6 +436,11 @@ const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declT
     return nullptr;
 }
 
+const ast::Symbol* ShallowAnalysis::getDefinition(std::string_view name) const {
+    auto def = m_compilation->tryGetDefinition(name, m_compilation->getRoot());
+    return def.definition;
+}
+
 const ast::Symbol* ShallowAnalysis::getSymbolAt(SourceLocation loc) const {
     auto node = syntaxes.getWordTokenAt(loc);
     if (!node) {

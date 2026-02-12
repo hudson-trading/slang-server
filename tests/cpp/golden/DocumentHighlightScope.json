@@ -1,0 +1,70 @@
+[
+  {
+    "scope_top": [
+      {
+        "range": {
+          "start": {
+            "line": 2,
+            "character": 10
+          },
+          "end": {
+            "line": 2,
+            "character": 15
+          }
+        }
+      },
+      {
+        "range": {
+          "start": {
+            "line": 3,
+            "character": 21
+          },
+          "end": {
+            "line": 3,
+            "character": 26
+          }
+        }
+      }
+    ]
+  },
+  {
+    "scope_sub": [
+      {
+        "range": {
+          "start": {
+            "line": 3,
+            "character": 15
+          },
+          "end": {
+            "line": 3,
+            "character": 20
+          }
+        }
+      },
+      {
+        "range": {
+          "start": {
+            "line": 6,
+            "character": 24
+          },
+          "end": {
+            "line": 6,
+            "character": 29
+          }
+        }
+      },
+      {
+        "range": {
+          "start": {
+            "line": 7,
+            "character": 11
+          },
+          "end": {
+            "line": 7,
+            "character": 16
+          }
+        }
+      }
+    ]
+  }
+]

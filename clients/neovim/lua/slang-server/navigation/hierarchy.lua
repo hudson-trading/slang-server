@@ -1,33 +1,26 @@
 local config = require("slang-server._core.config").CONFIG
-local hl = require("slang-server._core.highlights")
 local ui = require("slang-server._core.ui")
+local hl = require("slang-server._core.highlights")
 local client = require("slang-server._lsp.client")
 local handlers = require("slang-server.handlers")
 local util = require("slang-server.util")
 
 local M = {}
 
----@type slang-server.hierarchy.State
-M.state = { open = false }
+---@type slang-server.navigation.hierarchy.State
+M.state = {}
 
--- M.state.sv_buf returns the most recently focused SV buffer info
--- M.state.sv_winnr returns the winnr of the most recently focused visible SV buffer
-setmetatable(M.state, {
-   ---@param _k string
-   ---@return integer
-   __index = function(self, _k)
-      if _k == "sv_buf" then
-         return util.last_buf({ buflisted = true, filetype = { "verilog", "systemverilog" } })
-      elseif _k == "sv_win" then
-         return util.last_win({ buflisted = true, filetype = { "verilog", "systemverilog" } })
-      end
-   end,
-})
+function M.on_close()
+   vim.api.nvim_buf_delete(M.state.split.bufnr, { force = true })
+   M.state.tree = nil
+   M.state.split = nil
+end
 
 ---@param split NuiSplit
 ---@param tree NuiTree
 local function map_keys(split, tree)
-   ---@type table<string, slang-server.ui.Mapping[]>
+   local navigation = require("slang-server.navigation")
+   ---@type table<string, slang-server.ui.Mapping>
    local mappings
    mappings = {
       ["yn"] = {
@@ -61,7 +54,7 @@ local function map_keys(split, tree)
       ["<cr>"] = {
          impl = function(node)
             if node and node.instLoc then
-               util.jump_loc(node.instLoc, M.state.sv_win.winnr)
+               util.jump_loc(node.instLoc, navigation.state.sv_win.winnr)
             end
          end,
          opts = { noremap = true },
@@ -70,7 +63,7 @@ local function map_keys(split, tree)
       ["gd"] = {
          impl = function(node)
             if node and node.declLoc then
-               util.jump_loc(node.declLoc, M.state.sv_win.winnr)
+               util.jump_loc(node.declLoc, navigation.state.sv_win.winnr)
             end
          end,
          opts = { noremap = true },
@@ -107,90 +100,34 @@ local function map_keys(split, tree)
       },
    }
 
-   for map, spec in pairs(mappings) do
-      split:map("n", map, function()
-         spec.impl(tree:get_node())
-      end, spec.opts)
+   navigation.map_keys(split, tree, mappings)
+end
+
+---@param parent slang-server.navigation.TreeNode?
+---@param root boolean?
+---@param remaining_path slang-server.navigation.Path?
+---@param from_cell boolean?
+function M.open_remainder(parent, root, remaining_path, from_cell)
+   local path = parent and parent.path or ""
+   if remaining_path ~= nil and remaining_path ~= "" then
+      local sep_loc = string.find(remaining_path, "[.[]", 2) or (string.len(remaining_path) + 1)
+      local is_bracket = string.sub(remaining_path, sep_loc, sep_loc) == "["
+      local before_sep = string.sub(remaining_path, 0, sep_loc - 1)
+      local after_sep = string.sub(remaining_path, sep_loc + (is_bracket and 0 or 1))
+      local before_is_bracket = string.sub(before_sep, 1, 1) == "["
+      path = path .. ((before_is_bracket or root) and "" or ".") .. before_sep
+      M._lazy_open(path, false, after_sep, from_cell)
    end
 end
 
----@param msg string
----@param opts {parent: NuiTree.Node?, hl: string?}?
-local function message(msg, opts)
-   local tree = M.state.tree
-   if not tree then
-      return
-   end
-
-   opts = opts or {}
-   local id
-   if opts.parent then
-      id = opts.parent:get_id() .. "__message"
-   else
-      id = "__message"
-   end
-
-   local text = ui.NuiText(msg, opts.hl)
-
-   local msg_node = { ui.NuiTree.Node({ text = text, _uid = id }) }
-
-   if opts.parent then
-      tree:set_nodes(msg_node, opts.parent:get_id())
-      tree:get_node(opts.parent:get_id()):expand()
-   else
-      tree:set_nodes(msg_node)
-   end
-
-   tree:render()
-end
-
-local function on_close()
-   if not M.state.open then
-      return
-   end
-   vim.api.nvim_buf_delete(M.state.split.bufnr, { force = true })
-   M.state.tree = nil
-   M.state.split = nil
-   M.state.open = false
-end
-
-local function on_hover()
-   if not M.state.open then
-      return
-   end
-
-   if M.state.hover then
-      M.state.hover:unmount()
-   end
-
-   local selected = M.state.tree:get_node()
-   if not (selected and selected.value) then
-      return
-   end
-
-   M.state.hover = ui.components.hover(selected.value)
-
-   local event = require("nui.utils.autocmd").event
-   M.state.hover:on({ event.BufLeave }, function()
-      M.state.hover:unmount()
-   end, { once = true })
-
-   local line = ui.NuiLine()
-   line:append(selected.value, hl.HIER_VALUE)
-   line:render(M.state.hover.bufnr, -1, 1)
-
-   M.state.hover:mount()
-end
-
----@param node slang-server.hierarchy.Node
----@param parent_node slang-server.hierarchy.TreeNode?
+---@param node slang-server.navigation.HierNode
+---@param parent_node slang-server.navigation.TreeNode?
 local function prepare_node(node, parent_node)
+   local navigation = require("slang-server.navigation")
    local line = ui.NuiLine()
 
    if node.text then
-      line:append(string.rep(" ", node:get_depth()) .. "└╴", hl.HIER_SUBTLE)
-      line:append(" ")
-      line:append(node.text, "Comment")
+      navigation.make_comment_line(node, line)
    else
       local decoration = config.kinds[string.lower(node.kind)]
       local expander = " "
@@ -244,34 +181,18 @@ local function prepare_node(node, parent_node)
    return line
 end
 
----@param node slang-server.hierarchy.TreeNode
----@return string
-local function get_node_id(node)
-   return node._uid
-end
-
 -- Convert LSP nodes to TreeNodes
 ---@param nodes slang-server.lsp.Node[]
----@param parent_node slang-server.hierarchy.TreeNode?
----@return slang-server.hierarchy.TreeNode[]
+---@param parent_node slang-server.navigation.TreeNode?
+---@return slang-server.navigation.TreeNode[]
 local function parse_nodes(nodes, parent_node)
    local nui_nodes = {}
-   local unique_nodes = {}
    for _, node in ipairs(nodes) do
       local treeNode = {}
 
       local sep = string.match(node.instName, "%[%d+%]") and "" or "."
       treeNode.path = parent_node and (parent_node.path .. sep .. node.instName) or node.instName
-
-      -- Is it possible to have non-unique paths, in cases where Slang can't
-      -- statically infer the taken branch of a conditional generate, for
-      -- example. We'll use an 'offset' to ensure IDs are unique.
       treeNode._uid = parent_node and (parent_node._uid .. sep .. node.instName) or node.instName
-      if unique_nodes[treeNode.path] then
-         treeNode._offset = unique_nodes[treeNode.path] + 1
-         treeNode._uid = treeNode._uid .. "#" .. treeNode._offset
-      end
-      unique_nodes[treeNode.path] = treeNode._offset or 0
 
       if node.children then
          treeNode._populated = #node.children > 0
@@ -281,7 +202,7 @@ local function parse_nodes(nodes, parent_node)
 
       treeNode = vim.tbl_deep_extend("error", treeNode, node)
 
-      ---@cast treeNode slang-server.hierarchy.TreeNode
+      ---@cast treeNode slang-server.navigation.TreeNode
 
       nui_nodes[#nui_nodes + 1] = ui.NuiTree.Node(treeNode, parse_nodes(treeNode.children or {}, treeNode))
    end
@@ -289,28 +210,14 @@ local function parse_nodes(nodes, parent_node)
    return nui_nodes
 end
 
----@param parent slang-server.hierarchy.TreeNode?
----@param root boolean?
----@param remaining_path slang-server.hierarchy.Path?
-local function open_remainder(parent, root, remaining_path)
-   local path = parent and parent.path or ""
-   if remaining_path ~= nil and remaining_path ~= "" then
-      local sep_loc = string.find(remaining_path, "[.[]", 2) or (string.len(remaining_path) + 1)
-      local is_bracket = string.sub(remaining_path, sep_loc, sep_loc) == "["
-      local before_sep = string.sub(remaining_path, 0, sep_loc - 1)
-      local after_sep = string.sub(remaining_path, sep_loc + (is_bracket and 0 or 1))
-      local before_is_bracket = string.sub(before_sep, 1, 1) == "["
-      path = path .. ((before_is_bracket or root) and "" or ".") .. before_sep
-      M._lazy_open(path, false, after_sep)
-   end
-end
-
 ---@param nodes slang-server.lsp.Node[]
----@param parent slang-server.hierarchy.TreeNode?
+---@param parent slang-server.navigation.TreeNode?
 ---@param root boolean?
----@param remaining_path slang-server.hierarchy.Path?
-local function show_nodes(nodes, parent, root, remaining_path)
-   if not M.state.open then
+---@param remaining_path slang-server.navigation.Path?
+---@param from_cell boolean?
+local function show_nodes(nodes, parent, root, remaining_path, from_cell)
+   local navigation = require("slang-server.navigation")
+   if not navigation.state.open then
       return
    end
 
@@ -325,6 +232,7 @@ local function show_nodes(nodes, parent, root, remaining_path)
       tree_nodes = parse_nodes(nodes, parent)
       M.state.tree:set_nodes(tree_nodes, parent:get_id())
 
+      parent._populated = true
       parent:expand()
    else
       tree_nodes = parse_nodes(nodes)
@@ -336,21 +244,32 @@ local function show_nodes(nodes, parent, root, remaining_path)
    end
 
    M.state.tree:render()
-   open_remainder(parent, root, remaining_path)
+   M.open_remainder(parent, root, remaining_path, from_cell)
+end
+
+---@param node NuiTree.Node
+local function focus_tree(node)
+   local _, start_linenr = M.state.tree:get_node(node:get_id())
+   vim.api.nvim_win_set_cursor(M.state.split.winid, { start_linenr, 0 })
+   vim.api.nvim_win_call(M.state.split.winid, function()
+      vim.cmd("normal! zz")
+   end)
 end
 
 -- `path` can be string or nil, with nil representing $root and returning the first top level instance (TODO:)
 -- If `path` is given and does not exist in the hierarchy, it is treated as a root node
 -- If `path` is given and exists in the hierarchy, it is considered a subscope to be populated
----@param path_or_node slang-server.hierarchy.Path | slang-server.hierarchy.TreeNode
+---@param path_or_node slang-server.navigation.Path | slang-server.navigation.TreeNode
 ---@param root boolean?
----@param remaining_path slang-server.hierarchy.Path?
-function M._lazy_open(path_or_node, root, remaining_path)
+---@param remaining_path slang-server.navigation.Path?
+---@param from_cell boolean?
+function M._lazy_open(path_or_node, root, remaining_path, from_cell)
+   local navigation = require("slang-server.navigation")
    local node
    local path
 
    if type(path_or_node) == "string" then
-      node = M.state.tree:get_node(path_or_node) --[[@as slang-server.hierarchy.TreeNode?]]
+      node = M.state.tree:get_node(path_or_node) --[[@as slang-server.navigation.TreeNode?]]
       path = path_or_node
    else
       node = path_or_node
@@ -361,29 +280,61 @@ function M._lazy_open(path_or_node, root, remaining_path)
    if node and node._populated then
       node:expand()
       M.state.tree:render()
-      open_remainder(node, root, remaining_path)
+      if from_cell then
+         focus_tree(node)
+      end
+      M.open_remainder(node, root, remaining_path, from_cell)
    else
-      message("Loading scope...", { parent = node, hl = hl.HIER_SUBTLE })
+      navigation.message(M.state.tree, "Loading scope...", { parent = node, hl = hl.HIER_SUBTLE })
+      if node and from_cell then
+         focus_tree(node)
+      end
 
-      if not M.state.sv_buf then
+      if not navigation.state.sv_buf then
          vim.notify("No SV buffer", vim.log.levels.ERROR)
       end
 
-      client.getScope(M.state.sv_buf.bufnr, {
+      client.getScope(navigation.state.sv_buf.bufnr, {
          on_success = function(resp)
-            show_nodes(resp, node, root, remaining_path)
+            show_nodes(resp, node, root, remaining_path, from_cell)
          end,
          on_failure = handlers.defaultOnFailure,
       }, { hierPath = path })
    end
 end
 
----@param top slang-server.hierarchy.Path The top level at which to initialise the hierarchy
-function M.show(top)
-   if M.state.open then
+local function on_hover()
+   local navigation = require("slang-server.navigation")
+   if not navigation.state.open then
       return
    end
 
+   if M.state.hover then
+      M.state.hover:unmount()
+   end
+
+   local selected = M.state.tree:get_node()
+   if not (selected and selected.value) then
+      return
+   end
+
+   M.state.hover = ui.components.hover(selected.value)
+
+   local event = require("nui.utils.autocmd").event
+   M.state.hover:on({ event.BufLeave }, function()
+      M.state.hover:unmount()
+   end, { once = true })
+
+   local line = ui.NuiLine()
+   line:append(selected.value, hl.HIER_VALUE)
+   line:render(M.state.hover.bufnr, -1, 1)
+
+   M.state.hover:mount()
+end
+
+---@param top slang-server.navigation.Path The top level at which to initialise the hierarchy
+function M.show(top)
+   local navigation = require("slang-server.navigation")
    local hierarchy_config = config.hierarchy
    local split = ui.NuiSplit({
       relative = "win",
@@ -397,8 +348,8 @@ function M.show(top)
    })
 
    local event = require("nui.utils.autocmd").event
-   split:on(event.BufUnload, on_close, { once = true })
-   split:on(event.WinClosed, on_close, { once = true })
+   split:on(event.BufUnload, navigation.on_close, { once = true })
+   split:on(event.WinClosed, navigation.on_close, { once = true })
    split:on(event.CursorMoved, on_hover)
 
    split:mount()
@@ -407,13 +358,12 @@ function M.show(top)
 
    local tree = ui.NuiTree({
       prepare_node = prepare_node,
-      get_node_id = get_node_id,
+      get_node_id = navigation.get_node_id,
       bufnr = split.bufnr,
    })
 
    map_keys(split, tree)
 
-   M.state.open = true
    M.state.split = split
    M.state.tree = tree
 
