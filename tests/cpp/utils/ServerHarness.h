@@ -179,6 +179,9 @@ public:
     bool hasDefinition();
     std::vector<lsp::LocationLink> getDefinitions();
 
+    // Get document highlights
+    std::vector<lsp::DocumentHighlight> getHighlights();
+
     // Chaining search methods
     Cursor before(const std::string& before);
     Cursor after(const std::string& after);

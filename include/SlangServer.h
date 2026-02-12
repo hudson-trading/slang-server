@@ -202,6 +202,10 @@ public:
     /// Completions resolve (get docs and snippet string)
     lsp::CompletionItem getCompletionItemResolve(const lsp::CompletionItem&) override;
 
+    /// Get a list of highlights for all references to a symbol in the current document
+    std::optional<std::vector<lsp::DocumentHighlight>> getDocDocumentHighlight(
+        const lsp::DocumentHighlightParams&) override;
+
     ////////////////////////////////////////////////
     /// Cone tracing
     ////////////////////////////////////////////////

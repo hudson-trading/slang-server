@@ -599,6 +599,46 @@ std::vector<lsp::LocationLink> ServerDriver::getDocDefinition(const URI& uri,
     }};
 }
 
+std::optional<std::vector<lsp::DocumentHighlight>> ServerDriver::getDocDocumentHighlight(
+    const URI& uri, const lsp::Position& position) {
+    auto doc = getDocument(uri);
+    if (!doc) {
+        return std::nullopt;
+    }
+    auto& analysis = doc->getAnalysis();
+
+    // Get the symbol at the position
+    auto loc = sm.getSourceLocation(doc->getBuffer(), position.line, position.character);
+    if (!loc) {
+        return std::nullopt;
+    }
+    auto declTok = analysis.syntaxes.getWordTokenAt(loc.value());
+    if (!declTok) {
+        return std::nullopt;
+    }
+    auto symbol = analysis.getSymbolAtToken(declTok);
+    if (!symbol) {
+        return std::nullopt;
+    }
+
+    // Find all references to the symbol in the current document
+    std::vector<lsp::Location> references;
+    analysis.addLocalReferences(references, symbol->location, symbol->name);
+    if (references.empty()) {
+        return std::nullopt;
+    }
+
+    std::vector<lsp::DocumentHighlight> highlights;
+    highlights.reserve(references.size());
+    for (auto& ref : references) {
+        highlights.push_back(lsp::DocumentHighlight{
+            .range = ref.range,
+        });
+    }
+
+    return highlights;
+}
+
 void ServerDriver::addMemberReferences(std::vector<lsp::Location>& references,
                                        const ast::Symbol& parentSymbol,
                                        const ast::Symbol& targetSymbol, bool isTypeMember) {
