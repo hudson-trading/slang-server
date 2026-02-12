@@ -270,13 +270,13 @@ std::string stripDocComment(const syntax::SyntaxNode& node) {
 
         const bool hasText = !line.empty();
 
-        // Force markdown to respect newlines by replacing `\n` with `  \n`
-        if (lastLineHadText) {
-            fmt::format_to(fmt::appender(out), "  \n");
-        }
-        else if (!lastLineHadText && hasText) {
-            fmt::format_to(fmt::appender(out), "\n");
-        }
+        // // Force markdown to respect newlines by replacing `\n` with `  \n`
+        // if (lastLineHadText) {
+        //     fmt::format_to(fmt::appender(out), "  \n");
+        // }
+        // else if (!lastLineHadText && hasText) {
+        //     fmt::format_to(fmt::appender(out), "\n");
+        // }
 
         fmt::format_to(fmt::appender(out), "{}", line);
         lastLineHadText = hasText;
@@ -306,8 +306,6 @@ std::string stripDocComment(const syntax::SyntaxNode& node) {
                 pos = end + 1;
             }
         }
-        // else if (t.kind == parsing::TriviaKind::EndOfLine) {
-        // }
     }
 
     return fmt::to_string(out);
