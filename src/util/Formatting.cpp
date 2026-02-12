@@ -229,34 +229,25 @@ std::string stripDocComment(const syntax::SyntaxNode& node) {
 
     fmt::memory_buffer out;
     bool inBlock = false;
-    bool lastLineHadText = false;
 
-    auto appendLine = [&](std::string_view line) {
-        // Trim leading whitespace
+    auto appendLine = [&](std::string_view line, parsing::TriviaKind kind) {
+#ifdef _WIN32
+        if (!line.empty() && line.back() == '\r')
+            line.remove_suffix(1);
+#endif
+
+        // Trim leading whitespace and newlines
         ltrim(line);
 
-        if (!inBlock) {
+        if (kind == parsing::TriviaKind::LineComment) {
             // Single-line doc comment
             if (line.starts_with("///"))
                 line.remove_prefix(3);
             else if (line.starts_with("//"))
                 line.remove_prefix(2);
-
-            // To be a valid doc comment, block comments must start
-            // at beginning of line
-            else if (line.starts_with("/*")) {
-                inBlock = true;
-                line.remove_prefix(2);
-            }
         }
 
-        if (inBlock) {
-            // End of block comment
-            if (auto p = line.find("*/"); p != std::string_view::npos) {
-                line = line.substr(0, p);
-                inBlock = false;
-            }
-
+        else { // if (kind == parsing::TriviaKind::BlockComment)
             // Check for leading '*'; ie:
             /*
              * <- Leading star
@@ -268,27 +259,50 @@ std::string stripDocComment(const syntax::SyntaxNode& node) {
             // line comments are displayed as is in the doc comment.
         }
 
+        ltrim(line);
+
         const bool hasText = !line.empty();
 
-        // // Force markdown to respect newlines by replacing `\n` with `  \n`
-        // if (lastLineHadText) {
-        //     fmt::format_to(fmt::appender(out), "  \n");
-        // }
-        // else if (!lastLineHadText && hasText) {
-        //     fmt::format_to(fmt::appender(out), "\n");
-        // }
-
         fmt::format_to(fmt::appender(out), "{}", line);
-        lastLineHadText = hasText;
+
+        // Force markdown to respect newlines by replacing `\n` with `  \n`
+        if (hasText) {
+            fmt::format_to(fmt::appender(out), "  \n");
+        }
+        else {
+            fmt::format_to(fmt::appender(out), "\n");
+        }
     };
 
     for (auto it = *start; it != triviaSpan.end(); ++it) {
         const auto& t = *it;
 
-        if (t.kind == parsing::TriviaKind::LineComment ||
-            t.kind == parsing::TriviaKind::BlockComment) {
+        if (t.kind == parsing::TriviaKind::LineComment) {
+            std::string_view line = t.getRawText();
+            appendLine(line, t.kind);
+        }
+
+        else if (t.kind == parsing::TriviaKind::BlockComment) {
 
             std::string_view text = t.getRawText();
+
+            if (text.starts_with("/*")) {
+                text.remove_prefix(2);
+
+                if (text.starts_with("*")) {
+                    // Handle /** doc comments
+                    text.remove_prefix(1);
+                }
+            }
+
+            if (text.ends_with("*/")) {
+                text.remove_suffix(2);
+
+                if (text.ends_with("*")) {
+                    // Handle **/ doc comments
+                    text.remove_suffix(1);
+                }
+            }
 
             std::size_t pos = 0;
             while (pos <= text.size()) {
@@ -297,11 +311,7 @@ std::string stripDocComment(const syntax::SyntaxNode& node) {
                     end = text.size();
 
                 std::string_view line = text.substr(pos, end - pos);
-#ifdef _WIN32
-                if (!line.empty() && line.back() == '\r')
-                    line.remove_suffix(1);
-#endif
-                appendLine(line);
+                appendLine(line, t.kind);
 
                 pos = end + 1;
             }
