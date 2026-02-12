@@ -101,6 +101,9 @@ module TestModule #(
 );
 
     test_pkg::state_t state, state_next;
+
+    // This comment is just here to test the multi line
+    // comment functionality.
     test_pkg::id_t counter;
 
     // Instance array that depends on NUM_SUBS parameter
