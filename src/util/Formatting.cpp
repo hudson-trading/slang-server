@@ -178,9 +178,9 @@ std::string detailFormat(const syntax::SyntaxNode& node) {
     return res;
 }
 
-/// Copied from `Slang::SyntaxPrinter::printFile` with minor adjustments
-/// Licensed under MIT; see LICENSE.txt in external/slang
-inline std::optional<std::span<const parsing::Trivia>::iterator> findLeadingDocCommentStart(
+/// Copied from `Slang::SyntaxPrinter::printLeadingComments` with minor adjustments
+/// Licensed under MIT; see external/slang/LICENSE
+std::optional<std::span<const parsing::Trivia>::iterator> findLeadingDocCommentStart(
     const syntax::SyntaxNode& node) {
     auto triviaSpan = node.getFirstToken().trivia();
     using Iterator = std::span<const parsing::Trivia>::iterator;
