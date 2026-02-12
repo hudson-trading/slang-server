@@ -306,9 +306,8 @@ std::string stripDocComment(const syntax::SyntaxNode& node) {
                 pos = end + 1;
             }
         }
-        else if (t.kind == parsing::TriviaKind::EndOfLine) {
-            appendLine("");
-        }
+        // else if (t.kind == parsing::TriviaKind::EndOfLine) {
+        // }
     }
 
     return fmt::to_string(out);
