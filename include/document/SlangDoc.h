@@ -56,8 +56,9 @@ private:
     /// List of weak pointers to documents that this one depends on. Owned by
     std::vector<std::shared_ptr<SlangDoc>> m_dependentDocuments;
 
-    /// Document analysis for syntax and symbol analysis
-    std::unique_ptr<ShallowAnalysis> m_analysis;
+    /// Document analysis for syntax and symbol analysis.
+    /// Shared so that callers can hold the analysis alive even if getAnalysis() recreates it.
+    std::shared_ptr<ShallowAnalysis> m_analysis;
 
     // For testing
     friend class DocumentHandle;
@@ -88,8 +89,9 @@ public:
     /// @brief Check if analysis exists without creating it
     bool hasAnalysis() const { return m_analysis != nullptr && m_analysis->hasValidBuffers(); }
 
-    /// @brief Get the analysis, creating it if necessary
-    ShallowAnalysis& getAnalysis(bool refreshDependencies = false);
+    /// @brief Get the analysis, creating it if necessary.
+    /// Returns a shared_ptr so callers can hold the analysis alive independently of this document.
+    std::shared_ptr<ShallowAnalysis> getAnalysis(bool refreshDependencies = false);
 
     ////////////////////////////////////////////////
     /// Indexed Syntax Tree Methods
@@ -97,11 +99,11 @@ public:
 
     /// Methods dependent on the indexed syntax tree
     const slang::parsing::Token* getTokenAt(slang::SourceLocation loc) {
-        return getAnalysis().getTokenAt(loc);
+        return getAnalysis()->getTokenAt(loc);
     }
 
     const slang::parsing::Token* getWordTokenAt(slang::SourceLocation loc) {
-        return getAnalysis().getWordTokenAt(loc);
+        return getAnalysis()->getWordTokenAt(loc);
     }
 
     ////////////////////////////////////////////////
@@ -109,12 +111,12 @@ public:
     ////////////////////////////////////////////////
 
     const std::unique_ptr<slang::ast::Compilation>& getCompilation() {
-        return getAnalysis().getCompilation();
+        return getAnalysis()->getCompilation();
     }
 
     /// Return the scope at this location, if any. Does not return the root scope.
     const slang::ast::Scope* getScopeAt(slang::SourceLocation loc) {
-        return getAnalysis().getScopeAt(loc);
+        return getAnalysis()->getScopeAt(loc);
     }
     ////////////////////////////////////////////////
     /// File Lifecycle
@@ -146,7 +148,7 @@ public:
 
     /// @brief For the document symbols request
     // TODO: should this use the shallow compilation instead of syntax tree?
-    std::vector<lsp::DocumentSymbol> getSymbols() { return getAnalysis().getDocSymbols(); }
+    std::vector<lsp::DocumentSymbol> getSymbols() { return getAnalysis()->getDocSymbols(); }
 
     std::optional<slang::SourceLocation> getLocation(const lsp::Position& position) {
         return m_sourceManager.getSourceLocation(m_buffer.id, position.line, position.character);
@@ -155,7 +157,7 @@ public:
     // Previous text on and before a position
     std::string getPrevText(const lsp::Position& position);
 
-    std::vector<lsp::DocumentLink> getDocLinks() { return getAnalysis().getDocLinks(); }
+    std::vector<lsp::DocumentLink> getDocLinks() { return getAnalysis()->getDocLinks(); }
 };
 
 } // namespace server

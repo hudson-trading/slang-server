@@ -101,7 +101,7 @@ bool isProceduralBlockContext(SyntaxKind kind) {
 CompletionContext CompletionContext::fromLocation(SlangDoc& doc, SourceLocation loc) {
     CompletionContext ctx;
     ctx.scope = doc.getScopeAt(loc);
-    ctx.syntax = doc.getAnalysis().syntaxes.getSyntaxAt(loc);
+    ctx.syntax = doc.getAnalysis()->syntaxes.getSyntaxAt(loc);
 
     if (!ctx.syntax) {
         // No syntax node at location - assume module item context if we have a scope

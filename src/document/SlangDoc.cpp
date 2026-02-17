@@ -96,7 +96,7 @@ std::shared_ptr<syntax::SyntaxTree> SlangDoc::getSyntaxTree() {
     return m_tree;
 }
 
-ShallowAnalysis& SlangDoc::getAnalysis(bool refreshDependencies) {
+std::shared_ptr<ShallowAnalysis> SlangDoc::getAnalysis(bool refreshDependencies) {
     if (!m_analysis || !m_analysis->hasValidBuffers() || refreshDependencies) {
         // Load dependent documents from driver if not already loaded
         if (m_dependentDocuments.empty() || refreshDependencies) {
@@ -109,7 +109,7 @@ ShallowAnalysis& SlangDoc::getAnalysis(bool refreshDependencies) {
                 trees.push_back(depTree);
             }
         }
-        m_analysis = std::make_unique<ShallowAnalysis>(m_sourceManager, m_buffer.id, m_tree,
+        m_analysis = std::make_shared<ShallowAnalysis>(m_sourceManager, m_buffer.id, m_tree,
                                                        m_options, trees);
         INFO("Analyzed {} with tops: {}", m_uri.getPath(),
              fmt::join(m_analysis->getCompilation()->getRoot().topInstances |
@@ -117,7 +117,7 @@ ShallowAnalysis& SlangDoc::getAnalysis(bool refreshDependencies) {
                        ", "));
     }
 
-    return *m_analysis;
+    return m_analysis;
 }
 
 std::string SlangDoc::getPrevText(const lsp::Position& position) {
@@ -213,8 +213,8 @@ void SlangDoc::issueParseDiagnostics(DiagnosticEngine& diagEngine) {
 
 void SlangDoc::issueDiagnosticsTo(DiagnosticEngine& diagEngine) {
     // Issue compilation diagnostics
-    auto& analysis = getAnalysis(true);
-    auto& shallowComp = *analysis.getCompilation();
+    auto analysis = getAnalysis(true);
+    auto& shallowComp = *analysis->getCompilation();
 
     // Parse diags (just this tree, others will be handled by their SlangDoc objects
     for (auto& diag : getSyntaxTree()->diagnostics()) {
@@ -230,7 +230,7 @@ void SlangDoc::issueDiagnosticsTo(DiagnosticEngine& diagEngine) {
         diagEngine.issue(diag);
     }
     // Analysis on the shallow compilation (unused, multidriven, etc)
-    for (auto& diag : analysis.getAnalysisDiags()) {
+    for (auto& diag : analysis->getAnalysisDiags()) {
         if (m_sourceManager.getFullyOriginalLoc(diag.location).buffer() != m_buffer.id) {
             continue;
         }

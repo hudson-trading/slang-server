@@ -140,7 +140,7 @@ void CompletionDispatch::getTriggerCompletions(char triggerChar, char prevChar,
             WARN("No expression token found before '.'");
             return;
         }
-        auto sym = doc->getAnalysis().getSymbolAtToken(exprToken);
+        auto sym = doc->getAnalysis()->getSymbolAtToken(exprToken);
         if (!sym) {
             WARN("No symbol found for token {}, checking index.", exprToken->valueText());
             // return;
@@ -153,7 +153,7 @@ void CompletionDispatch::getTriggerCompletions(char triggerChar, char prevChar,
             if (!doc) {
                 return;
             }
-            sym = doc->getAnalysis().getDefinition(exprToken->valueText());
+            sym = doc->getAnalysis()->getDefinition(exprToken->valueText());
             if (!sym) {
                 WARN("No symbol found in compilation for {}", exprToken->valueText());
                 return;

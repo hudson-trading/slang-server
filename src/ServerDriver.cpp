@@ -438,18 +438,18 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
     if (!doc) {
         return {};
     }
-    auto& analysis = doc->getAnalysis();
+    auto analysis = doc->getAnalysis();
 
     // Get location, token, and syntax node at position
     auto loc = sm.getSourceLocation(doc->getBuffer(), position.line, position.character);
     if (!loc) {
         return {};
     }
-    const parsing::Token* declTok = analysis.syntaxes.getWordTokenAt(loc.value());
+    const parsing::Token* declTok = analysis->syntaxes.getWordTokenAt(loc.value());
     if (!declTok) {
         return {};
     }
-    const syntax::SyntaxNode* declSyntax = analysis.syntaxes.getTokenParent(declTok);
+    const syntax::SyntaxNode* declSyntax = analysis->syntaxes.getTokenParent(declTok);
     if (!declSyntax) {
         return {};
     }
@@ -463,8 +463,8 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
          (declSyntax->kind == syntax::SyntaxKind::TokenList &&
           declSyntax->parent->kind == syntax::SyntaxKind::DefineDirective))) {
         // look in macro list
-        auto macro = analysis.macros.find(declTok->rawText().substr(1));
-        if (macro == analysis.macros.end()) {
+        auto macro = analysis->macros.find(declTok->rawText().substr(1));
+        if (macro == analysis->macros.end()) {
             // TODO: Check workspace indexer for macro in other files
             auto files = m_indexer.getFilesForMacro(declTok->rawText().substr(1));
             if (files.empty()) {
@@ -474,9 +474,9 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
             if (!macroDoc) {
                 return {};
             }
-            auto& macroAnalysis = macroDoc->getAnalysis();
-            macro = macroAnalysis.macros.find(declTok->rawText().substr(1));
-            if (macro == macroAnalysis.macros.end()) {
+            auto macroAnalysis = macroDoc->getAnalysis();
+            macro = macroAnalysis->macros.find(declTok->rawText().substr(1));
+            if (macro == macroAnalysis->macros.end()) {
                 return {};
             }
         }
@@ -484,7 +484,7 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
         nameToken = macro->second->name;
     }
     else {
-        symbol = analysis.getSymbolAtToken(declTok);
+        symbol = analysis->getSymbolAtToken(declTok);
         if (!symbol) {
             // check the index
             auto symbols = m_indexer.getFilesForSymbol(declTok->rawText());
@@ -495,9 +495,9 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
             if (!symDoc) {
                 return {};
             }
-            auto& symAnalysis = symDoc->getAnalysis();
-            auto result = symAnalysis.getCompilation()->tryGetDefinition(
-                declTok->rawText(), symAnalysis.getCompilation()->getRoot());
+            auto symAnalysis = symDoc->getAnalysis();
+            auto result = symAnalysis->getCompilation()->tryGetDefinition(
+                declTok->rawText(), symAnalysis->getCompilation()->getRoot());
             if (!result.definition) {
                 return {};
             }
@@ -563,9 +563,9 @@ std::optional<lsp::Hover> ServerDriver::getDocHover(const URI& uri, const lsp::P
     if (!maybeInfo) {
 #ifdef SLANG_DEBUG
         // Shows debug info for the token under cursor when debugging
-        auto& analysis = doc->getAnalysis();
+        auto analysis = doc->getAnalysis();
         markup::Document markup;
-        markup.addParagraph(analysis.getDebugHover(loc.value()));
+        markup.addParagraph(analysis->getDebugHover(loc.value()));
         return lsp::Hover{.contents = markup.build()};
 #endif
         return {};
@@ -605,25 +605,25 @@ std::optional<std::vector<lsp::DocumentHighlight>> ServerDriver::getDocDocumentH
     if (!doc) {
         return std::nullopt;
     }
-    auto& analysis = doc->getAnalysis();
+    auto analysis = doc->getAnalysis();
 
     // Get the symbol at the position
     auto loc = sm.getSourceLocation(doc->getBuffer(), position.line, position.character);
     if (!loc) {
         return std::nullopt;
     }
-    auto declTok = analysis.syntaxes.getWordTokenAt(loc.value());
+    auto declTok = analysis->syntaxes.getWordTokenAt(loc.value());
     if (!declTok) {
         return std::nullopt;
     }
-    auto symbol = analysis.getSymbolAtToken(declTok);
+    auto symbol = analysis->getSymbolAtToken(declTok);
     if (!symbol) {
         return std::nullopt;
     }
 
     // Find all references to the symbol in the current document
     std::vector<lsp::Location> references;
-    analysis.addLocalReferences(references, symbol->location, symbol->name);
+    analysis->addLocalReferences(references, symbol->location, symbol->name);
     if (references.empty()) {
         return std::nullopt;
     }
@@ -694,8 +694,8 @@ void ServerDriver::addMemberReferences(std::vector<lsp::Location>& references,
             }
         }
 
-        auto& fileAnalysis = fileDoc->getAnalysis();
-        fileAnalysis.addLocalReferences(references, targetSymbol.location, targetName);
+        auto fileAnalysis = fileDoc->getAnalysis();
+        fileAnalysis->addLocalReferences(references, targetSymbol.location, targetName);
     }
 }
 
@@ -706,19 +706,20 @@ std::optional<std::vector<lsp::Location>> ServerDriver::getDocReferences(
         return std::nullopt;
     }
 
-    // Get the symbol at the position
-    auto& analysis = doc->getAnalysis();
+    // Get the symbol at the position. Hold the analysis via shared_ptr so that
+    // targetSymbol remains valid even if getAnalysis() is called on this doc again.
+    auto analysis = doc->getAnalysis();
     auto loc = sm.getSourceLocation(doc->getBuffer(), position.line, position.character);
     if (!loc) {
         return std::nullopt;
     }
 
-    const parsing::Token* declTok = analysis.syntaxes.getWordTokenAt(loc.value());
+    const parsing::Token* declTok = analysis->syntaxes.getWordTokenAt(loc.value());
     if (!declTok) {
         return std::nullopt;
     }
 
-    const ast::Symbol* targetSymbol = analysis.getSymbolAtToken(declTok);
+    const ast::Symbol* targetSymbol = analysis->getSymbolAtToken(declTok);
     if (!targetSymbol) {
         return std::nullopt;
     }
@@ -787,8 +788,8 @@ std::optional<std::vector<lsp::Location>> ServerDriver::getDocReferences(
 
     // Add refs in declaration file, and remove declaration if requested
     if (targetDoc) {
-        auto& analysis = targetDoc->getAnalysis();
-        analysis.addLocalReferences(references, targetSymbol->location, targetName);
+        auto targetAnalysis = targetDoc->getAnalysis();
+        targetAnalysis->addLocalReferences(references, targetSymbol->location, targetName);
         if (!includeDeclaration) {
             auto targetLspLoc = lsp::Location{
                 .uri = URI::fromFile(sm.getFullPath(targetLoc.buffer())),
@@ -841,11 +842,8 @@ std::optional<std::vector<lsp::Location>> ServerDriver::getDocReferences(
                 addMemberReferences(references, gParentSymbol, *targetSymbol, true);
             }
             else {
-                // WARN("Skipping global refs for symbol {}: {} with parent {}: {}", targetName,
-                //      toString(targetSymbol->kind), parentSymbol.name,
-                //      toString(parentSymbol.kind));
                 if (targetLoc.buffer() != doc->getBuffer()) {
-                    analysis.addLocalReferences(references, targetSymbol->location, targetName);
+                    analysis->addLocalReferences(references, targetSymbol->location, targetName);
                 }
             }
         }
