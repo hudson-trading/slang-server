@@ -4,11 +4,16 @@
 
 #include "document/ShallowAnalysis.h"
 #include "util/Formatting.h"
-#include "util/Logging.h"
 #include "util/Markdown.h"
 
 #include "slang/ast/symbols/InstanceSymbols.h"
+#include "slang/ast/symbols/PortSymbols.h"
 #include "slang/ast/symbols/ValueSymbol.h"
+#include "slang/ast/types/Type.h"
+#include "slang/syntax/AllSyntax.h"
+#include "slang/syntax/SyntaxKind.h"
+#include "slang/syntax/SyntaxNode.h"
+#include "slang/syntax/SyntaxPrinter.h"
 #include "slang/text/SourceLocation.h"
 #include "slang/text/SourceManager.h"
 
@@ -107,8 +112,15 @@ lsp::MarkupContent getHover(const SourceManager& sm, const BufferID docBuffer,
         }
     }
 
+    const syntax::SyntaxNode& display_node = selectDisplayNode(*info.node);
+
+    const std::string docComments = stripDocComment(display_node);
+
+    if (!docComments.empty())
+        doc.addParagraph().appendText(docComments).newLine();
+
     // Add the main code block with proper formatting
-    doc.addParagraph().appendCodeBlock(formatSyntaxNode(*info.node));
+    doc.addParagraph().appendCodeBlock(formatCode(display_node));
 
     // Show macro expansion if present
     if (info.macroUsageRange != SourceRange::NoLocation) {
