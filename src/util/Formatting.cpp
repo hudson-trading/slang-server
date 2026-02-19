@@ -3,8 +3,8 @@
 
 #include "util/Formatting.h"
 
-#include <cctype>
 #include "lsp/LspTypes.h"
+#include <cctype>
 #include <fmt/format.h>
 #include <sstream>
 #include <string>
