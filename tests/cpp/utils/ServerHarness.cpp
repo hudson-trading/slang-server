@@ -465,7 +465,7 @@ std::vector<lsp::InlayHint> DocumentHandle::getAllInlayHints() {
                               .funcArgNames = 0,
                               .macroArgNames = 0};
 
-    return doc->getAnalysis().getInlayHints(fullRange, config);
+    return doc->getAnalysis()->getInlayHints(fullRange, config);
 }
 
 std::string DocumentHandle::withTextEdits(std::vector<lsp::TextEdit> edits) {

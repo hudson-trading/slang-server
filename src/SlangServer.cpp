@@ -716,7 +716,7 @@ std::optional<std::vector<lsp::InlayHint>> SlangServer::getDocInlayHint(
     if (!doc) {
         return {};
     }
-    auto hints = doc->getAnalysis().getInlayHints(params.range, m_config.inlayHints.get());
+    auto hints = doc->getAnalysis()->getInlayHints(params.range, m_config.inlayHints.get());
     INFO("Providing {} inlay hints for {}", hints.size(), params.textDocument.uri.getPath());
     return hints;
 }
