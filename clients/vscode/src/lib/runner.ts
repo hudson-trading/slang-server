@@ -1,4 +1,5 @@
-import { ConfigObject, ExtensionComponent, PathConfigObject } from './libconfig'
+import { ConfigObject, ExtensionComponent } from './libconfig'
+import { PathConfigObject } from './pathConfig'
 
 export class Runner extends ExtensionComponent {
   runAtFileLocation: ConfigObject<boolean> = new ConfigObject({

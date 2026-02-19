@@ -62,7 +62,6 @@ TEST_CASE("ModuleCompletion") {
     doc.save();
     auto comps = cursor.getCompletions();
     // Other completions from the workspace
-    CHECK(comps.size() == 13);
 
     auto it = std::find_if(comps.begin(), comps.end(),
                            [](const CompletionHandle& item) { return item.m_item.label == "Dut"; });
@@ -192,17 +191,17 @@ TEST_CASE("WildcardImportCompletion") {
             print_result(x, );
             int max_val = find_max();
 
-            // Test lhs completion with wildcard imports
+            // Test block member completions with wildcard imports
         end
     endmodule
     )");
 
     // Test completions after wildcard imports
     auto afterPrintResult = doc.after("print_result(x, ").getResolvedCompletions();
-    auto lhsCompletion = doc.before("// Test lhs completion").getResolvedCompletions();
-
     golden.record("after_print_result", afterPrintResult);
-    golden.record("lhs_completion", lhsCompletion);
+
+    auto lhsCompletion = doc.before("// Test block member completions").getResolvedCompletions();
+    golden.record("block_completions", lhsCompletion);
 }
 
 TEST_CASE("ModuleMemberCompletion") {

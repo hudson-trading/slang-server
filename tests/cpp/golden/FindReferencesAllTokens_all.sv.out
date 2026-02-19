@@ -300,7 +300,7 @@ macromodule m3;
 
         disable m3.foo;
                 ^^ Refs[10]
-                   ^^^ Refs[2]
+                   ^^^ Refs[3]
 
 
 
@@ -369,9 +369,10 @@ macromodule m3;
 
 
     always @* begin : foo
-                      ^^^ Refs[2]
+                      ^^^ Refs[3]
 
     end : foo
+          ^^^ Refs[3]
 
 
 
@@ -968,7 +969,7 @@ typedef enum {
 
 
 checker assert_window1 (
-        ^^^^^^^^^^^^^^ Refs[2]
+        ^^^^^^^^^^^^^^ Refs[3]
 
     logic test_expr,
           ^^^^^^^^^ Refs[2]
@@ -1069,7 +1070,7 @@ checker assert_window1 (
     generate if (clevel != cover_none) begin : cover_b
                  ^^^^^^ Refs[2]
                            ^^^^^^^^^^ Refs[2]
-                                               ^^^^^^^ Refs[1]
+                                               ^^^^^^^ Refs[2]
 
         cover_window_open: cover property (start_event && !window)
         ^^^^^^^^^^^^^^^^^ Refs[1]
@@ -1096,10 +1097,12 @@ checker assert_window1 (
         ) $display("window covered");
 
     end : cover_b
+          ^^^^^^^ Refs[2]
 
     endgenerate
 
 endchecker : assert_window1
+             ^^^^^^^^^^^^^^ Refs[3]
 
 
 
@@ -1131,7 +1134,7 @@ module m5;
     initial begin
 
         assert_window1 aw2(1 + 1, a, b);
-        ^^^^^^^^^^^^^^ Refs[2]
+        ^^^^^^^^^^^^^^ Refs[3]
                        ^^^ Refs[1]
                                   ^ Refs[4]
                                      ^ Refs[4]

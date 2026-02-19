@@ -9,6 +9,10 @@
 
 #include "slang/syntax/SyntaxNode.h"
 
+namespace slang {
+class ConstantValue;
+} // namespace slang
+
 namespace slang::ast {
 class Type;
 class ValueSymbol;
@@ -39,18 +43,40 @@ bool isSingleLine(const std::string& s);
 
 std::string detailFormat(const syntax::SyntaxNode& node);
 
-/// Format a syntax node as plain text (no markdown wrapper)
-std::string formatSyntaxNode(const syntax::SyntaxNode& node);
+/// Strip the comment markers from a doc comment so we can
+/// display the documentation nicely (and depending on the ide
+/// render markdown)
+std::string stripDocComment(const syntax::SyntaxNode& node);
+
+/// Select the best syntax node to display for hover/code snippets
+const syntax::SyntaxNode& selectDisplayNode(const syntax::SyntaxNode& node);
+
+/// Format a syntax node's doc comment as plain text
+std::string formatDocComment(const syntax::SyntaxNode& node);
+
+/// Format a syntax node's code excluding leading comments as plain text
+std::string formatCode(const syntax::SyntaxNode& node);
 
 std::string svCodeBlockString(std::string_view code);
-
 std::string svCodeBlockString(const syntax::SyntaxNode& node);
 
+lsp::MarkupContent svCodeBlock(std::string_view code);
 lsp::MarkupContent svCodeBlock(const syntax::SyntaxNode& node);
 
+/// Strip leading whitespace from a string
 void ltrim(std::string& s);
 
+/// Strip leading whitespace from a string view
+void ltrim(std::string_view& sv);
+
 std::string toCamelCase(std::string_view str);
+
+/// Convert a string to lower case
+std::string toLowerCase(std::string_view str);
+
+/// @brief Format a ConstantValue for display in hovers
+/// For string values, shows escaped invalid UTF-8 characters
+std::string formatConstantValue(const slang::ConstantValue& value);
 
 // Print the canonical type nicely, if it's a type alias
 template<bool isMarkdown>

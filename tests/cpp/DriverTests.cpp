@@ -4,6 +4,50 @@
 #include "utils/ServerHarness.h"
 #include <cstdlib>
 
+TEST_CASE("getAnalysis returns same object on repeated calls") {
+    ServerHarness server;
+    auto hdl = server.openFile("test.sv", R"(module test;
+    logic [7:0] data;
+    logic clk;
+endmodule
+)");
+
+    auto a1 = hdl.doc->getAnalysis();
+    auto a2 = hdl.doc->getAnalysis();
+    CHECK(a1.get() == a2.get());
+
+    // Third call should still return the same object
+    auto a3 = hdl.doc->getAnalysis();
+    CHECK(a1.get() == a3.get());
+}
+
+TEST_CASE("getAnalysis returns new object after onChange") {
+    ServerHarness server;
+    auto hdl = server.openFile("test.sv", R"(module test;
+    logic [7:0] data;
+endmodule
+)");
+
+    auto before = hdl.doc->getAnalysis();
+
+    // Modify the document
+    hdl.after("data;").write("\n    logic clk;");
+    hdl.publishChanges();
+
+    auto after = hdl.doc->getAnalysis();
+    CHECK(before.get() != after.get());
+}
+
+TEST_CASE("getAnalysis with cross-file dependencies is stable") {
+    ServerHarness server("indexer_test");
+    auto hdl = server.openFile("crossfile_module.sv");
+    hdl.ensureSynced();
+
+    auto a1 = hdl.doc->getAnalysis();
+    auto a2 = hdl.doc->getAnalysis();
+    CHECK(a1.get() == a2.get());
+}
+
 TEST_CASE("LoadConfig") {
     ServerHarness server("basic_config");
     auto flags = server.getConfig().flags.value();

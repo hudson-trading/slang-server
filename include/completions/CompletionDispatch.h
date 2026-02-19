@@ -9,6 +9,7 @@
 #pragma once
 
 #include "Indexer.h"
+#include "completions/CompletionContext.h"
 #include "document/SlangDoc.h"
 #include "lsp/LspTypes.h"
 #include <filesystem>
@@ -20,8 +21,12 @@
 
 namespace server {
 
+class ServerDriver;
+
 class CompletionDispatch {
 private:
+    // May need to retrieve additional documents
+    ServerDriver& m_driver;
     const Indexer& m_indexer;
     SourceManager& m_sourceManager;
     slang::Bag& m_options;
@@ -33,11 +38,11 @@ private:
     std::string m_lastScope;
 
 public:
-    CompletionDispatch(const Indexer& indexer, SourceManager& sourceManager, slang::Bag& options);
+    CompletionDispatch(ServerDriver& driver, const Indexer& indexer, SourceManager& sourceManager,
+                       slang::Bag& options);
 
     void getInvokedCompletions(std::vector<lsp::CompletionItem>& results,
-                               std::shared_ptr<SlangDoc> doc, bool isLhs,
-                               slang::SourceLocation loc);
+                               std::shared_ptr<SlangDoc> doc, const SourceLocation& loc);
 
     void getTriggerCompletions(char triggerChar, char prevChar, std::shared_ptr<SlangDoc> doc,
                                slang::SourceLocation loc,

@@ -46,8 +46,8 @@ using namespace slang;
 ServerDriver::ServerDriver(Indexer& indexer, SlangLspClient& client, const Config& config,
                            std::vector<std::string> buildfiles) :
     sm(driver.sourceManager), diagEngine(driver.diagEngine), client(client),
-    diagClient(std::make_shared<ServerDiagClient>(sm, client)), completions(indexer, sm, options),
-    m_indexer(indexer), m_config(config) {
+    diagClient(std::make_shared<ServerDiagClient>(sm, client)),
+    completions(*this, indexer, sm, options), m_indexer(indexer), m_config(config) {
     // Create and configure the driver with our source manager and diagnostic engine
     // SourceManager must not be moved, since diagEngine, syntax trees hold references to it
     driver.addStandardArgs();
@@ -187,6 +187,10 @@ std::shared_ptr<SlangDoc> ServerDriver::getDocument(const URI& uri) {
     return doc;
 }
 
+bool ServerDriver::isDocumentOpen(const URI& uri) {
+    return m_openDocs.find(uri) != m_openDocs.end();
+}
+
 void ServerDriver::onDocDidChange(const lsp::DidChangeTextDocumentParams& params) {
     std::string_view path = params.textDocument.uri.getPath();
     auto doc = getDocument(params.textDocument.uri);
@@ -205,6 +209,69 @@ void ServerDriver::closeDocument(const URI& uri) {
     m_openDocs.erase(uri);
     if (!comp) {
         diagClient->clear(uri);
+    }
+}
+
+void ServerDriver::reloadDocument(const URI& uri) {
+    // Only reload if this is an open document
+    if (m_openDocs.find(uri) == m_openDocs.end()) {
+        return;
+    }
+
+    auto doc = getDocument(uri);
+    if (!doc) {
+        WARN("Document {} not found for reload", uri.getPath());
+        return;
+    }
+
+    if (!doc->reloadBuffer()) {
+        return;
+    }
+
+    INFO("Reloaded document {} from disk", uri.getPath());
+
+    // Update the document (reparse and issue diagnostics)
+    updateDoc(*doc, FileUpdateType::CHANGE);
+}
+
+void ServerDriver::onWorkspaceDidChangeWatchedFiles(
+    const lsp::DidChangeWatchedFilesParams& params) {
+    // Collect docs that need updating after all buffers are reloaded
+    std::vector<std::shared_ptr<SlangDoc>> updatedDocs;
+
+    for (const auto& change : params.changes) {
+        switch (change.type) {
+            case lsp::FileChangeType::Changed: {
+                // Only reload if this is an open document
+                if (m_openDocs.find(change.uri) == m_openDocs.end()) {
+                    continue;
+                }
+
+                auto doc = getDocument(change.uri);
+                if (!doc) {
+                    WARN("Document {} not found for reload", change.uri.getPath());
+                    continue;
+                }
+
+                if (!doc->reloadBuffer()) {
+                    continue;
+                }
+
+                INFO("Reloaded document {} from disk", change.uri.getPath());
+                updatedDocs.push_back(doc);
+                break;
+            }
+            case lsp::FileChangeType::Deleted:
+                closeDocument(change.uri);
+                break;
+            case lsp::FileChangeType::Created:
+                break;
+        }
+    }
+
+    // Update all open docs after all buffers have been reloaded
+    for (auto& doc : updatedDocs) {
+        updateDoc(*doc, FileUpdateType::CHANGE);
     }
 }
 
@@ -232,36 +299,33 @@ std::vector<std::shared_ptr<SlangDoc>> ServerDriver::getDependentDocs(
 
             // Don't try multiple times
             knownNames.emplace(name);
-            auto data = m_indexer.symbolToFiles.find(std::string{name});
-            if (data == m_indexer.symbolToFiles.end())
+            auto symbolLoc = m_indexer.getFirstSymbolLoc(name);
+            if (!symbolLoc)
                 return;
 
-            auto paths = data->second;
-            if (!paths.empty()) {
-                std::string filePath = paths[0].uri->string();
+            std::string filePath = symbolLoc->uri->string();
 
-                // Check if we've already processed this file to avoid cycles
-                if (processedFiles.find(filePath) != processedFiles.end())
-                    return;
+            // Check if we've already processed this file to avoid cycles
+            if (processedFiles.find(filePath) != processedFiles.end())
+                return;
 
-                processedFiles.insert(filePath);
+            processedFiles.insert(filePath);
 
-                auto newdoc = getDocument(URI::fromFile(filePath));
-                if (newdoc) {
-                    result.push_back(newdoc);
-                    docs[newdoc->getURI()] = newdoc;
+            auto newdoc = getDocument(URI::fromFile(filePath));
+            if (newdoc) {
+                result.push_back(newdoc);
+                docs[newdoc->getURI()] = newdoc;
 
-                    // Only add packages to the queue for recursive processing
-                    for (auto& [decl, _] : newdoc->getSyntaxTree()->getMetadata().nodeMeta) {
-                        if (decl->kind == syntax::SyntaxKind::PackageDeclaration) {
-                            treesToProcess.push(newdoc->getSyntaxTree());
-                            break;
-                        }
+                // Only add packages to the queue for recursive processing
+                for (auto& [decl, _] : newdoc->getSyntaxTree()->getMetadata().nodeMeta) {
+                    if (decl->kind == syntax::SyntaxKind::PackageDeclaration) {
+                        treesToProcess.push(newdoc->getSyntaxTree());
+                        break;
                     }
                 }
-                else {
-                    ERROR("No doc found for {}", filePath);
-                }
+            }
+            else {
+                ERROR("No doc found for {}", filePath);
             }
         });
     }
@@ -298,7 +362,7 @@ bool ServerDriver::createCompilation(std::shared_ptr<SlangDoc> doc, std::string_
     driver::SourceLoader::loadTrees(
         syntaxTrees,
         [this](std::string_view name) {
-            auto paths = m_indexer.getRelevantFilesForName(name);
+            auto paths = m_indexer.getFilesForSymbol(name);
             if (!paths.empty()) {
                 auto maybeBuf = sm.readSource(paths[0], /* library */ nullptr);
                 if (maybeBuf) {
@@ -374,18 +438,18 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
     if (!doc) {
         return {};
     }
-    auto& analysis = doc->getAnalysis();
+    auto analysis = doc->getAnalysis();
 
     // Get location, token, and syntax node at position
     auto loc = sm.getSourceLocation(doc->getBuffer(), position.line, position.character);
     if (!loc) {
         return {};
     }
-    const parsing::Token* declTok = analysis.syntaxes.getWordTokenAt(loc.value());
+    const parsing::Token* declTok = analysis->syntaxes.getWordTokenAt(loc.value());
     if (!declTok) {
         return {};
     }
-    const syntax::SyntaxNode* declSyntax = analysis.syntaxes.getSyntaxAt(declTok);
+    const syntax::SyntaxNode* declSyntax = analysis->syntaxes.getTokenParent(declTok);
     if (!declSyntax) {
         return {};
     }
@@ -399,8 +463,8 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
          (declSyntax->kind == syntax::SyntaxKind::TokenList &&
           declSyntax->parent->kind == syntax::SyntaxKind::DefineDirective))) {
         // look in macro list
-        auto macro = analysis.macros.find(declTok->rawText().substr(1));
-        if (macro == analysis.macros.end()) {
+        auto macro = analysis->macros.find(declTok->rawText().substr(1));
+        if (macro == analysis->macros.end()) {
             // TODO: Check workspace indexer for macro in other files
             auto files = m_indexer.getFilesForMacro(declTok->rawText().substr(1));
             if (files.empty()) {
@@ -410,9 +474,9 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
             if (!macroDoc) {
                 return {};
             }
-            auto& macroAnalysis = macroDoc->getAnalysis();
-            macro = macroAnalysis.macros.find(declTok->rawText().substr(1));
-            if (macro == macroAnalysis.macros.end()) {
+            auto macroAnalysis = macroDoc->getAnalysis();
+            macro = macroAnalysis->macros.find(declTok->rawText().substr(1));
+            if (macro == macroAnalysis->macros.end()) {
                 return {};
             }
         }
@@ -420,10 +484,10 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
         nameToken = macro->second->name;
     }
     else {
-        symbol = analysis.getSymbolAtToken(declTok);
+        symbol = analysis->getSymbolAtToken(declTok);
         if (!symbol) {
             // check the index
-            auto symbols = m_indexer.getRelevantFilesForName(declTok->rawText());
+            auto symbols = m_indexer.getFilesForSymbol(declTok->rawText());
             if (symbols.empty()) {
                 return {};
             }
@@ -431,9 +495,9 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
             if (!symDoc) {
                 return {};
             }
-            auto& symAnalysis = symDoc->getAnalysis();
-            auto result = symAnalysis.getCompilation()->tryGetDefinition(
-                declTok->rawText(), symAnalysis.getCompilation()->getRoot());
+            auto symAnalysis = symDoc->getAnalysis();
+            auto result = symAnalysis->getCompilation()->tryGetDefinition(
+                declTok->rawText(), symAnalysis->getCompilation()->getRoot());
             if (!result.definition) {
                 return {};
             }
@@ -499,14 +563,10 @@ std::optional<lsp::Hover> ServerDriver::getDocHover(const URI& uri, const lsp::P
     if (!maybeInfo) {
 #ifdef SLANG_DEBUG
         // Shows debug info for the token under cursor when debugging
-        auto& analysis = doc->getAnalysis();
-        auto tok = analysis.getTokenAt(loc.value());
-        if (tok == nullptr) {
-            return {};
-        }
-        markup::Document doc;
-        doc.addParagraph(analysis.getDebugHover(*tok));
-        return lsp::Hover{.contents = doc.build()};
+        auto analysis = doc->getAnalysis();
+        markup::Document markup;
+        markup.addParagraph(analysis->getDebugHover(loc.value()));
+        return lsp::Hover{.contents = markup.build()};
 #endif
         return {};
     }
@@ -537,6 +597,46 @@ std::vector<lsp::LocationLink> ServerDriver::getDocDefinition(const URI& uri,
         .targetRange = lspRange,
         .targetSelectionRange = lspRange,
     }};
+}
+
+std::optional<std::vector<lsp::DocumentHighlight>> ServerDriver::getDocDocumentHighlight(
+    const URI& uri, const lsp::Position& position) {
+    auto doc = getDocument(uri);
+    if (!doc) {
+        return std::nullopt;
+    }
+    auto analysis = doc->getAnalysis();
+
+    // Get the symbol at the position
+    auto loc = sm.getSourceLocation(doc->getBuffer(), position.line, position.character);
+    if (!loc) {
+        return std::nullopt;
+    }
+    auto declTok = analysis->syntaxes.getWordTokenAt(loc.value());
+    if (!declTok) {
+        return std::nullopt;
+    }
+    auto symbol = analysis->getSymbolAtToken(declTok);
+    if (!symbol) {
+        return std::nullopt;
+    }
+
+    // Find all references to the symbol in the current document
+    std::vector<lsp::Location> references;
+    analysis->addLocalReferences(references, symbol->location, symbol->name);
+    if (references.empty()) {
+        return std::nullopt;
+    }
+
+    std::vector<lsp::DocumentHighlight> highlights;
+    highlights.reserve(references.size());
+    for (auto& ref : references) {
+        highlights.push_back(lsp::DocumentHighlight{
+            .range = ref.range,
+        });
+    }
+
+    return highlights;
 }
 
 void ServerDriver::addMemberReferences(std::vector<lsp::Location>& references,
@@ -594,8 +694,8 @@ void ServerDriver::addMemberReferences(std::vector<lsp::Location>& references,
             }
         }
 
-        auto& fileAnalysis = fileDoc->getAnalysis();
-        fileAnalysis.addLocalReferences(references, targetSymbol.location, targetName);
+        auto fileAnalysis = fileDoc->getAnalysis();
+        fileAnalysis->addLocalReferences(references, targetSymbol.location, targetName);
     }
 }
 
@@ -606,19 +706,20 @@ std::optional<std::vector<lsp::Location>> ServerDriver::getDocReferences(
         return std::nullopt;
     }
 
-    // Get the symbol at the position
-    auto& analysis = doc->getAnalysis();
+    // Get the symbol at the position. Hold the analysis via shared_ptr so that
+    // targetSymbol remains valid even if getAnalysis() is called on this doc again.
+    auto analysis = doc->getAnalysis();
     auto loc = sm.getSourceLocation(doc->getBuffer(), position.line, position.character);
     if (!loc) {
         return std::nullopt;
     }
 
-    const parsing::Token* declTok = analysis.syntaxes.getWordTokenAt(loc.value());
+    const parsing::Token* declTok = analysis->syntaxes.getWordTokenAt(loc.value());
     if (!declTok) {
         return std::nullopt;
     }
 
-    const ast::Symbol* targetSymbol = analysis.getSymbolAtToken(declTok);
+    const ast::Symbol* targetSymbol = analysis->getSymbolAtToken(declTok);
     if (!targetSymbol) {
         return std::nullopt;
     }
@@ -687,8 +788,8 @@ std::optional<std::vector<lsp::Location>> ServerDriver::getDocReferences(
 
     // Add refs in declaration file, and remove declaration if requested
     if (targetDoc) {
-        auto& analysis = targetDoc->getAnalysis();
-        analysis.addLocalReferences(references, targetSymbol->location, targetName);
+        auto targetAnalysis = targetDoc->getAnalysis();
+        targetAnalysis->addLocalReferences(references, targetSymbol->location, targetName);
         if (!includeDeclaration) {
             auto targetLspLoc = lsp::Location{
                 .uri = URI::fromFile(sm.getFullPath(targetLoc.buffer())),
@@ -741,11 +842,8 @@ std::optional<std::vector<lsp::Location>> ServerDriver::getDocReferences(
                 addMemberReferences(references, gParentSymbol, *targetSymbol, true);
             }
             else {
-                // WARN("Skipping global refs for symbol {}: {} with parent {}: {}", targetName,
-                //      toString(targetSymbol->kind), parentSymbol.name,
-                //      toString(parentSymbol.kind));
                 if (targetLoc.buffer() != doc->getBuffer()) {
-                    analysis.addLocalReferences(references, targetSymbol->location, targetName);
+                    analysis->addLocalReferences(references, targetSymbol->location, targetName);
                 }
             }
         }

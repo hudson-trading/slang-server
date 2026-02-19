@@ -1,0 +1,76 @@
+[
+  {
+    "children": [
+      {
+        "kind": "Param",
+        "instName": "condition",
+        "instLoc": {
+          "uri": "file://generate_branch.sv",
+          "range": {
+            "start": {
+              "line": 8,
+              "character": 18
+            },
+            "end": {
+              "line": 8,
+              "character": 27
+            }
+          }
+        },
+        "type": "bit",
+        "value": "1'b1"
+      },
+      {
+        "kind": "Scope",
+        "instName": "gen_yes",
+        "instLoc": {
+          "uri": "file://generate_branch.sv",
+          "range": {
+            "start": {
+              "line": 10,
+              "character": 19
+            },
+            "end": {
+              "line": 12,
+              "character": 7
+            }
+          }
+        },
+        "children": [
+          {
+            "kind": "Instance",
+            "instName": "yes_sub_sub",
+            "instLoc": {
+              "uri": "file://generate_branch.sv",
+              "range": {
+                "start": {
+                  "line": 11,
+                  "character": 16
+                },
+                "end": {
+                  "line": 11,
+                  "character": 29
+                }
+              }
+            },
+            "declName": "sub_sub",
+            "declLoc": {
+              "uri": "file://generate_branch.sv",
+              "range": {
+                "start": {
+                  "line": 18,
+                  "character": 0
+                },
+                "end": {
+                  "line": 19,
+                  "character": 9
+                }
+              }
+            },
+            "children": []
+          }
+        ]
+      }
+    ]
+  }
+]

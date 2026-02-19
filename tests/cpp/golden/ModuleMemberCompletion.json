@@ -16,32 +16,6 @@
         "insertTextFormat": "Snippet"
       },
       {
-        "label": "always_comb",
-        "kind": "Snippet",
-        "filterText": "always_comb",
-        "insertText": "always_comb begin\n    $0\nend",
-        "insertTextFormat": "Snippet"
-      },
-      {
-        "label": "always_ff",
-        "kind": "Snippet",
-        "filterText": "always_ff",
-        "insertText": "always_ff @($0) begin\n    \nend",
-        "insertTextFormat": "Snippet"
-      },
-      {
-        "label": "always_latch",
-        "kind": "Snippet",
-        "filterText": "always_latch",
-        "insertText": "always_latch begin\n    $0\nend",
-        "insertTextFormat": "Snippet"
-      },
-      {
-        "label": "assign",
-        "kind": "Keyword",
-        "filterText": "assign"
-      },
-      {
         "label": "base_pkg",
         "labelDetails": {
           "detail": " Package"
@@ -78,18 +52,8 @@
           "value": "````systemverilog\nmodule cycle_test_module;\n````"
         },
         "filterText": "cycle_test_module",
-        "insertText": "cycle_test_module #(\n) ${1:cycle_test_module} (\n);",
+        "insertText": "cycle_test_module ${1:cycle_test_module} (\n);",
         "insertTextFormat": "Snippet"
-      },
-      {
-        "label": "logic",
-        "kind": "Keyword",
-        "filterText": "logic"
-      },
-      {
-        "label": "reg",
-        "kind": "Keyword",
-        "filterText": "reg"
       },
       {
         "label": "state_t",
@@ -114,7 +78,7 @@
           "value": "````systemverilog\nmodule tb;\n````"
         },
         "filterText": "tb",
-        "insertText": "tb #(\n) ${1:tb} (\n);",
+        "insertText": "tb ${1:tb} (\n);",
         "insertTextFormat": "Snippet"
       },
       {
@@ -130,11 +94,6 @@
         "filterText": "util_pkg",
         "insertText": "util_pkg",
         "insertTextFormat": "PlainText"
-      },
-      {
-        "label": "wire",
-        "kind": "Keyword",
-        "filterText": "wire"
       }
     ]
   },

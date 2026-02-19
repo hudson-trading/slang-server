@@ -234,47 +234,7 @@
     ]
   },
   {
-    "lhs_completion": [
-      {
-        "label": "Dut",
-        "labelDetails": {
-          "detail": " Module"
-        },
-        "kind": "Module",
-        "documentation": {
-          "kind": "markdown",
-          "value": "````systemverilog\nmodule Dut  #(\n    parameter int a = 0,\n    parameter int b = 1\n) (\n    input logic foo\n);\n````"
-        },
-        "filterText": "Dut",
-        "insertText": "Dut #(\n    .a(${1:a /* default 0 */}),\n    .b(${2:b /* default 1 */})\n ) ${3:dut} (\n    .foo(${4:foo})\n);",
-        "insertTextFormat": "Snippet"
-      },
-      {
-        "label": "always_comb",
-        "kind": "Snippet",
-        "filterText": "always_comb",
-        "insertText": "always_comb begin\n    $0\nend",
-        "insertTextFormat": "Snippet"
-      },
-      {
-        "label": "always_ff",
-        "kind": "Snippet",
-        "filterText": "always_ff",
-        "insertText": "always_ff @($0) begin\n    \nend",
-        "insertTextFormat": "Snippet"
-      },
-      {
-        "label": "always_latch",
-        "kind": "Snippet",
-        "filterText": "always_latch",
-        "insertText": "always_latch begin\n    $0\nend",
-        "insertTextFormat": "Snippet"
-      },
-      {
-        "label": "assign",
-        "kind": "Keyword",
-        "filterText": "assign"
-      },
+    "block_completions": [
       {
         "label": "base_pkg",
         "labelDetails": {
@@ -303,25 +263,6 @@
         "filterText": "byte_t"
       },
       {
-        "label": "cycle_test_module",
-        "labelDetails": {
-          "detail": " Module"
-        },
-        "kind": "Module",
-        "documentation": {
-          "kind": "markdown",
-          "value": "````systemverilog\nmodule cycle_test_module;\n````"
-        },
-        "filterText": "cycle_test_module",
-        "insertText": "cycle_test_module #(\n) ${1:cycle_test_module} (\n);",
-        "insertTextFormat": "Snippet"
-      },
-      {
-        "label": "logic",
-        "kind": "Keyword",
-        "filterText": "logic"
-      },
-      {
         "label": "operation_t",
         "labelDetails": {
           "detail": " EnumType",
@@ -348,25 +289,6 @@
         "filterText": "point_t"
       },
       {
-        "label": "reg",
-        "kind": "Keyword",
-        "filterText": "reg"
-      },
-      {
-        "label": "tb",
-        "labelDetails": {
-          "detail": " Module"
-        },
-        "kind": "Module",
-        "documentation": {
-          "kind": "markdown",
-          "value": "````systemverilog\nmodule tb;\n````"
-        },
-        "filterText": "tb",
-        "insertText": "tb #(\n) ${1:tb} (\n);",
-        "insertTextFormat": "Snippet"
-      },
-      {
         "label": "util_pkg",
         "labelDetails": {
           "detail": " Package"
@@ -379,11 +301,6 @@
         "filterText": "util_pkg",
         "insertText": "util_pkg",
         "insertTextFormat": "PlainText"
-      },
-      {
-        "label": "wire",
-        "kind": "Keyword",
-        "filterText": "wire"
       }
     ]
   }

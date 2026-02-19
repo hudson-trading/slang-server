@@ -261,7 +261,7 @@ const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declT
         return nullptr;
     }
 
-    auto syntax = syntaxes.getSyntaxAt(declTok);
+    auto syntax = syntaxes.getTokenParent(declTok);
     // Note: SuperHandle nodes can cause issues in symbol lookup
     if (!syntax || syntax->kind == syntax::SyntaxKind::SuperHandle) {
         return nullptr;
@@ -436,6 +436,11 @@ const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declT
     return nullptr;
 }
 
+const ast::Symbol* ShallowAnalysis::getDefinition(std::string_view name) const {
+    auto def = m_compilation->tryGetDefinition(name, m_compilation->getRoot());
+    return def.definition;
+}
+
 const ast::Symbol* ShallowAnalysis::getSymbolAt(SourceLocation loc) const {
     auto node = syntaxes.getWordTokenAt(loc);
     if (!node) {
@@ -536,14 +541,16 @@ bool ShallowAnalysis::hasValidBuffers() {
     return true;
 }
 
-markup::Paragraph ShallowAnalysis::getDebugHover(const parsing::Token& tok) const {
+markup::Paragraph ShallowAnalysis::getDebugHover(const SourceLocation& loc) const {
     markup::Paragraph para;
-
+    auto tok = syntaxes.getTokenAt(loc);
     // Token info header
-    para.appendBold("Token:").appendCode(toString(tok.kind)).newLine();
+    if (tok) {
+        para.appendBold("Token:").appendCode(toString(tok->kind)).newLine();
+    }
 
     // Walk up the syntax tree
-    auto node = syntaxes.getSyntaxAt(&tok);
+    auto node = syntaxes.getSyntaxAt(loc);
     for (auto nodePtr = node; nodePtr; nodePtr = nodePtr->parent) {
         // In case of bad memory
         if (nodePtr->kind > syntax::SyntaxKind::XorAssignmentExpression) {
@@ -576,9 +583,12 @@ markup::Paragraph ShallowAnalysis::getDebugHover(const parsing::Token& tok) cons
         // Check if we've reached a symbol
         auto sym = m_symbolIndexer.getSymbol(nodePtr);
         if (sym) {
-            para.appendBold("Symbol:").appendCode(sym->name);
-            para.appendText(" (").appendText(toString(sym->kind)).appendText(")");
-            break;
+            para.appendText("  - ")
+                .appendText(toString(sym->kind))
+                .appendText(" ")
+                .appendCode(sym->name)
+                .newLine()
+                .newLine();
         }
     }
 

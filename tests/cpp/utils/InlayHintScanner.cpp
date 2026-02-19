@@ -22,8 +22,8 @@ void InlayHintScanner::scanDocument(DocumentHandle hdl) {
     auto end = hdl.getLocation(data.size() - 1);
     auto range = slang::SourceRange{*start, *end};
     Config::InlayHints config{.portTypes = true};
-    auto hints = doc->getAnalysis().getInlayHints(server::toRange(range, doc->getSourceManager()),
-                                                  config);
+    auto hints = doc->getAnalysis()->getInlayHints(server::toRange(range, doc->getSourceManager()),
+                                                   config);
 
     // Insert hints into the document text
     size_t size_added = 0;

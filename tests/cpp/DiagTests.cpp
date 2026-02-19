@@ -162,6 +162,69 @@ module Top #()();
     CHECK(doc.getDiagnostics().size() > 0);
 }
 
+TEST_CASE("HoverNonAsciiString") {
+    // Regression test: hovering on a string parameter with non-ASCII bytes should not crash
+    // "a" + "b" in SV adds the character codes, producing 0xc3 which is invalid UTF-8
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+module top;
+    localparam string ab1 = "a" + "b";
+
+    // Valid first char, invalid second char
+    localparam string ab2 = {"a", ab1};
+endmodule
+)");
+
+    {
+        auto cursor = doc.before("ab1 =");
+        auto hover = doc.getHoverAt(cursor.m_offset);
+        REQUIRE(hover.has_value());
+
+        // The hover should contain "Value:" for the parameter
+        auto content = rfl::get<lsp::MarkupContent>(hover->contents);
+        CHECK(content.value.find("Value:") != std::string::npos);
+        // The value should show escaped string and hex (0xc3 = 'a' + 'b' = 97 + 98 = 195)
+        // Format: "\xc3"
+        CHECK(content.value.find("\\xc3") != std::string::npos);
+
+        // Verify json serialization works
+        auto json = rfl::json::write(*hover);
+        CHECK(!json.empty());
+    }
+    {
+        auto cursor = doc.before("ab2 =");
+        auto hover = doc.getHoverAt(cursor.m_offset);
+        REQUIRE(hover.has_value());
+        // The hover should contain "Value:" for the parameter
+        auto content = rfl::get<lsp::MarkupContent>(hover->contents);
+        // Value should show valid utf string for first 'a' and escaped for second invalid char
+        CHECK(content.value.find("a\\xc3") != std::string::npos);
+    }
+}
+
+TEST_CASE("HoverValidString") {
+    // Test that valid ASCII/UTF-8 strings display normally
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+module top;
+    localparam string greeting = "hello";
+endmodule
+)");
+
+    auto cursor = doc.before("greeting =");
+    auto hover = doc.getHoverAt(cursor.m_offset);
+    REQUIRE(hover.has_value());
+
+    auto content = rfl::get<lsp::MarkupContent>(hover->contents);
+    // Valid strings should display as quoted strings, not bit values
+    CHECK(content.value.find("\"hello\"") != std::string::npos);
+
+    auto json = rfl::json::write(*hover);
+    CHECK(!json.empty());
+}
+
 TEST_CASE("CompilationDiagnostics") {
     ServerHarness server("comp_repo");
 

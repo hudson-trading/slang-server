@@ -16,8 +16,11 @@ public:
     /// Append plain text to the end of the paragraph
     Paragraph& appendText(std::string_view text);
 
-    /// Append a header (bold text)
+    /// Append bold text
     Paragraph& appendBold(std::string_view text);
+
+    /// Append a header
+    Paragraph& appendHeader(std::string_view text, int level);
 
     /// Append inline code, this translates to the ` block in markdown
     Paragraph& appendCode(std::string_view code);

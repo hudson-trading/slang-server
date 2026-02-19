@@ -103,6 +103,11 @@ public:
     /// @return Pointer to the scope, or nullptr if not found
     const slang::ast::Scope* getScopeAt(slang::SourceLocation loc) const;
 
+    /// @brief Gets a definition symbol by name using the compilation's root scope
+    /// @param name The name of the definition to look up
+    /// @return Pointer to the symbol, or nullptr if not found
+    const slang::ast::Symbol* getDefinition(std::string_view name) const;
+
     /// @brief Gets module declarations in this document
     /// @return Vector of module declaration syntax nodes
     std::vector<const slang::syntax::ModuleDeclarationSyntax*> getModules() const;
@@ -117,7 +122,7 @@ public:
 
     /// @brief Generates debug hover information for a syntax node, traversing up the parent
     /// syntax pointers
-    markup::Paragraph getDebugHover(const slang::parsing::Token& tok) const;
+    markup::Paragraph getDebugHover(const SourceLocation& loc) const;
 
     /// @brief Gets the AST symbol that a declared token refers to, if any
     const slang::ast::Symbol* getSymbolAtToken(const slang::parsing::Token* node) const;

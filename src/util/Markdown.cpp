@@ -28,6 +28,14 @@ Paragraph& Paragraph::appendBold(std::string_view text) {
     return *this;
 }
 
+Paragraph& Paragraph::appendHeader(std::string_view text, int level) {
+    if (!buffer.empty() && buffer.back() != ' ') {
+        buffer += " ";
+    }
+    buffer += std::string(level, '#') + " " + std::string(text);
+    return *this;
+}
+
 Paragraph& Paragraph::appendCodeBlock(std::string_view code) {
     // Use quad backticks for SystemVerilog since triple can be used in macro concatenations
     fmt::format_to(std::back_inserter(buffer), "````systemverilog\n{}\n````", code);

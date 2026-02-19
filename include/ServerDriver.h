@@ -73,7 +73,17 @@ public:
     /// @brief Close a document and remove it from the open docs set
     void closeDocument(const URI& uri);
 
+    /// @brief Reload a document from disk, used when external tools modify open files
+    void reloadDocument(const URI& uri);
+
     void onDocDidChange(const lsp::DidChangeTextDocumentParams& params);
+
+    /// @brief Checks if a document is open
+    bool isDocumentOpen(const URI& uri);
+
+    /// @brief Handle workspace file change notifications from the file watcher
+    /// Reloads all changed buffers first, then updates open documents
+    void onWorkspaceDidChangeWatchedFiles(const lsp::DidChangeWatchedFilesParams& params);
 
     void updateDoc(SlangDoc& doc, FileUpdateType type);
 
@@ -102,6 +112,13 @@ public:
     /// @param position The LSP position to query
     /// @return Optional hover information, or nullopt if none available
     std::optional<lsp::Hover> getDocHover(const URI& uri, const lsp::Position& position);
+
+    /// @brief Gets highlight positions for a symbol and all its references in a document
+    /// @param uri The URI of the document
+    /// @param position The LSP position to query
+    /// @return Optional highlight information, or nullopt if no symbol found
+    std::optional<std::vector<lsp::DocumentHighlight>> getDocDocumentHighlight(
+        const URI& uri, const lsp::Position& position);
 
     /// @brief Gets all references to a symbol in a document
     /// @param uri The URI of the document
