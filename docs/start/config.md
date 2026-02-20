@@ -53,16 +53,6 @@ All configuration options are optional and have sensible defaults. In VSCode, th
 
 ---
 
-### `parsingThreads`
-
-:   **Type:** `integer`
-
-    **Default:** `8`
-
-    Thread count to use for parsing SystemVerilog files for compilations.
-
----
-
 ### `build`
 
 :   **Type:** `string`
@@ -90,6 +80,35 @@ All configuration options are optional and have sensible defaults. In VSCode, th
     Waveform viewer command where `{}` will be replaced with the WCP port.
 
     **Example:** `"surfer --wcp-initiate {}"`
+
+---
+
+### `inlayHints`
+
+:   **Type:** `InlayHints`
+
+    ```typescript
+    interface InlayHints {
+      /** Hints for port types */
+      portTypes?: boolean           // default: false
+      /** Hints for names of ordered ports and params */
+      orderedInstanceNames?: boolean // default: true
+      /** Hints for port names in wildcard (.*) ports */
+      wildcardNames?: boolean       // default: true
+      /** Function argument hints: 0=off, N=only calls with >=N args */
+      funcArgNames?: integer        // default: 2
+      /** Macro argument hints: 0=off, N=only calls with >=N args */
+      macroArgNames?: integer       // default: 2
+    }
+    ```
+
+    Controls inline hints displayed in the editor for things like ordered arguments, wildcard ports, and others.
+
+    - **`portTypes`**: Show type hints on ports. Off by default.
+    - **`orderedInstanceNames`**: Show parameter/port name hints on ordered (positional) instance connections.
+    - **`wildcardNames`**: Show port name hints on wildcard (`.*`) connections.
+    - **`funcArgNames`**: Show argument name hints on function calls. Set to `0` to disable, or `N` to only show hints for calls with N or more arguments.
+    - **`macroArgNames`**: Show argument name hints on macro invocations. Set to `0` to disable, or `N` to only show hints for calls with N or more arguments.
 
 ---
 

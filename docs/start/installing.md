@@ -1,47 +1,17 @@
 # Installing
 
-### Build from Source
-
-```bash
-# Clone the repository
-git clone https://github.com/hudson-trading/slang-server.git
-cd slang-server
-
-# Pull dependencies (slang and reflect-cpp)
-git submodule update --init --recursive
-
-# Build with cmake using a C++20 compliant compiler
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j --target slang_server
-```
-
-On certain systems (Arch, etc), you may need to have the project use its vendored copy of the `fmt` library,
-rather than the one on your system. This can be achieved by appending `-DCMAKE_DISABLE_FIND_PACKAGE_fmt=TRUE`
-to the CMake configuration step, e.g.:
-
-```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_DISABLE_FIND_PACKAGE_fmt=TRUE
-```
-
-In the future there will be pre-built binaries released for common platforms. The editor clients will auto-install these, similar to what clangd and others do.
-
-
-> Windows: At the moment there are issues running on windows; See
-[#115](https://github.com/hudson-trading/slang-server/issues/115) and related issues.
 
 ### Vscode
 
-Install the extension [here](https://marketplace.visualstudio.com/items?itemName=Hudson-River-Trading.vscode-slang), then set `slang.path` to the slang-server binary. (at `build/bin/slang-server`)
+Install the extension [here](https://marketplace.visualstudio.com/items?itemName=Hudson-River-Trading.vscode-slang). Then, it will prompt you to allow the extension to autoinstall the server binary from the [releases](https://github.com/hudson-trading/slang-server/releases) page. Alternatively, you can set `slang.path` to you built slang-server binary.
 
-See [VSCode Options](https://github.com/hudson-trading/slang-server/blob/main/clients/vscode/CONFIG.md)
-
-#### Vscode Forks (Cursor, Antigravity, VSCodium, etc.)
+### Vscode Forks (Cursor, Antigravity, VSCodium, etc.)
 
 Install from your editor, or download from the [OpenVSX Marketplace](https://open-vsx.org/extension/Hudson-River-Trading/vscode-slang)
 
 ### Neovim
 
-> Once Slang Server is more actively used (you can help by starring [the project](https://github.com/hudson-trading/slang-server)!), it will be added to [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig) and [mason.nvim](https://github.com/mason-org/mason.nvim) and no additional configuration will be required. Until then, follow one of the methods below to manually add the server configuration.
+> `slang-server` will eventually be added to [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig) and [mason.nvim](https://github.com/mason-org/mason.nvim) and no additional configuration will be required. Until then, follow one of the methods below to manually add the server configuration.
 
 
 For newer versions of Neovim (≥ v0.11), the new [vim.lsp API](https://neovim.io/doc/user/lsp.html#vim.lsp.start()) is the preferred, simpler way to configure language servers:

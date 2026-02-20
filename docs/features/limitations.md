@@ -15,8 +15,8 @@ Shallow compilations only load the directly referenced syntax trees, and only lo
 
 **Single Unit Compilations**
 
-Designs that use slang's [`--single-unit`](https://sv-lang.com/command-line-ref.html) are not be supported. The main effect this tends to have is that macros are not inherited and so diagnostics will occur there. This flag means that all files are essentially concatenated before being sent to tools. Even if `slang-server` grabbed these dependencies, it would make file and compilation updates take much longer, so it's generally preferred to switch away from using this flag.
+Designs that use slang's [`--single-unit`](https://sv-lang.com/command-line-ref.html) are not be supported. The main effect of using this flag is that macros are not inherited, so with the server diagnostics will occur there. This flag means that all files are essentially concatenated before being sent to tools. Even if `slang-server` grabbed these dependencies, it would make file and compilation updates take much longer, so it's generally preferred to switch away from using this flag.
 
 **Some UVM Code**
 
-The common UVM practice where classes are `included in a package results in poor support for those classes.
+The common UVM practice where classes are `included in a package results in poor support for those classes. These patterns are [planned](https://github.com/hudson-trading/slang-server/issues/135) to be supported in the future.
