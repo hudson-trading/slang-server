@@ -547,15 +547,6 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#parsingthreads" class="md-nav__link">
-    <span class="md-ellipsis">
-      parsingThreads
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#build" class="md-nav__link">
     <span class="md-ellipsis">
       build
@@ -577,6 +568,15 @@
   <a href="#wcpcommand" class="md-nav__link">
     <span class="md-ellipsis">
       wcpCommand
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inlayhints" class="md-nav__link">
+    <span class="md-ellipsis">
+      inlayHints
     </span>
   </a>
   
@@ -685,12 +685,12 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/formatting.md" class="md-nav__link">
+      <a href="../../features/formatting/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    None
+    Formatting
     
   </span>
   
@@ -1037,15 +1037,6 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#parsingthreads" class="md-nav__link">
-    <span class="md-ellipsis">
-      parsingThreads
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#build" class="md-nav__link">
     <span class="md-ellipsis">
       build
@@ -1067,6 +1058,15 @@
   <a href="#wcpcommand" class="md-nav__link">
     <span class="md-ellipsis">
       wcpCommand
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inlayhints" class="md-nav__link">
+    <span class="md-ellipsis">
+      inlayHints
     </span>
   </a>
   
@@ -1150,15 +1150,6 @@
 </dd>
 </dl>
 <hr />
-<h3 id="parsingthreads"><code>parsingThreads</code><a class="headerlink" href="#parsingthreads" title="Permanent link">&para;</a></h3>
-<dl>
-<dd>
-<p><strong>Type:</strong> <code>integer</code></p>
-<p><strong>Default:</strong> <code>8</code></p>
-<p>Thread count to use for parsing SystemVerilog files for compilations.</p>
-</dd>
-</dl>
-<hr />
 <h3 id="build"><code>build</code><a class="headerlink" href="#build" title="Permanent link">&para;</a></h3>
 <dl>
 <dd>
@@ -1183,6 +1174,34 @@
 <p><strong>Type:</strong> <code>string</code></p>
 <p>Waveform viewer command where <code>{}</code> will be replaced with the WCP port.</p>
 <p><strong>Example:</strong> <code>"surfer --wcp-initiate {}"</code></p>
+</dd>
+</dl>
+<hr />
+<h3 id="inlayhints"><code>inlayHints</code><a class="headerlink" href="#inlayhints" title="Permanent link">&para;</a></h3>
+<dl>
+<dd>
+<p><strong>Type:</strong> <code>InlayHints</code></p>
+<div class="language-typescript highlight"><pre><span></span><code><span class="kd">interface</span><span class="w"> </span><span class="nx">InlayHints</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="cm">/** Hints for port types */</span>
+<span class="w">  </span><span class="nx">portTypes?</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="w">           </span><span class="c1">// default: false</span>
+<span class="w">  </span><span class="cm">/** Hints for names of ordered ports and params */</span>
+<span class="w">  </span><span class="nx">orderedInstanceNames?</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="w"> </span><span class="c1">// default: true</span>
+<span class="w">  </span><span class="cm">/** Hints for port names in wildcard (.*) ports */</span>
+<span class="w">  </span><span class="nx">wildcardNames?</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="w">       </span><span class="c1">// default: true</span>
+<span class="w">  </span><span class="cm">/** Function argument hints: 0=off, N=only calls with &gt;=N args */</span>
+<span class="w">  </span><span class="nx">funcArgNames?</span><span class="o">:</span><span class="w"> </span><span class="kt">integer</span><span class="w">        </span><span class="c1">// default: 2</span>
+<span class="w">  </span><span class="cm">/** Macro argument hints: 0=off, N=only calls with &gt;=N args */</span>
+<span class="w">  </span><span class="nx">macroArgNames?</span><span class="o">:</span><span class="w"> </span><span class="kt">integer</span><span class="w">       </span><span class="c1">// default: 2</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Controls inline hints displayed in the editor for things like ordered arguments, wildcard ports, and others.</p>
+<ul>
+<li><strong><code>portTypes</code></strong>: Show type hints on ports. Off by default.</li>
+<li><strong><code>orderedInstanceNames</code></strong>: Show parameter/port name hints on ordered (positional) instance connections.</li>
+<li><strong><code>wildcardNames</code></strong>: Show port name hints on wildcard (<code>.*</code>) connections.</li>
+<li><strong><code>funcArgNames</code></strong>: Show argument name hints on function calls. Set to <code>0</code> to disable, or <code>N</code> to only show hints for calls with N or more arguments.</li>
+<li><strong><code>macroArgNames</code></strong>: Show argument name hints on macro invocations. Set to <code>0</code> to disable, or <code>N</code> to only show hints for calls with N or more arguments.</li>
+</ul>
 </dd>
 </dl>
 <hr />
