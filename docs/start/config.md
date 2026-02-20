@@ -37,7 +37,7 @@ All configuration options are optional and have sensible defaults. In VSCode, th
 
     Flags to pass to slang.
 
-    It's recommended to keep your slang flags in a flag file, that way it can be shared by both CI and the language server. Another nice setup is having `slang.f` contain your CI flags, then have `slang-server.f` include that file (via `-f path/to/slang.f`), along with more warnings in `slang-server.f`. That way more pedantic checks will show as yellow underlines in your editor.
+    It's recommended to keep your slang flags in a flag file, that way it can be shared by both CI and the language server. Another nice setup is having `slang.f` contain your CI flags, then have `slang-server.f` include that file (via `-f path/to/slang.f`), along with more warnings in `slang-server.f`. That way more pedantic checks will show as yellow underlines in your editor. See the [Slang docs](https://sv-lang.com/user-manual.html#command-files) for information on the command files.
 
     **Example:** `"-f path/to/slang_flags.f"`
 
