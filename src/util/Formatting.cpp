@@ -4,6 +4,7 @@
 #include "util/Formatting.h"
 
 #include "lsp/LspTypes.h"
+#include <cctype>
 #include <fmt/format.h>
 #include <sstream>
 #include <string>
@@ -424,10 +425,29 @@ std::string toCamelCase(std::string_view str) {
     if (str.empty()) {
         return "";
     }
+
     std::string result;
     result.reserve(str.size());
-    result.push_back(static_cast<char>(std::tolower(str[0])));
-    result.append(str.substr(1));
+
+    std::size_t i = 1;
+
+    // If the next char is uppercase then lowercase the current one
+    while (i < str.size() && std::isupper(str[i])) {
+        result.push_back(static_cast<char>(std::tolower(str[i - 1])));
+        i++;
+    }
+
+    result.append(str.substr(i - 1));
+
+    // If we reached the end of the string, then the whole line was uppercase, so we need to
+    // lowercase the last char
+    if (i == str.size())
+        result[i - 1] = static_cast<char>(std::tolower(result[i - 1]));
+    else if (i == 1)
+        // If the first character is uppercase and the second is not, lowercase the first
+        // character
+        result[0] = static_cast<char>(std::tolower(result[0]));
+
     return result;
 }
 
