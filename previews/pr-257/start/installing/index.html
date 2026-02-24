@@ -1010,7 +1010,7 @@
 <p>Install from your editor, or download from the <a href="https://open-vsx.org/extension/Hudson-River-Trading/vscode-slang">OpenVSX Marketplace</a></p>
 <h3 id="neovim">Neovim<a class="headerlink" href="#neovim" title="Permanent link">&para;</a></h3>
 <blockquote>
-<p><code>slang-server</code> will eventually be added to <a href="https://github.com/neovim/nvim-lspconfig">nvim-lspconfig</a> and <a href="https://github.com/mason-org/mason.nvim">mason.nvim</a> and no additional configuration will be required. Until then, follow one of the methods below to manually add the server configuration.</p>
+<p><code>slang-server</code> will eventually be added to <a href="https://github.com/neovim/nvim-lspconfig">nvim-lspconfig</a> and <a href="https://github.com/mason-org/mason.nvim">mason.nvim</a> so that no additional configuration will be required. Until then, follow one of the methods below to manually add the server configuration.</p>
 </blockquote>
 <p>For newer versions of Neovim (≥ v0.11), the new <a href="https://neovim.io/doc/user/lsp.html#vim.lsp.start()">vim.lsp API</a> is the preferred, simpler way to configure language servers:
 <div class="language-lua highlight"><pre><span></span><code><span class="nv">vim</span><span class="p">.</span><span class="py">lsp</span><span class="p">.</span><span class="nf">config</span><span class="p">(</span><span class="s2">&quot;slang-server&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>

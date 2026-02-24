@@ -1135,8 +1135,9 @@
 <dl>
 <dd>
 <p><strong>Type:</strong> <code>string</code></p>
-<p>Flags to pass to slang.</p>
-<p>It's recommended to keep your slang flags in a flag file, that way it can be shared by both CI and the language server. Another nice setup is having <code>slang.f</code> contain your CI flags, then have <code>slang-server.f</code> include that file (via <code>-f path/to/slang.f</code>), along with more warnings in <code>slang-server.f</code>. That way more pedantic checks will show as yellow underlines in your editor.</p>
+<p>Flags to pass to slang. It uses the underlying driver to parse the flags, however some flags may not be used by the server.</p>
+<p>Use this to configure things like <a href="https://sv-lang.com/command-line-ref.html#include-paths">include paths</a>, <a href="https://sv-lang.com/command-line-ref.html#compat-option">LRM relaxations</a>, configure <a href="https://sv-lang.com/command-line-ref.html#clr-warnings">warning severity</a> and <a href="https://sv-lang.com/warning-ref.html">specific warnings</a>.</p>
+<p>It's recommended to keep your slang flags in a <a href="https://sv-lang.com/user-manual.html#command-files">flag file</a>, that way it can be shared by both CI and the language server. Another nice setup is having <code>slang.f</code> contain your CI flags, then have <code>slang-server.f</code> include that file (via <code>-f path/to/slang.f</code>), along with more warnings so that more pedantic checks will show as yellow underlines in your editor.</p>
 <p><strong>Example:</strong> <code>"-f path/to/slang_flags.f"</code></p>
 </dd>
 </dl>

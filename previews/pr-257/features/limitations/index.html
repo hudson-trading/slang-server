@@ -897,7 +897,7 @@
 <p><strong>Deep Hierarchical References</strong></p>
 <p>Shallow compilations only load the directly referenced syntax trees, and only load more transitive trees through packages. This may therefore cause issues with deep hierarchical references.</p>
 <p><strong>Single Unit Compilations</strong></p>
-<p>Designs that use slang's <a href="https://sv-lang.com/command-line-ref.html"><code>--single-unit</code></a> are not be supported. The main effect of using this flag is that macros are not inherited, so with the server diagnostics will occur there. This flag means that all files are essentially concatenated before being sent to tools. Even if <code>slang-server</code> grabbed these dependencies, it would make file and compilation updates take much longer, so it's generally preferred to switch away from using this flag.</p>
+<p>Designs that use slang's <a href="https://sv-lang.com/command-line-ref.html"><code>--single-unit</code></a> are not be supported. The main effect of using this flag is that macros are not inherited, so with the server those macros will show as missing. The <code>--single-unit</code> flag means that all files are essentially concatenated before being sent to tools. Even if <code>slang-server</code> grabbed these dependencies, it would make file and compilation updates take much longer, so it's generally preferred to switch away from using this flag.</p>
 <p><strong>Some UVM Code</strong></p>
 <p>The common UVM practice where classes are `included in a package results in poor support for those classes. These patterns are <a href="https://github.com/hudson-trading/slang-server/issues/135">planned</a> to be supported in the future.</p>
 
