@@ -80,10 +80,12 @@ exclude_docs: |
 nav:
   - index.md
   - Getting Started:
+      - start/building.md
       - start/installing.md
       - start/config.md
   - Features:
       - features/features.md
+      - features/formatting.md
       - features/limitations.md
       - HDL Features:
           - features/hdl/hdl.md

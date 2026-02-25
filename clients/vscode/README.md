@@ -1,15 +1,13 @@
 # Slang Server: SystemVerilog Language Server
 
-*Slang Server is a performant SystemVerilog language server implemented in C++, using the Slang library.*
-
-See [the docs](https://hudson-trading.github.io/slang-server) for instructions on [installing](https://hudson-trading.github.io/slang-server/start/installing/) and [configuring](https://hudson-trading.github.io/slang-server/start/config/).
-
-
 ## Quick Start
 
-Build from source at [https://github.com/hudson-trading/slang-server](https://github.com/hudson-trading/slang-server)
+On installation, the extension will ask if you would like it to auto-install the server from the [releases](https://github.com/hudson-trading/slang-server/releases) page.
 
-Then point to your build in the `slang.path` vscode setting.
+Alternatively, you can
+[build from source](https://hudson-trading.github.io/slang-server/start/building/) and set `slang.path` to your binary in your `settings.json`.
+
+See [the docs](https://hudson-trading.github.io/slang-server) for more detailed instructions on [installing](https://hudson-trading.github.io/slang-server/start/installing/) and [configuring](https://hudson-trading.github.io/slang-server/start/config/).
 
 ## Features
 
