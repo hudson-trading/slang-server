@@ -260,7 +260,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../installing/" class="md-tabs__link">
+        <a href="../building/" class="md-tabs__link">
           
   
   
@@ -412,6 +412,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../building/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Building
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../installing/" class="md-nav__link">
         
   
@@ -524,15 +547,6 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#parsingthreads" class="md-nav__link">
-    <span class="md-ellipsis">
-      parsingThreads
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#build" class="md-nav__link">
     <span class="md-ellipsis">
       build
@@ -554,6 +568,15 @@
   <a href="#wcpcommand" class="md-nav__link">
     <span class="md-ellipsis">
       wcpCommand
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inlayhints" class="md-nav__link">
+    <span class="md-ellipsis">
+      inlayHints
     </span>
   </a>
   
@@ -662,6 +685,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../../features/formatting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Formatting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../features/limitations/" class="md-nav__link">
         
   
@@ -698,10 +744,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_3" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_4" >
         
           
-          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
             
   
   
@@ -714,8 +760,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_3">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
             <span class="md-nav__icon md-icon"></span>
             HDL Features
           </label>
@@ -841,10 +887,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_4" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_5" >
         
           
-          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
             
   
   
@@ -857,8 +903,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_4">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
             <span class="md-nav__icon md-icon"></span>
             Design Choices
           </label>
@@ -991,15 +1037,6 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#parsingthreads" class="md-nav__link">
-    <span class="md-ellipsis">
-      parsingThreads
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#build" class="md-nav__link">
     <span class="md-ellipsis">
       build
@@ -1021,6 +1058,15 @@
   <a href="#wcpcommand" class="md-nav__link">
     <span class="md-ellipsis">
       wcpCommand
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inlayhints" class="md-nav__link">
+    <span class="md-ellipsis">
+      inlayHints
     </span>
   </a>
   
@@ -1089,8 +1135,9 @@
 <dl>
 <dd>
 <p><strong>Type:</strong> <code>string</code></p>
-<p>Flags to pass to slang.</p>
-<p>It's recommended to keep your slang flags in a flag file, that way it can be shared by both CI and the language server. Another nice setup is having <code>slang.f</code> contain your CI flags, then have <code>slang-server.f</code> include that file (via <code>-f path/to/slang.f</code>), along with more warnings in <code>slang-server.f</code>. That way more pedantic checks will show as yellow underlines in your editor.</p>
+<p>Flags to pass to slang. It uses the underlying driver to parse the flags, however some flags may not be used by the server.</p>
+<p>Use this to configure things like <a href="https://sv-lang.com/command-line-ref.html#include-paths">include paths</a>, <a href="https://sv-lang.com/command-line-ref.html#compat-option">LRM relaxations</a>, configure <a href="https://sv-lang.com/command-line-ref.html#clr-warnings">warning severity</a> and <a href="https://sv-lang.com/warning-ref.html">specific warnings</a>.</p>
+<p>It's recommended to keep your slang flags in a <a href="https://sv-lang.com/user-manual.html#command-files">flag file</a>, that way it can be shared by both CI and the language server. Another nice setup is having <code>slang.f</code> contain your CI flags, then have <code>slang-server.f</code> include that file (via <code>-f path/to/slang.f</code>), along with more warnings so that more pedantic checks will show as yellow underlines in your editor.</p>
 <p><strong>Example:</strong> <code>"-f path/to/slang_flags.f"</code></p>
 </dd>
 </dl>
@@ -1101,15 +1148,6 @@
 <p><strong>Type:</strong> <code>integer</code></p>
 <p><strong>Default:</strong> <code>0</code> (auto-detect)</p>
 <p>Thread count to use for indexing. When set to 0, automatically detects the optimal number of threads based on system capabilities.</p>
-</dd>
-</dl>
-<hr />
-<h3 id="parsingthreads"><code>parsingThreads</code><a class="headerlink" href="#parsingthreads" title="Permanent link">&para;</a></h3>
-<dl>
-<dd>
-<p><strong>Type:</strong> <code>integer</code></p>
-<p><strong>Default:</strong> <code>8</code></p>
-<p>Thread count to use for parsing SystemVerilog files for compilations.</p>
 </dd>
 </dl>
 <hr />
@@ -1137,6 +1175,34 @@
 <p><strong>Type:</strong> <code>string</code></p>
 <p>Waveform viewer command where <code>{}</code> will be replaced with the WCP port.</p>
 <p><strong>Example:</strong> <code>"surfer --wcp-initiate {}"</code></p>
+</dd>
+</dl>
+<hr />
+<h3 id="inlayhints"><code>inlayHints</code><a class="headerlink" href="#inlayhints" title="Permanent link">&para;</a></h3>
+<dl>
+<dd>
+<p><strong>Type:</strong> <code>InlayHints</code></p>
+<div class="language-typescript highlight"><pre><span></span><code><span class="kd">interface</span><span class="w"> </span><span class="nx">InlayHints</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="cm">/** Hints for port types */</span>
+<span class="w">  </span><span class="nx">portTypes?</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="w">           </span><span class="c1">// default: false</span>
+<span class="w">  </span><span class="cm">/** Hints for names of ordered ports and params */</span>
+<span class="w">  </span><span class="nx">orderedInstanceNames?</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="w"> </span><span class="c1">// default: true</span>
+<span class="w">  </span><span class="cm">/** Hints for port names in wildcard (.*) ports */</span>
+<span class="w">  </span><span class="nx">wildcardNames?</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="w">       </span><span class="c1">// default: true</span>
+<span class="w">  </span><span class="cm">/** Function argument hints: 0=off, N=only calls with &gt;=N args */</span>
+<span class="w">  </span><span class="nx">funcArgNames?</span><span class="o">:</span><span class="w"> </span><span class="kt">integer</span><span class="w">        </span><span class="c1">// default: 2</span>
+<span class="w">  </span><span class="cm">/** Macro argument hints: 0=off, N=only calls with &gt;=N args */</span>
+<span class="w">  </span><span class="nx">macroArgNames?</span><span class="o">:</span><span class="w"> </span><span class="kt">integer</span><span class="w">       </span><span class="c1">// default: 2</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Controls inline hints displayed in the editor for things like ordered arguments, wildcard ports, and others.</p>
+<ul>
+<li><strong><code>portTypes</code></strong>: Show type hints on ports. Off by default.</li>
+<li><strong><code>orderedInstanceNames</code></strong>: Show parameter/port name hints on ordered (positional) instance connections.</li>
+<li><strong><code>wildcardNames</code></strong>: Show port name hints on wildcard (<code>.*</code>) connections.</li>
+<li><strong><code>funcArgNames</code></strong>: Show argument name hints on function calls. Set to <code>0</code> to disable, or <code>N</code> to only show hints for calls with N or more arguments.</li>
+<li><strong><code>macroArgNames</code></strong>: Show argument name hints on macro invocations. Set to <code>0</code> to disable, or <code>N</code> to only show hints for calls with N or more arguments.</li>
+</ul>
 </dd>
 </dl>
 <hr />
