@@ -8,11 +8,13 @@
 export interface Config {
   /** Flags to pass to slang */
   flags?: string
-  /** Deprecated: use 'index' instead. Globs of what to index. By default will index all sv and svh files in the workspace. */
+  /** Globs of what to index. By default will index all sv and svh files in the workspace.
+   * @deprecated Use 'index' instead. */
   indexGlobs?: string[]
   /** Index configurations; by default indexes all .sv, .svh, .v, and .vh files in the workspace. */
   index?: Config__IndexConfig[]
-  /** Deprecated: use 'index' instead. Directories to exclude */
+  /** Directories to exclude
+   * @deprecated Use 'index' instead. */
   excludeDirs?: string[]
   /** Thread count to use for indexing */
   indexingThreads?: number

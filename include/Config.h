@@ -6,6 +6,7 @@
 // SPDX-License-Identifier: MIT
 //------------------------------------------------------------------------------
 #pragma once
+#include "rfl/Deprecated.hpp"
 #include "rfl/Description.hpp"
 #include <optional>
 #include <rfl/Result.hpp>
@@ -18,9 +19,10 @@ struct Config {
     rfl::Description<"Flags to pass to slang", std::string> flags;
 
     // Legacy indexing globs, kept for backwards compatibility
-    rfl::Description<"Deprecated: use 'index' instead. Globs of what to index. By default will "
-                     "index all sv and svh files in the workspace.",
-                     std::vector<std::string>>
+    rfl::Deprecated<"Use 'index' instead.",
+                    "Globs of what to index. By default will "
+                    "index all sv and svh files in the workspace.",
+                    std::vector<std::string>>
         indexGlobs;
 
     struct IndexConfig {
@@ -52,8 +54,7 @@ struct Config {
         }
     }
 
-    rfl::Description<"Deprecated: use 'index' instead. Directories to exclude",
-                     std::vector<std::string>>
+    rfl::Deprecated<"Use 'index' instead.", "Directories to exclude", std::vector<std::string>>
         excludeDirs;
     rfl::Description<"Thread count to use for indexing", int> indexingThreads = 0;
     rfl::Description<"Build file to use", std::optional<std::string>> build;

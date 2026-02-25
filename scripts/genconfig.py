@@ -121,8 +121,18 @@ def type_from_schema(s: dict) -> str:
         for key, val in s["properties"].items():
             prop_type = type_from_schema(val)
             desc = val.get("description", "")
-            if desc:
-                props.append(f"\n  /** {desc} */")
+            deprecated = val.get("deprecated", False)
+            deprecation_msg = val.get("deprecationMessage", "")
+            if desc or deprecated:
+                comment_parts = []
+                if desc:
+                    comment_parts.append(desc)
+                if deprecated:
+                    tag = "@deprecated"
+                    if deprecation_msg:
+                        tag += f" {deprecation_msg}"
+                    comment_parts.append(tag)
+                props.append("\n  /** " + "\n   * ".join(comment_parts) + " */")
             props.append(f'\n  "{key}"?: {prop_type}')
         return "{" + "".join(props) + "\n}"
 
@@ -135,8 +145,18 @@ def generate_interface(name: str, schema_def: dict) -> str:
     for key, val in schema_def.get("properties", {}).items():
         prop_type = type_from_schema(val)
         desc = val.get("description", "")
-        if desc:
-            props.append(f"/** {desc} */")
+        deprecated = val.get("deprecated", False)
+        deprecation_msg = val.get("deprecationMessage", "")
+        if desc or deprecated:
+            comment_parts = []
+            if desc:
+                comment_parts.append(desc)
+            if deprecated:
+                tag = "@deprecated"
+                if deprecation_msg:
+                    tag += f" {deprecation_msg}"
+                comment_parts.append(tag)
+            props.append("/** " + "\n   * ".join(comment_parts) + " */")
         props.append(f"{key}?: {prop_type}")
 
     props_str = "\n  ".join(props)
