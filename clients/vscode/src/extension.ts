@@ -314,7 +314,11 @@ File input is sent to stdin, and formatted output is read from stdout.',
 
   async stopServer() {
     if (this.client !== undefined) {
-      await this.client.stop()
+      try {
+        await this.client.stop()
+      } catch (e) {
+        this.logger.warn('Stopping server failed: ' + e)
+      }
       this.client = undefined
     }
   }
@@ -331,9 +335,7 @@ File input is sent to stdin, and formatted output is read from stdout.',
       this.onConfigUpdated(async () => {
         this.isRestarting = true
         try {
-          if (this.client !== undefined) {
-            await this.client.stop()
-          }
+          await this.stopServer()
           await this.setupLanguageClient()
         } finally {
           this.isRestarting = false
