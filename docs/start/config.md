@@ -35,9 +35,11 @@ All configuration options are optional and have sensible defaults. In VSCode, th
 
 :   **Type:** `string`
 
-    Flags to pass to slang.
+    Flags to pass to slang. It uses the underlying driver to parse the flags, however some flags may not be used by the server.
 
-    It's recommended to keep your slang flags in a flag file, that way it can be shared by both CI and the language server. Another nice setup is having `slang.f` contain your CI flags, then have `slang-server.f` include that file (via `-f path/to/slang.f`), along with more warnings in `slang-server.f`. That way more pedantic checks will show as yellow underlines in your editor.
+    Use this to configure things like [include paths](https://sv-lang.com/command-line-ref.html#include-paths), [LRM relaxations](https://sv-lang.com/command-line-ref.html#compat-option), configure [warning severity](https://sv-lang.com/command-line-ref.html#clr-warnings) and [specific warnings](https://sv-lang.com/warning-ref.html).
+
+    It's recommended to keep your slang flags in a [flag file](https://sv-lang.com/user-manual.html#command-files), that way it can be shared by both CI and the language server. Another nice setup is having `slang.f` contain your CI flags, then have `slang-server.f` include that file (via `-f path/to/slang.f`), along with more warnings so that more pedantic checks will show as yellow underlines in your editor.
 
     **Example:** `"-f path/to/slang_flags.f"`
 
@@ -50,16 +52,6 @@ All configuration options are optional and have sensible defaults. In VSCode, th
     **Default:** `0` (auto-detect)
 
     Thread count to use for indexing. When set to 0, automatically detects the optimal number of threads based on system capabilities.
-
----
-
-### `parsingThreads`
-
-:   **Type:** `integer`
-
-    **Default:** `8`
-
-    Thread count to use for parsing SystemVerilog files for compilations.
 
 ---
 
@@ -90,6 +82,35 @@ All configuration options are optional and have sensible defaults. In VSCode, th
     Waveform viewer command where `{}` will be replaced with the WCP port.
 
     **Example:** `"surfer --wcp-initiate {}"`
+
+---
+
+### `inlayHints`
+
+:   **Type:** `InlayHints`
+
+    ```typescript
+    interface InlayHints {
+      /** Hints for port types */
+      portTypes?: boolean           // default: false
+      /** Hints for names of ordered ports and params */
+      orderedInstanceNames?: boolean // default: true
+      /** Hints for port names in wildcard (.*) ports */
+      wildcardNames?: boolean       // default: true
+      /** Function argument hints: 0=off, N=only calls with >=N args */
+      funcArgNames?: integer        // default: 2
+      /** Macro argument hints: 0=off, N=only calls with >=N args */
+      macroArgNames?: integer       // default: 2
+    }
+    ```
+
+    Controls inline hints displayed in the editor for things like ordered arguments, wildcard ports, and others.
+
+    - **`portTypes`**: Show type hints on ports. Off by default.
+    - **`orderedInstanceNames`**: Show parameter/port name hints on ordered (positional) instance connections.
+    - **`wildcardNames`**: Show port name hints on wildcard (`.*`) connections.
+    - **`funcArgNames`**: Show argument name hints on function calls. Set to `0` to disable, or `N` to only show hints for calls with N or more arguments.
+    - **`macroArgNames`**: Show argument name hints on macro invocations. Set to `0` to disable, or `N` to only show hints for calls with N or more arguments.
 
 ---
 
