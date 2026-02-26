@@ -7,6 +7,8 @@
 //------------------------------------------------------------------------------
 #pragma once
 
+#include <memory>
+
 #include "slang/ast/Lookup.h"
 #include "slang/parsing/Token.h"
 #include "slang/syntax/SyntaxKind.h"
@@ -23,6 +25,7 @@ class SyntaxNode;
 namespace server {
 
 class SlangDoc;
+class ShallowAnalysis;
 
 #define CCK(x) x(PortList) x(Expression) x(ModuleMember) x(Procedural) x(Unknown)
 SLANG_ENUM(CompletionContextKind, CCK)
@@ -38,6 +41,9 @@ struct CompletionContext {
 
     /// The common ancestor of tokens before/after the location
     const slang::syntax::SyntaxNode* syntax = nullptr;
+
+    /// Holds the analysis alive so that scope/syntax pointers remain valid
+    std::shared_ptr<ShallowAnalysis> analysis;
 
     /// Determine completion context from a document location
     /// @param doc The document containing the location

@@ -100,8 +100,11 @@ bool isProceduralBlockContext(SyntaxKind kind) {
 
 CompletionContext CompletionContext::fromLocation(SlangDoc& doc, SourceLocation loc) {
     CompletionContext ctx;
-    ctx.scope = doc.getScopeAt(loc);
-    ctx.syntax = doc.getAnalysis()->syntaxes.getSyntaxAt(loc);
+    // Hold analysis alive so that scope/syntax pointers remain valid
+    // for the entire lifetime of the CompletionContext.
+    ctx.analysis = doc.getAnalysis();
+    ctx.scope = ctx.analysis->getScopeAt(loc);
+    ctx.syntax = ctx.analysis->syntaxes.getSyntaxAt(loc);
 
     if (!ctx.syntax) {
         // No syntax node at location - assume module item context if we have a scope

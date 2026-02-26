@@ -23,6 +23,9 @@ bool hasValidBuffers(const SourceManager& sm, const std::shared_ptr<syntax::Synt
 
     // Check all included file buffers
     for (const auto& inc : tree->getIncludeDirectives()) {
+        if (!inc.buffer.id.valid())
+            continue;
+
         if (!sm.isLatestData(inc.buffer.id))
             return false;
     }
