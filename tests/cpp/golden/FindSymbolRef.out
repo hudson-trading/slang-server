@@ -850,12 +850,15 @@ module n(Iface.m a);
 
         a.foo(42, 3.14);
         ^ Ref -> **InterfacePort** `a` in `n`  \n\\n\\n\---\n\\n\`Iface.m a`
+          ^^^ Ref -> **Subroutine** `foo` in `Iface`  \n\\n\\n\---\n\\n\`extern function void foo(int i, real r);`
 
         a.bar(1, 1);
         ^ Ref -> **InterfacePort** `a` in `n`  \n\\n\\n\---\n\\n\`Iface.m a`
+          ^^^ Ref -> **Subroutine** `bar` in `Iface`  \n\\n\\n\---\n\\n\`function void bar(int, logic)`
 
         a.baz();
         ^ Ref -> **InterfacePort** `a` in `n`  \n\\n\\n\---\n\\n\`Iface.m a`
+          ^^^ Ref -> **Subroutine** `baz` in `Iface`  \n\\n\\n\---\n\\n\`task baz`
 
     end
 
@@ -863,17 +866,21 @@ module n(Iface.m a);
 
     function void a.bar(int i, logic l); endfunction
                   ^ Ref -> **InterfacePort** `a` in `n`  \n\\n\\n\---\n\\n\`Iface.m a`
+                    ^^^ Ref -> **Subroutine** `bar` in `Iface`  \n\\n\\n\---\n\\n\`function void bar(int, logic)`
 
     task a.baz; endtask
          ^ Ref -> **InterfacePort** `a` in `n`  \n\\n\\n\---\n\\n\`Iface.m a`
+           ^^^ Ref -> **Subroutine** `baz` in `Iface`  \n\\n\\n\---\n\\n\`task baz`
 
     function void a.func(int i); endfunction
                   ^ Ref -> **InterfacePort** `a` in `n`  \n\\n\\n\---\n\\n\`Iface.m a`
+                    ^^^^ Ref -> **Subroutine** `func` in `Iface`  \n\\n\\n\---\n\\n\`function void func(int)`
 
 
 
     function void a.foo(int i, real r);
                   ^ Ref -> **InterfacePort** `a` in `n`  \n\\n\\n\---\n\\n\`Iface.m a`
+                    ^^^ Ref -> **Subroutine** `foo` in `Iface`  \n\\n\\n\---\n\\n\`extern function void foo(int i, real r);`
 
     endfunction
 
@@ -912,6 +919,7 @@ module m4;
 
     task i1.t2;
          ^^ Ref -> **Instance** `i1` in `m4`  \n\Type: Iface  \n\\n\\n\---\n\\n\`Iface i1();`
+            ^^ Ref -> **Subroutine** `t2` in `Iface`  \n\\n\\n\---\n\\n\`task t2`
 
         static int i = baz;
                        ^^^ Ref -> **Parameter** `baz` in `m4`  \n\Type: `int`  \n\Value: `3`  \n\\n\\n\---\n\\n\`localparam int baz = 3`
@@ -922,6 +930,7 @@ module m4;
 
     task i2.t2;
          ^^ Ref -> **Instance** `i2` in `m4`  \n\Type: Iface  \n\\n\\n\---\n\\n\`Iface i2();`
+            ^^ Ref -> **Subroutine** `t2` in `Iface`  \n\\n\\n\---\n\\n\`task t2`
 
         static int i = baz;
                        ^^^ Ref -> **Parameter** `baz` in `m4`  \n\Type: `int`  \n\Value: `3`  \n\\n\\n\---\n\\n\`localparam int baz = 3`

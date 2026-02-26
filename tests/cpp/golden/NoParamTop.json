@@ -162,6 +162,10 @@
         }
       },
       "severity": "Error",
+      "code": "multiple-always-assigns",
+      "codeDescription": {
+        "href": "https://sv-lang.com/warning-ref.html#multiple-always-assigns"
+      },
       "message": "variable 'single_struct.addr' driven by always_ff procedure cannot be written to by any other process",
       "relatedInformation": [
         {
@@ -194,6 +198,10 @@
         }
       },
       "severity": "Error",
+      "code": "multiple-always-assigns",
+      "codeDescription": {
+        "href": "https://sv-lang.com/warning-ref.html#multiple-always-assigns"
+      },
       "message": "variable 'single_struct.data' driven by always_ff procedure cannot be written to by any other process",
       "relatedInformation": [
         {
@@ -226,6 +234,10 @@
         }
       },
       "severity": "Error",
+      "code": "multiple-always-assigns",
+      "codeDescription": {
+        "href": "https://sv-lang.com/warning-ref.html#multiple-always-assigns"
+      },
       "message": "variable 'single_struct.valid' driven by always_ff procedure cannot be written to by any other process",
       "relatedInformation": [
         {
@@ -258,6 +270,10 @@
         }
       },
       "severity": "Error",
+      "code": "multiple-always-assigns",
+      "codeDescription": {
+        "href": "https://sv-lang.com/warning-ref.html#multiple-always-assigns"
+      },
       "message": "variable 'struct_array' driven by always_ff procedure cannot be written to by any other process",
       "relatedInformation": [
         {
@@ -290,6 +306,10 @@
         }
       },
       "severity": "Error",
+      "code": "multiple-always-assigns",
+      "codeDescription": {
+        "href": "https://sv-lang.com/warning-ref.html#multiple-always-assigns"
+      },
       "message": "variable 'nested_array' driven by always_ff procedure cannot be written to by any other process",
       "relatedInformation": [
         {
@@ -322,6 +342,10 @@
         }
       },
       "severity": "Error",
+      "code": "multiple-always-assigns",
+      "codeDescription": {
+        "href": "https://sv-lang.com/warning-ref.html#multiple-always-assigns"
+      },
       "message": "variable 'pkg_array' driven by always_ff procedure cannot be written to by any other process",
       "relatedInformation": [
         {
@@ -354,6 +378,10 @@
         }
       },
       "severity": "Error",
+      "code": "multiple-always-assigns",
+      "codeDescription": {
+        "href": "https://sv-lang.com/warning-ref.html#multiple-always-assigns"
+      },
       "message": "variable 'nested_struct.tag' driven by always_comb procedure cannot be written to by any other process",
       "relatedInformation": [
         {
@@ -386,6 +414,10 @@
         }
       },
       "severity": "Error",
+      "code": "multiple-always-assigns",
+      "codeDescription": {
+        "href": "https://sv-lang.com/warning-ref.html#multiple-always-assigns"
+      },
       "message": "variable 'nested_struct.enable' driven by always_comb procedure cannot be written to by any other process",
       "relatedInformation": [
         {
