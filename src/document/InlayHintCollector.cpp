@@ -317,6 +317,12 @@ void InlayHintCollector::handle(const InvocationExpressionSyntax& syntax) {
             continue;
         }
         auto argLoc = getArgumentHintLoc(*arg, m_analysis);
+        std::string passedArgName = arg->toString();
+        ltrim(passedArgName);
+        if (passedArgName == name) {
+            continue;
+        }
+
         result.push_back(lsp::InlayHint{
             .position = toPosition(argLoc, m_analysis.m_sourceManager),
             .label = fmt::format("{}:", name),
