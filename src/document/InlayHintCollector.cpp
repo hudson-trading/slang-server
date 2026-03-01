@@ -305,6 +305,13 @@ void InlayHintCollector::handle(const InvocationExpressionSyntax& syntax) {
         if (name.empty()) {
             continue;
         }
+
+        std::string passedArgName = arg->toString();
+        ltrim(passedArgName);
+        if (passedArgName == name) {
+            continue;
+        }
+
         result.push_back(lsp::InlayHint{
             .position = toPosition(arg->getFirstToken().location(), m_analysis.m_sourceManager),
             .label = fmt::format("{}:", name),
