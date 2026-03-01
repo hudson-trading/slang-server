@@ -16,7 +16,7 @@ TEST_CASE("URI EmptyInput") {
     URI u("");
 
     // TODO: Right now it returns "/" as the URI string.
-    // It should return "/"
+    // It should return ""
     // CHECK(u.str() == "");
 
 #ifdef _WIN32
