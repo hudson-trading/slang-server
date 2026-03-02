@@ -4,6 +4,7 @@
 #include "util/Formatting.h"
 
 #include "lsp/LspTypes.h"
+#include <cctype>
 #include <fmt/format.h>
 #include <sstream>
 #include <string>
@@ -421,13 +422,46 @@ void ltrim(std::string_view& sv) {
 }
 
 std::string toCamelCase(std::string_view str) {
-    if (str.empty()) {
+    const std::size_t n = str.size();
+    if (n == 0)
         return "";
+
+    std::string result(str);
+
+    // 1. Always lower the first character
+    result[0] = static_cast<char>(std::tolower(static_cast<unsigned char>(result[0])));
+    if (n == 1)
+        return result;
+
+    // 2. The Sliding Window: Pre-calculate the first "current"
+    bool currentIsUpper = std::isupper(static_cast<unsigned char>(result[1]));
+
+    // Loop from the second char up to the second-to-last char
+    for (std::size_t i = 1; i < n - 1; ++i) {
+        // Since we stop at n-1, result[i+1] is always safe
+        bool nextIsUpper = std::isupper(static_cast<unsigned char>(result[i + 1]));
+
+        if (currentIsUpper) {
+            if (nextIsUpper) {
+                result[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(result[i])));
+            }
+            else {
+                // At the transition letter, like 'P' in 'JSONParser')
+                return result;
+            }
+        }
+        else {
+            return result; // Hit a lowercase letter, we're done
+        }
+
+        currentIsUpper = nextIsUpper;
     }
-    std::string result;
-    result.reserve(str.size());
-    result.push_back(static_cast<char>(std::tolower(str[0])));
-    result.append(str.substr(1));
+
+    // If we reached here, it means the whole string (up to n-1) was uppercase
+    if (currentIsUpper) {
+        result[n - 1] = static_cast<char>(std::tolower(static_cast<unsigned char>(result[n - 1])));
+    }
+
     return result;
 }
 
