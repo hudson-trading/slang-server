@@ -11,6 +11,7 @@
 #include "ServerDriver.h"
 #include "completions/CompletionContext.h"
 #include "completions/Completions.h"
+#include "document/ShallowAnalysis.h"
 #include "lsp/LspTypes.h"
 #include "util/Converters.h"
 #include "util/Formatting.h"
@@ -69,7 +70,8 @@ void CompletionDispatch::getTriggerCompletions(char triggerChar, char prevChar,
     if (triggerChar == '#') {
         // This branch will get hit if the resolve request was not responded to in time, and the
         // user continues with the module inst
-        auto moduleToken = doc->getTokenAt(loc - 3);
+        auto analysis = doc->getAnalysis();
+        auto moduleToken = analysis->getTokenAt(loc - 3);
 
         if (!moduleToken) {
             WARN("No module token found at location {}", loc);
@@ -91,8 +93,15 @@ void CompletionDispatch::getTriggerCompletions(char triggerChar, char prevChar,
     else if (triggerChar == ':' && prevChar == ':') {
         // We only want '::', a single colon can be used for wire slicing
 
+        // Capture analysis once to avoid repeated getAnalysis() calls
+        auto analysis = doc->getAnalysis();
+        if (!analysis || !analysis->getCompilation()) {
+            ERROR("No analysis or compilation available for document {}", doc->getPath());
+            return;
+        }
+
         // The triggerChar is the second ':', so we need to look before the first ':'
-        auto packageToken = doc->getTokenAt(loc - 3);
+        auto packageToken = analysis->getTokenAt(loc - 3);
         if (!packageToken) {
             WARN("No package token found before '::'");
             return;
@@ -101,14 +110,7 @@ void CompletionDispatch::getTriggerCompletions(char triggerChar, char prevChar,
         auto packageName = std::string{packageToken->valueText()};
         INFO("Looking for package members in package: {}", packageName);
 
-        // completions::getPackageMemberCompletions(results, *doc, packageName);
-        // Get the package from the compilation
-        if (!doc->getSyntaxTree() || !doc->getCompilation()) {
-            ERROR("No syntax tree or compilation available for document {}", doc->getPath());
-            return;
-        }
-
-        auto& compilation = doc->getCompilation();
+        auto& compilation = analysis->getCompilation();
         auto pkg = compilation->getPackage(packageName);
         if (!pkg) {
             ERROR("No package found for {}", packageName);
@@ -116,7 +118,7 @@ void CompletionDispatch::getTriggerCompletions(char triggerChar, char prevChar,
         }
         m_lastDoc = doc;
         m_lastScope = pkg->getHierarchicalPath();
-        auto originalScope = doc->getScopeAt(loc);
+        auto originalScope = analysis->getScopeAt(loc);
         completions::addMemberCompletions(results, pkg, false, originalScope);
     }
     else if (triggerChar == '`') {
@@ -135,12 +137,14 @@ void CompletionDispatch::getTriggerCompletions(char triggerChar, char prevChar,
     }
     else if (triggerChar == '.') {
         // Member completions
-        auto exprToken = doc->getTokenAt(loc - 2);
+        // Capture analysis once to avoid invalidation from repeated getAnalysis() calls.
+        auto analysis = doc->getAnalysis();
+        auto exprToken = analysis->getTokenAt(loc - 2);
         if (!exprToken) {
             WARN("No expression token found before '.'");
             return;
         }
-        auto sym = doc->getAnalysis()->getSymbolAtToken(exprToken);
+        auto sym = analysis->getSymbolAtToken(exprToken);
         if (!sym) {
             WARN("No symbol found for token {}, checking index.", exprToken->valueText());
             // return;
