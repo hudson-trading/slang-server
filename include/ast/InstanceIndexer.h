@@ -13,7 +13,8 @@
 #include "slang/ast/symbols/CompilationUnitSymbols.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
 
-struct InstanceIndexer : public slang::ast::ASTVisitor<InstanceIndexer, false, false> {
+struct InstanceIndexer
+    : public slang::ast::ASTVisitor<InstanceIndexer, slang::ast::VisitFlags::Symbols> {
 public:
     std::map<std::string, std::vector<const slang::ast::InstanceSymbol*>> moduleToInstances;
     void handle(const slang::ast::InstanceSymbol& symbol) {

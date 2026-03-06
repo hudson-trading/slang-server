@@ -1196,13 +1196,13 @@ endmodule
 
 
 class C;
-      ^ Refs[2]
+      ^ Refs[3]
 
     int i;
-        ^ Refs[1]
+        ^ Refs[2]
 
     static int j;
-               ^ Refs[2]
+               ^ Refs[3]
 
     extern function int foo(int bar, int baz = 1);
                         ^^^ Refs[1]
@@ -1214,7 +1214,7 @@ endclass
 
 
 class D;
-      ^ Refs[2]
+      ^ Refs[3]
 
     extern static function real foo;
                                 ^^^ Refs[1]
@@ -1224,19 +1224,30 @@ endclass
 
 
 localparam int k = 5;
-               ^ Refs[1]
+               ^ Refs[2]
 
 
 
 function int C::foo(int bar, int baz = 1);
+             ^ Refs[3]
+                ^^^ Refs[1]
+                        ^^^ Refs[2]
+                                 ^^^ Refs[2]
 
     i = j + k + bar + baz;
+    ^ Refs[2]
+        ^ Refs[3]
+            ^ Refs[2]
+                ^^^ Refs[2]
+                      ^^^ Refs[2]
 
 endfunction
 
 
 
 function real D::foo;
+              ^ Refs[3]
+                 ^^^ Refs[2]
 
 endfunction
 
@@ -1295,8 +1306,8 @@ module m7;
 
     real r = D::foo();
          ^ Refs[1]
-             ^ Refs[2]
-                ^^^ Refs[1]
+             ^ Refs[3]
+                ^^^ Refs[2]
 
 endmodule
 
@@ -1369,8 +1380,8 @@ class C2 extends B;
         i = j + C::j + A::f();
         ^ Refs[4]
             ^ Refs[7]
-                ^ Refs[2]
-                   ^ Refs[2]
+                ^ Refs[3]
+                   ^ Refs[3]
                        ^ Refs[5]
                           ^ Refs[6]
 

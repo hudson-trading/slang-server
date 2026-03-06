@@ -19,7 +19,8 @@
 #include "slang/ast/symbols/MemberSymbols.h"
 #include "slang/ast/symbols/ValueSymbol.h"
 
-struct ReferenceIndexer : public slang::ast::ASTVisitor<ReferenceIndexer, true, true> {
+struct ReferenceIndexer
+    : public slang::ast::ASTVisitor<ReferenceIndexer, slang::ast::VisitFlags::AllGood> {
 private:
     const slang::ast::Symbol* currentUse = nullptr;
 
