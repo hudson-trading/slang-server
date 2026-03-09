@@ -81,7 +81,7 @@ private:
 };
 
 template<typename TDerived>
-struct ConeTracer : public slang::ast::ASTVisitor<TDerived, true, true> {
+struct ConeTracer : public slang::ast::ASTVisitor<TDerived, slang::ast::VisitFlags::AllGood> {
 protected:
     const slang::ast::Symbol* root;
 

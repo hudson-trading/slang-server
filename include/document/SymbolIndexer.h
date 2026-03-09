@@ -28,7 +28,8 @@ namespace server {
 using Symdex = std::unordered_map<const slang::parsing::Token*, const slang::ast::Symbol*>;
 using Syntex = std::unordered_map<const slang::syntax::SyntaxNode*, const slang::ast::Symbol*>;
 
-struct SymbolIndexer : public slang::ast::ASTVisitor<SymbolIndexer, false, false, true> {
+struct SymbolIndexer
+    : public slang::ast::ASTVisitor<SymbolIndexer, slang::ast::VisitFlags::Symbols> {
 public:
     /// Token -> Symbol mapping
     Symdex symdex;

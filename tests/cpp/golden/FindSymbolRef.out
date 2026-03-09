@@ -811,26 +811,26 @@ interface Iface;
           ^^^^^ Sym Iface : Definition
 
     extern function void foo(int i, real r);
-                         ^^^ Sym foo : MethodPrototype
+                         ^^^ Sym foo : Subroutine
                                  ^ Sym i : FormalArgument
                                          ^ Sym r : FormalArgument
 
     extern forkjoin task t3();
-                         ^^ Sym t3 : MethodPrototype
+                         ^^ Sym t3 : Subroutine
 
 
 
     modport m(export foo, function void bar(int, logic), task baz, export func);
             ^ Sym m : Modport
                      ^^^ Sym foo : MethodPrototype
-                                        ^^^ Sym bar : MethodPrototype
-                                                              ^^^ Sym baz : MethodPrototype
+                                        ^^^ Sym bar : Subroutine
+                                                              ^^^ Sym baz : Subroutine
                                                                           ^^^^ Sym func : MethodPrototype
 
     modport n(import function void func(int), import task t2);
             ^ Sym n : Modport
-                                   ^^^^ Sym func : MethodPrototype
-                                                          ^^ Sym t2 : MethodPrototype
+                                   ^^^^ Sym func : Subroutine
+                                                          ^^ Sym t2 : Subroutine
 
     modport o(export t2);
             ^ Sym o : Modport
@@ -1224,14 +1224,25 @@ localparam int k = 5;
 
 
 function int C::foo(int bar, int baz = 1);
+             ^ Ref -> **ClassType** `C`  \n\Resolved Type: `C`  \n\\n\\n\---\n\\n\`class C;\n\    int i;\n\    static int j;\n\    extern function int foo(int bar, int baz = 1);\n\endclass`
+                ^^^ Sym foo : Subroutine
+                        ^^^ Sym bar : FormalArgument
+                                 ^^^ Sym baz : FormalArgument
 
     i = j + k + bar + baz;
+    ^ Ref -> **ClassProperty** `i` in `C`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int i;`
+        ^ Ref -> **ClassProperty** `j` in `C`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int j;`
+            ^ Ref -> **Parameter** `k`  \n\Type: `int`  \n\Value: `5`  \n\\n\\n\---\n\\n\`localparam int k = 5`
+                ^^^ Ref -> **FormalArgument** `bar` in `C::foo`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int bar`
+                      ^^^ Ref -> **FormalArgument** `baz` in `C::foo`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int baz = 1`
 
 endfunction
 
 
 
 function real D::foo;
+              ^ Ref -> **ClassType** `D`  \n\Resolved Type: `D`  \n\\n\\n\---\n\\n\`class D;\n\    extern static function real foo;\n\endclass`
+                 ^^^ Sym foo : Subroutine
 
 endfunction
 
@@ -1274,18 +1285,18 @@ module m7;
        ^^ Sym m7 : Definition
 
     G #(real) g1;
-    ^ Ref -> **ClassType** `G`  \n\Resolved Type: `G`  \n\\n\\n\---\n\\n\`class G #(type T);\n\    extern function T foo;\n\endclass`
+    ^ Ref -> **ClassType** `G`  \n\Resolved Type: `G#(real)`  \n\\n\\n\---\n\\n\`class G #(type T);\n\    extern function T foo;\n\endclass`
               ^^ Sym g1 : Variable
 
     G #(int) g2;
-    ^ Ref -> **ClassType** `G`  \n\Resolved Type: `G`  \n\\n\\n\---\n\\n\`class G #(type T);\n\    extern function T foo;\n\endclass`
+    ^ Ref -> **ClassType** `G`  \n\Resolved Type: `G#(int)`  \n\\n\\n\---\n\\n\`class G #(type T);\n\    extern function T foo;\n\endclass`
              ^^ Sym g2 : Variable
 
 
 
     int i = g2.foo();
         ^ Sym i : Variable
-            ^^ Ref -> **Variable** `g2` in `m7`  \n\Type: `G`  \n\\n\\n\---\n\\n\`G #(int) g2;`
+            ^^ Ref -> **Variable** `g2` in `m7`  \n\Type: `G#(int)`  \n\\n\\n\---\n\\n\`G #(int) g2;`
                ^^^ Ref -> **Subroutine** `foo` in `G`  \n\\n\\n\---\n\\n\`function G::T G::foo;\n\    return 0;\n\endfunction`
 
     real r = D::foo();

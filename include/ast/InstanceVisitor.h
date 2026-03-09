@@ -37,7 +37,8 @@ public:
     Restorer& operator=(const Restorer&) = delete;
 };
 
-class InstanceVisitor : public slang::ast::ASTVisitor<InstanceVisitor, true, true> {
+class InstanceVisitor
+    : public slang::ast::ASTVisitor<InstanceVisitor, slang::ast::VisitFlags::AllGood> {
 public:
     explicit InstanceVisitor(const slang::SourceLocation& location) : location(location) {}
 
