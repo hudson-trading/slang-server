@@ -102,7 +102,7 @@ repository:
     name: meta.typedef.systemverilog
   typedef-enum-struct-union:
     begin: >-
-      [ \t\r\n]*\b(typedef)[ \t\r\n]+(enum|struct|union(?:[ \t\r\n]+tagged)?|class|interface[ \t\r\n]+class)(?:[ \t\r\n]+(?!packed|signed|unsigned)([a-zA-Z_][a-zA-Z0-9_$]*)?(?:[ \t\r\n]*(\[[a-zA-Z0-9_:$\.\-\+\*/%`' \t\r\n\[\]\(\)]*\])?))?(?:[ \t\r\n]+(packed))?(?:[ \t\r\n]+(signed|unsigned))?(?=[ \t\r\n]*(?:{|$))
+      [ \t\r\n]*\b(typedef)[ \t\r\n]+(enum|struct|union(?:[ \t\r\n]+tagged)?|class|interface[ \t\r\n]+class)(?:[ \t\r\n]+(?!packed|signed|unsigned)([a-zA-Z_][a-zA-Z0-9_$]*)?(?:[ \t\r\n]*(\[[a-zA-Z0-9_:$\.\-\+\*/%`' \t\r\n\[\]\(\)]*\])?))?(?:[ \t\r\n]+(packed))?(?:[ \t\r\n]+(signed|unsigned))?(?=[ \t\r\n]*(?:\{|$))(?:[ \t\r\n]*(\{))?
     beginCaptures:
       '1':
         name: keyword.control.systemverilog
@@ -118,14 +118,19 @@ repository:
         name: storage.modifier.systemverilog
       '6':
         name: storage.modifier.systemverilog
-    end: (?<=})[ \t\r\n]*([a-zA-Z_][a-zA-Z0-9_$]*|(?<=^|[ \t\r\n])\\[!-~]+(?=$|[ \t\r\n]))(?:[ \t\r\n]*(\[[a-zA-Z0-9_:$\.\-\+\*/%`' \t\r\n\[\]\(\)]*\])?)[ \t\r\n]*[,;]
+      '7':
+        name: punctuation.section.block.begin.systemverilog
+    end: (})[ \t\r\n]*([a-zA-Z_][a-zA-Z0-9_$]*|(?<=^|[ \t\r\n])\\[!-~]+(?=$|[ \t\r\n]))(?:[ \t\r\n]*(\[[a-zA-Z0-9_:$\.\-\+\*/%`' \t\r\n\[\]\(\)]*\])?)[ \t\r\n]*[,;]
     endCaptures:
       '1':
-        name: storage.type.systemverilog
+        name: punctuation.section.block.end.systemverilog
       '2':
+        name: storage.type.systemverilog
+      '3':
         patterns:
           - include: '#selects'
     patterns:
+      - include: '#enum-struct-union'
       - include: '#port-net-parameter'
       - include: '#keywords'
       - include: '#base-grammar'
@@ -133,7 +138,7 @@ repository:
     name: meta.typedef-enum-struct-union.systemverilog
   enum-struct-union:
     begin: >-
-      [ \t\r\n]*\b(enum|struct|union(?:[ \t\r\n]+tagged)?|class|interface[ \t\r\n]+class)(?:[ \t\r\n]+(?!packed|signed|unsigned)([a-zA-Z_][a-zA-Z0-9_$]*)?(?:[ \t\r\n]*(\[[a-zA-Z0-9_:$\.\-\+\*/%`' \t\r\n\[\]\(\)]*\])?))?(?:[ \t\r\n]+(packed))?(?:[ \t\r\n]+(signed|unsigned))?(?=[ \t\r\n]*(?:{|$))
+      [ \t\r\n]*\b(enum|struct|union(?:[ \t\r\n]+tagged)?|class|interface[ \t\r\n]+class)(?:[ \t\r\n]+(?!packed|signed|unsigned)([a-zA-Z_][a-zA-Z0-9_$]*)?(?:[ \t\r\n]*(\[[a-zA-Z0-9_:$\.\-\+\*/%`' \t\r\n\[\]\(\)]*\])?))?(?:[ \t\r\n]+(packed))?(?:[ \t\r\n]+(signed|unsigned))?(?=[ \t\r\n]*(?:\{|$))(?:[ \t\r\n]*(\{))?
     beginCaptures:
       '1':
         name: keyword.control.systemverilog
@@ -147,12 +152,16 @@ repository:
         name: storage.modifier.systemverilog
       '5':
         name: storage.modifier.systemverilog
-    end: (?<=})[ \t\r\n]*([a-zA-Z_][a-zA-Z0-9_$]*|(?<=^|[ \t\r\n])\\[!-~]+(?=$|[ \t\r\n]))(?:[ \t\r\n]*(\[[a-zA-Z0-9_:$\.\-\+\*/%`' \t\r\n\[\]\(\)]*\])?)[ \t\r\n]*[,;]
+      '6':
+        name: punctuation.section.block.begin.systemverilog
+    end: (})[ \t\r\n]*([a-zA-Z_][a-zA-Z0-9_$]*|(?<=^|[ \t\r\n])\\[!-~]+(?=$|[ \t\r\n]))(?:[ \t\r\n]*(\[[a-zA-Z0-9_:$\.\-\+\*/%`' \t\r\n\[\]\(\)]*\])?)[ \t\r\n]*[,;]
     endCaptures:
       '1':
+        name: punctuation.section.block.end.systemverilog
+      '2':
         patterns:
           - include: '#identifiers'
-      '2':
+      '3':
         patterns:
           - include: '#selects'
     patterns:
