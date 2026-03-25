@@ -40,3 +40,13 @@ jobs:
       - name: Run Tests
         working-directory: clients/vscode
         run: pnpm run test
+
+      - name: Run Grammar Unit Tests
+        if: runner.os == 'Linux'
+        working-directory: clients/vscode
+        run: pnpm run test:grammar
+
+      - name: Run Grammar Snapshot Tests
+        if: runner.os == 'Linux'
+        working-directory: clients/vscode
+        run: pnpm run test:grammar:snap
