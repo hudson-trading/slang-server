@@ -6,7 +6,7 @@ import globals from 'globals'
 
 export default [
   {
-    ignores: ['out/**', 'dist/**', '**/*.d.ts', 'src/test/**'],
+    ignores: ['out/**', 'dist/**', '**/*.d.ts', 'src/test/**', 'src/vaporview-api/**'],
   },
   eslint.configs.recommended,
   {

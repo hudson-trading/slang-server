@@ -11,10 +11,15 @@ import {
 } from '../lib/libconfig'
 import * as slang from '../SlangInterface'
 import { InstancesView } from './InstancesView'
-import * as vv from './VaporviewApi'
+import * as vv from '../vaporview-api'
 import { getBasename, getIcons, isAnyVerilog } from '../utils'
 import { Logger } from '../lib/logger'
 import { glob } from 'glob'
+import {
+  NetlistTreeItemData,
+  NetlistVariableWebviewContext,
+  ViewerState,
+} from '../vaporview-api/types'
 
 const STRUCTURE_SYMS = [
   slang.SlangKind.Instance,
@@ -61,7 +66,7 @@ export abstract class HierItem implements HasChildren {
     }
     await Promise.all(
       signals.map((signal) =>
-        vv.addVariable({
+        vv.commands.addVariable({
           instancePath: signal.getPath(),
         })
       )
@@ -302,13 +307,17 @@ export class UnitItem implements HasChildren {
 
 // Split a scope path into parts, handling array indices.
 // e.g. "top.u1[0].u2[0][1]" -> ["top", "u1", "[0]", "u2", "[0]", "[1]"]
+// Vaporview will format like so though: "top.u1.[0].u2.[0].u2.[1]", so we should be robust to both
 function splitScope(path: string): string[] {
   const parts = path.split('.')
   const partsWithBrackets = []
   for (const part of parts) {
     if (part.includes('[')) {
       const bracketSplit = part.split('[')
-      partsWithBrackets.push(bracketSplit[0])
+      // Handle vaporview's extra dot by skipping empty parts
+      if (bracketSplit[0].length > 0) {
+        partsWithBrackets.push(bracketSplit[0])
+      }
       for (const index of bracketSplit.slice(1)) {
         partsWithBrackets.push('[' + index)
       }
@@ -598,21 +607,32 @@ export class ProjectComponent
           return
         }
         let current: HasChildren = this.unit!
+        let error: string | undefined = undefined
         for (let scope of scopes) {
           let child = await current.getChild(scope)
 
           if (child === undefined) {
-            this.logger.warn(`Could not find instance ${scope} in ${current.getPath()}`)
+            const isLogicArray =
+              current instanceof HierItem && current.inst.kind == slang.SlangKind.Logic
+            if (!isLogicArray) {
+              error = `Could not find instance ${scope} in ${current.getPath()}`
+              this.logger.warn(error)
+            }
             break
           }
 
           current = child
         }
 
+        if (error) {
+          await vscode.window.showErrorMessage(error)
+        }
         if (!(current instanceof HierItem)) {
-          vscode.window.showErrorMessage(
-            'Invalid instance type: ' + typeof current + ' = ' + current
-          )
+          if (!error) {
+            await vscode.window.showErrorMessage(
+              'Invalid instance type: ' + typeof current + ' = ' + current
+            )
+          }
           return
         }
         instance = current
@@ -681,15 +701,15 @@ export class ProjectComponent
   )
 
   public async maybeOpenWaveform(): Promise<boolean> {
-    const vvExt = await vv.getVaporviewExtension()
+    const vvExt = await vv.getApi()
 
-    if (!vvExt) {
+    if (vvExt === undefined) {
       return false
     }
 
     // check if a waveform is already open
-    const docs = await vv.getOpenDocuments()
-    if (docs.documents.length > 0) {
+    const docs = await vv.commands.getOpenDocuments()
+    if (docs.length > 0) {
       return true
     }
 
@@ -723,7 +743,7 @@ export class ProjectComponent
           )
         }
         if (selected) {
-          await vv.openFile({ uri: vscode.Uri.file(selected) })
+          await vv.commands.openFile({ uri: vscode.Uri.file(selected) })
           return true
         }
       } else {
@@ -736,7 +756,7 @@ export class ProjectComponent
           { placeHolder: 'Select waveform file to open' }
         )
         if (selected) {
-          await vv.openFile({ uri: vscode.Uri.file(selected) })
+          await vv.commands.openFile({ uri: vscode.Uri.file(selected) })
           return true
         }
       }
@@ -762,7 +782,7 @@ export class ProjectComponent
     }
     const selectedFile = uris[0] // Get the first (and only) selected file
     try {
-      await vv.openFile({ uri: selectedFile })
+      await vv.commands.openFile({ uri: selectedFile })
     } catch (error) {
       vscode.window.showErrorMessage('Failed to open waveform: ' + error)
       return false
@@ -968,7 +988,7 @@ export class ProjectComponent
       }
       if (item instanceof VarItem) {
         this.logger.info('Showing variable in waveform: ' + item.getPath())
-        await vv.addVariable({
+        await vv.commands.addVariable({
           instancePath: item.getPath(),
         })
       } else {
@@ -1048,7 +1068,7 @@ export class ProjectComponent
       viewOverride: 'waveformViewerNetlistView',
       keybind: 'e',
     },
-    async (item: vv.NetlistTreeItemData | undefined) => {
+    async (item: NetlistTreeItemData | undefined) => {
       if (item === undefined) {
         // The keybind press comes with 'undefined', but
         // - the selected netlist signals are not in the extension state (should add this)
@@ -1060,7 +1080,8 @@ export class ProjectComponent
       }
       let fullpath = item.name
       if (item.scopePath) {
-        fullpath = item.scopePath + '.' + fullpath
+        // In some types it's an array, others a string. Why?? who knows
+        fullpath = item.scopePath.concat(fullpath).join('.')
       }
       if (this.unit === undefined && ext.slangConfig.buildPattern) {
         const decoded = vv.decodeNetlistUri(item.resourceUri!)
@@ -1087,17 +1108,25 @@ export class ProjectComponent
       webviewSection: 'signal',
       keybind: 'e',
     },
-    async (item: vv.SignalItemData | undefined) => {
+    async (item: NetlistVariableWebviewContext | undefined) => {
       // If we're coming from the keybind, we have to get the focused signal ourselves
       let signalPath = ''
-      let vvExt: vv.ViewerSettings | undefined = undefined
+      let vvState: ViewerState | undefined = undefined
       if (item === undefined) {
-        vvExt = await vv.getViewerState()
-        signalPath = vvExt.selectedSignal?.name || ''
+        vvState = await vv.commands.getViewerState()
+
+        if (vvState === undefined) {
+          vscode.window.showErrorMessage(
+            'Failed to get Vaporview state; cannot open signal in editor.'
+          )
+          return
+        }
+
+        signalPath = vvState.selectedSignal?.name || ''
       } else {
         signalPath = item.signalName
         if (item.scopePath) {
-          signalPath = item.scopePath + '.' + signalPath
+          signalPath = item.scopePath + signalPath
         }
       }
 
@@ -1105,8 +1134,8 @@ export class ProjectComponent
         let basename = ''
         let top = ''
         if (item === undefined) {
-          top = vvExt!.selectedSignal?.name.split('.')[0] || ''
-          basename = getBasename(vvExt!.fileName)!
+          top = vvState!.selectedSignal?.name.split('.')[0] || ''
+          basename = getBasename(vvState!.fileName)!
         } else {
           top = item.scopePath.split('.')[0] || ''
           basename = getBasename(item.uri.path)!
@@ -1115,6 +1144,11 @@ export class ProjectComponent
         await this.openBuildFile({ name: basename, top: top })
       }
 
+      if (signalPath.length == 0) {
+        await vscode.window.showErrorMessage(
+          "'e' keybind from netlist view not yet supported; please add to waveform first or use button."
+        )
+      }
       await this.setInstance.func(signalPath, {
         revealHierarchy: true,
         revealFile: true,
