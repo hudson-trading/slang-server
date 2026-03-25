@@ -605,8 +605,10 @@ Diagnostics ShallowAnalysis::getAnalysisDiags() {
     driverAnalysis.analyze(*m_compilation);
     m_compilation->unfreeze();
 
-    // filter out unused def diags. TODO: maybe make this a separate unused flag?
-    return driverAnalysis.getDiagnostics().filter({diag::UnusedDefinition});
+    // filter out unused def/decl diags, since shallow analysis will likely not have all references.
+    return driverAnalysis.getDiagnostics().filter(
+        {diag::UnusedDefinition, diag::UnusedPackageParameter, diag::UnusedPackageSubroutine,
+         diag::UnusedPackageTypedef, diag::UnusedPackageVar});
 }
 
 } // namespace server
