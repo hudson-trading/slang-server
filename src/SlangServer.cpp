@@ -17,6 +17,7 @@
 #include "util/Converters.h"
 #include "util/Logging.h"
 #include <algorithm>
+#include <cctype>
 #include <filesystem>
 #include <fmt/base.h>
 #include <fmt/ranges.h>
@@ -644,13 +645,26 @@ void SlangServer::onWorkspaceDidChangeWatchedFiles(const lsp::DidChangeWatchedFi
     m_indexer.onWorkspaceDidChangeWatchedFiles(params);
 }
 
+static bool fuzzyMatch(std::string_view query, std::string_view candidate) {
+    auto qi = query.begin();
+    for (auto ci = candidate.begin(); qi != query.end() && ci != candidate.end(); ++ci) {
+        if (static_cast<char>(std::tolower(static_cast<unsigned char>(*qi))) ==
+            static_cast<char>(std::tolower(static_cast<unsigned char>(*ci)))) {
+            ++qi;
+        }
+    }
+    return qi == query.end();
+}
+
 rfl::Variant<std::vector<lsp::SymbolInformation>, std::vector<lsp::WorkspaceSymbol>, std::monostate>
-SlangServer::getWorkspaceSymbol(const lsp::WorkspaceSymbolParams&) {
+SlangServer::getWorkspaceSymbol(const lsp::WorkspaceSymbolParams& params) {
     slang::TimeTraceScope _timeScope("getWorkspaceSymbol", "");
 
     std::vector<lsp::WorkspaceSymbol> result;
 
     m_indexer.forEachSymbol([&](const std::string& name, const Indexer::GlobalSymbolLoc& entry) {
+        if (!params.query.empty() && !fuzzyMatch(params.query, name))
+            return;
         result.emplace_back(
             lsp::WorkspaceSymbol{.location = lsp::LocationUriOnly{URI::fromFile(*entry.uri)},
                                  .name = name,
