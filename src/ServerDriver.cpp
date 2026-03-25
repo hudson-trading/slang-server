@@ -85,6 +85,9 @@ ServerDriver::ServerDriver(Indexer& indexer, SlangLspClient& client, const Confi
     options.set(driver.getAnalysisOptions());
     ok = driver.parseAllSources();
 
+    // Apply lint_off/on pragma mappings from parsed sources
+    diagEngine.setMappingsFromPragmas();
+
     // Create documents from syntax trees
     INFO("Creating ServerDriver with {} trees", driver.syntaxTrees.size());
     for (auto& tree : driver.syntaxTrees) {
@@ -101,6 +104,9 @@ void ServerDriver::updateDoc(SlangDoc& doc, FileUpdateType type) {
 
     // Clear and re-issue diagnostics for this document
     diagClient->clear(doc.getURI());
+
+    // Update pragma mappings for the changed buffer
+    diagEngine.setMappingsFromPragmas(doc.getBuffer());
 
     if (comp && type == FileUpdateType::SAVE) {
         // Clear just the data structures; add all uris to dirty set
@@ -389,6 +395,9 @@ bool ServerDriver::createCompilation(std::shared_ptr<SlangDoc> doc, std::string_
 
     comp = std::make_unique<ServerCompilation>(documents, this->options, sm, std::string(top));
 
+    // Apply pragma mappings for all buffers (including newly loaded ones)
+    diagEngine.setMappingsFromPragmas();
+
     // Publish initial diags
     for (const auto& doc : documents) {
         doc->issueParseDiagnostics(diagEngine);
@@ -418,6 +427,9 @@ bool ServerDriver::createCompilation() {
     }
 
     comp = std::make_unique<ServerCompilation>(std::move(documents), this->options, sm);
+
+    // Apply pragma mappings for all buffers
+    diagEngine.setMappingsFromPragmas();
 
     // Issue parse diagnostics for all documents + semantic diagnostics from compilation
     // This ensures that when a user opens a document later, the diagnostics don't disappear

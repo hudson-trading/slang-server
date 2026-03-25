@@ -263,3 +263,48 @@ TEST_CASE("CompilationDiagnostics") {
     CHECK(aluClientDiags.size() == aluDocDiags.size());
     CHECK(memClientDiags.size() == memDocDiags.size());
 }
+
+TEST_CASE("LintOffPragma") {
+    ServerHarness server;
+
+    auto hasCode = [](const std::vector<lsp::Diagnostic>& diags, std::string_view code) {
+        for (auto& d : diags) {
+            if (d.code && rfl::holds_alternative<std::string>(*d.code) &&
+                rfl::get<std::string>(*d.code) == code)
+                return true;
+        }
+        return false;
+    };
+
+    // Without lint_off: should have constant-conversion warning
+    auto docWithWarning = server.openFile("with_warning.sv", R"(
+module top;
+    localparam int x = 5;
+    localparam bit y = x;
+endmodule
+)");
+    CHECK(hasCode(docWithWarning.getDiagnostics(), "constant-conversion"));
+
+    // With lint_off: constant-conversion should be suppressed
+    auto docSuppressed = server.openFile("suppressed.sv", R"(
+module top2;
+    localparam int x = 5;
+    // slang lint_off constant-conversion
+    localparam bit y = x;
+    // slang lint_on constant-conversion
+endmodule
+)");
+    CHECK_FALSE(hasCode(docSuppressed.getDiagnostics(), "constant-conversion"));
+
+    // With setTopLevel (full compilation path): lint_off should still work
+    auto docCompilation = server.openFile("comp_suppressed.sv", R"(
+module top3;
+    localparam int x = 5;
+    // slang lint_off constant-conversion
+    localparam bit y = x;
+    // slang lint_on constant-conversion
+endmodule
+)");
+    server.setTopLevel(std::string{docCompilation.m_uri.getPath()});
+    CHECK_FALSE(hasCode(docCompilation.getDiagnostics(), "constant-conversion"));
+}
