@@ -688,7 +688,12 @@
     "lint:ts": "eslint src --ext ts --fix",
     "lint": "pnpm lint:ts",
     "pretest": "pnpm clean:light && pnpm build-tests && pnpm build && pnpm lint",
-    "syntax": "js-yaml ./languages/sv/systemverilog.tmLanguage.yaml > ./languages/sv/systemverilog.tmLanguage.json"
+    "syntax": "js-yaml ./languages/sv/systemverilog.tmLanguage.yaml > ./languages/sv/systemverilog.tmLanguage.json",
+    "test:grammar": "textmate-grammar-test -g languages/sv/systemverilog.tmLanguage.json 'tests/grammar/unit/**/*.sv'",
+    "test:grammar:ci": "textmate-grammar-test -c -g languages/sv/systemverilog.tmLanguage.json 'tests/grammar/unit/**/*.sv'",
+    "test:grammar:snap": "textmate-grammar-snap -s source.systemverilog -g languages/sv/systemverilog.tmLanguage.json 'tests/grammar/snap/**/*.sv'",
+    "test:grammar:snap:update": "textmate-grammar-snap -s source.systemverilog -g languages/sv/systemverilog.tmLanguage.json -u 'tests/grammar/snap/**/*.sv'",
+    "test:grammar:all": "pnpm test:grammar && pnpm test:grammar:snap"
   },
   "dependencies": {
     "decompress": "^4.2.1",
@@ -723,6 +728,7 @@
     "rimraf": "^6.1.2",
     "sinon": "^21.0.1",
     "tape": "^5.9.0",
+    "textmate-grammar-test": "^0.6.0",
     "tmp": "^0.2.5",
     "tmp-promise": "^3.0.3",
     "ts-node": "^10.9.2",
