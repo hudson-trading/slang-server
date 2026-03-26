@@ -475,7 +475,12 @@ void resolveMemberCompletion(const slang::ast::Scope& scope, lsp::CompletionItem
 
 /// Get completions for members in a scope, recursing up until hitting a module instance
 void addMemberCompletions(std::vector<lsp::CompletionItem>& results, const slang::ast::Scope* scope,
-                          bool isLhs, const slang::ast::Scope* originalScope, bool isOriginalCall) {
+                          CompletionContextKind contextKind, const slang::ast::Scope* originalScope,
+                          bool isOriginalCall) {
+    // Only show types (not signals/variables) when at the top level of a module body
+    // or in a port list — these are declaration positions.
+    bool typesOnly = (contextKind == CompletionContextKind::ModuleMember ||
+                      contextKind == CompletionContextKind::PortList);
 
     if (!scope) {
         ERROR("No scope for member completion");
@@ -495,8 +500,7 @@ void addMemberCompletions(std::vector<lsp::CompletionItem>& results, const slang
             if (member.name.empty()) {
                 continue;
             }
-            if (isLhs && !slang::ast::Type::isKind(member.kind)) {
-                // Skip variables on the lhs, as they are not valid completions
+            if (typesOnly && !slang::ast::Type::isKind(member.kind)) {
                 continue;
             }
 
@@ -529,7 +533,7 @@ void addMemberCompletions(std::vector<lsp::CompletionItem>& results, const slang
                     auto package = import->getPackage();
                     if (package != nullptr) {
                         INFO("Adding wildcard imports from package {}", package->name);
-                        addMemberCompletions(results, package, isLhs, originalScope, false);
+                        addMemberCompletions(results, package, contextKind, originalScope, false);
                     }
                 }
             }

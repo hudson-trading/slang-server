@@ -134,9 +134,17 @@ CompletionContext CompletionContext::fromLocation(SlangDoc& doc, SourceLocation 
             return ctx;
         }
 
-        // Check for module/class item contexts
+        // Check for module/class scope boundaries — if we reach one directly,
+        // we're at the top level of the module body (declaration position).
         if (isModuleMemberContext(kind)) {
             ctx.kind = CompletionContextKind::ModuleMember;
+            return ctx;
+        }
+
+        // Any other member syntax (continuous assign, hierarchy instantiation, etc.)
+        // that are not on the first token may need signals
+        if (MemberSyntax::isKind(kind) && node->getFirstToken().range().end() < loc) {
+            ctx.kind = CompletionContextKind::Expression;
             return ctx;
         }
     }

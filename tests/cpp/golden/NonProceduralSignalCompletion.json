@@ -1,0 +1,94 @@
+[
+  {
+    "assign_lhs": [
+      {
+        "label": "a",
+        "labelDetails": {
+          "detail": " input logic"
+        },
+        "kind": "Interface",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\ninput logic a\n````"
+        },
+        "filterText": "a"
+      },
+      {
+        "label": "b",
+        "labelDetails": {
+          "detail": " output logic"
+        },
+        "kind": "Interface",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\noutput logic b\n````"
+        },
+        "filterText": "b"
+      },
+      {
+        "label": "base_pkg",
+        "labelDetails": {
+          "detail": " Package"
+        },
+        "kind": "Module",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\npackage base_pkg;\n````"
+        },
+        "filterText": "base_pkg",
+        "insertText": "base_pkg",
+        "insertTextFormat": "PlainText"
+      },
+      {
+        "label": "clk",
+        "labelDetails": {
+          "detail": " input logic"
+        },
+        "kind": "Interface",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\ninput logic clk\n````"
+        },
+        "filterText": "clk"
+      },
+      {
+        "label": "internal_sig",
+        "labelDetails": {
+          "detail": " logic"
+        },
+        "kind": "Variable",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic internal_sig;\n````"
+        },
+        "filterText": "internal_sig"
+      },
+      {
+        "label": "my_wire",
+        "labelDetails": {
+          "detail": " "
+        },
+        "kind": "Property",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nwire my_wire;\n````"
+        },
+        "filterText": "my_wire"
+      },
+      {
+        "label": "util_pkg",
+        "labelDetails": {
+          "detail": " Package"
+        },
+        "kind": "Module",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\npackage util_pkg;\n````"
+        },
+        "filterText": "util_pkg",
+        "insertText": "util_pkg",
+        "insertTextFormat": "PlainText"
+      }
+    ]
+  }
+]

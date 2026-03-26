@@ -54,10 +54,7 @@ void CompletionDispatch::getInvokedCompletions(std::vector<lsp::CompletionItem>&
     completions::addIndexedCompletions(results, m_indexer, ctx);
 
     if (scope) {
-        bool isLhs = (ctx.kind == CompletionContextKind::PortList ||
-                      ctx.kind == CompletionContextKind::Procedural ||
-                      ctx.kind == CompletionContextKind::ModuleMember);
-        completions::addMemberCompletions(results, scope, isLhs, scope);
+        completions::addMemberCompletions(results, scope, ctx.kind, scope);
     }
 
     INFO("Returning {} completions in {} context", results.size(), toString(ctx.kind));
@@ -119,7 +116,8 @@ void CompletionDispatch::getTriggerCompletions(char triggerChar, char prevChar,
         m_lastDoc = doc;
         m_lastScope = pkg->getHierarchicalPath();
         auto originalScope = analysis->getScopeAt(loc);
-        completions::addMemberCompletions(results, pkg, false, originalScope);
+        completions::addMemberCompletions(results, pkg, CompletionContextKind::Expression,
+                                          originalScope);
     }
     else if (triggerChar == '`') {
         // Add local macros

@@ -521,6 +521,73 @@ TEST_CASE("PortListCompletion") {
     golden.record("modports", modportCompletions);
 }
 
+TEST_CASE("NonProceduralSignalCompletion") {
+    ServerHarness server("repo1");
+    JsonGoldenTest golden;
+
+    auto doc = server.openFile("assign_test.sv", R"(
+    module assign_test (
+        input  logic       clk,
+        input  logic       a,
+        output logic       b
+    );
+        logic internal_sig;
+        wire  my_wire;
+
+        assign
+    endmodule
+    )");
+
+    auto comps = doc.after("assign\n").getResolvedCompletions();
+    golden.record("assign_lhs", comps);
+
+    // Non-procedural contexts like continuous assign should include local signals
+    auto findByLabel = [&](const std::string& label) {
+        return std::find_if(comps.begin(), comps.end(),
+                            [&](const lsp::CompletionItem& item) { return item.label == label; });
+    };
+    CHECK(findByLabel("internal_sig") != comps.end());
+    CHECK(findByLabel("my_wire") != comps.end());
+    CHECK(findByLabel("a") != comps.end());
+    CHECK(findByLabel("b") != comps.end());
+}
+
+TEST_CASE("ProceduralBlockSignalCompletion") {
+    ServerHarness server("repo1");
+
+    auto doc = server.openFile("procedural_test.sv", R"(
+    module procedural_test (
+        input  logic       clk,
+        input  logic       rst,
+        output logic [7:0] data_out
+    );
+        logic internal_sig;
+
+        always_ff @(posedge ) begin
+            // cursor_here
+        end
+    endmodule
+    )");
+
+    auto findByLabel = [](const auto& items, const std::string& label) {
+        return std::find_if(items.begin(), items.end(),
+                            [&](const auto& item) { return item.m_item.label == label; });
+    };
+
+    // Inside procedural block body should include local signals
+    auto bodyComps = doc.before("// cursor_here").getCompletions();
+    CHECK(findByLabel(bodyComps, "internal_sig") != bodyComps.end());
+    CHECK(findByLabel(bodyComps, "clk") != bodyComps.end());
+    CHECK(findByLabel(bodyComps, "rst") != bodyComps.end());
+    CHECK(findByLabel(bodyComps, "data_out") != bodyComps.end());
+
+    // After posedge should also include signals (sensitivity list)
+    auto sensComps = doc.after("posedge ").getCompletions();
+    CHECK(findByLabel(sensComps, "internal_sig") != sensComps.end());
+    CHECK(findByLabel(sensComps, "clk") != sensComps.end());
+    CHECK(findByLabel(sensComps, "rst") != sensComps.end());
+}
+
 TEST_CASE("LocalparamExcludedFromCompletion") {
     // IEEE-1800 23.2.3: localparams in module header cannot be overwritten,
     // so they should be excluded from parameter completions when instantiating a module
