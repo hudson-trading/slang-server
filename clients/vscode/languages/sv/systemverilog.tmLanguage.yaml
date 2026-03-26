@@ -243,12 +243,31 @@ repository:
           '2':
             name: string.regexp.systemverilog
         name: meta.crypto.systemverilog
-      - begin: (`[a-zA-Z_][a-zA-Z0-9_$]*)\(\b
+      - begin: (`[a-zA-Z_][a-zA-Z0-9_$]*)\(
         beginCaptures:
           '1':
             name: entity.name.function.macro.systemverilog
         end: \)
+        patterns:
+          - include: '#macro-parens'
+          - include: '#strings'
+          - include: '#comments'
+          - include: '#constants'
+          - include: '#operators'
+          - include: '#system-tf'
+          - include: '#all-types'
     name: meta.preprocessor.systemverilog
+  macro-parens:
+    begin: \(
+    end: \)
+    patterns:
+      - include: '#macro-parens'
+      - include: '#strings'
+      - include: '#comments'
+      - include: '#constants'
+      - include: '#operators'
+      - include: '#system-tf'
+      - include: '#all-types'
   keywords:
     patterns:
       - match: >-
