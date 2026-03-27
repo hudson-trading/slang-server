@@ -58,7 +58,7 @@ repos:
     hooks:
       - id: prettier
         files: ^.*\.(ts|js|yml|yaml)$
-        exclude: 'tests/cpp/golden/|^external/.*|clients/vscode/src/config\.gen\.ts|clients/vscode/pnpm-lock.yaml'
+        exclude: 'tests/cpp/golden/|^external/.*|clients/vscode/src/config\.gen\.ts|clients/vscode/pnpm-lock.yaml|clients/vscode/src/vaporview-api/'
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
