@@ -219,3 +219,7 @@ export function getBasename(filePath: string): string | undefined {
 //   }
 //   return ret
 // }
+
+export function toPosix(p: string): string {
+  return p.replace(/\\/g, '/')
+}
