@@ -842,7 +842,7 @@ export class ProjectComponent
       const glob = ext.slangConfig.buildPattern ?? '**/*.f'
 
       this.logger.info('Looking for build files: ' + glob.replace('{}', '*'))
-      const files = await ext.findFiles([glob.replace('{}', '*')], true)
+      const files = await ext.findFiles([glob.replace('{}', '*')])
       if (files.length === 0) {
         vscode.window.showErrorMessage(
           `No filelists (.f) files found with glob ${glob}. See [docs](https://hudson-trading.github.io/slang-server/start/config/#buildpattern) for more info.`
@@ -1030,7 +1030,7 @@ export class ProjectComponent
       buildPattern = buildPattern.replace('{}', params.name)
     }
 
-    const files = await ext.findFiles([buildPattern], true)
+    const files = await ext.findFiles([buildPattern])
     if (files.length > 0) {
       if (files.length > 1) {
         const selection = await vscode.window.showQuickPick(
