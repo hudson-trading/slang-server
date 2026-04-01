@@ -23,7 +23,13 @@ import {
 import { PathConfigObject } from './lib/pathConfig'
 import { ProjectComponent } from './sidebar/ProjectComponent'
 import * as slang from './SlangInterface'
-import { AnyVerilogLanguages, anyVerilogSelector, getWorkspaceFolder, HDLFiles } from './utils'
+import {
+  AnyVerilogLanguages,
+  anyVerilogSelector,
+  getWorkspaceFolder,
+  HDLFiles,
+  toPosix,
+} from './utils'
 import { glob } from 'glob'
 
 export var ext: SlangExtension
@@ -424,13 +430,14 @@ File input is sent to stdin, and formatted output is read from stdout.',
     // Or just wait for slang-format
 
     const find = async (str: string): Promise<vscode.Uri[]> => {
+      const normalized = toPosix(str)
       let ret: vscode.Uri[]
-      if (path.isAbsolute(str)) {
-        ret = (await glob(str)).map((p: string) => vscode.Uri.file(p))
+      if (path.isAbsolute(normalized)) {
+        ret = (await glob(normalized)).map((p: string) => vscode.Uri.file(p))
       } else if (useGlob) {
-        ret = (await glob(path.join(ws, str))).map((p: string) => vscode.Uri.file(p))
+        ret = (await glob(toPosix(path.join(ws, str)))).map((p: string) => vscode.Uri.file(p))
       } else {
-        ret = await vscode.workspace.findFiles(new vscode.RelativePattern(ws, str))
+        ret = await vscode.workspace.findFiles(new vscode.RelativePattern(ws, normalized))
       }
       return ret
     }
