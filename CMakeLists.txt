@@ -283,6 +283,7 @@ add_library(
   src/ast/ServerCompilation.cpp
   src/ast/ServerCompilationAnalysis.cpp
   src/ast/WcpClient.cpp
+  src/document/SemanticTokens.cpp
   src/document/ShallowAnalysis.cpp
   src/document/SlangDoc.cpp
   src/document/SymbolIndexer.cpp
