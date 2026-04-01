@@ -613,7 +613,7 @@ export class ProjectComponent
 
           if (child === undefined) {
             const isLogicArray =
-              current instanceof HierItem && current.inst.kind == slang.SlangKind.Logic
+              current instanceof HierItem && current.inst.kind === slang.SlangKind.Logic
             if (!isLogicArray) {
               error = `Could not find instance ${scope} in ${current.getPath()}`
               this.logger.warn(error)
@@ -1144,7 +1144,7 @@ export class ProjectComponent
         await this.openBuildFile({ name: basename, top: top })
       }
 
-      if (signalPath.length == 0) {
+      if (signalPath.length === 0) {
         await vscode.window.showErrorMessage(
           "'e' keybind from netlist view not yet supported; please add to waveform first or use button."
         )

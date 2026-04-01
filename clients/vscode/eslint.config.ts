@@ -51,7 +51,7 @@ export default [
       '@typescript-eslint/await-thenable': 'error',
       '@typescript-eslint/no-misused-promises': 'error',
       curly: 'warn',
-      eqeqeq: 'warn',
+      eqeqeq: 'error',
       'no-throw-literal': 'warn',
       semi: 'off',
       'no-extra-semi': 'error',
