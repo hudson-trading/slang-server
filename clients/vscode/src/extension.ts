@@ -420,24 +420,19 @@ File input is sent to stdin, and formatted output is read from stdout.',
     this.logger.info(`Registered ${this.activeFormatters.length} external formatter(s).`)
   }
 
-  public async findFiles(globs: string[], useGlob = false): Promise<vscode.Uri[]> {
+  public async findFiles(globs: string[]): Promise<vscode.Uri[]> {
     let ws = getWorkspaceFolder()
     if (ws === undefined) {
       return []
     }
-
-    // TODO: maybe use this.slangConfig.exclude.excludeDirs
-    // Or just wait for slang-format
 
     const find = async (str: string): Promise<vscode.Uri[]> => {
       const normalized = toPosix(str)
       let ret: vscode.Uri[]
       if (path.isAbsolute(normalized)) {
         ret = (await glob(normalized)).map((p: string) => vscode.Uri.file(p))
-      } else if (useGlob) {
-        ret = (await glob(toPosix(path.join(ws, str)))).map((p: string) => vscode.Uri.file(p))
       } else {
-        ret = await vscode.workspace.findFiles(new vscode.RelativePattern(ws, normalized))
+        ret = (await glob(toPosix(path.join(ws, str)))).map((p: string) => vscode.Uri.file(p))
       }
       return ret
     }
