@@ -1,61 +1,8 @@
+#include "document/SyntaxIndexer.h"
 #include <catch2/catch_test_macros.hpp>
 
-#include "slang/parsing/Token.h"
-#include "slang/syntax/AllSyntax.h"
-#include "slang/syntax/SyntaxNode.h"
 #include "slang/syntax/SyntaxTree.h"
 #include "slang/text/SourceManager.h"
-
-/// Recursively collects the disabled tokens from the conditional `DirectiveSyntax` nodes.
-static void collectDisabledRegions(const slang::syntax::SyntaxNode& node,
-                                   std::vector<slang::SourceRange>& result) {
-    using namespace slang;
-    using namespace slang::syntax;
-    using namespace slang::parsing;
-    for (uint32_t i = 0; i < node.getChildCount(); i++) {
-        if (auto child = node.childNode(i)) {
-            collectDisabledRegions(*child, result);
-        }
-        else {
-            const auto token = const_cast<SyntaxNode&>(node).childTokenPtr(i);
-            if (!token)
-                continue;
-
-            for (const auto& trivia : token->trivia()) {
-                if (trivia.kind != TriviaKind::Directive)
-                    continue;
-
-                auto* syntax = trivia.syntax();
-                if (!syntax)
-                    continue;
-
-                // Conditional Branch Directives (ie: `ifdef)
-                else if (ConditionalBranchDirectiveSyntax::isKind(syntax->kind)) {
-                    const auto& branch = syntax->as<ConditionalBranchDirectiveSyntax>();
-
-                    const auto& tokens = branch.disabledTokens;
-                    if (!tokens.empty()) {
-                        const auto start = tokens[0].location();
-                        const auto end = tokens.back().range().end();
-                        result.push_back({start, end});
-                    }
-                }
-
-                // Unconditional Branch Directives (ie: `else)
-                else if (UnconditionalBranchDirectiveSyntax::isKind(syntax->kind)) {
-                    const auto& branch = syntax->as<UnconditionalBranchDirectiveSyntax>();
-
-                    const auto& tokens = branch.disabledTokens;
-                    if (!tokens.empty()) {
-                        const auto start = tokens[0].location();
-                        const auto end = tokens.back().range().end();
-                        result.push_back({start, end});
-                    }
-                }
-            }
-        }
-    }
-}
 
 TEST_CASE("DisabledRegions_IfdefFalse") {
     using namespace slang;
@@ -73,8 +20,8 @@ logic b;
 )",
                                              sm, "test", "", options);
 
-    std::vector<SourceRange> disabled;
-    collectDisabledRegions(tree->root(), disabled);
+    server::SyntaxIndexer indexer(*tree);
+    auto& disabled = indexer.disabledRegions;
 
     REQUIRE(disabled.size() == 1);
 
@@ -86,7 +33,9 @@ logic b;
 
 TEST_CASE("DisabledRegions_IfdefTrue") {
     using namespace slang;
+
     SourceManager sm;
+
     Bag options;
 
     auto tree = syntax::SyntaxTree::fromText(R"(
@@ -100,8 +49,8 @@ logic c;
 )",
                                              sm, "test", "", options);
 
-    std::vector<SourceRange> disabled;
-    collectDisabledRegions(tree->root(), disabled);
+    server::SyntaxIndexer indexer(*tree);
+    auto& disabled = indexer.disabledRegions;
 
     REQUIRE(disabled.size() == 1);
 
@@ -115,6 +64,7 @@ TEST_CASE("DisabledRegions_Elsif") {
     using namespace slang;
 
     SourceManager sm;
+
     Bag options;
 
     auto tree = syntax::SyntaxTree::fromText(R"(
@@ -130,8 +80,8 @@ logic d;
 )",
                                              sm, "test", "", options);
 
-    std::vector<SourceRange> disabled;
-    collectDisabledRegions(tree->root(), disabled);
+    server::SyntaxIndexer indexer(*tree);
+    auto& disabled = indexer.disabledRegions;
 
     REQUIRE(disabled.size() == 2);
 

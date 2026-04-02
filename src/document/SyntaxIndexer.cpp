@@ -12,6 +12,7 @@
 
 #include "slang/parsing/Token.h"
 #include "slang/parsing/TokenKind.h"
+#include "slang/syntax/AllSyntax.h"
 #include "slang/syntax/SyntaxFacts.h"
 #include "slang/syntax/SyntaxKind.h"
 #include "slang/syntax/SyntaxNode.h"
@@ -62,6 +63,34 @@ void SyntaxIndexer::visit(const slang::syntax::SyntaxNode& node) {
                     // Macro args need to lookup in a scope; we could add a new map, but it's better
                     // to keep the same process as normal nodes
                     trivia.syntax()->parent = const_cast<slang::syntax::SyntaxNode*>(&node);
+                }
+
+                auto* syntax = trivia.syntax();
+                if (!syntax)
+                    continue;
+
+                // Conditional Branch Directives (ie: `ifdef)
+                else if (syntax::ConditionalBranchDirectiveSyntax::isKind(syntax->kind)) {
+                    const auto& branch = syntax->as<syntax::ConditionalBranchDirectiveSyntax>();
+
+                    const auto& tokens = branch.disabledTokens;
+                    if (!tokens.empty()) {
+                        const auto start = tokens[0].location();
+                        const auto end = tokens.back().range().end();
+                        disabledRegions.push_back({start, end});
+                    }
+                }
+
+                // Unconditional Branch Directives (ie: `else)
+                else if (syntax::UnconditionalBranchDirectiveSyntax::isKind(syntax->kind)) {
+                    const auto& branch = syntax->as<syntax::UnconditionalBranchDirectiveSyntax>();
+
+                    const auto& tokens = branch.disabledTokens;
+                    if (!tokens.empty()) {
+                        const auto start = tokens[0].location();
+                        const auto end = tokens.back().range().end();
+                        disabledRegions.push_back({start, end});
+                    }
                 }
             }
             if (token->location().buffer() == m_buffer &&
