@@ -69,28 +69,25 @@ void SyntaxIndexer::visit(const slang::syntax::SyntaxNode& node) {
                 if (!syntax)
                     continue;
 
-                // Conditional Branch Directives (ie: `ifdef)
-                else if (syntax::ConditionalBranchDirectiveSyntax::isKind(syntax->kind)) {
-                    const auto& branch = syntax->as<syntax::ConditionalBranchDirectiveSyntax>();
-
+                auto addDisabledRange = [&](const auto& branch) {
                     const auto& tokens = branch.disabledTokens;
                     if (!tokens.empty()) {
                         const auto start = tokens[0].location();
                         const auto end = tokens.back().range().end();
                         disabledRegions.push_back({start, end});
                     }
+                };
+
+                // Conditional Branch Directives (ie: `ifdef)
+                if (syntax::ConditionalBranchDirectiveSyntax::isKind(syntax->kind)) {
+                    const auto& branch = syntax->as<syntax::ConditionalBranchDirectiveSyntax>();
+                    addDisabledRange(branch);
                 }
 
                 // Unconditional Branch Directives (ie: `else)
                 else if (syntax::UnconditionalBranchDirectiveSyntax::isKind(syntax->kind)) {
                     const auto& branch = syntax->as<syntax::UnconditionalBranchDirectiveSyntax>();
-
-                    const auto& tokens = branch.disabledTokens;
-                    if (!tokens.empty()) {
-                        const auto start = tokens[0].location();
-                        const auto end = tokens.back().range().end();
-                        disabledRegions.push_back({start, end});
-                    }
+                    addDisabledRange(branch);
                 }
             }
             if (token->location().buffer() == m_buffer &&
