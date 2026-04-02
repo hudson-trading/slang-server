@@ -29,7 +29,7 @@ static void collectDisabledRegions(const slang::syntax::SyntaxNode& node,
                 if (!syntax)
                     continue;
 
-                // Conditional Branch Directives (ie: ifdef)
+                // Conditional Branch Directives (ie: `ifdef)
                 else if (ConditionalBranchDirectiveSyntax::isKind(syntax->kind)) {
                     const auto& branch = syntax->as<ConditionalBranchDirectiveSyntax>();
 
@@ -41,7 +41,7 @@ static void collectDisabledRegions(const slang::syntax::SyntaxNode& node,
                     }
                 }
 
-                // Unconditional Branch Directives (ie: else)
+                // Unconditional Branch Directives (ie: `else)
                 else if (UnconditionalBranchDirectiveSyntax::isKind(syntax->kind)) {
                     const auto& branch = syntax->as<UnconditionalBranchDirectiveSyntax>();
 
