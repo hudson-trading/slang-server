@@ -70,11 +70,40 @@ void SyntaxIndexer::visit(const slang::syntax::SyntaxNode& node) {
                     continue;
 
                 auto addDisabledRange = [&](const auto& branch) {
+                    /// All the tokens that are inactive due to a branching directive.
                     const auto& tokens = branch.disabledTokens;
-                    if (!tokens.empty()) {
-                        const auto start = tokens[0].location();
-                        const auto end = tokens.back().range().end();
-                        disabledRegions.push_back({start, end});
+                    if (tokens.empty())
+                        return;
+
+                    std::optional<slang::SourceLocation> start;
+                    slang::SourceLocation end;
+
+                    for (const auto& tok : tokens) {
+                        // There may be a chain of branching directive, in which case
+                        // we want to skip over the directive tokens in the middle
+                        // (ie: we don't want to gray out the `elseif in a large chain)
+                        if (tok.kind == parsing::TokenKind::Directive) {
+                            // Close current region before directive
+                            // and start anew after the directive (if needed)
+                            if (start.has_value()) {
+                                disabledRegions.push_back({*start, end});
+                                start.reset();
+                            }
+                            continue;
+                        }
+
+                        // Only the reason start wouldn't have a value is if the last token
+                        // was a directive in which case we want to start a new region after it
+                        if (!start.has_value()) {
+                            start = tok.location();
+                        }
+
+                        end = tok.range().end();
+                    }
+
+                    // Final region
+                    if (start.has_value()) {
+                        disabledRegions.push_back({*start, end});
                     }
                 };
 
