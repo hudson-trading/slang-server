@@ -126,6 +126,8 @@ void ServerDriver::updateDoc(SlangDoc& doc, FileUpdateType type) {
     }
     diagClient->pushDiags(doc.getURI());
     INFO("Published diags for {}", doc.getURI().getPath());
+
+    publishInactiveRegions(doc);
 }
 
 std::unique_ptr<ServerDriver> ServerDriver::create(Indexer& indexer, SlangLspClient& client,
@@ -883,6 +885,18 @@ std::optional<lsp::WorkspaceEdit> ServerDriver::getDocRename(const URI& uri,
     }
 
     return lsp::WorkspaceEdit{.changes = changes};
+}
+
+void ServerDriver::publishInactiveRegions(SlangDoc& doc) {
+    if (!client.experimentalCapabilities.inactiveRegionsSupported)
+        return;
+
+    auto regions = doc.getInactiveRegions();
+
+    client.onTextDocumentInactiveRegions(lsp::InactiveRegionsParams{
+        .uri = doc.getURI(),
+        .regions = std::move(regions),
+    });
 }
 
 } // namespace server

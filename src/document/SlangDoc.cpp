@@ -238,4 +238,14 @@ void SlangDoc::issueDiagnosticsTo(DiagnosticEngine& diagEngine) {
     }
 }
 
+std::vector<lsp::Range> SlangDoc::getInactiveRegions() {
+    std::vector<lsp::Range> result;
+
+    for (const auto& region : getAnalysis()->syntaxes.disabledRegions) {
+        result.push_back(toRange(region, m_sourceManager));
+    }
+
+    return result;
+}
+
 } // namespace server

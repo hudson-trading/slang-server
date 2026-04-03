@@ -12,4 +12,9 @@ struct ExperimentalClientCapabilities {
     std::optional<InactiveRegionsClientCapabilities> inactiveRegions;
 };
 
+struct InactiveRegionsParams {
+    URI uri;
+    std::vector<Range> regions;
+};
+
 } // namespace lsp

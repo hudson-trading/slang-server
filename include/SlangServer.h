@@ -65,8 +65,6 @@ protected:
     /// Indexes the workspace for top symbols and macros
     Indexer m_indexer;
 
-    bool m_inactiveRegionsSupported = false;
-
     // The waveform viewer client
     std::optional<waves::WcpClient> m_wcpClient = std::nullopt;
 

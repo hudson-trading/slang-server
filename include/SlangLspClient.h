@@ -14,6 +14,10 @@ class SlangLspClient : public lsp::LspClient {
     /// Helper functions to send things to the client
 
 public:
+    struct {
+        bool inactiveRegionsSupported = false;
+    } experimentalCapabilities;
+
     void setConfig(const Config& params) {
         lsp::sendNotification("slang/setConfig", rfl::to_generic(params));
     }

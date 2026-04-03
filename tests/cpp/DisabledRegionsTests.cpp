@@ -1,12 +1,13 @@
 // AI SLOP
 
 #include "document/SyntaxIndexer.h"
+#include "utils/ServerHarness.h"
 #include <catch2/catch_test_macros.hpp>
 
 #include "slang/syntax/SyntaxTree.h"
 #include "slang/text/SourceManager.h"
 
-TEST_CASE("DisabledRegions_IfdefFalse") {
+TEST_CASE("InactiveRegions_SyntaxIndexer_IfdefFalse") {
     using namespace slang;
 
     SourceManager sm;
@@ -33,7 +34,7 @@ logic b;
     CHECK(text.find("logic a;") != std::string::npos);
 }
 
-TEST_CASE("DisabledRegions_IfdefTrue") {
+TEST_CASE("InactiveRegions_SyntaxIndexer_IfdefTrue") {
     using namespace slang;
 
     SourceManager sm;
@@ -62,7 +63,7 @@ logic c;
     CHECK(text.find("logic b;") != std::string::npos);
 }
 
-TEST_CASE("DisabledRegions_Elsif") {
+TEST_CASE("InactiveRegions_SyntaxIndexer_Elsif") {
     using namespace slang;
 
     SourceManager sm;
@@ -95,4 +96,34 @@ logic d;
 
     CHECK(combined.find("logic a;") != std::string::npos);
     CHECK(combined.find("logic c;") != std::string::npos);
+}
+
+TEST_CASE("InactiveRegions_Document") {
+    ServerHarness server;
+    JsonGoldenTest golden;
+
+    auto doc = server.openFile("test.sv", R"(
+module top;
+`ifdef FOO
+    logic[2:0] a;
+`else
+    logic b;
+`endif
+
+`define BAR
+`define BAZ
+
+`ifndef BAR
+    bit[2:0]                                               c[13];
+`elseif BAZ
+    int d;
+`else
+    int e;
+`endif
+endmodule
+)");
+
+    auto regions = doc.getInactiveRegions();
+
+    golden.record(regions);
 }
