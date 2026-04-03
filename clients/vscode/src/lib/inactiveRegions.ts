@@ -17,7 +17,7 @@ class InactiveRegionsFeature {
 
   constructor(private client: LanguageClient) {}
 
-  initialize(serverCapabilities: vscodelc.ServerCapabilities) {
+  initialize(_capabilities: vscodelc.ServerCapabilities) {
     // const caps = serverCapabilities as vscodelc.ServerCapabilities & {
     //   inactiveRegionsProvider?: boolean
     // }
