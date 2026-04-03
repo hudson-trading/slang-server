@@ -31,6 +31,7 @@ import {
   toPosix,
 } from './utils'
 import { glob } from 'glob'
+import { ExperimentalCapabilitiesFeature, InactiveRegionsParams } from './lib/inactiveRegions'
 
 export var ext: SlangExtension
 
@@ -84,6 +85,8 @@ File input is sent to stdin, and formatted output is read from stdout.',
   verilogFormat: DeprecatedExternalFormatter = new DeprecatedExternalFormatter()
 
   private activeFormatters: ExternalFormatter[] = []
+
+  private inactiveDecorationType?: vscode.TextEditorDecorationType
 
   // Side bar
   project: ProjectComponent = new ProjectComponent()
@@ -178,6 +181,12 @@ File input is sent to stdin, and formatted output is read from stdout.',
     }
 
     this.client = new LanguageClient('slang-server', serverOptions, clientOptions)
+
+    this.client.registerFeature(new ExperimentalCapabilitiesFeature(this.client))
+    this.client.onNotification('textDocument/inactiveRegions', (params: InactiveRegionsParams) => {
+      console.log('INACTIVE REGIONS:', params)
+    })
+
     this.context.subscriptions.push(
       this.client.onDidChangeState(
         ({ oldState, newState }: { oldState: vscodelc.State; newState: vscodelc.State }) => {
