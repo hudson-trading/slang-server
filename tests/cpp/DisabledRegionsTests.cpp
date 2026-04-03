@@ -7,7 +7,7 @@
 #include "slang/syntax/SyntaxTree.h"
 #include "slang/text/SourceManager.h"
 
-TEST_CASE("InactiveRegions_SyntaxIndexer_IfdefFalse") {
+TEST_CASE("InactiveRegions_SyntaxIndexer") {
     using namespace slang;
 
     SourceManager sm;
@@ -20,82 +20,45 @@ logic a;
 `else
 logic b;
 `endif
-)",
-                                             sm, "test", "", options);
 
-    server::SyntaxIndexer indexer(*tree);
-    auto& disabled = indexer.disabledRegions;
+`undefineall
 
-    REQUIRE(disabled.size() == 1);
-
-    auto text = sm.getText(disabled[0]);
-    INFO("Disabled text:\n" << text);
-
-    CHECK(text.find("logic a;") != std::string::npos);
-}
-
-TEST_CASE("InactiveRegions_SyntaxIndexer_IfdefTrue") {
-    using namespace slang;
-
-    SourceManager sm;
-
-    Bag options;
-
-    auto tree = syntax::SyntaxTree::fromText(R"(
 `define FOO
+
 `ifdef FOO
-logic a;
-`else
-logic b;
-`endif
 logic c;
-)",
-                                             sm, "test", "", options);
+`else
+logic d;
+`endif
 
-    server::SyntaxIndexer indexer(*tree);
-    auto& disabled = indexer.disabledRegions;
+`undefineall
 
-    REQUIRE(disabled.size() == 1);
-
-    auto text = sm.getText(disabled[0]);
-    INFO("Disabled text:\n" << text);
-
-    CHECK(text.find("logic b;") != std::string::npos);
-}
-
-TEST_CASE("InactiveRegions_SyntaxIndexer_Elsif") {
-    using namespace slang;
-
-    SourceManager sm;
-
-    Bag options;
-
-    auto tree = syntax::SyntaxTree::fromText(R"(
 `define BAR
 `ifdef FOO
-logic a;
+logic e;
 `elsif BAR
-logic b;
+logic f;
 `else
-logic c;
+logic g;
 `endif
-logic d;
+logic h;
 )",
                                              sm, "test", "", options);
 
     server::SyntaxIndexer indexer(*tree);
     auto& disabled = indexer.disabledRegions;
 
-    REQUIRE(disabled.size() == 2);
+    REQUIRE(disabled.size() >= 1);
 
-    std::string combined;
-    for (auto& r : disabled)
-        combined += sm.getText(r);
+    JsonGoldenTest golden;
 
-    INFO(combined);
+    std::vector<std::string> texts;
+    texts.reserve(disabled.size());
+    for (auto& r : disabled) {
+        texts.push_back(std::string(sm.getText(r)));
+    }
 
-    CHECK(combined.find("logic a;") != std::string::npos);
-    CHECK(combined.find("logic c;") != std::string::npos);
+    golden.record(texts);
 }
 
 TEST_CASE("InactiveRegions_Document") {
@@ -114,8 +77,8 @@ module top;
 `define BAZ
 
 `ifndef BAR
-    bit[2:0]                                               c[13];
-`elseif BAZ
+    bit[2:0] c[13];
+`elsif BAZ
     int d;
 `else
     int e;
