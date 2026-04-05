@@ -9,11 +9,11 @@ This isn't really a thing for HDLs, where a full design is almost always assumed
 
 Hierarchical references can go down or up more than one layer, in which case some symbols may not load. It would be nice to continue adding the relevant syntax trees to get all symbols in the current document, rather than just loading directly referenced symbols. Upward references will always be a blind spot for the language server when a design isn't set, and are generally not considered a good practice.
 
-## AllGenerateBranches
+## UntakenGenerateChecks
 
-This compilation flag is used in shallow compilations to get symbols and diagnostics on all generate branches. This process can definitely be improved; for example certain diags are marked as invalid for shallow compilation, and that's tricky since some may have been missed, and ideally the system would never go down the path where it's publishing those diags.
+This compilation flag is used in shallow compilations to get symbols and diagnostics untaken generate branches. Many diags are still valid in untaken generate branches, and are useful for applications like a language server.
 
-A related issue is the case of ifdef branches. Making an AllIfdefBranches flag would certainly cause chaos, and perhaps the best way of dealing with this is to just do syntax lookups in the untaken branches to provide symbols.
+A related issue is the case of ifdef branches. In the future the server can attempt to parse out most untaken ifdef branches to at least provide goto/hover support, but likely never diagnostics.
 
 ## Interface Port Parameter Asserts
 
