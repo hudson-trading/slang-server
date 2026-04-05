@@ -240,6 +240,7 @@ void SlangDoc::issueDiagnosticsTo(DiagnosticEngine& diagEngine) {
 
 std::vector<lsp::Range> SlangDoc::getInactiveRegions() {
     std::vector<lsp::Range> result;
+    result.reserve(getAnalysis()->syntaxes.disabledRegions.size());
 
     for (const auto& region : getAnalysis()->syntaxes.disabledRegions) {
         result.push_back(toRange(region, m_sourceManager));
