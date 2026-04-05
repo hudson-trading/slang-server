@@ -86,8 +86,6 @@ File input is sent to stdin, and formatted output is read from stdout.',
 
   private activeFormatters: ExternalFormatter[] = []
 
-  private inactiveDecorationType?: vscode.TextEditorDecorationType
-
   // Side bar
   project: ProjectComponent = new ProjectComponent()
 
@@ -182,10 +180,26 @@ File input is sent to stdin, and formatted output is read from stdout.',
 
     this.client = new LanguageClient('slang-server', serverOptions, clientOptions)
 
-    this.client.registerFeature(new ExperimentalCapabilitiesFeature(this.client))
+    this.client.registerFeature(new ExperimentalCapabilitiesFeature())
+
+    /// Taken from vscode-clangd with slight modifcations see license at:
+    /// https://github.com/clangd/vscode-clangd/blob/master/LICENSE
     this.client.onNotification('textDocument/inactiveRegions', (params: InactiveRegionsParams) => {
-      console.log('INACTIVE REGIONS:', params)
+      const fileUri = this.client!.protocol2CodeConverter.asUri(params.uri).toString()
+      const ranges: vscode.Range[] = params.regions.map((r) =>
+        this.client!.protocol2CodeConverter.asRange(r)
+      )
+      this.inactiveFiles.set(fileUri, ranges)
+      this.applyInactiveHighlights(fileUri)
     })
+
+    /// Taken from vscode-clangd with slight modifcations see license at:
+    /// https://github.com/clangd/vscode-clangd/blob/master/LICENSE
+    this.context.subscriptions.push(
+      vscode.window.onDidChangeVisibleTextEditors((editors) =>
+        editors.forEach((e) => this.applyInactiveHighlights(e.document.uri.toString()))
+      )
+    )
 
     this.context.subscriptions.push(
       this.client.onDidChangeState(
@@ -276,6 +290,24 @@ File input is sent to stdin, and formatted output is read from stdout.',
       void this.checkForUpdates(serverVersion)
     }
   }
+
+  /// Taken from vscode-clangd with slight modifcations see license at:
+  /// https://github.com/clangd/vscode-clangd/blob/master/LICENSE
+  private applyInactiveHighlights(fileUri: string) {
+    const ranges = this.inactiveFiles.get(fileUri)
+    if (!ranges) return
+    vscode.window.visibleTextEditors.forEach((e) => {
+      if (!this.inactiveDecorationType) return
+      if (e.document.uri.toString() !== fileUri) return
+      e.setDecorations(this.inactiveDecorationType, ranges)
+    })
+  }
+
+  private readonly inactiveDecorationType = vscode.window.createTextEditorDecorationType({
+    isWholeLine: true,
+    opacity: '0.55',
+  })
+  private inactiveFiles: Map<string, vscode.Range[]> = new Map()
 
   private async checkForUpdates(installedVersion: string | null): Promise<void> {
     const updated = await this.path.maybeInstallUpdate(this.context, this.logger, installedVersion)
