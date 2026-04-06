@@ -55,7 +55,7 @@ endmodule
     golden.record("afterSave", doc.getDiagnostics());
 }
 
-TEST_CASE("AllGenerateBranches") {
+TEST_CASE("UntakenGenerateChecks") {
     ServerHarness server;
 
     JsonGoldenTest golden;
@@ -307,4 +307,41 @@ endmodule
 )");
     server.setTopLevel(std::string{docCompilation.m_uri.getPath()});
     CHECK_FALSE(hasCode(docCompilation.getDiagnostics(), "constant-conversion"));
+}
+
+TEST_CASE("RangeOOBSuppressedInUntakenGenerate") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+module test;
+  parameter int WIDTH = 4;
+  logic [WIDTH-1:0] data_i;
+  logic data_o[WIDTH][WIDTH];
+
+  generate
+    for (genvar i = 0; i < WIDTH; i++) begin : g_i
+      for (genvar j = 0; j < WIDTH; j++) begin : g_j
+        if (i == 0) begin : g_i_0
+          assign data_o[i][j] = 1'b1;
+        end
+        else if (i + j < WIDTH) begin : g_st_width
+          assign data_o[i][j] = data_i[i+j:j] == {i{1'b0}};
+        end
+        else begin : g_ge_width
+          assign data_o[i][j] = 1'b0;
+        end
+      end
+    end
+  endgenerate
+endmodule
+)");
+
+    auto diags = doc.getDiagnostics();
+    for (auto& d : diags) {
+        if (d.code) {
+            auto& code = rfl::get<std::string>(*d.code);
+            CHECK((code == "unused-def" || code == "unassigned-variable" ||
+                   code == "unused-but-set-variable"));
+        }
+    }
 }
