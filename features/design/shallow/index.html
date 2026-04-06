@@ -868,9 +868,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#allgeneratebranches" class="md-nav__link">
+  <a href="#untakengeneratechecks" class="md-nav__link">
     <span class="md-ellipsis">
-      AllGenerateBranches
+      UntakenGenerateChecks
     </span>
   </a>
   
@@ -956,9 +956,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#allgeneratebranches" class="md-nav__link">
+  <a href="#untakengeneratechecks" class="md-nav__link">
     <span class="md-ellipsis">
-      AllGenerateBranches
+      UntakenGenerateChecks
     </span>
   </a>
   
@@ -1007,9 +1007,9 @@
 This isn't really a thing for HDLs, where a full design is almost always assumed. Parts of Slang can be tweaked to essentially get this functionality.</p>
 <h3 id="limitations">Limitations<a class="headerlink" href="#limitations" title="Permanent link">&para;</a></h3>
 <p>Hierarchical references can go down or up more than one layer, in which case some symbols may not load. It would be nice to continue adding the relevant syntax trees to get all symbols in the current document, rather than just loading directly referenced symbols. Upward references will always be a blind spot for the language server when a design isn't set, and are generally not considered a good practice.</p>
-<h2 id="allgeneratebranches">AllGenerateBranches<a class="headerlink" href="#allgeneratebranches" title="Permanent link">&para;</a></h2>
-<p>This compilation flag is used in shallow compilations to get symbols and diagnostics on all generate branches. This process can definitely be improved; for example certain diags are marked as invalid for shallow compilation, and that's tricky since some may have been missed, and ideally the system would never go down the path where it's publishing those diags.</p>
-<p>A related issue is the case of ifdef branches. Making an AllIfdefBranches flag would certainly cause chaos, and perhaps the best way of dealing with this is to just do syntax lookups in the untaken branches to provide symbols.</p>
+<h2 id="untakengeneratechecks">UntakenGenerateChecks<a class="headerlink" href="#untakengeneratechecks" title="Permanent link">&para;</a></h2>
+<p>This compilation flag is used in shallow compilations to get symbols and diagnostics untaken generate branches. Many diags are still valid in untaken generate branches, and are useful for applications like a language server.</p>
+<p>A related issue is the case of ifdef branches. In the future the server can attempt to parse out most untaken ifdef branches to at least provide goto/hover support, but likely never diagnostics.</p>
 <h2 id="interface-port-parameter-asserts">Interface Port Parameter Asserts<a class="headerlink" href="#interface-port-parameter-asserts" title="Permanent link">&para;</a></h2>
 <p>It's a common pattern to declare an input/output interface with a datatype, however SystemVerilog doesn't let you restrict the params of these interface ports, and people instead rely on asserts. Ideally slang could pick up on these asserts and fill in the correct dtype for these. Even more ideally, these constraints would be in the language itself. Either implementation would provide the user with more accurate info when doing hierarhical completions.</p>
 <h2 id="single-unit">Single Unit<a class="headerlink" href="#single-unit" title="Permanent link">&para;</a></h2>
