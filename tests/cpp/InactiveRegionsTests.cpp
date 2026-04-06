@@ -65,6 +65,7 @@ TEST_CASE("InactiveRegions_Document") {
     ServerHarness server;
     JsonGoldenTest golden;
 
+    auto header = server.openFile("foo.svh", "`define FOO\n");
     auto doc = server.openFile("test.sv", R"(
 module top;
 `ifdef FOO
@@ -84,6 +85,16 @@ module top;
     int e;
 `endif
 endmodule
+
+`ifdef A logic foo; `else logic bar; `endif
+
+`include "foo.svh"
+
+`ifdef FOO
+    logic[7:0] foot;
+`else
+    logic[7:0] bart;
+`endif
 )");
 
     auto regions = doc.getInactiveRegions();

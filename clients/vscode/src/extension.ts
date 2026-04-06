@@ -304,7 +304,7 @@ File input is sent to stdin, and formatted output is read from stdout.',
   }
 
   private readonly inactiveDecorationType = vscode.window.createTextEditorDecorationType({
-    isWholeLine: true,
+    isWholeLine: false,
     opacity: '0.55',
   })
   private inactiveFiles: Map<string, vscode.Range[]> = new Map()

@@ -29,6 +29,26 @@
         "line": 16,
         "character": 10
       }
+    },
+    {
+      "start": {
+        "line": 20,
+        "character": 9
+      },
+      "end": {
+        "line": 20,
+        "character": 19
+      }
+    },
+    {
+      "start": {
+        "line": 27,
+        "character": 4
+      },
+      "end": {
+        "line": 27,
+        "character": 20
+      }
     }
   ]
 ]

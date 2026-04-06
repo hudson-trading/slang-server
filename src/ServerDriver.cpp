@@ -893,8 +893,6 @@ void ServerDriver::publishInactiveRegions(SlangDoc& doc) {
 
     auto regions = doc.getInactiveRegions();
 
-    INFO("Publishing {} inactive regions for {}", regions.size(), doc.getURI().getPath());
-
     client.onTextDocumentInactiveRegions(lsp::InactiveRegionsParams{
         .uri = doc.getURI(),
         .regions = std::move(regions),

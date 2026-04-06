@@ -68,10 +68,6 @@ inline void sendNotification(const std::string& method, const rfl::Generic& para
     std::cerr << "---> " << method;
     // std::cerr << ": " << rfl::json::write(params) << std::endl;
     std::cerr << std::endl;
-
-    if (method == "textDocument/inactiveRegions") {
-        std::cerr << "INACTIVE REGIONS PARAMS: " << rfl::json::write(params) << std::endl;
-    }
 }
 
 inline void sendRequest(const std::string& method, const rfl::Generic& params) {
