@@ -165,7 +165,6 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
             *params.capabilities.experimental);
 
         if (exp && exp->inactiveRegions && exp->inactiveRegions->inactiveRegions.value_or(false)) {
-            INFO("Client supports inactive regions");
             m_client.experimentalCapabilities.inactiveRegionsSupported = true;
         }
     }
