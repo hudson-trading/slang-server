@@ -274,9 +274,6 @@ File input is sent to stdin, and formatted output is read from stdout.',
     }
   }
 
-  /// Taken from vscode-clangd with slight modifcations see license at:
-  /// https://github.com/clangd/vscode-clangd/blob/master/LICENSE
-
   private async checkForUpdates(installedVersion: string | null): Promise<void> {
     const updated = await this.path.maybeInstallUpdate(this.context, this.logger, installedVersion)
     if (!updated) {

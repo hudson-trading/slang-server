@@ -1,15 +1,10 @@
 import * as vscode from 'vscode'
 import * as vscodelc from 'vscode-languageclient/node'
+import { ExperimentalCapabilities } from '../SlangInterface'
 
 interface InactiveRegionsParams {
   uri: string
   regions: vscodelc.Range[]
-}
-
-type SlangExperimentalCapabilities = {
-  inactiveRegions?: {
-    inactiveRegions: boolean
-  }
 }
 
 /// Taken from vscode-clangd with slight modifications see license at:
@@ -26,7 +21,7 @@ export class InactiveRegionsFeature implements vscodelc.StaticFeature {
       capabilities.experimental = {}
     }
 
-    const exp = capabilities.experimental as SlangExperimentalCapabilities
+    const exp = capabilities.experimental as ExperimentalCapabilities
 
     exp.inactiveRegions = {
       inactiveRegions: true,
