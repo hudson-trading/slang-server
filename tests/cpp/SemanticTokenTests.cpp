@@ -24,7 +24,7 @@ TEST_CASE("SemanticTokenMapping") {
     CHECK(server::mapTokenKind(TK::IntegerLiteral) == ST::Number);
     CHECK(server::mapTokenKind(TK::RealLiteral) == ST::Number);
     CHECK(server::mapTokenKind(TK::TimeLiteral) == ST::Number);
-    CHECK(server::mapTokenKind(TK::Semicolon) == ST::Operator);
+    CHECK(!server::mapTokenKind(TK::Semicolon).has_value());
     CHECK(!server::mapTokenKind(TK::EndOfFile).has_value());
 }
 
@@ -35,7 +35,7 @@ using TK = parsing::TokenKind;
 void appendIdentifierToken(std::vector<parsing::Token>& storage, server::SyntaxIndexer& indexer,
                            BumpAllocator& alloc, BufferID bufId, size_t charOffset,
                            std::string_view rawText) {
-    storage.emplace_back(alloc, TK::Identifier, std::span<const parsing::Trivia const>{}, rawText,
+    storage.emplace_back(alloc, TK::Identifier, std::span<const parsing::Trivia>{}, rawText,
                          SourceLocation(bufId, static_cast<uint64_t>(charOffset)));
     indexer.collected.push_back(&storage.back());
 }
@@ -43,7 +43,7 @@ void appendIdentifierToken(std::vector<parsing::Token>& storage, server::SyntaxI
 void appendSkippedKindToken(std::vector<parsing::Token>& storage, server::SyntaxIndexer& indexer,
                             BumpAllocator& alloc, BufferID bufId, size_t charOffset,
                             std::string_view rawText, TK kind) {
-    storage.emplace_back(alloc, kind, std::span<const parsing::Trivia const>{}, rawText,
+    storage.emplace_back(alloc, kind, std::span<const parsing::Trivia>{}, rawText,
                          SourceLocation(bufId, static_cast<uint64_t>(charOffset)));
     indexer.collected.push_back(&storage.back());
 }

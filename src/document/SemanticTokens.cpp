@@ -10,18 +10,13 @@
 
 #include "slang/parsing/LexerFacts.h"
 #include "slang/parsing/Token.h"
+#include "slang/syntax/SyntaxFacts.h"
+#include "slang/syntax/SyntaxKind.h"
 
 namespace server {
 
 using namespace slang;
 using TK = parsing::TokenKind;
-
-lsp::SemanticTokensLegend getSemanticTokensLegend() {
-    return lsp::SemanticTokensLegend{
-        .tokenTypes = {"keyword", "variable", "function", "macro", "string", "number", "operator"},
-        .tokenModifiers = {},
-    };
-}
 
 std::optional<SemanticTokenType> mapTokenKind(parsing::TokenKind kind) {
     if (parsing::LexerFacts::isKeyword(kind))
@@ -56,9 +51,11 @@ std::optional<SemanticTokenType> mapTokenKind(parsing::TokenKind kind) {
             return SemanticTokenType::Macro;
 
         default: {
-            auto text = parsing::LexerFacts::getTokenKindText(kind);
-            if (!text.empty())
+            if (syntax::SyntaxFacts::getUnaryPrefixExpression(kind) !=
+                    syntax::SyntaxKind::Unknown ||
+                syntax::SyntaxFacts::getBinaryExpression(kind) != syntax::SyntaxKind::Unknown) {
                 return SemanticTokenType::Operator;
+            }
             return std::nullopt;
         }
     }
@@ -67,6 +64,7 @@ std::optional<SemanticTokenType> mapTokenKind(parsing::TokenKind kind) {
 std::vector<uint32_t> computeSemanticTokenData(const SyntaxIndexer& indexer,
                                                const SourceManager& sm) {
     std::vector<uint32_t> data;
+    data.reserve(indexer.collected.size() * 5);
     uint32_t prevLine = 0;
     uint32_t prevCol = 0;
 
