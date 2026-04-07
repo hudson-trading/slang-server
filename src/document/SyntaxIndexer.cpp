@@ -57,68 +57,7 @@ void SyntaxIndexer::visit(const slang::syntax::SyntaxNode& node) {
             auto token = const_cast<slang::syntax::SyntaxNode&>(node).childTokenPtr(i);
             if (!token)
                 continue;
-            for (const auto& trivia : token->trivia()) {
-                if (trivia.kind == parsing::TriviaKind::Directive) {
-                    visit(*trivia.syntax());
-                    // Macro args need to lookup in a scope; we could add a new map, but it's better
-                    // to keep the same process as normal nodes
-                    trivia.syntax()->parent = const_cast<slang::syntax::SyntaxNode*>(&node);
-                }
-
-                auto* syntax = trivia.syntax();
-                if (!syntax)
-                    continue;
-
-                auto addDisabledRange = [&](const auto& branch) {
-                    /// All the tokens that are inactive due to a branching directive.
-                    const auto& tokens = branch.disabledTokens;
-                    if (tokens.empty())
-                        return;
-
-                    std::optional<slang::SourceLocation> start;
-                    slang::SourceLocation end;
-
-                    for (const auto& tok : tokens) {
-                        // There may be a chain of branching directive, in which case
-                        // we want to skip over the directive tokens in the middle
-                        // (ie: we don't want to gray out the `elseif in a large chain)
-                        if (tok.kind == parsing::TokenKind::Directive) {
-                            // Close current region before directive
-                            // and start anew after the directive (if needed)
-                            if (start.has_value()) {
-                                disabledRegions.push_back({*start, end});
-                                start.reset();
-                            }
-                            continue;
-                        }
-
-                        // Only the reason start wouldn't have a value is if the last token
-                        // was a directive in which case we want to start a new region after it
-                        if (!start.has_value()) {
-                            start = tok.location();
-                        }
-
-                        end = tok.range().end();
-                    }
-
-                    // Final region
-                    if (start.has_value()) {
-                        disabledRegions.push_back({*start, end});
-                    }
-                };
-
-                // Conditional Branch Directives (ie: `ifdef)
-                if (syntax::ConditionalBranchDirectiveSyntax::isKind(syntax->kind)) {
-                    const auto& branch = syntax->as<syntax::ConditionalBranchDirectiveSyntax>();
-                    addDisabledRange(branch);
-                }
-
-                // Unconditional Branch Directives (ie: `else)
-                else if (syntax::UnconditionalBranchDirectiveSyntax::isKind(syntax->kind)) {
-                    const auto& branch = syntax->as<syntax::UnconditionalBranchDirectiveSyntax>();
-                    addDisabledRange(branch);
-                }
-            }
+            processTrivia(token->trivia(), node);
             if (token->location().buffer() == m_buffer &&
                 token->kind != parsing::TokenKind::Placeholder) {
                 if (collected.size() > 0) {
@@ -134,6 +73,56 @@ void SyntaxIndexer::visit(const slang::syntax::SyntaxNode& node) {
 
                 tokenToParent[token] = &node;
             }
+        }
+    }
+}
+
+void SyntaxIndexer::processTrivia(std::span<const slang::parsing::Trivia> triviaList,
+                                  const slang::syntax::SyntaxNode& parent) {
+    for (const auto& trivia : triviaList) {
+        if (trivia.kind == parsing::TriviaKind::Directive) {
+            visit(*trivia.syntax());
+            // Macro args need to lookup in a scope; we could add a new map, but it's better
+            // to keep the same process as normal nodes
+            trivia.syntax()->parent = const_cast<slang::syntax::SyntaxNode*>(&parent);
+        }
+
+        // Descend into SkippedTokens to find conditional directives
+        // that were displaced by parse errors.
+        if (trivia.kind == parsing::TriviaKind::SkippedTokens) {
+            for (const auto& skippedTok : trivia.getSkippedTokens()) {
+                processTrivia(skippedTok.trivia(), parent);
+            }
+            continue;
+        }
+
+        // Check for conditional branch triva, which will contain disabled tokens
+        auto* syntax = trivia.syntax();
+        if (!syntax)
+            continue;
+
+        // Check that we're in the buffer (not an included buffer or expanded buffer)
+        if (syntax->getFirstToken().location().buffer() != m_buffer)
+            continue;
+
+        auto addDisabledRange = [&](const syntax::TokenList& tokens) {
+            if (tokens.empty())
+                return;
+
+            disabledRegions.push_back({tokens.front().location(), tokens.back().range().end()});
+        };
+
+        // Conditional Branch Directives (ie: `ifdef)
+        if (syntax::ConditionalBranchDirectiveSyntax::isKind(syntax->kind)) {
+            const auto& branch = syntax->as<syntax::ConditionalBranchDirectiveSyntax>();
+            addDisabledRange(branch.disabledTokens);
+        }
+
+        // Unconditional Branch Directives (ie: `else)
+        // `endif should no longer contain any disabled tokens after the slang change
+        else if (syntax::UnconditionalBranchDirectiveSyntax::isKind(syntax->kind)) {
+            const auto& branch = syntax->as<syntax::UnconditionalBranchDirectiveSyntax>();
+            addDisabledRange(branch.disabledTokens);
         }
     }
 }

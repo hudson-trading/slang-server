@@ -70,5 +70,9 @@ private:
     /// Recursively visit syntax nodes, called in constructor.
     /// Also collects the disabled regions from the conditional `DirectiveSyntax` nodes.
     void visit(const slang::syntax::SyntaxNode& root);
+    /// Process trivia on a token, extracting disabled regions from conditional directives.
+    /// Also descends into SkippedTokens trivia to find nested directives.
+    void processTrivia(std::span<const slang::parsing::Trivia> triviaList,
+                       const slang::syntax::SyntaxNode& parent);
 };
 } // namespace server

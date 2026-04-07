@@ -61,6 +61,91 @@ logic h;
     golden.record(texts);
 }
 
+TEST_CASE("InactiveRegions_ParseError") {
+    using namespace slang;
+
+    SourceManager sm;
+    Bag options;
+
+    auto tree = syntax::SyntaxTree::fromText(R"(
+`ifdef ASDF
+  `ASDF(width)
+`endif
+
+`
+)",
+                                             sm, "test", "", options);
+
+    server::SyntaxIndexer indexer(*tree);
+    auto& disabled = indexer.disabledRegions;
+
+    REQUIRE(disabled.size() == 1);
+    auto text = std::string(sm.getText(disabled[0]));
+    CHECK(text.find("`ASDF") != std::string::npos);
+}
+
+TEST_CASE("InactiveRegions_MacroInDisabledBranch") {
+    using namespace slang;
+
+    SourceManager sm;
+
+    Bag options;
+
+    auto tree = syntax::SyntaxTree::fromText(R"(
+`define WIDTH 8
+`ifdef FOO
+    logic [`WIDTH-1:0] a;
+`else
+    logic b;
+`endif
+)",
+                                             sm, "test", "", options);
+
+    server::SyntaxIndexer indexer(*tree);
+    auto& disabled = indexer.disabledRegions;
+
+    // The macro usage `WIDTH should not split the disabled region
+    REQUIRE(disabled.size() == 1);
+    CHECK(sm.getText(disabled[0]) == "logic [`WIDTH-1:0] a;");
+}
+
+TEST_CASE("InactiveRegions_NestedDirectivesMerged") {
+    using namespace slang;
+
+    SourceManager sm;
+    Bag options;
+
+    auto tree = syntax::SyntaxTree::fromText(R"(
+`ifdef TOOL_A
+    `ifndef FLAG_X
+       `define RESULT
+    `endif
+`elsif TOOL_B
+    `ifndef FLAG_X
+       `define RESULT
+    `endif
+`elsif TOOL_C
+    `ifndef FLAG_X
+       `define RESULT
+    `endif
+`endif
+)",
+                                             sm, "test", "", options);
+
+    server::SyntaxIndexer indexer(*tree);
+    auto& disabled = indexer.disabledRegions;
+
+    // Each disabled branch is its own region (the `elsif lines between
+    // them are evaluated condition checks and should not be greyed out).
+    // Each region should include the full inner `ifndef/`endif block.
+    REQUIRE(disabled.size() == 3);
+    for (auto& region : disabled) {
+        auto text = std::string(sm.getText(region));
+        CHECK(text.find("`ifndef FLAG_X") != std::string::npos);
+        CHECK(text.find("`endif") != std::string::npos);
+    }
+}
+
 TEST_CASE("InactiveRegions_Document") {
     ServerHarness server;
     JsonGoldenTest golden;

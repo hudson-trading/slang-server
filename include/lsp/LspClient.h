@@ -158,7 +158,7 @@ public:
                          rfl::to_generic<rfl::UnderlyingEnums>(params));
     };
 
-    void onTextDocumentInactiveRegions(const InactiveRegionsParams& params) {
+    virtual void onTextDocumentInactiveRegions(const InactiveRegionsParams& params) {
         sendNotification("textDocument/inactiveRegions",
                          rfl::to_generic<rfl::UnderlyingEnums>(params));
     }
