@@ -1,11 +1,19 @@
 // AI SLOP
 
 #include "document/SyntaxIndexer.h"
+#include "util/Converters.h"
 #include "utils/ServerHarness.h"
 #include <catch2/catch_test_macros.hpp>
 
 #include "slang/syntax/SyntaxTree.h"
 #include "slang/text/SourceManager.h"
+
+using server::toRange;
+
+struct RegionInfo {
+    lsp::Range range;
+    std::string text;
+};
 
 TEST_CASE("InactiveRegions_SyntaxIndexer") {
     using namespace slang;
@@ -52,13 +60,12 @@ logic h;
 
     JsonGoldenTest golden;
 
-    std::vector<std::string> texts;
-    texts.reserve(disabled.size());
+    std::vector<RegionInfo> regions;
     for (auto& r : disabled) {
-        texts.push_back(std::string(sm.getText(r)));
+        regions.push_back({toRange(r, sm), std::string(sm.getText(r))});
     }
 
-    golden.record(texts);
+    golden.record(regions);
 }
 
 TEST_CASE("InactiveRegions_ParseError") {
@@ -182,7 +189,13 @@ endmodule
 `endif
 )");
 
-    auto regions = doc.getInactiveRegions();
+    auto& sm = server.sourceManager();
+    auto& syntaxes = doc.doc->getAnalysis()->syntaxes;
+
+    std::vector<RegionInfo> regions;
+    for (auto& r : syntaxes.disabledRegions) {
+        regions.push_back({toRange(r, sm), std::string(sm.getText(r))});
+    }
 
     golden.record(regions);
 }

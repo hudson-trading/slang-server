@@ -1,8 +1,56 @@
 [
   [
-    "logic a;",
-    "logic d;",
-    "logic e;",
-    "logic g;"
+    {
+      "range": {
+        "start": {
+          "line": 2,
+          "character": 0
+        },
+        "end": {
+          "line": 2,
+          "character": 8
+        }
+      },
+      "text": "logic a;"
+    },
+    {
+      "range": {
+        "start": {
+          "line": 14,
+          "character": 0
+        },
+        "end": {
+          "line": 14,
+          "character": 8
+        }
+      },
+      "text": "logic d;"
+    },
+    {
+      "range": {
+        "start": {
+          "line": 21,
+          "character": 0
+        },
+        "end": {
+          "line": 21,
+          "character": 8
+        }
+      },
+      "text": "logic e;"
+    },
+    {
+      "range": {
+        "start": {
+          "line": 25,
+          "character": 0
+        },
+        "end": {
+          "line": 25,
+          "character": 8
+        }
+      },
+      "text": "logic g;"
+    }
   ]
 ]
