@@ -37,6 +37,21 @@ endmodule
     golden.record(doc.getDiagnostics());
 }
 
+TEST_CASE("DiagsPublishedOnOpenCachedDoc") {
+    ServerHarness server("cached_dep");
+
+    // Open top.sv first — this causes pkg.sv to be loaded as a dependency
+    auto top = server.openFile("top.sv");
+    auto topDiags = top.getDiagnostics();
+    CHECK(!topDiags.empty());
+
+    // Now open pkg.sv — it's already cached from being loaded as a dep,
+    // so the fast path is taken, but diagnostics should still be published
+    auto pkg = server.openFile("pkg.sv");
+    auto pkgDiags = server.client.getDiagnostics(pkg.m_uri);
+    CHECK(!pkgDiags.empty());
+}
+
 TEST_CASE("SyntaxOnlyOnChange") {
     ServerHarness server;
 
