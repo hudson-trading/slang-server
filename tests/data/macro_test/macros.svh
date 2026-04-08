@@ -129,3 +129,8 @@ module test;
     end
 
 endmodule
+
+// Test undef — goto/hover on the name should resolve to the definition
+`define TEMP_MACRO 99
+localparam int temp_val = `TEMP_MACRO;
+`undef TEMP_MACRO

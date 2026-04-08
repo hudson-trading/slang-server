@@ -26,6 +26,9 @@ namespace server {
 class SyntaxIndexer {
 private:
     slang::BufferID m_buffer;
+    const slang::SourceManager* m_sourceManager = nullptr;
+    const slang::syntax::SyntaxNode* m_currentMacroUsage = nullptr;
+    std::vector<const slang::parsing::Token*> m_currentExpansionTokens;
 
 public:
     /// Collected declared tokens in order (tokens in the actual file)
@@ -40,6 +43,17 @@ public:
 
     /// Map from offset to syntax nodes collected for inlay hints
     std::map<uint32_t, slang::not_null<const slang::syntax::SyntaxNode*>> collectedHints;
+
+    /// Tokens from a macro expansion, stored as pointers into the syntax tree
+    struct MacroExpansionTokens {
+        std::vector<const slang::parsing::Token*> tokens;
+
+        /// Stringify the expansion on demand, including trivia
+        std::string getText() const;
+    };
+
+    /// Map from macro usage syntax node to its expanded tokens
+    slang::flat_hash_map<const slang::syntax::SyntaxNode*, MacroExpansionTokens> macroExpansions;
 
     /// @brief Constructor that takes a syntax tree and extracts buffer ID from sources
     /// @param tree The syntax tree to analyze
@@ -74,5 +88,7 @@ private:
     /// Also descends into SkippedTokens trivia to find nested directives.
     void processTrivia(std::span<const slang::parsing::Trivia> triviaList,
                        const slang::syntax::SyntaxNode& parent);
+    /// Flush any pending macro expansion tokens to the macroExpansions map
+    void flushMacroExpansion();
 };
 } // namespace server

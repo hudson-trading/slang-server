@@ -122,7 +122,16 @@ lsp::MarkupContent getHover(const SourceManager& sm, const BufferID docBuffer,
     // Add the main code block with proper formatting
     doc.addParagraph().appendCodeBlock(formatCode(display_node));
 
-    // Show macro expansion if present
+    // Show what a macro expands to
+    if (!info.macroExpansionText.empty()) {
+        // Macro usage: show the expanded text at this call site
+        doc.addParagraph()
+            .appendText("Expands to ")
+            .newLine()
+            .appendText(svCodeBlockString(info.macroExpansionText));
+    }
+
+    // Show macro expansion if present (token is inside a macro expansion)
     if (info.macroUsageRange != SourceRange::NoLocation) {
         auto text = sm.getText(info.macroUsageRange);
         doc.addParagraph().appendText("Expanded from ").newLine().appendCodeBlock(text);
