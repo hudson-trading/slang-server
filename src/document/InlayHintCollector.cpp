@@ -67,10 +67,12 @@ void InlayHintCollector::handle(const HierarchyInstantiationSyntax& syntax) {
                 result.push_back(lsp::InlayHint{
                     .position = toPosition(paramSyntax->getFirstToken().location(),
                                            m_analysis.m_sourceManager),
-                    .label = fmt::format("{}:", def.parameters[paramIndex++].name),
+                    .label = fmt::format("{}:", name),
                     .kind = lsp::InlayHintKind::Parameter,
                     .paddingRight = true,
                 });
+
+                paramIndex++;
             }
         }
     }
