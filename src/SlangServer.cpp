@@ -13,6 +13,7 @@
 #include "ast/WcpClient.h"
 #include "completions/CompletionDispatch.h"
 #include "document/SemanticTokens.h"
+#include "lsp/LspTypeExtensions.h"
 #include "lsp/LspTypes.h"
 #include "lsp/URI.h"
 #include "util/Converters.h"
@@ -26,6 +27,7 @@
 #include <optional>
 #include <ranges>
 #include <rfl/Variant.hpp>
+#include <rfl/from_generic.hpp>
 #include <string>
 #include <string_view>
 #include <variant>
@@ -159,6 +161,15 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
 
     // TODO: watch for changes to config file
     loadConfig();
+
+    if (params.capabilities.experimental) {
+        auto exp = rfl::from_generic<lsp::ExperimentalClientCapabilities>(
+            *params.capabilities.experimental);
+
+        if (exp && exp->inactiveRegions && exp->inactiveRegions->inactiveRegions.value_or(false)) {
+            m_client.experimentalCapabilities.inactiveRegionsSupported = true;
+        }
+    }
 
     auto result =
         lsp::InitializeResult{

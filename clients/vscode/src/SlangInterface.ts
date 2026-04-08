@@ -4,6 +4,12 @@ import { Config } from './config.gen'
 
 export type { Config }
 
+export type ExperimentalCapabilities = {
+  inactiveRegions?: {
+    inactiveRegions: boolean
+  }
+}
+
 export enum SlangKind {
   Instance = 'Instance',
   Scope = 'Scope',

@@ -10,6 +10,7 @@
 #include "JsonRpc.h"
 #include "JsonTypes.h"
 #include "LspTypes.h"
+#include "lsp/LspTypeExtensions.h"
 #include <optional>
 #include <rfl/UnderlyingEnums.hpp>
 #include <rfl/json.hpp>
@@ -156,6 +157,11 @@ public:
         sendNotification("textDocument/publishDiagnostics",
                          rfl::to_generic<rfl::UnderlyingEnums>(params));
     };
+
+    virtual void onTextDocumentInactiveRegions(const InactiveRegionsParams& params) {
+        sendNotification("textDocument/inactiveRegions",
+                         rfl::to_generic<rfl::UnderlyingEnums>(params));
+    }
 
     /// The telemetry event notification is sent from the server to the client to ask
     /// the client to log telemetry data.

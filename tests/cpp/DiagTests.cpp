@@ -37,6 +37,21 @@ endmodule
     golden.record(doc.getDiagnostics());
 }
 
+TEST_CASE("DiagsPublishedOnOpenCachedDoc") {
+    ServerHarness server("cached_dep");
+
+    // Open top.sv first — this causes pkg.sv to be loaded as a dependency
+    auto top = server.openFile("top.sv");
+    auto topDiags = top.getDiagnostics();
+    CHECK(!topDiags.empty());
+
+    // Now open pkg.sv — it's already cached from being loaded as a dep,
+    // so the fast path is taken, but diagnostics should still be published
+    auto pkg = server.openFile("pkg.sv");
+    auto pkgDiags = server.client.getDiagnostics(pkg.m_uri);
+    CHECK(!pkgDiags.empty());
+}
+
 TEST_CASE("SyntaxOnlyOnChange") {
     ServerHarness server;
 
@@ -55,7 +70,7 @@ endmodule
     golden.record("afterSave", doc.getDiagnostics());
 }
 
-TEST_CASE("AllGenerateBranches") {
+TEST_CASE("UntakenGenerateChecks") {
     ServerHarness server;
 
     JsonGoldenTest golden;
@@ -307,4 +322,41 @@ endmodule
 )");
     server.setTopLevel(std::string{docCompilation.m_uri.getPath()});
     CHECK_FALSE(hasCode(docCompilation.getDiagnostics(), "constant-conversion"));
+}
+
+TEST_CASE("RangeOOBSuppressedInUntakenGenerate") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+module test;
+  parameter int WIDTH = 4;
+  logic [WIDTH-1:0] data_i;
+  logic data_o[WIDTH][WIDTH];
+
+  generate
+    for (genvar i = 0; i < WIDTH; i++) begin : g_i
+      for (genvar j = 0; j < WIDTH; j++) begin : g_j
+        if (i == 0) begin : g_i_0
+          assign data_o[i][j] = 1'b1;
+        end
+        else if (i + j < WIDTH) begin : g_st_width
+          assign data_o[i][j] = data_i[i+j:j] == {i{1'b0}};
+        end
+        else begin : g_ge_width
+          assign data_o[i][j] = 1'b0;
+        end
+      end
+    end
+  endgenerate
+endmodule
+)");
+
+    auto diags = doc.getDiagnostics();
+    for (auto& d : diags) {
+        if (d.code) {
+            auto& code = rfl::get<std::string>(*d.code);
+            CHECK((code == "unused-def" || code == "unassigned-variable" ||
+                   code == "unused-but-set-variable"));
+        }
+    }
 }

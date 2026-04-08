@@ -8,6 +8,7 @@
 
 #include "SlangLspClient.h"
 #include "catch2/catch_test_macros.hpp"
+#include "lsp/LspTypeExtensions.h"
 #include <unordered_map>
 
 class ClientHarness : public SlangLspClient {
@@ -49,6 +50,20 @@ public:
         CHECK(errors[0].find(msg) != std::string::npos);
         // pop front
         errors.erase(errors.begin());
+    }
+
+    std::unordered_map<URI, std::vector<lsp::Range>> m_inactiveRegions;
+
+    void onTextDocumentInactiveRegions(const lsp::InactiveRegionsParams& params) override {
+        m_inactiveRegions.insert_or_assign(params.uri, params.regions);
+    }
+
+    std::vector<lsp::Range> getInactiveRegions(const URI& uri) {
+        auto it = m_inactiveRegions.find(uri);
+        if (it != m_inactiveRegions.end()) {
+            return it->second;
+        }
+        return {};
     }
 
     std::deque<lsp::ShowDocumentParams> m_showDocuments;

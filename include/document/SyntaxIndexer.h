@@ -31,6 +31,9 @@ public:
     /// Collected declared tokens in order (tokens in the actual file)
     std::vector<const slang::parsing::Token*> collected;
 
+    /// Collected disabled regions from preprocessor conditionals in the file
+    std::vector<slang::SourceRange> disabledRegions;
+
     /// Mapping of tokens to their parent syntax node
     slang::flat_hash_map<const slang::parsing::Token*, const slang::syntax::SyntaxNode*>
         tokenToParent;
@@ -64,7 +67,12 @@ private:
     int tokenIndexBefore(slang::SourceLocation loc) const;
     /// Whether this token kind is considered as some sort of identifier
     bool isIdToken(const slang::parsing::TokenKind kind) const;
-    /// Recursively visit syntax nodes, called in constructor
+    /// Recursively visit syntax nodes, called in constructor.
+    /// Also collects the disabled regions from the conditional `DirectiveSyntax` nodes.
     void visit(const slang::syntax::SyntaxNode& root);
+    /// Process trivia on a token, extracting disabled regions from conditional directives.
+    /// Also descends into SkippedTokens trivia to find nested directives.
+    void processTrivia(std::span<const slang::parsing::Trivia> triviaList,
+                       const slang::syntax::SyntaxNode& parent);
 };
 } // namespace server

@@ -158,6 +158,8 @@ public:
     std::string getPrevText(const lsp::Position& position);
 
     std::vector<lsp::DocumentLink> getDocLinks() { return getAnalysis()->getDocLinks(); }
+
+    std::vector<lsp::Range> getInactiveRegions();
 };
 
 } // namespace server

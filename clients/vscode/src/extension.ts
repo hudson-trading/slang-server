@@ -31,6 +31,7 @@ import {
   toPosix,
 } from './utils'
 import { glob } from 'glob'
+import { InactiveRegionsFeature } from './lib/inactiveRegions'
 
 export var ext: SlangExtension
 
@@ -178,6 +179,11 @@ File input is sent to stdin, and formatted output is read from stdout.',
     }
 
     this.client = new LanguageClient('slang-server', serverOptions, clientOptions)
+
+    const inactiveRegions = new InactiveRegionsFeature()
+    this.client.registerFeature(inactiveRegions)
+    inactiveRegions.register(this.client, this.context)
+
     this.context.subscriptions.push(
       this.client.onDidChangeState(
         ({ oldState, newState }: { oldState: vscodelc.State; newState: vscodelc.State }) => {
@@ -291,13 +297,8 @@ File input is sent to stdin, and formatted output is read from stdout.',
     async () => {
       this.isRestarting = true
       try {
-        if (this.client !== undefined && this.client.isRunning()) {
-          await this.client.restart()
-          await this.project.onStart()
-          this.logger.info('"' + this.client.name + '" language server restarted')
-        } else {
-          await this.setupLanguageClient()
-        }
+        await this.stopServer()
+        await this.setupLanguageClient()
         // This needs to be after to ensure that the server is up
         await this.project.clearTopLevel.func()
         await this.showOutput.func()

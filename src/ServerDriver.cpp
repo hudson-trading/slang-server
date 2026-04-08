@@ -126,6 +126,8 @@ void ServerDriver::updateDoc(SlangDoc& doc, FileUpdateType type) {
     }
     diagClient->pushDiags(doc.getURI());
     INFO("Published diags for {}", doc.getURI().getPath());
+
+    publishInactiveRegions(doc);
 }
 
 std::unique_ptr<ServerDriver> ServerDriver::create(Indexer& indexer, SlangLspClient& client,
@@ -163,20 +165,18 @@ std::unique_ptr<ServerDriver> ServerDriver::create(Indexer& indexer, SlangLspCli
 }
 
 void ServerDriver::openDocument(const URI& uri, const std::string_view text) {
-    bool readText = true;
-    if (docs.find(uri) != docs.end()) {
-        if (docs[uri]->textMatches(text)) {
-            readText = false;
-        }
-        else {
+    auto docIter = docs.find(uri);
+    std::shared_ptr<SlangDoc> doc;
+    if (docIter != docs.end() && docIter->second->textMatches(text)) {
+        doc = docIter->second;
+    }
+    else {
+        if (docIter != docs.end())
             WARN("Document {} text does not match, updating", uri.getPath());
-        }
-    }
-    if (readText) {
-        auto doc = SlangDoc::fromText(*this, uri, text);
+        doc = SlangDoc::fromText(*this, uri, text);
         docs[uri] = doc;
-        updateDoc(*doc, FileUpdateType::OPEN);
     }
+    updateDoc(*doc, FileUpdateType::OPEN);
     // Track this as an open document
     m_openDocs.insert(uri);
 }
@@ -885,6 +885,18 @@ std::optional<lsp::WorkspaceEdit> ServerDriver::getDocRename(const URI& uri,
     }
 
     return lsp::WorkspaceEdit{.changes = changes};
+}
+
+void ServerDriver::publishInactiveRegions(SlangDoc& doc) {
+    if (!client.experimentalCapabilities.inactiveRegionsSupported)
+        return;
+
+    auto regions = doc.getInactiveRegions();
+
+    client.onTextDocumentInactiveRegions(lsp::InactiveRegionsParams{
+        .uri = doc.getURI(),
+        .regions = std::move(regions),
+    });
 }
 
 } // namespace server
