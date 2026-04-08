@@ -47,7 +47,8 @@ ServerDriver::ServerDriver(Indexer& indexer, SlangLspClient& client, const Confi
                            std::vector<std::string> buildfiles) :
     sm(driver.sourceManager), diagEngine(driver.diagEngine), client(client),
     diagClient(std::make_shared<ServerDiagClient>(sm, client)),
-    completions(*this, indexer, sm, options), m_indexer(indexer), m_config(config) {
+    completions(*this, indexer, sm, options), codeActions(*this, sm), m_indexer(indexer),
+    m_config(config) {
     // Create and configure the driver with our source manager and diagnostic engine
     // SourceManager must not be moved, since diagEngine, syntax trees hold references to it
     driver.addStandardArgs();
