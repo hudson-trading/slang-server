@@ -1,0 +1,12 @@
+
+module test;
+    function int add(int a, int b);
+        return a + b;
+    endfunction
+
+    initial begin
+        int a = 5;
+        int b = 10;
+        int x = add(a, b);
+    end
+endmodule

@@ -13,5 +13,5 @@ module top;
     no_ports u_empty();
 
     // Instance with too many connections to a 1-port module
-    has_ports u_ports(/*clk:*/ clk, clk, clk);
+    has_ports u_ports(clk, clk, clk);
 endmodule

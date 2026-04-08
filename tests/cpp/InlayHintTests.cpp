@@ -402,3 +402,48 @@ endmodule
     InlayHintScanner scanner;
     scanner.scanDocument(hdl);
 }
+
+TEST_CASE("InlayHintsFunction_Same") {
+    /// Test inlay hints for function call arguments
+    ServerHarness server("");
+    auto hdl = server.openFile("inlay_function_same.sv", R"(
+module test;
+    function int add(int a, int b);
+        return a + b;
+    endfunction
+
+    initial begin
+        int a = 5;
+        int b = 10;
+        int x = add(a, b);
+    end
+endmodule
+)");
+
+    InlayHintScanner scanner;
+    scanner.scanDocument(hdl);
+}
+
+TEST_CASE("InlayHintsParameters_Same") {
+    /// Test inlay hints for parameter assignments
+    ServerHarness server("");
+    auto hdl = server.openFile("inlay_params.sv", R"(
+module fifo #(
+    parameter int DEPTH = 16,
+    parameter int WIDTH = 8
+)(
+    input logic clk
+);
+endmodule
+
+module top;
+    logic clk;
+    localparam int DEPTH = 32;
+    localparam int WIDTH = 16;
+    fifo #(DEPTH, WIDTH) u_fifo(clk);
+endmodule
+)");
+
+    InlayHintScanner scanner;
+    scanner.scanDocument(hdl);
+}

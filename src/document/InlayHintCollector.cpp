@@ -55,6 +55,15 @@ void InlayHintCollector::handle(const HierarchyInstantiationSyntax& syntax) {
                 if (paramIndex >= def.parameters.size()) {
                     break;
                 }
+
+                const auto name = def.parameters[paramIndex].name;
+                std::string passedArgName = paramSyntax->toString();
+                ltrim(passedArgName);
+                if (passedArgName == name) {
+                    paramIndex++;
+                    continue;
+                }
+
                 result.push_back(lsp::InlayHint{
                     .position = toPosition(paramSyntax->getFirstToken().location(),
                                            m_analysis.m_sourceManager),
@@ -112,13 +121,24 @@ void InlayHintCollector::handle(const HierarchyInstantiationSyntax& syntax) {
                     if (portIndex >= ports.size()) {
                         break;
                     }
+
+                    const auto name = ports[portIndex]->name;
+                    std::string passedArgName = portSyntax->toString();
+                    ltrim(passedArgName);
+                    if (passedArgName == name) {
+                        portIndex++;
+                        continue;
+                    }
+
                     result.push_back(lsp::InlayHint{
                         .position = toPosition(portSyntax->getFirstToken().location(),
                                                m_analysis.m_sourceManager),
-                        .label = fmt::format("{}:", ports[portIndex++]->name),
+                        .label = fmt::format("{}:", name),
                         .kind = lsp::InlayHintKind::Parameter,
                         .paddingRight = true,
                     });
+
+                    portIndex++;
                 } break;
                 case SyntaxKind::NamedPortConnection: {
                     if (!m_portTypes) {
