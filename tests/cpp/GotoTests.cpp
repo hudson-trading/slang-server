@@ -41,6 +41,26 @@ TEST_CASE("FindSymbolRefMacro") {
     scanner.scanDocument(hdl);
 }
 
+TEST_CASE("GotoDefinition_UndefDirective") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+`define MY_MACRO 42
+module top;
+    localparam int x = `MY_MACRO;
+endmodule
+`undef MY_MACRO
+)");
+
+    // Goto definition on MY_MACRO in the `undef should go to the `define
+    auto cursor = doc.after("`undef ");
+    auto defs = cursor.getDefinitions();
+    REQUIRE(!defs.empty());
+
+    // Should point to the `define line
+    CHECK(defs[0].targetRange.start.line == 1);
+}
+
 TEST_CASE("LoadTransitivePackages") {
     /// Find the referenced symbol at each location in files with circular package dependencies.
     /// Tests the queue-based cycle detection in getDependentDocs.

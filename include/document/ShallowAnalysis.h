@@ -42,6 +42,8 @@ struct DefinitionInfo {
     slang::SourceRange macroUsageRange;
     // The symbol this token refers to (if any)
     const slang::ast::Symbol* symbol;
+    // Expanded text for macro usages (what the macro expands to at this call site)
+    std::string macroExpansionText;
 
     bool operator==(const DefinitionInfo& other) const {
         return node == other.node && nameToken.location() == other.nameToken.location() &&
@@ -130,8 +132,13 @@ public:
     /// Syntax finder for location->syntax mapping
     SyntaxIndexer syntaxes;
 
-    /// Map from macro name to macro definition
+    /// Map from macro name to macro definition (last active definition)
     slang::flat_hash_map<std::string_view, const slang::syntax::DefineDirectiveSyntax*> macros;
+
+    /// Map from macro usage syntax to the definition that was active at expansion time
+    slang::flat_hash_map<const slang::syntax::SyntaxNode*,
+                         const slang::syntax::DefineDirectiveSyntax*>
+        macroUsageDefinitions;
 
     friend class DocumentHandle;
     friend class InlayHintCollector;

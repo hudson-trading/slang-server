@@ -79,10 +79,14 @@ ShallowAnalysis::ShallowAnalysis(SourceManager& sourceManager, slang::BufferID b
         ERROR("No syntaxes found in document {}", path);
     }
 
-    // Index macros
-    // TODO: these should be tagged in the preprocessor instead, since users may `undef them
+    // Index macros — last active definition for each name
     for (auto& macro : m_tree->getDefinedMacros()) {
         macros[macro->name.valueText()] = macro;
+    }
+
+    // Index macro references (usages and undefs) with their active definitions
+    for (auto& usage : m_tree->getMacroUsages()) {
+        macroUsageDefinitions[usage.syntax] = usage.definition;
     }
 
     // Set up options for shallow compilation

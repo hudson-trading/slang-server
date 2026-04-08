@@ -470,30 +470,57 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
     const syntax::SyntaxNode* symSyntax = nullptr;
     const ast::Symbol* symbol = nullptr;
 
-    if (declTok->kind == parsing::TokenKind::Directive &&
-        (declSyntax->kind == syntax::SyntaxKind::MacroUsage ||
-         (declSyntax->kind == syntax::SyntaxKind::TokenList &&
-          declSyntax->parent->kind == syntax::SyntaxKind::DefineDirective))) {
-        // look in macro list
-        auto macro = analysis->macros.find(declTok->rawText().substr(1));
-        if (macro == analysis->macros.end()) {
-            // TODO: Check workspace indexer for macro in other files
-            auto files = m_indexer.getFilesForMacro(declTok->rawText().substr(1));
-            if (files.empty()) {
-                return {};
-            }
-            auto macroDoc = getDocument(URI::fromFile(files[0].string()));
-            if (!macroDoc) {
-                return {};
-            }
-            auto macroAnalysis = macroDoc->getAnalysis();
-            macro = macroAnalysis->macros.find(declTok->rawText().substr(1));
-            if (macro == macroAnalysis->macros.end()) {
-                return {};
-            }
+    auto isMacroRef = [&]() {
+        // Normal macro usage (`FOO) or usage inside a `define body
+        return declTok->kind == parsing::TokenKind::Directive &&
+               (declSyntax->kind == syntax::SyntaxKind::MacroUsage ||
+                (declSyntax->kind == syntax::SyntaxKind::TokenList &&
+                 declSyntax->parent->kind == syntax::SyntaxKind::DefineDirective));
+    };
+    auto isUndefRef = [&]() {
+        // Identifier in `undef FOO
+        return declTok->kind == parsing::TokenKind::Identifier &&
+               declSyntax->kind == syntax::SyntaxKind::UndefDirective;
+    };
+
+    if (isMacroRef() || isUndefRef()) {
+
+        // For macro usages and undefs, look up the definition that was
+        // active at the time (handles undef/redefine correctly)
+        const syntax::DefineDirectiveSyntax* macroDef = nullptr;
+        if (declSyntax->kind == syntax::SyntaxKind::MacroUsage ||
+            declSyntax->kind == syntax::SyntaxKind::UndefDirective) {
+            auto it = analysis->macroUsageDefinitions.find(declSyntax);
+            if (it != analysis->macroUsageDefinitions.end())
+                macroDef = it->second;
         }
-        symSyntax = macro->second;
-        nameToken = macro->second->name;
+
+        // Fall back to the macros map
+        // if we're looking at a macro usage in a define body, or macro isn't found but indexed
+        if (!macroDef) {
+            // For directive tokens (`FOO), valueText strips the backtick.
+            // For identifier tokens (FOO in `undef), valueText is the name.
+            auto macroName = declTok->kind == parsing::TokenKind::Directive
+                                 ? declTok->rawText().substr(1)
+                                 : declTok->valueText();
+            auto macro = analysis->macros.find(macroName);
+            if (macro == analysis->macros.end()) {
+                auto files = m_indexer.getFilesForMacro(macroName);
+                if (files.empty())
+                    return {};
+                auto macroDoc = getDocument(URI::fromFile(files[0].string()));
+                if (!macroDoc)
+                    return {};
+                auto macroAnalysis = macroDoc->getAnalysis();
+                macro = macroAnalysis->macros.find(macroName);
+                if (macro == macroAnalysis->macros.end())
+                    return {};
+            }
+            macroDef = macro->second;
+        }
+
+        symSyntax = macroDef;
+        nameToken = macroDef->name;
     }
     else {
         symbol = analysis->getSymbolAtToken(declTok);
@@ -539,11 +566,16 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
     }
 
     auto ret = DefinitionInfo{
-        symSyntax,
-        *nameToken,
-        SourceRange::NoLocation,
-        symbol,
+        symSyntax, *nameToken, SourceRange::NoLocation, symbol, {},
     };
+
+    // Fill in macro expansion text from the SyntaxIndexer
+    if (declSyntax->kind == syntax::SyntaxKind::MacroUsage) {
+        auto it = analysis->syntaxes.macroExpansions.find(declSyntax);
+        if (it != analysis->syntaxes.macroExpansions.end()) {
+            ret.macroExpansionText = it->second.getText();
+        }
+    }
 
     // fill in original range if behind a macro
     if (ret.nameToken && sm.isMacroLoc(ret.nameToken.location())) {
