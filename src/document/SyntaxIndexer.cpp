@@ -12,6 +12,7 @@
 
 #include "slang/parsing/Token.h"
 #include "slang/parsing/TokenKind.h"
+#include "slang/syntax/AllSyntax.h"
 #include "slang/syntax/SyntaxFacts.h"
 #include "slang/syntax/SyntaxKind.h"
 #include "slang/syntax/SyntaxNode.h"
@@ -56,14 +57,7 @@ void SyntaxIndexer::visit(const slang::syntax::SyntaxNode& node) {
             auto token = const_cast<slang::syntax::SyntaxNode&>(node).childTokenPtr(i);
             if (!token)
                 continue;
-            for (const auto& trivia : token->trivia()) {
-                if (trivia.kind == parsing::TriviaKind::Directive) {
-                    visit(*trivia.syntax());
-                    // Macro args need to lookup in a scope; we could add a new map, but it's better
-                    // to keep the same process as normal nodes
-                    trivia.syntax()->parent = const_cast<slang::syntax::SyntaxNode*>(&node);
-                }
-            }
+            processTrivia(token->trivia(), node);
             if (token->location().buffer() == m_buffer &&
                 token->kind != parsing::TokenKind::Placeholder) {
                 if (collected.size() > 0) {
@@ -79,6 +73,56 @@ void SyntaxIndexer::visit(const slang::syntax::SyntaxNode& node) {
 
                 tokenToParent[token] = &node;
             }
+        }
+    }
+}
+
+void SyntaxIndexer::processTrivia(std::span<const slang::parsing::Trivia> triviaList,
+                                  const slang::syntax::SyntaxNode& parent) {
+    for (const auto& trivia : triviaList) {
+        if (trivia.kind == parsing::TriviaKind::Directive) {
+            visit(*trivia.syntax());
+            // Macro args need to lookup in a scope; we could add a new map, but it's better
+            // to keep the same process as normal nodes
+            trivia.syntax()->parent = const_cast<slang::syntax::SyntaxNode*>(&parent);
+        }
+
+        // Descend into SkippedTokens to find conditional directives
+        // that were displaced by parse errors.
+        if (trivia.kind == parsing::TriviaKind::SkippedTokens) {
+            for (const auto& skippedTok : trivia.getSkippedTokens()) {
+                processTrivia(skippedTok.trivia(), parent);
+            }
+            continue;
+        }
+
+        // Check for conditional branch triva, which will contain disabled tokens
+        auto* syntax = trivia.syntax();
+        if (!syntax)
+            continue;
+
+        // Check that we're in the buffer (not an included buffer or expanded buffer)
+        if (syntax->getFirstToken().location().buffer() != m_buffer)
+            continue;
+
+        auto addDisabledRange = [&](const syntax::TokenList& tokens) {
+            if (tokens.empty())
+                return;
+
+            disabledRegions.push_back({tokens.front().location(), tokens.back().range().end()});
+        };
+
+        // Conditional Branch Directives (ie: `ifdef)
+        if (syntax::ConditionalBranchDirectiveSyntax::isKind(syntax->kind)) {
+            const auto& branch = syntax->as<syntax::ConditionalBranchDirectiveSyntax>();
+            addDisabledRange(branch.disabledTokens);
+        }
+
+        // Unconditional Branch Directives (ie: `else)
+        // `endif should no longer contain any disabled tokens after the slang change
+        else if (syntax::UnconditionalBranchDirectiveSyntax::isKind(syntax->kind)) {
+            const auto& branch = syntax->as<syntax::UnconditionalBranchDirectiveSyntax>();
+            addDisabledRange(branch.disabledTokens);
         }
     }
 }

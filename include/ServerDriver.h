@@ -169,5 +169,7 @@ private:
     void addMemberReferences(std::vector<lsp::Location>& references,
                              const ast::Symbol& parentSymbol, const ast::Symbol& targetSymbol,
                              bool isTypeMember = false);
+
+    void publishInactiveRegions(SlangDoc& doc);
 };
 } // namespace server

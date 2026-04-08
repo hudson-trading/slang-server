@@ -31,6 +31,7 @@ import {
   toPosix,
 } from './utils'
 import { glob } from 'glob'
+import { InactiveRegionsFeature } from './lib/inactiveRegions'
 
 export var ext: SlangExtension
 
@@ -178,6 +179,11 @@ File input is sent to stdin, and formatted output is read from stdout.',
     }
 
     this.client = new LanguageClient('slang-server', serverOptions, clientOptions)
+
+    const inactiveRegions = new InactiveRegionsFeature()
+    this.client.registerFeature(inactiveRegions)
+    inactiveRegions.register(this.client, this.context)
+
     this.context.subscriptions.push(
       this.client.onDidChangeState(
         ({ oldState, newState }: { oldState: vscodelc.State; newState: vscodelc.State }) => {
