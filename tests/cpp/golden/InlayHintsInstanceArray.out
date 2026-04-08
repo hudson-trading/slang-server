@@ -11,5 +11,5 @@ module top;
     logic clk;
     logic [7:0] a[0:3], b[0:3];
     logic [8:0] sum[0:3];
-    adder u_adder[0:3](/*clk:*/ clk, /*a:*/ a, /*b:*/ b, /*sum:*/ sum);
+    adder u_adder[0:3](clk, a, b, sum);
 endmodule
