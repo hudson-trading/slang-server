@@ -177,6 +177,45 @@ module Top #()();
     CHECK(doc.getDiagnostics().size() > 0);
 }
 
+TEST_CASE("HoverMacroExpansion") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+`define WIDTH 8
+`define ADD(a, b) a + b
+`define MAKE_SIG(name) sig_``name
+module top;
+    logic [`WIDTH-1:0] data;
+    localparam int x = `ADD(3, 4);
+    logic `MAKE_SIG(foo);
+endmodule
+)");
+
+    // Hover on `WIDTH should show expansion
+    auto widthCursor = doc.before("`WIDTH");
+    auto widthHover = doc.getHoverAt(widthCursor.m_offset);
+    REQUIRE(widthHover.has_value());
+    auto widthContent = rfl::get<lsp::MarkupContent>(widthHover->contents);
+    CHECK(widthContent.value.find("Expands to") != std::string::npos);
+    CHECK(widthContent.value.find("8") != std::string::npos);
+
+    // Hover on `ADD should show expansion
+    auto addCursor = doc.before("`ADD");
+    auto addHover = doc.getHoverAt(addCursor.m_offset);
+    REQUIRE(addHover.has_value());
+    auto addContent = rfl::get<lsp::MarkupContent>(addHover->contents);
+    CHECK(addContent.value.find("Expands to") != std::string::npos);
+    CHECK(addContent.value.find("3 + 4") != std::string::npos);
+
+    // Hover on `MAKE_SIG should show concatenated expansion
+    auto sigCursor = doc.before("`MAKE_SIG");
+    auto sigHover = doc.getHoverAt(sigCursor.m_offset);
+    REQUIRE(sigHover.has_value());
+    auto sigContent = rfl::get<lsp::MarkupContent>(sigHover->contents);
+    CHECK(sigContent.value.find("Expands to") != std::string::npos);
+    CHECK(sigContent.value.find("sig_foo") != std::string::npos);
+}
+
 TEST_CASE("HoverNonAsciiString") {
     // Regression test: hovering on a string parameter with non-ASCII bytes should not crash
     // "a" + "b" in SV adds the character codes, producing 0xc3 which is invalid UTF-8

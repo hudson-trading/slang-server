@@ -83,6 +83,7 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     registerDocReferences();
     registerDocRename();
     registerDocSemanticTokensFull();
+    registerDocCodeAction();
 
     // Cone tracing (drivers/loads)
     registerDocPrepareCallHierarchy();
@@ -206,6 +207,7 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
                     .referencesProvider = true,
                     .documentHighlightProvider = true,
                     .documentSymbolProvider = true,
+                    .codeActionProvider = true,
                     .documentLinkProvider =
                         lsp::DocumentLinkOptions{
                             .resolveProvider = false,
@@ -581,6 +583,14 @@ rfl::Variant<lsp::Definition, std::vector<lsp::DefinitionLink>, std::monostate> 
 
 std::optional<lsp::Hover> SlangServer::getDocHover(const lsp::HoverParams& params) {
     return m_driver->getDocHover(params.textDocument.uri, params.position);
+}
+
+std::optional<std::vector<rfl::Variant<lsp::Command, lsp::CodeAction>>> SlangServer::
+    getDocCodeAction(const lsp::CodeActionParams& params) {
+    auto results = m_driver->codeActions.getCodeActions(params);
+    if (results.empty())
+        return std::nullopt;
+    return results;
 }
 
 std::optional<std::vector<lsp::DocumentLink>> SlangServer::getDocDocumentLink(

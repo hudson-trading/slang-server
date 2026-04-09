@@ -24,10 +24,22 @@
 namespace server {
 using namespace slang;
 
+std::string SyntaxIndexer::MacroExpansionTokens::getText() const {
+    std::string result;
+    for (const auto* tok : tokens) {
+        for (const auto& t : tok->trivia())
+            result += t.getRawText();
+        result += tok->rawText();
+    }
+    return result;
+}
+
 SyntaxIndexer::SyntaxIndexer(const slang::syntax::SyntaxTree& tree) {
     SLANG_ASSERT(tree.getSourceBufferIds().size() == 1);
     m_buffer = tree.getSourceBufferIds()[0];
+    m_sourceManager = &tree.sourceManager();
     visit(tree.root());
+    flushMacroExpansion();
 }
 
 void SyntaxIndexer::visit(const slang::syntax::SyntaxNode& node) {
@@ -58,6 +70,18 @@ void SyntaxIndexer::visit(const slang::syntax::SyntaxNode& node) {
             if (!token)
                 continue;
             processTrivia(token->trivia(), node);
+
+            // Track macro expansion tokens
+            if (m_currentMacroUsage) {
+                if (token->location().buffer() != m_buffer) {
+                    m_currentExpansionTokens.push_back(token);
+                    continue;
+                }
+                else {
+                    flushMacroExpansion();
+                }
+            }
+
             if (token->location().buffer() == m_buffer &&
                 token->kind != parsing::TokenKind::Placeholder) {
                 if (collected.size() > 0) {
@@ -77,6 +101,14 @@ void SyntaxIndexer::visit(const slang::syntax::SyntaxNode& node) {
     }
 }
 
+void SyntaxIndexer::flushMacroExpansion() {
+    if (m_currentMacroUsage && !m_currentExpansionTokens.empty()) {
+        macroExpansions[m_currentMacroUsage].tokens = std::move(m_currentExpansionTokens);
+        m_currentExpansionTokens = {};
+    }
+    m_currentMacroUsage = nullptr;
+}
+
 void SyntaxIndexer::processTrivia(std::span<const slang::parsing::Trivia> triviaList,
                                   const slang::syntax::SyntaxNode& parent) {
     for (const auto& trivia : triviaList) {
@@ -85,6 +117,14 @@ void SyntaxIndexer::processTrivia(std::span<const slang::parsing::Trivia> trivia
             // Macro args need to lookup in a scope; we could add a new map, but it's better
             // to keep the same process as normal nodes
             trivia.syntax()->parent = const_cast<slang::syntax::SyntaxNode*>(&parent);
+
+            // Track macro usage for expansion text collection
+            if (trivia.syntax()->kind == syntax::SyntaxKind::MacroUsage &&
+                trivia.syntax()->as<syntax::MacroUsageSyntax>().directive.location().buffer() ==
+                    m_buffer) {
+                flushMacroExpansion();
+                m_currentMacroUsage = trivia.syntax();
+            }
         }
 
         // Descend into SkippedTokens to find conditional directives
