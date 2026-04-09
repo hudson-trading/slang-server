@@ -183,6 +183,10 @@ public:
     /// Hover
     std::optional<lsp::Hover> getDocHover(const lsp::HoverParams&) override;
 
+    /// Code Actions (quick fixes, refactoring)
+    std::optional<std::vector<rfl::Variant<lsp::Command, lsp::CodeAction>>> getDocCodeAction(
+        const lsp::CodeActionParams&) override;
+
     /// Goto Definition
     rfl::Variant<lsp::Definition, std::vector<lsp::DefinitionLink>, std::monostate>
     getDocDefinition(const lsp::DefinitionParams&) override;

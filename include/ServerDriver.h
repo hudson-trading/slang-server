@@ -11,6 +11,7 @@
 #include "ServerDiagClient.h"
 #include "SlangLspClient.h"
 #include "ast/ServerCompilation.h"
+#include "codeactions/CodeActionDispatch.h"
 #include "completions/CompletionDispatch.h"
 #include "document/ShallowAnalysis.h"
 #include "lsp/URI.h"
@@ -60,6 +61,7 @@ public:
     std::unique_ptr<ServerCompilation> comp;
 
     CompletionDispatch completions;
+    CodeActionDispatch codeActions;
 
     /// @brief Destructor
     ~ServerDriver() {
