@@ -9,7 +9,21 @@
 #include "rfl/Description.hpp"
 #include <optional>
 #include <rfl/Result.hpp>
-/// A singleton to hold global configuration options.
+#include <rfl/Skip.hpp>
+/// Server configuration, loaded from up to three JSON files:
+///
+/// 1. `.slang/server.json`       — workspace config (tracked in version control)
+/// 2. `~/.slang/server.json`     — user config (personal defaults across projects)
+/// 3. `.slang/local/server.json` — local config (untracked, personal overrides)
+///
+/// Merging rules:
+/// - Array fields (e.g. index, indexGlobs) are appended across all files.
+/// - Scalar fields are overwritten by later files (local > user > workspace).
+/// - `flags` has special precedence: workspace overrides user (only one is used as the base),
+///   and local flags are always appended on top. This means local flags add to whichever
+///   of workspace/user flags won, rather than replacing them.
+///
+/// The "Add define" code action writes `-D` flags to `.slang/local/server.json`.
 class SlangLspClient;
 
 struct Config {
@@ -86,5 +100,21 @@ struct Config {
                      InlayHints>
         inlayHints = InlayHints{};
 
-    static Config fromFiles(std::vector<std::string> confPaths, SlangLspClient& m_client);
+    struct FlagSource {
+        std::string filePath;
+        std::string flags;
+    };
+
+    /// Load config from up to three sources:
+    /// @param workspaceConf  .slang/server.json (tracked, shared)
+    /// @param userConf       ~/.slang/server.json (user-wide)
+    /// @param localConf      .slang/local/server.json (untracked, personal)
+    /// Non-flag fields are merged (arrays appended, scalars overwritten by later files).
+    /// For flags: workspace overrides user (last non-local wins), local always appends.
+    static Config fromFiles(const std::optional<std::string>& workspaceConf,
+                            const std::optional<std::string>& userConf,
+                            const std::optional<std::string>& localConf, SlangLspClient& client);
+
+    /// Per-file flags with correct precedence. Skipped during serialization.
+    rfl::Skip<std::vector<FlagSource>> flagsByFile;
 };

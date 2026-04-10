@@ -44,6 +44,8 @@ struct DefinitionInfo {
     const slang::ast::Symbol* symbol;
     // Expanded text for macro usages (what the macro expands to at this call site)
     std::string macroExpansionText;
+    // For command-line defines: the config/build file that defined this directive
+    std::string defineSourceFile;
 
     bool operator==(const DefinitionInfo& other) const {
         return node == other.node && nameToken.location() == other.nameToken.location() &&
