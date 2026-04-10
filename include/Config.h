@@ -9,6 +9,7 @@
 #include "rfl/Description.hpp"
 #include <optional>
 #include <rfl/Result.hpp>
+#include <rfl/Skip.hpp>
 /// A singleton to hold global configuration options.
 class SlangLspClient;
 
@@ -87,4 +88,8 @@ struct Config {
         inlayHints = InlayHints{};
 
     static Config fromFiles(std::vector<std::string> confPaths, SlangLspClient& m_client);
+
+    /// Per-file flags, preserving which config file contributed each flags string.
+    /// Ordered from lowest to highest precedence. Skipped during serialization.
+    rfl::Skip<std::vector<std::pair<std::string, std::string>>> flagsByFile;
 };

@@ -106,8 +106,20 @@ lsp::MarkupContent getHover(const SourceManager& sm, const BufferID docBuffer,
         infoPg.appendText(" ").appendText(info.nameToken.valueText()).newLine();
         if (macroBuf != docBuffer && sm.isLatestData(macroBuf)) {
             const auto& path = sm.getFullPath(macroBuf);
-            if (!path.empty()) {
-                infoPg.appendText("From ").appendCode(path.filename().string()).newLine();
+            auto pathStr = path.filename().string();
+            if (!pathStr.empty() && pathStr[0] != '<') {
+                infoPg.appendText("From ").appendCode(pathStr).newLine();
+            }
+            else if (!info.defineSourceFile.empty()) {
+                namespace fs = std::filesystem;
+                auto srcPath = fs::path(info.defineSourceFile);
+                auto rel = srcPath.lexically_relative(fs::current_path());
+                auto display = (!rel.empty() && *rel.begin() != "..") ? rel.string()
+                                                                      : srcPath.string();
+                infoPg.appendText("From ").appendCode(display).newLine();
+            }
+            else {
+                infoPg.appendText("Defined via command-line flags").newLine();
             }
         }
     }

@@ -65,7 +65,9 @@ TEST_CASE("LoadConfig") {
 
 TEST_CASE("CapturedDriverErrors") {
     ServerHarness server;
-    server.loadConfig(Config{.flags = {"--std=invalid_standard"}});
+    Config cfg;
+    cfg.flagsByFile.value().emplace_back("test", "--std=invalid_standard");
+    server.loadConfig(cfg);
     server.expectError("invalid value for --std option");
-    server.expectError("Failed to parse config flags: --std=invalid_standard");
+    server.expectError("Failed to parse config flags");
 }

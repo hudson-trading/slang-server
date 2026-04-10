@@ -62,6 +62,9 @@ protected:
     /// The layered config from server.json files
     Config m_config;
 
+    /// Paths of config files used to load m_config (for tracking define sources)
+    std::vector<std::string> m_confPaths;
+
     /// Indexes the workspace for top symbols and macros
     Indexer m_indexer;
 
@@ -131,6 +134,9 @@ public:
     };
     // Expand macros in a file
     bool expandMacros(ExpandMacroArgs args);
+
+    // Add a -D define to .slang/local/server.json and reload config
+    std::monostate addDefine(const std::string& macroName);
 
     ////////////////////////////////////////////////
     /// Server Lifecycle

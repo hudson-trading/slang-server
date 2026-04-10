@@ -9,6 +9,7 @@
 #include "codeactions/CodeActionDispatch.h"
 
 #include "ServerDriver.h"
+#include "codeactions/AddDefine.h"
 #include "codeactions/ExpandMacro.h"
 #include <rfl/Variant.hpp>
 
@@ -56,6 +57,9 @@ std::vector<rfl::Variant<lsp::Command, lsp::CodeAction>> CodeActionDispatch::get
         switch (syntax->kind) {
             case syntax::SyntaxKind::MacroUsage:
                 codeactions::addExpandMacroAction(results, ctx);
+                break;
+            case syntax::SyntaxKind::NamedConditionalDirectiveExpression:
+                codeactions::addAddDefineAction(results, ctx);
                 break;
             default:
                 break;

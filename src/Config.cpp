@@ -22,6 +22,8 @@ namespace fs = std::filesystem;
 Config Config::fromFiles(std::vector<std::string> confPaths, SlangLspClient& m_client) {
     rfl::Generic::Object config = *rfl::to_generic(Config()).to_object();
 
+    std::vector<std::pair<std::string, std::string>> flagsByFile;
+
     // Paint over options coming from configs
     for (const auto& confPath : confPaths) {
         if (!fs::exists(confPath)) {
@@ -60,6 +62,13 @@ Config Config::fromFiles(std::vector<std::string> confPaths, SlangLspClient& m_c
 
         // perform the merge
         for (const auto& [k, v] : *object) {
+            if (k == "flags" && v.to_string()) {
+                auto fileFlags = v.to_string().value();
+                if (!fileFlags.empty())
+                    flagsByFile.emplace_back(confPath, fileFlags);
+                continue;
+            }
+
             if (auto existingArray = config[k].to_array()) {
                 // append if we're dealing with lists
                 auto arr = existingArray.value();
@@ -80,5 +89,16 @@ Config Config::fromFiles(std::vector<std::string> confPaths, SlangLspClient& m_c
                                        finalConfig.error().what()));
         return Config{};
     }
+    finalConfig->flagsByFile = std::move(flagsByFile);
+
+    // Reconstruct merged flags for client config
+    std::string merged;
+    for (auto& [_, f] : finalConfig->flagsByFile.value()) {
+        if (!merged.empty())
+            merged += " ";
+        merged += f;
+    }
+    finalConfig->flags = merged;
+
     return *finalConfig;
 }
