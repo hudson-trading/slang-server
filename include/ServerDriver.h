@@ -15,6 +15,7 @@
 #include "completions/CompletionDispatch.h"
 #include "document/ShallowAnalysis.h"
 #include "lsp/URI.h"
+#include <filesystem>
 #include <memory>
 #include <unordered_map>
 #include <vector>
@@ -157,12 +158,18 @@ public:
     ServerDriver(Indexer& indexer, SlangLspClient& client, const Config& config,
                  std::vector<std::string> buildfiles);
 
+    /// Map from macro name to the config/build file that defined it
+    flat_hash_map<std::string, std::filesystem::path> m_defineSources;
+
 private:
     /// Reference to the indexer for module/macro indexing
     Indexer& m_indexer;
 
     /// Reference to the config object
     const Config& m_config;
+
+    /// Parse config flags and build files, load sources, create documents
+    void parseAndLoadSources(const std::vector<std::string>& buildfiles);
 
     /// Set of URIs for documents that are explicitly opened by the client
     flat_hash_set<URI> m_openDocs;

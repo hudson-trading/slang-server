@@ -89,6 +89,36 @@ endmodule
     CHECK(!action.has_value());
 }
 
+TEST_CASE("CodeAction_AddDefine_UndefinedMacro") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+`ifdef UNDEFINED_MACRO
+`endif
+)");
+
+    auto action = getCodeActionAt(server, doc, doc.after("`ifdef ").m_offset);
+    REQUIRE(action.has_value());
+    CHECK(action->title == "Add define 'UNDEFINED_MACRO' to local flags");
+    CHECK(action->kind == lsp::CodeActionKind::from_name<"quickfix">());
+    REQUIRE(action->command.has_value());
+    CHECK(action->command->command == "slang.addDefine");
+}
+
+TEST_CASE("CodeAction_AddDefine_DefinedMacro") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+`define MY_MACRO 1
+`ifdef MY_MACRO
+`endif
+)");
+
+    // Should NOT show add-define action when macro is already defined
+    auto action = getCodeActionAt(server, doc, doc.after("`ifdef ").m_offset);
+    CHECK(!action.has_value());
+}
+
 TEST_CASE("CodeAction_ExpandConcatenation") {
     ServerHarness server;
 

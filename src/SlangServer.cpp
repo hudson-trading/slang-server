@@ -129,6 +129,9 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     // File features
     registerCommand<ExpandMacroArgs, bool, &SlangServer::expandMacros>("slang.expandMacros");
 
+    // Config modification
+    registerCommand<std::string, std::monostate, &SlangServer::addDefine>("slang.addDefine");
+
     if (params.workspaceFolders.has_value() && !params.workspaceFolders->empty()) {
         auto folders = params.workspaceFolders.value();
         if (folders.size() > 1) {
@@ -158,7 +161,6 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
         WARN("No workspace folder or root provided");
     }
 
-    // TODO: watch for changes to config file
     loadConfig();
 
     if (params.capabilities.experimental) {
@@ -242,10 +244,23 @@ void SlangServer::onInitialized(const lsp::InitializedParams&) {
 
     if (m_workspaceFolder) {
         auto options = lsp::DidChangeWatchedFilesRegistrationOptions{
-            .watchers{lsp::FileSystemWatcher{
-                .globPattern = lsp::RelativePattern{.baseUri = m_workspaceFolder->uri,
-                                                    .pattern = "**/*.{sv,svh,v,vh}"},
-                .kind = lsp::WatchKind::Change}},
+            .watchers{
+                // SystemVerilog/Verilog source files
+                lsp::FileSystemWatcher{.globPattern =
+                                           lsp::RelativePattern{.baseUri = m_workspaceFolder->uri,
+                                                                .pattern = "**/*.{sv,svh,v,vh}"},
+                                       .kind = lsp::WatchKind::Change},
+                // Config files
+                lsp::FileSystemWatcher{.globPattern =
+                                           lsp::RelativePattern{.baseUri = m_workspaceFolder->uri,
+                                                                .pattern = ".slang/**/*.json"},
+                                       .kind = lsp::WatchKind::Change},
+                // Build/flag files
+                lsp::FileSystemWatcher{.globPattern =
+                                           lsp::RelativePattern{.baseUri = m_workspaceFolder->uri,
+                                                                .pattern = "**/*.f"},
+                                       .kind = lsp::WatchKind::Change},
+            },
         };
 
         m_client.getClientRegisterCapability(
@@ -566,7 +581,64 @@ void SlangServer::loadConfig() {
         confPaths.push_back((fsPath / ".slang" / "local" / "server.json").string());
     }
 
+    m_confPaths = confPaths;
     loadConfig(Config::fromFiles(confPaths, m_client), true);
+}
+
+std::monostate SlangServer::addDefine(const std::string& macroName) {
+    if (!m_workspaceFolder) {
+        m_client.showError("Cannot add define: no workspace folder");
+        return {};
+    }
+
+    auto localConfigPath = fs::path(m_workspaceFolder->uri.getPath()) / ".slang" / "local" /
+                           "server.json";
+
+    // Read existing config or start fresh
+    rfl::Generic::Object obj;
+    if (fs::exists(localConfigPath)) {
+        auto file = std::ifstream(localConfigPath);
+        auto jsonstr = std::string(std::istreambuf_iterator<char>(file),
+                                   std::istreambuf_iterator<char>());
+        auto generic = rfl::json::read<rfl::Generic>(
+            jsonstr, YYJSON_READ_ALLOW_COMMENTS | YYJSON_READ_ALLOW_TRAILING_COMMAS);
+        if (generic) {
+            auto maybeObj = generic->to_object();
+            if (maybeObj)
+                obj = *maybeObj;
+        }
+    }
+
+    // Append -DMACRO to flags
+    std::string newFlag = "-D" + macroName;
+    std::string flags;
+    if (auto existing = obj["flags"].to_string()) {
+        flags = *existing;
+        if (!flags.empty())
+            flags += " ";
+    }
+    flags += newFlag;
+    obj["flags"] = rfl::Generic(flags);
+
+    // Ensure directory exists and write
+    fs::create_directories(localConfigPath.parent_path());
+    {
+        auto out = std::ofstream(localConfigPath);
+        out << rfl::json::write(rfl::Generic(obj), YYJSON_WRITE_PRETTY_TWO_SPACES);
+    }
+
+    INFO("Added {} to {}", newFlag, localConfigPath.string());
+
+    // Reload config and recreate driver, but skip reindexing since only flags changed
+    m_config = Config::fromFiles(m_confPaths, m_client);
+    auto buildfiles = m_buildfile ? std::vector<std::string>{*m_buildfile}
+                                  : std::vector<std::string>{};
+    m_driver = ServerDriver::create(m_indexer, m_client, m_config, buildfiles, m_driver.get());
+    if (m_buildfile)
+        m_driver->createCompilation();
+    m_client.setConfig(m_config);
+
+    return {};
 }
 
 rfl::Variant<lsp::Definition, std::vector<lsp::DefinitionLink>, std::monostate> SlangServer::
@@ -658,11 +730,32 @@ void SlangServer::onDocDidClose(const lsp::DidCloseTextDocumentParams& params) {
 }
 
 void SlangServer::onWorkspaceDidChangeWatchedFiles(const lsp::DidChangeWatchedFilesParams& params) {
-    // Handle external file changes (from git, formatters, etc)
+    // Check if any config or active build files changed
+    bool needsReload = false;
+    for (const auto& change : params.changes) {
+        auto path = change.uri.getPath();
+        if (path.ends_with(".json")) {
+            needsReload = true;
+            break;
+        }
+        if (path.ends_with(".f") &&
+            m_driver->driver.getDefineSources().contains(std::filesystem::path(path))) {
+            needsReload = true;
+            break;
+        }
+    }
 
-    // Update changes for open documents first
+    if (needsReload) {
+        INFO("Config or build file changed, reloading");
+        auto savedBuildfile = m_buildfile;
+        loadConfig();
+        if (savedBuildfile)
+            setBuildFile(*savedBuildfile);
+        return;
+    }
+
+    // Handle external source file changes (from git, formatters, etc)
     m_driver->onWorkspaceDidChangeWatchedFiles(params);
-    // Update indexer. There may be some overlap, but it's likely not worth checking
     m_indexer.onWorkspaceDidChangeWatchedFiles(params);
 }
 
