@@ -86,6 +86,9 @@ File input is sent to stdin, and formatted output is read from stdout.',
 
   private activeFormatters: ExternalFormatter[] = []
 
+  // Inactive preprocessor region highlighting
+  inactiveRegions: InactiveRegionsFeature = new InactiveRegionsFeature()
+
   // Side bar
   project: ProjectComponent = new ProjectComponent()
 
@@ -180,9 +183,8 @@ File input is sent to stdin, and formatted output is read from stdout.',
 
     this.client = new LanguageClient('slang-server', serverOptions, clientOptions)
 
-    const inactiveRegions = new InactiveRegionsFeature()
-    this.client.registerFeature(inactiveRegions)
-    inactiveRegions.register(this.client, this.context)
+    this.client.registerFeature(this.inactiveRegions)
+    this.inactiveRegions.register(this.client)
 
     this.context.subscriptions.push(
       this.client.onDidChangeState(

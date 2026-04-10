@@ -4,6 +4,22 @@
 
   List of formatter configurations. Each entry specifies a command, directories to format, and language IDs. File input is sent to stdin, and formatted output is read from stdout.
 
+- `slang.inactiveRegions.style`: string = "opacity"
+
+  How to visually indicate inactive preprocessor regions.
+
+  Options:
+  - opacity
+  - background
+  - none
+- `slang.inactiveRegions.opacity`: number = 0.55
+
+  Opacity of inactive regions (used only when style is "opacity").
+
+- `slang.inactiveRegions.backgroundColor`: string = "#1212124C"
+
+  Background color for inactive regions (used only when style is "background").
+
 - `slang.path`: path
 
   Platform Defaults:
