@@ -338,8 +338,28 @@
           "deprecationMessage": "Use \"verilog.formatters\" instead.",
           "type": "string"
         },
+        "slang.inactiveRegions.style": {
+          "default": "opacity",
+          "description": "How to visually indicate inactive preprocessor regions.",
+          "enum": [
+            "opacity",
+            "background",
+            "none"
+          ],
+          "type": "string"
+        },
+        "slang.inactiveRegions.opacity": {
+          "default": 0.55,
+          "description": "Opacity of inactive regions (used only when style is \"opacity\").",
+          "type": "number"
+        },
+        "slang.inactiveRegions.backgroundColor": {
+          "default": "#1212124C",
+          "description": "Background color for inactive regions (used only when style is \"background\").",
+          "type": "string"
+        },
         "slang.path": {
-          "description": "Path to the slang-server (not slang)",
+          "description": "Path to slang-server (not slang)",
           "default": "",
           "type": "string"
         },
