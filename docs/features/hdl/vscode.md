@@ -88,6 +88,16 @@ While a compilation is active, the modules view will open when switching text do
 </div>
 </div>
 
+## Inactive Preprocessor Regions
+
+Code inside untaken preprocessor branches (e.g. `` `ifdef`` / `` `ifndef``) is grayed out to visually distinguish it from active code.
+
+The appearance is controlled by `slang.inactiveRegions.style`:
+
+- `"opacity"` (default) — Renders inactive regions at reduced opacity. Controlled by `slang.inactiveRegions.opacity` (default 0.55).
+- `"background"` — Highlights inactive regions with a background color. Controlled by `slang.inactiveRegions.backgroundColor` (default `#1212124C`).
+- `"none"` — Disables inactive region highlighting.
+
 ## Setting an Instance
 
 ### `slang: Select Instance` Command
