@@ -771,6 +771,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#inactive-preprocessor-regions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Inactive Preprocessor Regions
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#setting-an-instance" class="md-nav__link">
     <span class="md-ellipsis">
       Setting an Instance
@@ -1052,6 +1061,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#inactive-preprocessor-regions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Inactive Preprocessor Regions
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#setting-an-instance" class="md-nav__link">
     <span class="md-ellipsis">
       Setting an Instance
@@ -1165,6 +1183,14 @@ Clicking a symbol in the hierarchy view or modules view will open the instance i
 <p><img alt="ModulesView" src="ModulesView.png" /></p>
 </div>
 </div>
+<h2 id="inactive-preprocessor-regions">Inactive Preprocessor Regions<a class="headerlink" href="#inactive-preprocessor-regions" title="Permanent link">&para;</a></h2>
+<p>Code inside untaken preprocessor branches (e.g. <code>`ifdef</code> / <code>`ifndef</code>) is grayed out to visually distinguish it from active code.</p>
+<p>The appearance is controlled by <code>slang.inactiveRegions.style</code>:</p>
+<ul>
+<li><code>"opacity"</code> (default) — Renders inactive regions at reduced opacity. Controlled by <code>slang.inactiveRegions.opacity</code> (default 0.55).</li>
+<li><code>"background"</code> — Highlights inactive regions with a background color. Controlled by <code>slang.inactiveRegions.backgroundColor</code> (default <code>#1212124C</code>).</li>
+<li><code>"none"</code> — Disables inactive region highlighting.</li>
+</ul>
 <h2 id="setting-an-instance">Setting an Instance<a class="headerlink" href="#setting-an-instance" title="Permanent link">&para;</a></h2>
 <h3 id="slang-select-instance-command"><code>slang: Select Instance</code> Command<a class="headerlink" href="#slang-select-instance-command" title="Permanent link">&para;</a></h3>
 <div class="grid">
