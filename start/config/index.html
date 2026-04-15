@@ -510,6 +510,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#flags-precedence" class="md-nav__link">
+    <span class="md-ellipsis">
+      Flags precedence
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#config-options" class="md-nav__link">
     <span class="md-ellipsis">
       Config Options
@@ -593,6 +602,39 @@
       Example Configuration
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Example Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#workspace-config-slangserverjson" class="md-nav__link">
+    <span class="md-ellipsis">
+      Workspace config (.slang/server.json)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#user-config-slangserverjson" class="md-nav__link">
+    <span class="md-ellipsis">
+      User config (~/.slang/server.json)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#local-config-slanglocalserverjson" class="md-nav__link">
+    <span class="md-ellipsis">
+      Local config (.slang/local/server.json)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1000,6 +1042,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#flags-precedence" class="md-nav__link">
+    <span class="md-ellipsis">
+      Flags precedence
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#config-options" class="md-nav__link">
     <span class="md-ellipsis">
       Config Options
@@ -1084,6 +1135,39 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Example Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#workspace-config-slangserverjson" class="md-nav__link">
+    <span class="md-ellipsis">
+      Workspace config (.slang/server.json)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#user-config-slangserverjson" class="md-nav__link">
+    <span class="md-ellipsis">
+      User config (~/.slang/server.json)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#local-config-slanglocalserverjson" class="md-nav__link">
+    <span class="md-ellipsis">
+      Local config (.slang/local/server.json)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -1106,13 +1190,16 @@
 
 
 <h1 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h1>
-<p>The server uses a hierarchical configuration system, layering configs in this order:</p>
+<p>The server uses a hierarchical configuration system with three config files:</p>
 <ol>
-<li><code>~/.slang/server.json</code></li>
-<li><code>${workspaceFolder}/.slang/server.json</code> (should be in source control)</li>
-<li><code>${workspaceFolder}/.slang/local/server.json</code> (<code>.slang/local</code> should be ignored by source control)</li>
+<li><code>${workspaceFolder}/.slang/server.json</code> — workspace config (should be in source control)</li>
+<li><code>~/.slang/server.json</code> — user config (personal defaults across all projects)</li>
+<li><code>${workspaceFolder}/.slang/local/server.json</code> — local config (<code>.slang/local</code> should be ignored by source control)</li>
 </ol>
-<p>Each option value overrides the value set in previous configs. The exception for this is lists, which are appended.</p>
+<p>Later files override earlier ones for scalar values. Lists (like <code>index</code>) are appended across all files.</p>
+<h3 id="flags-precedence">Flags precedence<a class="headerlink" href="#flags-precedence" title="Permanent link">&para;</a></h3>
+<p>The <code>flags</code> field has special merging behavior. Workspace flags override user flags (only one is used as the base), and local flags are always appended on top. This means you can set shared flags in <code>.slang/server.json</code>, and add personal flags (like extra <code>-D</code> defines) in <code>.slang/local/server.json</code> without overriding the shared ones.</p>
+<p>The server watches these config files, .f files that are passed in via flags and <code>.f</code> build files for changes, automatically reloading when they are saved.</p>
 <h2 id="config-options">Config Options<a class="headerlink" href="#config-options" title="Permanent link">&para;</a></h2>
 <p>All configuration options are optional and have sensible defaults. In VSCode, there are completions and hovers for <code>server.json</code> files. For other editors, you may be able to associate the <a href="https://github.com/hudson-trading/slang-server/blob/main/clients/vscode/resources/config.schema.json">config schema</a> with these config files to get these features.</p>
 <hr />
@@ -1138,6 +1225,7 @@
 <p>Flags to pass to slang. It uses the underlying driver to parse the flags, however some flags may not be used by the server.</p>
 <p>Use this to configure things like <a href="https://sv-lang.com/command-line-ref.html#include-paths">include paths</a>, <a href="https://sv-lang.com/command-line-ref.html#compat-option">LRM relaxations</a>, configure <a href="https://sv-lang.com/command-line-ref.html#clr-warnings">warning severity</a> and <a href="https://sv-lang.com/warning-ref.html">specific warnings</a>.</p>
 <p>It's recommended to keep your slang flags in a <a href="https://sv-lang.com/user-manual.html#command-files">flag file</a>, that way it can be shared by both CI and the language server. Another nice setup is having <code>slang.f</code> contain your CI flags, then have <code>slang-server.f</code> include that file (via <code>-f path/to/slang.f</code>), along with more warnings so that more pedantic checks will show as yellow underlines in your editor.</p>
+<p>For preprocessor defines (<code>-D</code>), you can also use the <strong>"Add define"</strong> code action: place your cursor on an undefined macro name in an <code>`ifdef</code> and use the quick fix to automatically add <code>-D&lt;name&gt;</code> to <code>.slang/local/server.json</code>.</p>
 <p><strong>Example:</strong> <code>"-f path/to/slang_flags.f"</code></p>
 </dd>
 </dl>
@@ -1207,16 +1295,39 @@
 </dl>
 <hr />
 <h2 id="example-configuration">Example Configuration<a class="headerlink" href="#example-configuration" title="Permanent link">&para;</a></h2>
+<h3 id="workspace-config-slangserverjson">Workspace config (<code>.slang/server.json</code>)<a class="headerlink" href="#workspace-config-slangserverjson" title="Permanent link">&para;</a></h3>
+<p>Shared across the team, checked into source control:</p>
 <div class="language-json highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;flags&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;-f tools/slang/slang-server.f&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;indexGlobs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;./src/**/*.sv&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;./tb/**/*.sv&quot;</span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;excludeDirs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;build&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;obj_dir&quot;</span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;indexingThreads&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;parsingThreads&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">8</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;build&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;./scripts/compile.f&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;wcpCommand&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;surfer --wcp-initiate {}&quot;</span>
+<span class="w">  </span><span class="nt">&quot;index&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;dirs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;fpga/src&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;fpga/tb&quot;</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">&quot;excludeDirs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;build&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;synth&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;buildPattern&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;builds/**/*.f&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;indexingThreads&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">4</span>
 <span class="p">}</span>
 </code></pre></div>
+<h3 id="user-config-slangserverjson">User config (<code>~/.slang/server.json</code>)<a class="headerlink" href="#user-config-slangserverjson" title="Permanent link">&para;</a></h3>
+<p>Personal defaults that apply to all projects without a workspace config:</p>
+<div class="language-json highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;flags&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;-Wextra&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;inlayHints&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;orderedInstanceNames&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;funcArgNames&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>If the workspace config above has <code>flags</code>, it takes precedence over this one (they are not combined). If the workspace config has no <code>flags</code>, these user flags are used as the base.</p>
+<h3 id="local-config-slanglocalserverjson">Local config (<code>.slang/local/server.json</code>)<a class="headerlink" href="#local-config-slanglocalserverjson" title="Permanent link">&para;</a></h3>
+<p>Personal overrides for this workspace, not checked in (add <code>.slang/local</code> to <code>.gitignore</code>):</p>
+<div class="language-json highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;flags&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;-DSIM_MODE -DDEBUG_LEVEL=2&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;build&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;./builds/my_top.f&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>These flags are <strong>appended</strong> to whichever base flags won (workspace or user), so the final flags in this example would be <code>-f tools/slang/slang-server.f -DSIM_MODE -DDEBUG_LEVEL=2</code>. The <code>build</code> field overrides any previous value since it's a scalar.</p>
 
 
 
