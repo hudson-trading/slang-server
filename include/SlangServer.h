@@ -132,6 +132,9 @@ public:
     // Expand macros in a file
     bool expandMacros(ExpandMacroArgs args);
 
+    // Add a -D define to .slang/local/server.json and reload config
+    std::monostate addDefine(const std::string& macroName);
+
     ////////////////////////////////////////////////
     /// Server Lifecycle
     ////////////////////////////////////////////////

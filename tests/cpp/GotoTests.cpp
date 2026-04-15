@@ -61,6 +61,56 @@ endmodule
     CHECK(defs[0].targetRange.start.line == 1);
 }
 
+TEST_CASE("GotoDefinition_IfdefDirective") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+`define MY_MACRO 42
+module top;
+    localparam int x = `MY_MACRO;
+endmodule
+`ifdef MY_MACRO
+`endif
+)");
+
+    // Goto definition on MY_MACRO in the `ifdef should go to the `define
+    auto cursor = doc.after("`ifdef ");
+    auto defs = cursor.getDefinitions();
+    REQUIRE(!defs.empty());
+
+    // Should point to the `define line
+    CHECK(defs[0].targetRange.start.line == 1);
+}
+
+TEST_CASE("GotoDefinition_IfndefDirective") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+`define GUARD 1
+`ifndef GUARD
+`endif
+)");
+
+    auto cursor = doc.after("`ifndef ");
+    auto defs = cursor.getDefinitions();
+    REQUIRE(!defs.empty());
+
+    CHECK(defs[0].targetRange.start.line == 1);
+}
+
+TEST_CASE("GotoDefinition_IfdefUndefinedMacro") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+`ifdef NONEXISTENT
+`endif
+)");
+
+    auto cursor = doc.after("`ifdef ");
+    auto defs = cursor.getDefinitions();
+    CHECK(defs.empty());
+}
+
 TEST_CASE("LoadTransitivePackages") {
     /// Find the referenced symbol at each location in files with circular package dependencies.
     /// Tests the queue-based cycle detection in getDependentDocs.

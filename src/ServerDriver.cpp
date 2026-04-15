@@ -49,22 +49,30 @@ ServerDriver::ServerDriver(Indexer& indexer, SlangLspClient& client, const Confi
     diagClient(std::make_shared<ServerDiagClient>(sm, client)),
     completions(*this, indexer, sm, options), codeActions(*this, sm), m_indexer(indexer),
     m_config(config) {
-    // Create and configure the driver with our source manager and diagnostic engine
-    // SourceManager must not be moved, since diagEngine, syntax trees hold references to it
+    parseAndLoadSources(buildfiles);
+}
+
+void ServerDriver::parseAndLoadSources(const std::vector<std::string>& buildfiles) {
     driver.addStandardArgs();
 
-    // Parse command line and process files
     slang::CommandLine::ParseOptions parseOpts;
     parseOpts.expandEnvVars = true;
     parseOpts.ignoreProgramName = true;
     parseOpts.supportComments = true;
     parseOpts.ignoreDuplicates = true;
 
-    bool ok = driver.parseCommandLine(m_config.flags.value(), parseOpts);
+    // Parse each config file's flags separately so -D defines are attributed correctly
+    bool ok = true;
+    for (auto& src : m_config.flagsByFile.value()) {
+        driver.currentParseSource = src.filePath;
+        ok &= driver.parseCommandLine(src.flags, parseOpts);
+    }
+    driver.currentParseSource.clear();
+
     driver.options.errorLimit = 0;
     ok &= driver.processOptions(false);
     if (!ok) {
-        client.showError(fmt::format("Failed to parse config flags: {}", m_config.flags.value()));
+        client.showError("Failed to parse config flags");
     }
 
     for (auto& buildfile : buildfiles) {
@@ -77,6 +85,15 @@ ServerDriver::ServerDriver(Indexer& indexer, SlangLspClient& client, const Confi
         }
     }
 
+    // Build macro name -> source file map from the driver's per-file define lists
+    for (auto& [path, defines] : driver.getDefineSources()) {
+        for (auto& define : defines) {
+            auto eqPos = define.find('=');
+            auto macroName = eqPos != std::string::npos ? define.substr(0, eqPos) : define;
+            m_defineSources[macroName] = path;
+        }
+    }
+
     // Configure diagnostic engine
     diagEngine.setIgnoreAllWarnings(false);
     diagEngine.setIgnoreAllNotes(false);
@@ -85,8 +102,6 @@ ServerDriver::ServerDriver(Indexer& indexer, SlangLspClient& client, const Confi
     options = driver.createOptionBag();
     options.set(driver.getAnalysisOptions());
     ok = driver.parseAllSources();
-
-    // Apply lint_off/on pragma mappings from parsed sources
     diagEngine.setMappingsFromPragmas();
 
     // Create documents from syntax trees
@@ -483,8 +498,13 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
         return declTok->kind == parsing::TokenKind::Identifier &&
                declSyntax->kind == syntax::SyntaxKind::UndefDirective;
     };
+    auto isIfdefRef = [&]() {
+        // Identifier in `ifdef FOO / `ifndef FOO / `elsif FOO
+        return declTok->kind == parsing::TokenKind::Identifier &&
+               declSyntax->kind == syntax::SyntaxKind::NamedConditionalDirectiveExpression;
+    };
 
-    if (isMacroRef() || isUndefRef()) {
+    if (isMacroRef() || isUndefRef() || isIfdefRef()) {
 
         // For macro usages and undefs, look up the definition that was
         // active at the time (handles undef/redefine correctly)
@@ -567,8 +587,19 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
     }
 
     auto ret = DefinitionInfo{
-        symSyntax, *nameToken, SourceRange::NoLocation, symbol, {},
+        symSyntax, *nameToken, SourceRange::NoLocation, symbol, {}, {},
     };
+
+    // For command-line defines, record which file defined the macro
+    if (!symbol && ret.nameToken) {
+        auto defPath = sm.getFullPath(ret.nameToken.location().buffer());
+        auto defPathStr = defPath.filename().string();
+        if (defPathStr.empty() || defPathStr[0] == '<') {
+            auto srcIt = m_defineSources.find(std::string(ret.nameToken.valueText()));
+            if (srcIt != m_defineSources.end())
+                ret.defineSourceFile = srcIt->second.string();
+        }
+    }
 
     // Fill in macro expansion text from the SyntaxIndexer
     if (declSyntax->kind == syntax::SyntaxKind::MacroUsage) {
@@ -629,10 +660,51 @@ std::vector<lsp::LocationLink> ServerDriver::getDocDefinition(const URI& uri,
     auto targetRange = info.macroUsageRange != SourceRange::NoLocation ? info.macroUsageRange
                                                                        : info.nameToken.range();
     auto path = sm.getFullPath(targetRange.start().buffer());
-    if (path.empty()) {
-        ERROR("No path found for symbol {}", info.nameToken ? info.nameToken.valueText() : "");
-        return {};
+    auto pathStr = path.filename().string();
+
+    // For command-line defines (synthetic buffers), navigate to the file that defined the flag
+    if (pathStr.empty() || pathStr[0] == '<') {
+        auto macroName = std::string(info.nameToken.valueText());
+        auto it = m_defineSources.find(macroName);
+        if (it == m_defineSources.end())
+            return {};
+
+        auto& srcPath = it->second;
+
+        // Find the -D flag in the source file for precise line/column
+        lsp::Range defRange = {};
+        SmallVector<char> buf;
+        if (!OS::readFile(srcPath, buf)) {
+            std::string_view content(buf.data(), buf.size() - 1);
+            std::string patterns[] = {"-D" + macroName, "-D " + macroName,
+                                      "--define-macro=" + macroName, "--define-macro " + macroName,
+                                      "+define+" + macroName};
+            for (auto& pat : patterns) {
+                auto pos = content.find(pat);
+                if (pos != std::string::npos) {
+                    lsp::uint line = 0, col = 0;
+                    for (size_t i = 0; i < pos; i++) {
+                        if (content[i] == '\n') {
+                            line++;
+                            col = 0;
+                        }
+                        else {
+                            col++;
+                        }
+                    }
+                    defRange = {.start = {line, col}, .end = {line, col}};
+                    break;
+                }
+            }
+        }
+
+        return {lsp::LocationLink{
+            .targetUri = URI::fromFile(srcPath),
+            .targetRange = defRange,
+            .targetSelectionRange = defRange,
+        }};
     }
+
     auto lspRange = toRange(targetRange, sm);
 
     return {lsp::LocationLink{

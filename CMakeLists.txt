@@ -289,6 +289,7 @@ add_library(
   src/document/InlayHintCollector.cpp
   src/document/SymbolTreeVisitor.cpp
   src/document/SyntaxIndexer.cpp
+  src/codeactions/AddDefine.cpp
   src/codeactions/CodeActionDispatch.cpp
   src/codeactions/ExpandMacro.cpp
   src/completions/Completions.cpp

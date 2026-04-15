@@ -1,12 +1,18 @@
 # Configuration
 
-The server uses a hierarchical configuration system, layering configs in this order:
+The server uses a hierarchical configuration system with three config files:
 
-1. `~/.slang/server.json`
-2. `${workspaceFolder}/.slang/server.json` (should be in source control)
-3. `${workspaceFolder}/.slang/local/server.json` (`.slang/local` should be ignored by source control)
+1. `${workspaceFolder}/.slang/server.json` — workspace config (should be in source control)
+2. `~/.slang/server.json` — user config (personal defaults across all projects)
+3. `${workspaceFolder}/.slang/local/server.json` — local config (`.slang/local` should be ignored by source control)
 
-Each option value overrides the value set in previous configs. The exception for this is lists, which are appended.
+Later files override earlier ones for scalar values. Lists (like `index`) are appended across all files.
+
+### Flags precedence
+
+The `flags` field has special merging behavior. Workspace flags override user flags (only one is used as the base), and local flags are always appended on top. This means you can set shared flags in `.slang/server.json`, and add personal flags (like extra `-D` defines) in `.slang/local/server.json` without overriding the shared ones.
+
+The server watches these config files, .f files that are passed in via flags and `.f` build files for changes, automatically reloading when they are saved.
 
 ## Config Options
 
@@ -40,6 +46,8 @@ All configuration options are optional and have sensible defaults. In VSCode, th
     Use this to configure things like [include paths](https://sv-lang.com/command-line-ref.html#include-paths), [LRM relaxations](https://sv-lang.com/command-line-ref.html#compat-option), configure [warning severity](https://sv-lang.com/command-line-ref.html#clr-warnings) and [specific warnings](https://sv-lang.com/warning-ref.html).
 
     It's recommended to keep your slang flags in a [flag file](https://sv-lang.com/user-manual.html#command-files), that way it can be shared by both CI and the language server. Another nice setup is having `slang.f` contain your CI flags, then have `slang-server.f` include that file (via `-f path/to/slang.f`), along with more warnings so that more pedantic checks will show as yellow underlines in your editor.
+
+    For preprocessor defines (`-D`), you can also use the **"Add define"** code action: place your cursor on an undefined macro name in an `` `ifdef `` and use the quick fix to automatically add `-D<name>` to `.slang/local/server.json`.
 
     **Example:** `"-f path/to/slang_flags.f"`
 
@@ -116,14 +124,49 @@ All configuration options are optional and have sensible defaults. In VSCode, th
 
 ## Example Configuration
 
+### Workspace config (`.slang/server.json`)
+
+Shared across the team, checked into source control:
+
 ```json
 {
   "flags": "-f tools/slang/slang-server.f",
-  "indexGlobs": ["./src/**/*.sv", "./tb/**/*.sv"],
-  "excludeDirs": ["build", "obj_dir"],
-  "indexingThreads": 4,
-  "parsingThreads": 8,
-  "build": "./scripts/compile.f",
-  "wcpCommand": "surfer --wcp-initiate {}"
+  "index": [
+    {
+      "dirs": ["fpga/src", "fpga/tb"],
+      "excludeDirs": ["build", "synth"]
+    }
+  ],
+  "buildPattern": "builds/**/*.f",
+  "indexingThreads": 4
 }
 ```
+
+### User config (`~/.slang/server.json`)
+
+Personal defaults that apply to all projects without a workspace config:
+
+```json
+{
+  "flags": "-Wextra",
+  "inlayHints": {
+    "orderedInstanceNames": true,
+    "funcArgNames": 3
+  }
+}
+```
+
+If the workspace config above has `flags`, it takes precedence over this one (they are not combined). If the workspace config has no `flags`, these user flags are used as the base.
+
+### Local config (`.slang/local/server.json`)
+
+Personal overrides for this workspace, not checked in (add `.slang/local` to `.gitignore`):
+
+```json
+{
+  "flags": "-DSIM_MODE -DDEBUG_LEVEL=2",
+  "build": "./builds/my_top.f"
+}
+```
+
+These flags are **appended** to whichever base flags won (workspace or user), so the final flags in this example would be `-f tools/slang/slang-server.f -DSIM_MODE -DDEBUG_LEVEL=2`. The `build` field overrides any previous value since it's a scalar.
