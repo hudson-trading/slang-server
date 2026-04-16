@@ -2,9 +2,9 @@
 
 `slang-server` is a [Language Server](https://microsoft.github.io/language-server-protocol/) for SystemVerilog based on the [Slang](https://github.com/MikePopoloski/slang) library, providing useful language features for editors like VS Code and Neovim.
 
-Install on the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=Hudson-River-Trading.vscode-slang), the [OpenVSX Marketplace](https://open-vsx.org/extension/Hudson-River-Trading/vscode-slang), or with [Neovim](https://hudson-trading.github.io/slang-server/start/installing/#neovim).
+Read about [getting started](https://hudson-trading.github.io/slang-server/start/installing/), [configuring your repo](https://hudson-trading.github.io/slang-server/start/config/), and [learn more about the features](https://hudson-trading.github.io/slang-server/features/features/).
 
-[Other editors](https://hudson-trading.github.io/slang-server/start/installing/#other-editors) don't have an accompanying client at the moment for hardware-specific features, but core language features will still work.
+Install on the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=Hudson-River-Trading.vscode-slang), the [OpenVSX Marketplace](https://open-vsx.org/extension/Hudson-River-Trading/vscode-slang), in [Neovim](https://hudson-trading.github.io/slang-server/start/installing/#neovim), or [other editors](https://hudson-trading.github.io/slang-server/start/installing/#other-editors).
 
 Contributions are welcome! See [DEVELOPING.md](DEVELOPING.md)
 

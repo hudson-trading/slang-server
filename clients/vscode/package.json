@@ -54,6 +54,10 @@
       },
       "[systemverilogheader]": {
         "editor.colorDecorators": false
+      },
+      "files.associations": {
+        "**/.slang/server.json": "jsonc",
+        "**/.slang/local/server.json": "jsonc"
       }
     },
     "jsonValidation": [
@@ -460,6 +464,12 @@
         "icon": "$(eye)"
       },
       {
+        "command": "slang.project.refreshCompilation",
+        "title": "slang: Refresh Compilation",
+        "icon": "$(refresh)",
+        "shown": true
+      },
+      {
         "command": "slang.project.showSourceFile",
         "title": "Show Module",
         "viewItems": [
@@ -588,6 +598,11 @@
         },
         {
           "command": "slang.project.toggleHidden",
+          "group": "navigation",
+          "when": "view == slang.project"
+        },
+        {
+          "command": "slang.project.refreshCompilation",
           "group": "navigation",
           "when": "view == slang.project"
         }
@@ -719,6 +734,7 @@
     "decompress": "^4.2.1",
     "js-yaml": "^4.1.0",
     "semver": "^7.7.3",
+    "string-argv": "^0.3.2",
     "vscode-languageclient": "^9.0.1",
     "which": "^4.0.0"
   },

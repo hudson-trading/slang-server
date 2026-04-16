@@ -335,7 +335,7 @@ export abstract class ExtensionComponent extends ExtensionNode {
     this.preOrderConfigTraverse((obj: ConfigObject<any>) => {
       out += obj.getMarkdownString()
     })
-    return out + '\n'
+    return out.trimEnd() + '\n'
   }
 }
 

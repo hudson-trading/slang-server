@@ -77,9 +77,51 @@ All configuration options are optional and have sensible defaults. In VSCode, th
 
 :   **Type:** `string` (glob pattern)
 
-    Build file pattern used to find a `.f` file given the name of a waveform file. For example, `/tmp/{}.fst` with `builds/{}.f` looks for `build/foo.f` to load the compilation. This is also used to look for `.f` files in the VSCode client when selecting a `.f` file.
+    Build file pattern used to find a `.f` file given the name of a waveform file. For example, `/tmp/{}.fst` with `builds/{}.f` looks for `build/foo.f` to load the compilation.
+
+    If omitted and no other build source is configured, it defaults to matching all `.f` files in the workspace.
 
     **Example:** `"builds/{}.f"`
+
+---
+
+### `builds`
+
+:   **Type:** `list[Build]`
+
+    ```typescript
+    interface Build {
+      /** Optional name used for generated build files and UI labels */
+      name?: string
+      /** Glob pattern to find build files, like .f files or makefiles */
+      glob?: string
+      /** Optional command that produces .f content on stdout when passed the selected file */
+      command?: string
+    }
+    ```
+
+    Provides additional build-file sources in the VSCode client. Each entry matches files with `glob`.
+
+    If `command` is omitted, the matched files are treated as existing `.f` files and can be selected directly.
+
+    If `command` is provided, VSCode parses it as an executable plus fixed arguments, without invoking a shell. The matched file path is appended as the final argument, and the command should write `.f` content to stdout. Quote paths or arguments with spaces as needed. Relative executables are resolved from the workspace root, and the command runs with the workspace root as its working directory. The generated `.f` file is written under `.slang/local/builds/` using a stable path-based filename that keeps as much of the source path as will fit. If `name` is set, it is used as the readable prefix for the generated filename and the selection UI.
+
+    When a command-backed source file changes, the command is automatically re-run and the compilation is reloaded.
+
+    **Example:**
+
+    ```json
+    "builds": [
+      {
+        "glob": "build/**/*.f"
+      },
+      {
+        "name": "synth",
+        "glob": "**/Makefile",
+        "command": "scripts/make_dotf.py"
+      }
+    ]
+    ```
 
 ---
 
@@ -138,9 +180,21 @@ Shared across the team, checked into source control:
     }
   ],
   "buildPattern": "builds/**/*.f",
+  "builds": [
+    {
+      "glob": "build/generated/**/*.f"
+    },
+    {
+      "name": "synth",
+      "glob": "**/Makefile",
+      "command": "scripts/makedotf.py"
+    }
+  ],
   "indexingThreads": 4
 }
 ```
+
+For more on direct and command-backed build sources, see [`builds`](#builds).
 
 ### User config (`~/.slang/server.json`)
 

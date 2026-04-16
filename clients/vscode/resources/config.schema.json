@@ -46,7 +46,7 @@
           ]
         },
         "buildPattern": {
-          "description": "Build file glob pattern, e.g. `builds/{}.f`. Used for selecting build files.",
+          "description": "Build file glob pattern, e.g. `builds/{}.f`. Used for selecting build files. If omitted and no other build source is configured, defaults to matching all `.f` files in the workspace.",
           "anyOf": [
             {
               "type": "string"
@@ -85,6 +85,38 @@
         "inlayHints": {
           "$ref": "#/$defs/Config__InlayHints",
           "description": "Inline hints for things like ordered arguments, wildcard ports, and others"
+        },
+        "builds": {
+          "type": "array",
+          "description": "Builds for direct .f selection or command-based .f generation",
+          "items": {
+            "$ref": "#/$defs/Config__Build"
+          }
+        }
+      },
+      "required": []
+    },
+    "Config__Build": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Optional name used for generated build files and UI labels",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "glob": {
+          "type": "string",
+          "description": "Glob pattern to find files, like .f files or makefiles"
+        },
+        "command": {
+          "type": "string",
+          "description": "Optional command that produces .f content on stdout when passed the selected file"
         }
       },
       "required": []

@@ -1,3 +1,6 @@
+import * as child_process from 'child_process'
+import { promises as fs } from 'fs'
+import * as path from 'path'
 import * as vscode from 'vscode'
 import { TreeDataProvider, TreeItem } from 'vscode'
 import { ext } from '../extension'
@@ -12,14 +15,23 @@ import {
 import * as slang from '../SlangInterface'
 import { InstancesView } from './InstancesView'
 import * as vv from '../vaporview-api'
-import { getBasename, getIcons, isAnyVerilog } from '../utils'
+import { getBasename, getIcons, getWorkspaceFolder, isAnyVerilog } from '../utils'
 import { Logger } from '../lib/logger'
 import { glob } from 'glob'
+import { parseArgsStringToArgv } from 'string-argv'
 import {
   NetlistTreeItemData,
   NetlistVariableWebviewContext,
   ViewerState,
 } from '../vaporview-api/types'
+import {
+  BuildCommandArgs,
+  BuildFileParams,
+  createBuildSelectionItems,
+  formatString,
+  getGeneratedBuildOutputPath,
+  resolveCommandToken,
+} from './BuildConfigUtils'
 
 const STRUCTURE_SYMS = [
   slang.SlangKind.Instance,
@@ -42,19 +54,12 @@ interface RevealOptions {
   showBeside?: boolean
 }
 
-interface BuildFileParams {
-  name?: string
-  top?: string
-}
-
 type CompilationSource =
-  | { type: 'buildfile'; buildfile: string; topFile?: never }
-  | { type: 'topfile'; topFile: vscode.Uri; buildfile?: never }
-  | { type: 'none'; buildfile?: never; topFile?: never }
+  | { type: 'none' }
+  | { type: 'filelist'; buildfile: string }
+  | { type: 'commandBuild'; buildfile: string; args: BuildCommandArgs }
+  | { type: 'topfile'; topFile: vscode.Uri }
 
-function formatString(template: string, vars: BuildFileParams): string {
-  return template.replace(/{(\w+)}/g, (_, key: string) => vars[key as keyof BuildFileParams] || '*')
-}
 export abstract class HierItem implements HasChildren {
   async showChildrenInWaveform(logger: Logger): Promise<void> {
     const signals = (await this.getChildren()).filter(
@@ -387,10 +392,12 @@ export class ProjectComponent
 
   // Current build or top - mutually exclusive
   private compilationSource: CompilationSource = { type: 'none' }
+  private activeBuildWatcher: vscode.FileSystemWatcher | undefined
 
   // Getters for backward compatibility
   get buildfile(): string | undefined {
-    return this.compilationSource.type === 'buildfile'
+    return this.compilationSource.type === 'filelist' ||
+      this.compilationSource.type === 'commandBuild'
       ? this.compilationSource.buildfile
       : undefined
   }
@@ -399,12 +406,16 @@ export class ProjectComponent
     return this.compilationSource.type === 'topfile' ? this.compilationSource.topFile : undefined
   }
 
+  get buildCommandArgs(): BuildCommandArgs | undefined {
+    return this.compilationSource.type === 'commandBuild' ? this.compilationSource.args : undefined
+  }
+
   // Setters to maintain mutual exclusivity
   set buildfile(value: string | undefined) {
     if (value === undefined) {
       this.compilationSource = { type: 'none' }
     } else {
-      this.compilationSource = { type: 'buildfile', buildfile: value }
+      this.compilationSource = { type: 'filelist', buildfile: value }
     }
   }
 
@@ -448,6 +459,7 @@ export class ProjectComponent
         return
       }
       // should also be active text editor
+      this.clearBuildCommandTracking()
       this.topFile = uri
       await slang.setTopLevel(uri.fsPath)
       await this.refreshSlangCompilation()
@@ -504,6 +516,7 @@ export class ProjectComponent
     },
     async () => {
       this.compilationSource = { type: 'none' }
+      this.clearBuildCommandTracking()
 
       this.unit = undefined
       this.top = undefined
@@ -790,25 +803,6 @@ export class ProjectComponent
     return true
   }
 
-  // This only needs to be used for generated .f files- otherwise people may overuse this
-  // We should setup a proper file watcher on the build file instead
-  // refreshCompilation: ViewButton = new ViewButton(
-  //   {
-  //     title: 'Refresh Compilation',
-  //     icon: '$(refresh)',
-  //   },
-  //   async () => {
-  //     // set either top or buildfile again
-  //     if (this.buildfile) {
-  //       // await slang.setBuildFile(this.buildfile)
-  //       await this.selectBuildFile.func()
-  //     } else if (this.topFile) {
-  //       await this.setTopLevel.func(this.topFile)
-  //     }
-  //     await this.refreshSlangCompilation()
-  //   }
-  // )
-
   showBuildFile: ViewButton = new ViewButton(
     {
       title: 'Open Build File',
@@ -838,34 +832,35 @@ export class ProjectComponent
       shown: true,
     },
     async () => {
-      // quick pick from the glob
-      const glob = ext.slangConfig.buildPattern ?? '**/*.f'
+      const { items, allGlobs, directBuildCount, commandBuildCount } =
+        await createBuildSelectionItems(ext.slangConfig, (globs) => ext.findFiles(globs))
+      this.logger.info('Looking for build files: ' + allGlobs.join(', '))
+      this.logger.info(
+        `Found ${directBuildCount} direct build files and ${commandBuildCount} command builds`
+      )
 
-      this.logger.info('Looking for build files: ' + glob.replace('{}', '*'))
-      const files = await ext.findFiles([glob.replace('{}', '*')])
-      if (files.length === 0) {
+      if (items.length === 0) {
         vscode.window.showErrorMessage(
-          `No filelists (.f) files found with glob ${glob}. See [docs](https://hudson-trading.github.io/slang-server/start/config/#buildpattern) for more info.`
+          `No build files found. See [docs](https://hudson-trading.github.io/slang-server/start/config/#buildpattern) for more info.`
         )
         return
       }
-      this.logger.info(`Found ${files.length} build files`)
 
-      // trim off common prefixes
-      const globPre = glob.substring(0, glob.indexOf('{}'))
-      const commonPrefixLen = files[0].fsPath.indexOf(globPre) + globPre.length
-      const commonPrefix = files[0].fsPath.substring(0, commonPrefixLen)
-
-      let items = files.map((f) => f.fsPath.replace(commonPrefix, ''))
-      let selection = await vscode.window.showQuickPick(items, {
+      const selection = await vscode.window.showQuickPick(items, {
         placeHolder: 'Select a build file',
       })
       if (selection === undefined) {
         return
       }
 
-      this.buildfile = commonPrefix + selection
-      await slang.setBuildFile(this.buildfile)
+      if (selection.type === 'command' && selection.buildCommand) {
+        const ok = await this.setBuildCommandFile(selection.buildCommand)
+        if (!ok) {
+          return
+        }
+      } else if (selection.filePath) {
+        await this.setDirectBuildFile(selection.filePath)
+      }
 
       await this.refreshSlangCompilation()
     }
@@ -945,6 +940,22 @@ export class ProjectComponent
   async toggleHiddenFunc() {
     this.includeMacroDefined = !this.includeMacroDefined
   }
+
+  refreshCompilation: ViewButton = new ViewButton(
+    {
+      title: 'Refresh Compilation',
+      icon: '$(refresh)',
+      shown: true,
+    },
+    async () => {
+      const refreshed = await this.refreshActiveCompilationSource()
+      if (!refreshed) {
+        vscode.window.showInformationMessage('No build file or top level is currently set')
+        return
+      }
+      await this.refreshSlangCompilation()
+    }
+  )
 
   //////////////////////////////////////////////////////////////////
   // Inline Item Buttons
@@ -1049,7 +1060,7 @@ export class ProjectComponent
       } else {
         this.buildfile = files[0].fsPath
       }
-      await slang.setBuildFile(this.buildfile)
+      await this.setDirectBuildFile(this.buildfile)
       await this.refreshSlangCompilation({
         revealFile: false,
         revealHierarchy: false,
@@ -1299,6 +1310,182 @@ export class ProjectComponent
     })
   }
 
+  // Stop watching the currently active command-backed build source, if any.
+  private clearBuildCommandTracking() {
+    this.activeBuildWatcher?.dispose()
+    this.activeBuildWatcher = undefined
+  }
+
+  // Reapply the active build/top selection, regenerating command-backed .f files when needed.
+  private async refreshActiveCompilationSource(): Promise<boolean> {
+    if (this.buildCommandArgs) {
+      return await this.setBuildCommandFile(this.buildCommandArgs)
+    }
+    if (this.buildfile) {
+      await slang.setBuildFile(this.buildfile)
+      return true
+    }
+    if (this.topFile) {
+      await this.setTopLevel.func(this.topFile)
+      return true
+    }
+    return false
+  }
+
+  // Switch to a normal .f file and clear any command-backed build state.
+  private async setDirectBuildFile(buildfile: string) {
+    this.clearBuildCommandTracking()
+    this.buildfile = buildfile
+    await slang.setBuildFile(buildfile)
+  }
+
+  // Generate a build file from a configured command and make it the active compilation source.
+  private async setBuildCommandFile(args: BuildCommandArgs): Promise<boolean> {
+    const buildfile = await this.generateBuildCommandFile(args)
+    if (!buildfile) {
+      return false
+    }
+
+    this.compilationSource = { type: 'commandBuild', buildfile, args }
+    await slang.setBuildFile(buildfile)
+    this.trackBuildCommand(args)
+    return true
+  }
+
+  // Watch the selected source file so command-generated build files stay in sync with edits.
+  private trackBuildCommand(args: BuildCommandArgs) {
+    this.clearBuildCommandTracking()
+
+    const sourceDir = path.dirname(args.sourceFile)
+    const sourceName = path.basename(args.sourceFile)
+    const watcher = vscode.workspace.createFileSystemWatcher(
+      new vscode.RelativePattern(vscode.Uri.file(sourceDir), sourceName)
+    )
+
+    const rerun = async (uri: vscode.Uri) => {
+      const activeArgs = this.buildCommandArgs
+      if (
+        !activeArgs ||
+        activeArgs.sourceFile !== args.sourceFile ||
+        activeArgs.selectionIndex !== args.selectionIndex ||
+        uri.fsPath !== args.sourceFile
+      ) {
+        return
+      }
+
+      this.logger.info(
+        'Command build source updated, regenerating: ' + vscode.workspace.asRelativePath(uri)
+      )
+      const buildfile = await this.generateBuildCommandFile(args)
+      if (!buildfile) {
+        return
+      }
+
+      this.compilationSource = { type: 'commandBuild', buildfile, args }
+      await slang.setBuildFile(buildfile)
+      await this.refreshSlangCompilation({
+        revealFile: false,
+        revealHierarchy: false,
+        revealInstance: false,
+      })
+    }
+
+    watcher.onDidChange((uri) => void rerun(uri))
+    watcher.onDidCreate((uri) => void rerun(uri))
+    watcher.onDidDelete((uri) => void rerun(uri))
+    this.activeBuildWatcher = watcher
+  }
+
+  // Run the configured command, capture stdout, and materialize it as a local .f file.
+  private async generateBuildCommandFile(args: BuildCommandArgs): Promise<string | undefined> {
+    const workspaceFolder = getWorkspaceFolder()
+    if (!workspaceFolder) {
+      vscode.window.showErrorMessage('Cannot generate build: no workspace folder')
+      return undefined
+    }
+
+    const build = ext.slangConfig.builds?.[args.selectionIndex]
+    if (!build) {
+      vscode.window.showErrorMessage('Invalid build index')
+      return undefined
+    }
+    if (!build.command) {
+      vscode.window.showErrorMessage('Build entry is missing command')
+      return undefined
+    }
+
+    const command = parseArgsStringToArgv(build.command)
+    if (command.length === 0) {
+      vscode.window.showErrorMessage('Build entry is missing command')
+      return undefined
+    }
+
+    const sourceFile = path.isAbsolute(args.sourceFile)
+      ? path.normalize(args.sourceFile)
+      : path.join(workspaceFolder, args.sourceFile)
+    const resolvedCommand = command.map((token) => resolveCommandToken(token, workspaceFolder))
+    const executable = resolvedCommand[0]!
+    const procArgs = [...resolvedCommand.slice(1), sourceFile]
+
+    const output = await this.runBuildCommand(executable, procArgs, workspaceFolder)
+    if (output === undefined) {
+      return undefined
+    }
+
+    const outPath = getGeneratedBuildOutputPath(
+      workspaceFolder,
+      sourceFile,
+      args.selectionIndex,
+      build.name ?? undefined
+    )
+    await fs.mkdir(path.dirname(outPath), { recursive: true })
+    await fs.writeFile(outPath, output, 'utf8')
+    this.logger.info('Wrote command-generated build output to ' + outPath)
+    return outPath
+  }
+
+  // Execute the configured command without a shell so config-provided args stay literal.
+  private async runBuildCommand(
+    executable: string,
+    args: string[],
+    cwd: string
+  ): Promise<string | undefined> {
+    return await new Promise((resolve) => {
+      const proc = child_process.spawn(executable, args, {
+        cwd,
+        shell: false,
+        windowsHide: true,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      })
+
+      let stdout = ''
+      let stderr = ''
+      proc.stdout.on('data', (chunk: Buffer | string) => {
+        stdout += chunk.toString()
+      })
+      proc.stderr.on('data', (chunk: Buffer | string) => {
+        stderr += chunk.toString()
+      })
+      proc.on('error', (err) => {
+        this.logger.error(`Build command failed: ${err.message}`)
+        vscode.window.showErrorMessage(`Build command failed: ${err.message}`)
+        resolve(undefined)
+      })
+      proc.on('close', (code) => {
+        if (code !== 0) {
+          const stderrText = stderr.trim()
+          const suffix = stderrText.length > 0 ? `\n${stderrText}` : ''
+          this.logger.error(`Build command exited with code ${code}${suffix}`)
+          vscode.window.showErrorMessage(`Build command failed.${suffix}`)
+          resolve(undefined)
+          return
+        }
+
+        resolve(stdout)
+      })
+    })
+  }
+
   async activate(context: vscode.ExtensionContext): Promise<void> {
     vscode.window.createTreeView
     this.treeView = vscode.window.createTreeView(this.configPath!, {
@@ -1312,6 +1499,7 @@ export class ProjectComponent
     // context.subscriptions.push(vscode.window.registerTreeDataProvider(this.configPath!, this))
 
     context.subscriptions.push(vscode.window.registerTerminalLinkProvider(this))
+    context.subscriptions.push({ dispose: () => this.clearBuildCommandTracking() })
 
     // user updates to buildfile
     vscode.workspace.onDidSaveTextDocument(async (document) => {
@@ -1335,6 +1523,11 @@ export class ProjectComponent
     const unit = await slang.getUnit()
     if (unit.length === 0) {
       this.unit = undefined
+      this.top = undefined
+      this.focused = undefined
+      this.focusedBar.hide()
+      this._onDidChangeTreeData.fire()
+      await this.instancesView.clearModules()
       return
     }
     this.unit = new UnitItem(
