@@ -1,0 +1,12 @@
+
+`define ID(x) x
+
+module test;
+    function int add(int a, int b);
+        return a + b;
+    endfunction
+
+    initial begin
+        int x = add(/*a:*/ `ID(5), /*b:*/ 10);
+    end
+endmodule

@@ -35,6 +35,27 @@ endmodule
     scanner.scanDocument(hdl);
 }
 
+TEST_CASE("InlayHintsFunctionMacroArg") {
+    /// Test function argument hints use the original source location for macro arguments
+    ServerHarness server("");
+    auto hdl = server.openFile("inlay_function_macro_arg.sv", R"(
+`define ID(x) x
+
+module test;
+    function int add(int a, int b);
+        return a + b;
+    endfunction
+
+    initial begin
+        int x = add(`ID(5), 10);
+    end
+endmodule
+)");
+
+    InlayHintScanner scanner;
+    scanner.scanDocument(hdl);
+}
+
 TEST_CASE("InlayHintsModuleOrdered") {
     /// Test inlay hints for module instantiation with ordered ports
     ServerHarness server("");

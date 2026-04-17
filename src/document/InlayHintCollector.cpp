@@ -24,6 +24,16 @@ using namespace slang::syntax;
 namespace server {
 using namespace slang;
 
+static SourceLocation getArgumentHintLoc(const ArgumentSyntax& syntax,
+                                         const ShallowAnalysis& analysis) {
+    auto& sourceManager = analysis.getSourceManager();
+    if (auto info = sourceManager.getMacroInfo(syntax.getFirstToken().location())) {
+        return sourceManager.getFullyOriginalLoc(info->expansionRange.start());
+    }
+
+    return sourceManager.getFullyOriginalLoc(syntax.sourceRange().start());
+}
+
 InlayHintCollector::InlayHintCollector(const ShallowAnalysis& analysis, lsp::Range range,
                                        const Config::InlayHints& config) :
     m_analysis(analysis), m_range(range), m_portTypes(config.portTypes.value()),
@@ -265,9 +275,10 @@ void InlayHintCollector::handle(const MacroUsageSyntax& syntax) {
     size_t numArgs = std::min(syntax.args->args.size(),
                               defInfo->second->formalArguments->args.size());
     for (size_t i = 0; i < numArgs; i++) {
+        auto argLoc = m_analysis.m_sourceManager.getFullyOriginalLoc(
+            syntax.args->args[i]->getFirstToken().location());
         result.push_back(lsp::InlayHint{
-            .position = toPosition(syntax.args->args[i]->getFirstToken().location(),
-                                   m_analysis.m_sourceManager),
+            .position = toPosition(argLoc, m_analysis.m_sourceManager),
             .label = fmt::format("{}:", defInfo->second->formalArguments->args[i]->name.rawText()),
             .kind = lsp::InlayHintKind::Parameter,
             .paddingRight = true,
@@ -305,8 +316,9 @@ void InlayHintCollector::handle(const InvocationExpressionSyntax& syntax) {
         if (name.empty()) {
             continue;
         }
+        auto argLoc = getArgumentHintLoc(*arg, m_analysis);
         result.push_back(lsp::InlayHint{
-            .position = toPosition(arg->getFirstToken().location(), m_analysis.m_sourceManager),
+            .position = toPosition(argLoc, m_analysis.m_sourceManager),
             .label = fmt::format("{}:", name),
             .kind = lsp::InlayHintKind::Parameter,
             .paddingRight = true,
