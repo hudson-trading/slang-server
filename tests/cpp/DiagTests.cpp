@@ -318,6 +318,44 @@ TEST_CASE("CompilationDiagnostics") {
     CHECK(memClientDiags.size() == memDocDiags.size());
 }
 
+TEST_CASE("OpenBuildFileDoesNotOverwriteCompilationDiags") {
+    ServerHarness server("comp_repo");
+    server.setBuildFile("cpu_design.f");
+
+    // Compilation diags are published before any file is opened
+    auto cpuUri = URI::fromFile(fs::current_path() / "cpu.sv");
+    auto compDiags = server.client.getDiagnostics(cpuUri);
+
+    // Opening a file that's already in the compilation should not change diags
+    auto cpu = server.openFile("cpu.sv");
+    auto afterOpenDiags = server.client.getDiagnostics(cpuUri);
+
+    CHECK(compDiags.size() == afterOpenDiags.size());
+
+    // Diags should be identical, not just same count
+    for (size_t i = 0; i < compDiags.size() && i < afterOpenDiags.size(); i++) {
+        CHECK(compDiags[i].message == afterOpenDiags[i].message);
+        CHECK(compDiags[i].range.start.line == afterOpenDiags[i].range.start.line);
+    }
+}
+
+TEST_CASE("OpenNonBuildFileGetsShallowDiags") {
+    ServerHarness server("comp_repo");
+    server.setBuildFile("cpu_design.f");
+
+    // Open a file that is NOT in the build file — should still get shallow diags
+    auto doc = server.openFile("external.sv", R"(
+module ext;
+    logic [7:0] a;
+    assign a = "bad";  // type mismatch
+endmodule
+)");
+
+    auto diags = doc.getDiagnostics();
+    // Should have some diagnostics from the shallow compilation
+    CHECK(!diags.empty());
+}
+
 TEST_CASE("LintOffPragma") {
     ServerHarness server;
 

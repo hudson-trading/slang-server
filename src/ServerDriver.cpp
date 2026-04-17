@@ -183,8 +183,10 @@ std::unique_ptr<ServerDriver> ServerDriver::create(Indexer& indexer, SlangLspCli
 void ServerDriver::openDocument(const URI& uri, const std::string_view text) {
     auto docIter = docs.find(uri);
     std::shared_ptr<SlangDoc> doc;
+    bool alreadyInBuild = false;
     if (docIter != docs.end() && docIter->second->textMatches(text)) {
         doc = docIter->second;
+        alreadyInBuild = true;
     }
     else {
         if (docIter != docs.end())
@@ -192,7 +194,16 @@ void ServerDriver::openDocument(const URI& uri, const std::string_view text) {
         doc = SlangDoc::fromText(*this, uri, text);
         docs[uri] = doc;
     }
-    updateDoc(*doc, FileUpdateType::OPEN);
+
+    if (comp && alreadyInBuild) {
+        // File is already part of the compilation — compilation diags were
+        // already published, so skip shallow diags. Still publish inactive regions.
+        publishInactiveRegions(*doc);
+    }
+    else {
+        updateDoc(*doc, FileUpdateType::OPEN);
+    }
+
     // Track this as an open document
     m_openDocs.insert(uri);
 }
