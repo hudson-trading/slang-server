@@ -11,10 +11,13 @@
 #include "ast/HierarchicalView.h"
 #include "ast/InstanceVisitor.h"
 #include "util/Converters.h"
+#include "util/Formatting.h"
 #include "util/Logging.h"
 #include <memory>
 
 #include "slang/ast/Compilation.h"
+#include "slang/ast/symbols/InstanceSymbols.h"
+#include "slang/ast/symbols/ParameterSymbols.h"
 #include "slang/text/SourceManager.h"
 
 namespace fs = std::filesystem;
@@ -230,6 +233,63 @@ std::optional<lsp::ShowDocumentParams> ServerCompilation::getHierDocParams(
 
 void ServerCompilation::issueDiagnosticsTo(slang::DiagnosticEngine& diagEngine) {
     m_analysis->issueDiagnosticsTo(diagEngine);
+}
+
+static std::optional<std::string> lookupParamInInstance(const ast::InstanceSymbol& inst,
+                                                        std::string_view paramName) {
+    auto* paramSym = inst.body.lookupName(paramName);
+    if (!paramSym || !ast::ParameterSymbol::isKind(paramSym->kind)) {
+        return {};
+    }
+    auto value = paramSym->as<ast::ParameterSymbol>().getValue();
+    if (value.bad()) {
+        return {};
+    }
+    return formatConstantValue(value);
+}
+
+std::optional<std::string> ServerCompilation::getElaboratedParamValue(
+    std::string_view moduleName, std::string_view paramName,
+    const std::optional<std::string>& activeInstancePath) {
+    if (moduleName.empty() || paramName.empty()) {
+        return {};
+    }
+
+    // Prefer the active instance if it's set and matches this module
+    if (activeInstancePath && !activeInstancePath->empty()) {
+        auto& root = m_analysis->compilation.getRoot();
+        auto sym = root.lookupName(*activeInstancePath, ast::LookupLocation::max,
+                                   ast::LookupFlags::AllowUnnamedGenerate);
+        if (sym && sym->kind == ast::SymbolKind::Instance) {
+            auto& instSym = sym->as<ast::InstanceSymbol>();
+            if (instSym.getDefinition().name == moduleName) {
+                if (auto v = lookupParamInInstance(instSym, paramName)) {
+                    return v;
+                }
+            }
+        }
+    }
+
+    // Fall back to module-based lookup: if all instances of this module share the same
+    // parameter value, report it. Otherwise the value is ambiguous and we return nullopt.
+    auto it = m_analysis->instances.moduleToInstances.find(std::string{moduleName});
+    if (it == m_analysis->instances.moduleToInstances.end() || it->second.empty()) {
+        return {};
+    }
+    std::optional<std::string> shared;
+    for (const auto* inst : it->second) {
+        auto v = lookupParamInInstance(*inst, paramName);
+        if (!v) {
+            return {};
+        }
+        if (!shared) {
+            shared = v;
+        }
+        else if (*shared != *v) {
+            return {};
+        }
+    }
+    return shared;
 }
 
 } // namespace server

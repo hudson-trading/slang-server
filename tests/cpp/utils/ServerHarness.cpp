@@ -450,7 +450,7 @@ std::optional<lsp::Hover> DocumentHandle::getHoverAt(lsp::uint offset) {
     if (!loc) {
         return std::nullopt;
     }
-    return m_server.m_driver->getDocHover(m_uri, *loc);
+    return m_server.m_driver->getDocHover(m_uri, *loc, m_server.m_activeInstancePath);
 }
 
 std::vector<lsp::InlayHint> DocumentHandle::getAllInlayHints() {

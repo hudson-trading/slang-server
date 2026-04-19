@@ -69,6 +69,13 @@ public:
     /// Issue all semantic diagnostics from the compilation to the diagnostic engine
     void issueDiagnosticsTo(slang::DiagnosticEngine& diagEngine);
 
+    /// Look up the elaborated value of a parameter in a given module. If activeInstancePath
+    /// is set and matches the module, that instance's value is preferred. Otherwise, returns
+    /// the value only if all instances of the module share the same value (unambiguous).
+    std::optional<std::string> getElaboratedParamValue(
+        std::string_view moduleName, std::string_view paramName,
+        const std::optional<std::string>& activeInstancePath = std::nullopt);
+
     /// Populate incoming / outgoing (drivers / loads) call hierarchy LSP responses
     template<typename P, typename R>
     std::optional<std::vector<R>> getCallHierarchyCalls(const P& params) {
