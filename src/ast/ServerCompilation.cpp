@@ -235,8 +235,9 @@ void ServerCompilation::issueDiagnosticsTo(slang::DiagnosticEngine& diagEngine) 
     m_analysis->issueDiagnosticsTo(diagEngine);
 }
 
-std::optional<std::string> ServerCompilation::getInstanceParamValue(
-    const std::string& instancePath, std::string_view paramName, std::string_view moduleName) {
+std::optional<std::string> ServerCompilation::getInstanceParamValue(const std::string& instancePath,
+                                                                    std::string_view paramName,
+                                                                    std::string_view moduleName) {
     auto& root = m_analysis->compilation.getRoot();
     auto sym = root.lookupName(instancePath, ast::LookupLocation::max,
                                ast::LookupFlags::AllowUnnamedGenerate);
