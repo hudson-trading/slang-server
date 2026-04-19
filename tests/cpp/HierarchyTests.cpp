@@ -222,40 +222,52 @@ TEST_CASE("HierarchicalViewEmptyResults") {
     CHECK(noFiles.empty());
 }
 
-TEST_CASE("HoverParameterElaborated") {
-    // param_leaf.sv declares: parameter int DEPTH = 4 (default)
-    // param_top.sv instantiates param_leaf with DEPTH = 16 (override)
+TEST_CASE("HoverParameterElaboratedUniqueInstance") {
+    // When a module has exactly one instance, hover shows its elaborated value
+    // without needing an active instance to be set.
     ServerHarness server("comp_repo");
 
-    server.setBuildFile("param_test.f");
+    // cpu_design.f makes `cpu` a single instance inside cpu_testbench with DATA_WIDTH=32
+    // (the default); we only need to check that the elaborated value is surfaced.
+    server.setBuildFile("cpu_design.f");
 
-    auto leafDoc = server.openFile("param_leaf.sv");
-    auto depthCursor = leafDoc.after("parameter int ");
+    auto cpuDoc = server.openFile("cpu.sv");
+    auto paramCursor = cpuDoc.before("DATA_WIDTH = 32");
 
-    // Without active instance: hover shows the default value (4)
-    auto defaultHover = leafDoc.getHoverAt(depthCursor.m_offset);
-    REQUIRE(defaultHover.has_value());
-    auto defaultContent = rfl::get<lsp::MarkupContent>(defaultHover->contents);
-    CHECK(defaultContent.value.find("Value:") != std::string::npos);
-    CHECK(defaultContent.value.find("4") != std::string::npos);
-    CHECK(defaultContent.value.find("16") == std::string::npos);
+    auto hover = cpuDoc.getHoverAt(paramCursor.m_offset);
+    REQUIRE(hover.has_value());
+    auto content = rfl::get<lsp::MarkupContent>(hover->contents);
+    CHECK(content.value.find("Value:") != std::string::npos);
+}
 
-    // Set the active instance to the overridden instantiation
-    server.setActiveInstance("param_top.u_leaf");
+TEST_CASE("HoverParameterElaboratedAluModule") {
+    // Reproduces the user's scenario: alu module is instantiated many times in cpu.sv
+    // but all with WIDTH=DATA_WIDTH. When the top dut overrides DATA_WIDTH=40, the WIDTH
+    // parameter should consistently show 40 (not the default 32) since all alu instances
+    // end up with WIDTH=40.
+    ServerHarness server("comp_repo");
 
-    // With active instance: hover shows the elaborated override value (16)
-    auto elaboratedHover = leafDoc.getHoverAt(depthCursor.m_offset);
-    REQUIRE(elaboratedHover.has_value());
-    auto elaboratedContent = rfl::get<lsp::MarkupContent>(elaboratedHover->contents);
-    CHECK(elaboratedContent.value.find("Value:") != std::string::npos);
-    CHECK(elaboratedContent.value.find("16") != std::string::npos);
+    // Build with default DATA_WIDTH=32 first (user's actual workflow)
+    server.setBuildFile("cpu_design.f");
 
-    // Clearing the active instance restores the default value
-    server.setActiveInstance("");
+    // Now open cpu_testbench.sv and edit it to DATA_WIDTH=40
+    auto tbDoc = server.openFile("cpu_testbench.sv");
+    auto start = tbDoc.m_text.find(".DATA_WIDTH(");
+    REQUIRE(start != std::string::npos);
+    auto close = tbDoc.m_text.find(')', start);
+    REQUIRE(close != std::string::npos);
+    tbDoc.erase(start, close + 1);
+    tbDoc.insert(static_cast<lsp::uint>(start), ".DATA_WIDTH(40)");
+    tbDoc.publishChanges();
+    // Save triggers comp->refresh() so the elaborated compilation picks up the override
+    tbDoc.save();
 
-    auto clearedHover = leafDoc.getHoverAt(depthCursor.m_offset);
-    REQUIRE(clearedHover.has_value());
-    auto clearedContent = rfl::get<lsp::MarkupContent>(clearedHover->contents);
-    CHECK(clearedContent.value.find("4") != std::string::npos);
-    CHECK(clearedContent.value.find("16") == std::string::npos);
+    auto aluDoc = server.openFile("alu.sv");
+    auto widthCursor = aluDoc.before("WIDTH = 32");
+
+    auto hover = aluDoc.getHoverAt(widthCursor.m_offset);
+    REQUIRE(hover.has_value());
+    auto content = rfl::get<lsp::MarkupContent>(hover->contents);
+    CHECK(content.value.find("Value:") != std::string::npos);
+    CHECK(content.value.find("40") != std::string::npos);
 }

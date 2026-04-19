@@ -662,13 +662,12 @@ std::optional<lsp::Hover> ServerDriver::getDocHover(
     auto info = *maybeInfo;
 
     std::optional<std::string> elaboratedParamValue;
-    if (activeInstancePath && comp && info.symbol &&
-        ast::ParameterSymbol::isKind(info.symbol->kind)) {
+    if (comp && info.symbol && ast::ParameterSymbol::isKind(info.symbol->kind)) {
         auto* parentScope = info.symbol->getParentScope();
         std::string_view moduleName = parentScope ? parentScope->asSymbol().name
                                                   : std::string_view{};
-        elaboratedParamValue = comp->getInstanceParamValue(*activeInstancePath, info.symbol->name,
-                                                           moduleName);
+        elaboratedParamValue = comp->getElaboratedParamValue(moduleName, info.symbol->name,
+                                                             activeInstancePath);
     }
 
     return lsp::Hover{.contents = getHover(sm, doc->getBuffer(), info, elaboratedParamValue)};

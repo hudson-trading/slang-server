@@ -69,13 +69,12 @@ public:
     /// Issue all semantic diagnostics from the compilation to the diagnostic engine
     void issueDiagnosticsTo(slang::DiagnosticEngine& diagEngine);
 
-    /// Return the elaborated value of a parameter inside a specific instance.
-    /// instancePath is a dot-separated hierarchical path (e.g. "top.sub.leaf").
-    /// moduleName is the expected definition name; returns nullopt if the instance
-    /// is not of that module, or if the path or parameter cannot be resolved.
-    std::optional<std::string> getInstanceParamValue(const std::string& instancePath,
-                                                     std::string_view paramName,
-                                                     std::string_view moduleName);
+    /// Look up the elaborated value of a parameter in a given module. If activeInstancePath
+    /// is set and matches the module, that instance's value is preferred. Otherwise, returns
+    /// the value only if all instances of the module share the same value (unambiguous).
+    std::optional<std::string> getElaboratedParamValue(
+        std::string_view moduleName, std::string_view paramName,
+        const std::optional<std::string>& activeInstancePath = std::nullopt);
 
     /// Populate incoming / outgoing (drivers / loads) call hierarchy LSP responses
     template<typename P, typename R>
