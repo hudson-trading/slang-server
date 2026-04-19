@@ -637,7 +637,8 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
     return ret;
 }
 
-std::optional<lsp::Hover> ServerDriver::getDocHover(const URI& uri, const lsp::Position& position) {
+std::optional<lsp::Hover> ServerDriver::getDocHover(const URI& uri, const lsp::Position& position,
+                                                     const std::optional<std::string>& activeInstancePath) {
     auto doc = getDocument(uri);
     if (!doc) {
         return {};
@@ -658,7 +659,17 @@ std::optional<lsp::Hover> ServerDriver::getDocHover(const URI& uri, const lsp::P
         return {};
     }
     auto info = *maybeInfo;
-    return lsp::Hover{.contents = getHover(sm, doc->getBuffer(), info)};
+
+    std::optional<std::string> elaboratedParamValue;
+    if (activeInstancePath && comp && info.symbol &&
+        ast::ParameterSymbol::isKind(info.symbol->kind)) {
+        auto* parentScope = info.symbol->getParentScope();
+        std::string_view moduleName = parentScope ? parentScope->asSymbol().name : std::string_view{};
+        elaboratedParamValue =
+            comp->getInstanceParamValue(*activeInstancePath, info.symbol->name, moduleName);
+    }
+
+    return lsp::Hover{.contents = getHover(sm, doc->getBuffer(), info, elaboratedParamValue)};
 }
 
 std::vector<lsp::LocationLink> ServerDriver::getDocDefinition(const URI& uri,

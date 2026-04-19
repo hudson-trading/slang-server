@@ -144,6 +144,11 @@ interface ExpandMacroArgs {
 export async function expandMacros(args: ExpandMacroArgs): Promise<boolean> {
   return await vscode.commands.executeCommand('slang.expandMacros', args)
 }
+
+/// Notify the server of the currently active hierarchical instance for enriched hover
+export async function setActiveInstance(hierPath: string): Promise<void> {
+  await vscode.commands.executeCommand('slang.setActiveInstance', hierPath)
+}
 ////////////////////////////////////////////////////////////
 /// server -> client is in commands in the project component
 ////////////////////////////////////////////////////////////

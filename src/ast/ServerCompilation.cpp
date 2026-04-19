@@ -11,10 +11,13 @@
 #include "ast/HierarchicalView.h"
 #include "ast/InstanceVisitor.h"
 #include "util/Converters.h"
+#include "util/Formatting.h"
 #include "util/Logging.h"
 #include <memory>
 
 #include "slang/ast/Compilation.h"
+#include "slang/ast/symbols/InstanceSymbols.h"
+#include "slang/ast/symbols/ParameterSymbols.h"
 #include "slang/text/SourceManager.h"
 
 namespace fs = std::filesystem;
@@ -230,6 +233,29 @@ std::optional<lsp::ShowDocumentParams> ServerCompilation::getHierDocParams(
 
 void ServerCompilation::issueDiagnosticsTo(slang::DiagnosticEngine& diagEngine) {
     m_analysis->issueDiagnosticsTo(diagEngine);
+}
+
+std::optional<std::string> ServerCompilation::getInstanceParamValue(
+    const std::string& instancePath, std::string_view paramName, std::string_view moduleName) {
+    auto& root = m_analysis->compilation.getRoot();
+    auto sym = root.lookupName(instancePath, ast::LookupLocation::max,
+                               ast::LookupFlags::AllowUnnamedGenerate);
+    if (!sym || sym->kind != ast::SymbolKind::Instance) {
+        return {};
+    }
+    auto& instSym = sym->as<ast::InstanceSymbol>();
+    if (!moduleName.empty() && instSym.getDefinition().name != moduleName) {
+        return {};
+    }
+    auto* paramSym = instSym.body.find(paramName);
+    if (!paramSym || !ast::ParameterSymbol::isKind(paramSym->kind)) {
+        return {};
+    }
+    auto value = paramSym->as<ast::ParameterSymbol>().getValue();
+    if (value.bad()) {
+        return {};
+    }
+    return formatConstantValue(value);
 }
 
 } // namespace server

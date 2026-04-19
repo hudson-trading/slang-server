@@ -68,6 +68,9 @@ protected:
     // The waveform viewer client
     std::optional<waves::WcpClient> m_wcpClient = std::nullopt;
 
+    // The hierarchical path of the currently active instance, set via slang.setActiveInstance
+    std::optional<std::string> m_activeInstancePath;
+
 public:
     SlangServer(SlangLspClient& client);
 
@@ -134,6 +137,9 @@ public:
 
     // Add a -D define to .slang/local/server.json and reload config
     std::monostate addDefine(const std::string& macroName);
+
+    // Store the active instance path from the Hierarchy View for enriched hover
+    std::monostate setActiveInstance(const std::string& hierPath);
 
     ////////////////////////////////////////////////
     /// Server Lifecycle
