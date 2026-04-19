@@ -221,3 +221,41 @@ TEST_CASE("HierarchicalViewEmptyResults") {
     auto noFiles = server.getFilesContainingModule("nonexistent_module");
     CHECK(noFiles.empty());
 }
+
+TEST_CASE("HoverParameterElaborated") {
+    // param_leaf.sv declares: parameter int DEPTH = 4 (default)
+    // param_top.sv instantiates param_leaf with DEPTH = 16 (override)
+    ServerHarness server("comp_repo");
+
+    server.setBuildFile("param_test.f");
+
+    auto leafDoc = server.openFile("param_leaf.sv");
+    auto depthCursor = leafDoc.after("parameter int ");
+
+    // Without active instance: hover shows the default value (4)
+    auto defaultHover = leafDoc.getHoverAt(depthCursor.m_offset);
+    REQUIRE(defaultHover.has_value());
+    auto defaultContent = rfl::get<lsp::MarkupContent>(defaultHover->contents);
+    CHECK(defaultContent.value.find("Value:") != std::string::npos);
+    CHECK(defaultContent.value.find("4") != std::string::npos);
+    CHECK(defaultContent.value.find("16") == std::string::npos);
+
+    // Set the active instance to the overridden instantiation
+    server.setActiveInstance("param_top.u_leaf");
+
+    // With active instance: hover shows the elaborated override value (16)
+    auto elaboratedHover = leafDoc.getHoverAt(depthCursor.m_offset);
+    REQUIRE(elaboratedHover.has_value());
+    auto elaboratedContent = rfl::get<lsp::MarkupContent>(elaboratedHover->contents);
+    CHECK(elaboratedContent.value.find("Value:") != std::string::npos);
+    CHECK(elaboratedContent.value.find("16") != std::string::npos);
+
+    // Clearing the active instance restores the default value
+    server.setActiveInstance("");
+
+    auto clearedHover = leafDoc.getHoverAt(depthCursor.m_offset);
+    REQUIRE(clearedHover.has_value());
+    auto clearedContent = rfl::get<lsp::MarkupContent>(clearedHover->contents);
+    CHECK(clearedContent.value.find("4") != std::string::npos);
+    CHECK(clearedContent.value.find("16") == std::string::npos);
+}
