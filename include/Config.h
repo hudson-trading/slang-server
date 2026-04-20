@@ -71,9 +71,11 @@ struct Config {
         excludeDirs;
     rfl::Description<"Thread count to use for indexing", int> indexingThreads = 0;
     rfl::Description<"Build file to use", std::optional<std::string>> build;
-    rfl::Description<"Build file glob pattern, e.g. `builds/{}.f`. Used for selecting build files.",
+    rfl::Description<"Build file glob pattern, e.g. `builds/{}.f`. Used for selecting build "
+                     "files. If omitted and no other build source is configured, defaults to "
+                     "matching all `.f` files in the workspace.",
                      std::optional<std::string>>
-        buildPattern = "**/*.f";
+        buildPattern;
     rfl::Description<"Whether build files use paths relative to that file", bool>
         buildRelativePaths = false;
     rfl::Description<"Waveform file glob to open given a build. Name and top variables can be "
@@ -99,6 +101,22 @@ struct Config {
     rfl::Description<"Inline hints for things like ordered arguments, wildcard ports, and others",
                      InlayHints>
         inlayHints = InlayHints{};
+
+    struct Build {
+        rfl::Description<"Optional name used for generated build files and UI labels",
+                         std::optional<std::string>>
+            name;
+        rfl::Description<"Glob pattern to find files, like .f files or makefiles", std::string>
+            glob;
+        rfl::Description<
+            "Optional command that produces .f content on stdout when passed the selected file",
+            std::string>
+            command;
+    };
+
+    rfl::Description<"Builds for direct .f selection or command-based .f generation",
+                     std::vector<Build>>
+        builds;
 
     struct FlagSource {
         std::string filePath;

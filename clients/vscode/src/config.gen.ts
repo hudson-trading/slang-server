@@ -18,7 +18,7 @@ export interface Config {
   indexingThreads?: number
   /** Build file to use */
   build?: string | null
-  /** Build file glob pattern, e.g. `builds/{}.f`. Used for selecting build files. */
+  /** Build file glob pattern, e.g. `builds/{}.f`. Used for selecting build files. If omitted and no other build source is configured, defaults to matching all `.f` files in the workspace. */
   buildPattern?: string | null
   /** Whether build files use paths relative to that file */
   buildRelativePaths?: boolean
@@ -28,6 +28,17 @@ export interface Config {
   wcpCommand?: string | null
   /** Inline hints for things like ordered arguments, wildcard ports, and others */
   inlayHints?: Config__InlayHints
+  /** Builds for direct .f selection or command-based .f generation */
+  builds?: Config__Build[]
+}
+
+export interface Config__Build {
+  /** Optional name used for generated build files and UI labels */
+  name?: string | null
+  /** Glob pattern to find files, like .f files or makefiles */
+  glob?: string
+  /** Optional command that produces .f content on stdout when passed the selected file */
+  command?: string
 }
 
 export interface Config__IndexConfig {

@@ -90,6 +90,18 @@ Config Config::fromFiles(const std::optional<std::string>& workspaceConf,
         return Config{};
     }
 
+    auto hasField = [](const std::optional<rfl::Generic::Object>& obj,
+                       std::string_view fieldName) -> bool {
+        return obj && obj->count(std::string(fieldName)) > 0;
+    };
+
+    const bool buildPatternExplicit = hasField(workspaceObj, "buildPattern") ||
+                                      hasField(userObj, "buildPattern") ||
+                                      hasField(localObj, "buildPattern");
+    if (!buildPatternExplicit && finalConfig->builds.value().empty()) {
+        finalConfig->buildPattern = "**/*.f";
+    }
+
     // Build flagsByFile: workspace overrides user (last non-local wins), local appends
     auto extractFlags = [](std::optional<rfl::Generic::Object>& obj) -> std::string {
         if (!obj)
