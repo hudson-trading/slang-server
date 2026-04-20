@@ -7,6 +7,7 @@
 //------------------------------------------------------------------------------
 #pragma once
 #include "rfl/Description.hpp"
+#include "rfl/config.hpp"
 #include <optional>
 #include <rfl/Result.hpp>
 #include <rfl/Skip.hpp>
@@ -87,6 +88,17 @@ struct Config {
                      std::optional<std::string>>
         wcpCommand;
 
+    struct HoverConfig {
+        enum class DocComments { plaintext, markdown, raw };
+        rfl::Description<"How to render leading doc comments in hovers: 'markdown' renders as "
+                         "markdown, 'plaintext' escapes markdown characters, 'raw' shows the "
+                         "comment text verbatim including comment markers.",
+                         DocComments>
+            docComments = DocComments::markdown;
+    };
+
+    rfl::Description<"Hover behavior settings", HoverConfig> hovers = HoverConfig{};
+
     struct InlayHints {
         rfl::Description<"Hints for port types", bool> portTypes = false;
         rfl::Description<"Hints for names of ordered ports and params", bool> orderedInstanceNames =
@@ -135,4 +147,23 @@ struct Config {
 
     /// Per-file flags with correct precedence. Skipped during serialization.
     rfl::Skip<std::vector<FlagSource>> flagsByFile;
+};
+
+template<>
+struct rfl::config::enum_descriptions<Config::HoverConfig::DocComments> {
+    static constexpr bool has_descriptions = true;
+    static constexpr std::string_view get(Config::HoverConfig::DocComments value) {
+        switch (value) {
+            case Config::HoverConfig::DocComments::plaintext:
+                return "Strip comment markers and escape markdown characters so the text renders "
+                       "as-is.";
+            case Config::HoverConfig::DocComments::markdown:
+                return "Strip comment markers and render the contents as markdown.";
+            case Config::HoverConfig::DocComments::raw:
+                return "Show the comment text verbatim, including comment markers, in a code "
+                       "block.";
+            default:
+                return "";
+        }
+    }
 };

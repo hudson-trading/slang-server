@@ -2,6 +2,7 @@
 
 #include "Hovers.h"
 
+#include "Config.h"
 #include "document/ShallowAnalysis.h"
 #include "util/Formatting.h"
 #include "util/Markdown.h"
@@ -20,7 +21,7 @@
 namespace server {
 
 lsp::MarkupContent getHover(const SourceManager& sm, const BufferID docBuffer,
-                            const DefinitionInfo& info) {
+                            const DefinitionInfo& info, const Config::HoverConfig& hovers) {
     markup::Document doc;
 
     auto& infoPg = doc.addParagraph();
@@ -126,10 +127,15 @@ lsp::MarkupContent getHover(const SourceManager& sm, const BufferID docBuffer,
 
     const syntax::SyntaxNode& display_node = selectDisplayNode(*info.node);
 
-    const std::string docComments = stripDocComment(display_node);
+    const auto docCommentsMode = hovers.docComments.value();
+    const std::string docComments = stripDocComment(display_node, docCommentsMode);
 
-    if (!docComments.empty())
-        doc.addParagraph().appendText(docComments).newLine();
+    if (!docComments.empty()) {
+        if (docCommentsMode == Config::HoverConfig::DocComments::raw)
+            doc.addParagraph().appendCodeBlock(docComments);
+        else
+            doc.addParagraph().appendText(docComments).newLine();
+    }
 
     // Add the main code block with proper formatting
     doc.addParagraph().appendCodeBlock(formatCode(display_node));

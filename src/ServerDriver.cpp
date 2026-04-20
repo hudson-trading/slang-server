@@ -638,7 +638,7 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
 }
 
 std::optional<lsp::Hover> ServerDriver::getDocHover(const URI& uri, const lsp::Position& position) {
-    auto doc = getDocument(uri);
+    const auto doc = getDocument(uri);
     if (!doc) {
         return {};
     }
@@ -657,8 +657,8 @@ std::optional<lsp::Hover> ServerDriver::getDocHover(const URI& uri, const lsp::P
 #endif
         return {};
     }
-    auto info = *maybeInfo;
-    return lsp::Hover{.contents = getHover(sm, doc->getBuffer(), info)};
+    const auto& info = *maybeInfo;
+    return lsp::Hover{.contents = getHover(sm, doc->getBuffer(), info, m_config.hovers.value())};
 }
 
 std::vector<lsp::LocationLink> ServerDriver::getDocDefinition(const URI& uri,
@@ -667,7 +667,7 @@ std::vector<lsp::LocationLink> ServerDriver::getDocDefinition(const URI& uri,
     if (!maybeInfo) {
         return {};
     }
-    auto info = *maybeInfo;
+    const auto& info = *maybeInfo;
     auto targetRange = info.macroUsageRange != SourceRange::NoLocation ? info.macroUsageRange
                                                                        : info.nameToken.range();
     auto path = sm.getFullPath(targetRange.start().buffer());

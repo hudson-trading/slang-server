@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "Config.h"
 #include "lsp/LspTypes.h"
 #include <string>
 #include <string_view>
@@ -43,10 +44,11 @@ bool isSingleLine(const std::string& s);
 
 std::string detailFormat(const syntax::SyntaxNode& node);
 
-/// Strip the comment markers from a doc comment so we can
-/// display the documentation nicely (and depending on the ide
-/// render markdown)
-std::string stripDocComment(const syntax::SyntaxNode& node);
+/// Extract the leading doc comment text from a node.
+/// For plaintext/markdown, comment markers are stripped (and plaintext escapes markdown chars).
+/// For raw, the comment text is returned verbatim including markers.
+std::string stripDocComment(const syntax::SyntaxNode& node,
+                            const Config::HoverConfig::DocComments docComments);
 
 /// Select the best syntax node to display for hover/code snippets
 const syntax::SyntaxNode& selectDisplayNode(const syntax::SyntaxNode& node);
