@@ -574,6 +574,15 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#builds" class="md-nav__link">
+    <span class="md-ellipsis">
+      builds
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#wcpcommand" class="md-nav__link">
     <span class="md-ellipsis">
       wcpCommand
@@ -1106,6 +1115,15 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#builds" class="md-nav__link">
+    <span class="md-ellipsis">
+      builds
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#wcpcommand" class="md-nav__link">
     <span class="md-ellipsis">
       wcpCommand
@@ -1252,8 +1270,41 @@
 <dl>
 <dd>
 <p><strong>Type:</strong> <code>string</code> (glob pattern)</p>
-<p>Build file pattern used to find a <code>.f</code> file given the name of a waveform file. For example, <code>/tmp/{}.fst</code> with <code>builds/{}.f</code> looks for <code>build/foo.f</code> to load the compilation. This is also used to look for <code>.f</code> files in the VSCode client when selecting a <code>.f</code> file.</p>
+<p>Build file pattern used to find a <code>.f</code> file given the name of a waveform file. For example, <code>/tmp/{}.fst</code> with <code>builds/{}.f</code> looks for <code>build/foo.f</code> to load the compilation.</p>
+<p>If omitted and no other build source is configured, it defaults to matching all <code>.f</code> files in the workspace.</p>
 <p><strong>Example:</strong> <code>"builds/{}.f"</code></p>
+</dd>
+</dl>
+<hr />
+<h3 id="builds"><code>builds</code><a class="headerlink" href="#builds" title="Permanent link">&para;</a></h3>
+<dl>
+<dd>
+<p><strong>Type:</strong> <code>list[Build]</code></p>
+<div class="language-typescript highlight"><pre><span></span><code><span class="kd">interface</span><span class="w"> </span><span class="nx">Build</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="cm">/** Optional name used for generated build files and UI labels */</span>
+<span class="w">  </span><span class="nx">name?</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span>
+<span class="w">  </span><span class="cm">/** Glob pattern to find build files, like .f files or makefiles */</span>
+<span class="w">  </span><span class="nx">glob?</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span>
+<span class="w">  </span><span class="cm">/** Optional command that produces .f content on stdout when passed the selected file */</span>
+<span class="w">  </span><span class="nx">command?</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Provides additional build-file sources in the VSCode client. Each entry matches files with <code>glob</code>.</p>
+<p>If <code>command</code> is omitted, the matched files are treated as existing <code>.f</code> files and can be selected directly.</p>
+<p>If <code>command</code> is provided, VSCode parses it as an executable plus fixed arguments, without invoking a shell. The matched file path is appended as the final argument, and the command should write <code>.f</code> content to stdout. Quote paths or arguments with spaces as needed. Relative executables are resolved from the workspace root, and the command runs with the workspace root as its working directory. The generated <code>.f</code> file is written under <code>.slang/local/builds/</code> using a stable path-based filename that keeps as much of the source path as will fit. If <code>name</code> is set, it is used as the readable prefix for the generated filename and the selection UI.</p>
+<p>When a command-backed source file changes, the command is automatically re-run and the compilation is reloaded.</p>
+<p><strong>Example:</strong></p>
+<div class="language-json highlight"><pre><span></span><code><span class="nt">&quot;builds&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">  </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;glob&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;build/**/*.f&quot;</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;synth&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;glob&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;**/Makefile&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;scripts/make_dotf.py&quot;</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">]</span>
+</code></pre></div>
 </dd>
 </dl>
 <hr />
@@ -1306,9 +1357,20 @@
 <span class="w">    </span><span class="p">}</span>
 <span class="w">  </span><span class="p">],</span>
 <span class="w">  </span><span class="nt">&quot;buildPattern&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;builds/**/*.f&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;builds&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;glob&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;build/generated/**/*.f&quot;</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;synth&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;glob&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;**/Makefile&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;scripts/makedotf.py&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">],</span>
 <span class="w">  </span><span class="nt">&quot;indexingThreads&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">4</span>
 <span class="p">}</span>
 </code></pre></div>
+<p>For more on direct and command-backed build sources, see <a href="#builds"><code>builds</code></a>.</p>
 <h3 id="user-config-slangserverjson">User config (<code>~/.slang/server.json</code>)<a class="headerlink" href="#user-config-slangserverjson" title="Permanent link">&para;</a></h3>
 <p>Personal defaults that apply to all projects without a workspace config:</p>
 <div class="language-json highlight"><pre><span></span><code><span class="p">{</span>
