@@ -27,6 +27,20 @@ vim.lsp.config("slang-server", {
 vim.lsp.enable("slang-server")
 ```
 
+Alternatively, adding the below to `<runtimepath>/lsp/slang_server.lua` will automatically be picked up by `vim.lsp`:
+
+```lua
+---@type vim.lsp.Config
+return {
+  cmd = { "slang-server" },
+  root_markers = { ".git", ".slang" },
+  filetypes = {
+    "systemverilog",
+    "verilog",
+  },
+}
+```
+
 For older versions of Neovim (< v0.11) with `nvim-lspconfig`, the server can be configured with:
 
 ```lua
@@ -52,37 +66,25 @@ if not configs.slang_server then
 end
 ```
 
-For users of lazy.nvim, add the `nvim-lspconfig` config to `<runtimepath>/lsp/slang.lua`:
-
-```lua
----@type vim.lsp.Config
-return {
-  cmd = { "slang-server" },
-  root_markers = { ".git", ".slang" },
-  filetypes = {
-    "systemverilog",
-    "verilog",
-  },
-}
-```
-
-Then enable the config in LazyVim by adding the following to `<runtimepath>/lua/plugins/slang.lua`:
+For users of lazy.nvim, natively enable the server by adding the following to `<runtimepath>/lua/plugins/slang_server.lua`:
 
 ```lua
 return {
   "neovim/nvim-lspconfig",
   opts = {
     servers = {
-      slang = {
+      slang_server = {
         -- Tell LazyVim that Mason isn't needed since this is a manual config
         mason = false,
       },
     },
   },
 }
+```
+
+The above assumes that a slang-server config has been added to `nvim-lspconfig` using one of the preceding steps.
 
 Optionally, run `:LspInfo` to make sure the LSP was correctly installed.
-```
 
 Pointing at the binary is all you need for standard language features, however a plugin is provided to enable some client-side features which extend the LSP (e.g. the hierarchy view, waveform integration). The plugin can be found in `clients/neovim/` and is also mirrored in [slang-server.nvim](https://github.com/hudson-trading/slang-server.nvim) for ease of use with Neovim plugin managers.
 
