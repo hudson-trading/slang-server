@@ -7,7 +7,7 @@ assignees: ''
 
 ---
 
-<!-- 
+<!--
 If your bug is with syntax highlighting- that is client side, so it's as simple as making small reproducer.
 
 For cosmetic issues like syntax, please include both a code snippet and a screenshot showing the issue.
