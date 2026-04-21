@@ -20,6 +20,7 @@ patterns:
   - include: '#sequence'
   - include: '#all-types'
   - include: '#module-parameters'
+  - include: '#module-no-parameters-split'
   - include: '#module-no-parameters'
   - include: '#port-net-parameter'
   - include: '#system-tf'
@@ -439,9 +440,157 @@ repository:
       - include: '#constants'
       - include: '#module-inst'
       - include: '#strings'
+      - match: >-
+          [ \t\r\n]*(?!intersect|and|or|throughout|within)([a-zA-Z_][a-zA-Z0-9_$]*)(?:[ \t\r\n]*(\[[a-zA-Z0-9_:$\.\-\+\*/%`' \t\r\n\[\]\(\)]*\])?)[ \t\r\n]*$
+        captures:
+          '1':
+            name: variable.other.module.systemverilog
+          '2':
+            patterns:
+              - include: '#selects'
       - include: '#port-net-parameter'
-      - match: '\b([a-zA-Z_][a-zA-Z0-9_$]*)\b(?=[ \t\r\n]*$)'
+      - include: '#identifiers'
+    name: meta.module.parameters.systemverilog
+  module-parameters-split:
+    begin: >-
+      [ \t\r\n]*\b(?:(bind)[ \t\r\n]+([a-zA-Z_][a-zA-Z0-9_$\.]*)[ \t\r\n]+)?([a-zA-Z_][a-zA-Z0-9_$]*)(?:[ \t]*\r?\n[ \t]*)(?=#)
+    beginCaptures:
+      '1':
+        name: keyword.control.systemverilog
+      '2':
+        name: entity.name.type.module.systemverilog
+      '3':
+        name: entity.name.type.module.systemverilog
+    end: ;
+    endCaptures:
+      '1':
+        name: punctuation.module.instantiation.end.systemverilog
+    patterns:
+      - match: '\b([a-zA-Z_][a-zA-Z0-9_$]*)\b(?=[ \t\r\n]*\()'
         name: variable.other.module.systemverilog
+      - include: '#module-binding'
+      - include: '#implicit-binding'
+      - include: '#parameters'
+      - include: '#comments'
+      - include: '#operators'
+      - include: '#constants'
+      - include: '#module-inst'
+      - include: '#strings'
+      - match: >-
+          [ \t\r\n]*(?!intersect|and|or|throughout|within)([a-zA-Z_][a-zA-Z0-9_$]*)(?:[ \t\r\n]*(\[[a-zA-Z0-9_:$\.\-\+\*/%`' \t\r\n\[\]\(\)]*\])?)[ \t\r\n]*$
+        captures:
+          '1':
+            name: variable.other.module.systemverilog
+          '2':
+            patterns:
+              - include: '#selects'
+      - include: '#port-net-parameter'
+      - include: '#identifiers'
+    name: meta.module.parameters.systemverilog
+  module-parameters-head:
+    match: >-
+      [ \t\r\n]*\b(?:(bind)[ \t\r\n]+([a-zA-Z_][a-zA-Z0-9_$\.]*)[ \t\r\n]+)?([a-zA-Z_][a-zA-Z0-9_$]*)[ \t]*(?=\r?\n[ \t]*#)
+    captures:
+      '1':
+        name: keyword.control.systemverilog
+      '2':
+        name: entity.name.type.module.systemverilog
+      '3':
+        name: entity.name.type.module.systemverilog
+    name: meta.module.parameters.systemverilog
+  module-no-parameters-head:
+    match: >-
+      [ \t\r\n]*\b(?:(bind|pullup|pulldown)[ \t\r\n]+(?:([a-zA-Z_][a-zA-Z0-9_$\.]*)[ \t\r\n]+)?)?((?:\b(?:and|nand|or|nor|xor|xnor|buf|not|bufif[01]|notif[01]|r?[npc]mos|r?tran|r?tranif[01])\b|[a-zA-Z_][a-zA-Z0-9_$]*))[ \t]*(?=\r?\n[ \t]*[a-zA-Z_][a-zA-Z0-9_$]*(?:[ \t]*\[[a-zA-Z0-9_:$\.\-\+\*/%`' \t\r\n\[\]\(\)]*\])?[ \t]*\r?\n[ \t]*\()
+    captures:
+      '1':
+        name: keyword.control.systemverilog
+      '2':
+        name: entity.name.type.module.systemverilog
+      '3':
+        name: entity.name.type.module.systemverilog
+    name: meta.module.no_parameters.systemverilog
+  module-instance-tail:
+    begin: >-
+      [ \t\r\n]*(?!intersect|and|or|throughout|within)([a-zA-Z_][a-zA-Z0-9_$]*)(?:[ \t\r\n]*(\[[a-zA-Z0-9_:$\.\-\+\*/%`' \t\r\n\[\]\(\)]*\])?)[ \t]*(?=\r?\n[ \t]*\()
+    beginCaptures:
+      '1':
+        name: variable.other.module.systemverilog
+      '2':
+        patterns:
+          - include: '#selects'
+    end: \)(?:[ \t\r\n]*(;))?
+    endCaptures:
+      '1':
+        name: punctuation.module.instantiation.end.systemverilog
+    patterns:
+      - include: '#module-binding'
+      - include: '#implicit-binding'
+      - include: '#comments'
+      - include: '#operators'
+      - include: '#constants'
+      - include: '#strings'
+      - include: '#port-net-parameter'
+      - include: '#identifiers'
+    name: meta.module.instantiation.systemverilog
+  module-no-parameters-split:
+    begin: >-
+      [ \t\r\n]*\b(?:(bind|pullup|pulldown)[ \t\r\n]+(?:([a-zA-Z_][a-zA-Z0-9_$\.]*)[ \t\r\n]+)?)?((?:\b(?:and|nand|or|nor|xor|xnor|buf|not|bufif[01]|notif[01]|r?[npc]mos|r?tran|r?tranif[01])\b|[a-zA-Z_][a-zA-Z0-9_$]*))[ \t\r\n]*$
+    beginCaptures:
+      '1':
+        name: keyword.control.systemverilog
+      '2':
+        name: entity.name.type.module.systemverilog
+      '3':
+        name: entity.name.type.module.systemverilog
+    end: \)(?:[ \t\r\n]*(;))
+    endCaptures:
+      '1':
+        name: punctuation.module.instantiation.end.systemverilog
+    patterns:
+      - match: >-
+          [ \t\r\n]*(?!intersect|and|or|throughout|within)([a-zA-Z_][a-zA-Z0-9_$]*)(?:[ \t\r\n]*(\[[a-zA-Z0-9_:$\.\-\+\*/%`' \t\r\n\[\]\(\)]*\])?)[ \t\r\n]*$
+        captures:
+          '1':
+            name: variable.other.module.systemverilog
+          '2':
+            patterns:
+              - include: '#selects'
+      - include: '#module-binding'
+      - include: '#implicit-binding'
+      - include: '#comments'
+      - include: '#operators'
+      - include: '#constants'
+      - include: '#strings'
+      - include: '#module-parameters-tail'
+      - include: '#module-instance-tail'
+      - include: '#port-net-parameter'
+      - include: '#identifiers'
+    name: meta.module.no_parameters.systemverilog
+  module-parameters-tail:
+    begin: '\)(?=[ \t]*\r?\n[ \t]*[a-zA-Z_][a-zA-Z0-9_$]*[ \t]*\r?\n[ \t]*\()'
+    beginCaptures:
+      '0':
+        name: punctuation.section.parameters.end
+    end: \)(?:[ \t\r\n]*(;))?
+    endCaptures:
+      '1':
+        name: punctuation.module.instantiation.end.systemverilog
+    patterns:
+      - match: >-
+          [ \t\r\n]*(?!intersect|and|or|throughout|within)([a-zA-Z_][a-zA-Z0-9_$]*)(?:[ \t\r\n]*(\[[a-zA-Z0-9_:$\.\-\+\*/%`' \t\r\n\[\]\(\)]*\])?)[ \t\r\n]*$
+        captures:
+          '1':
+            name: variable.other.module.systemverilog
+          '2':
+            patterns:
+              - include: '#selects'
+      - include: '#module-binding'
+      - include: '#implicit-binding'
+      - include: '#comments'
+      - include: '#operators'
+      - include: '#constants'
+      - include: '#strings'
+      - include: '#port-net-parameter'
       - include: '#identifiers'
     name: meta.module.parameters.systemverilog
   module-no-parameters:
