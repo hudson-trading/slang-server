@@ -206,7 +206,7 @@ void resolveModuleInstance(const slang::syntax::ModuleHeaderSyntax& header,
         maxLen = visitor.maxLen;
     }
 
-    if (names.size() != 0) {
+    if (!names.empty()) {
         output.appendText("\n");
 
         // append ports
