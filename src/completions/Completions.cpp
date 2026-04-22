@@ -194,7 +194,7 @@ void resolveModuleInstance(const slang::syntax::ModuleHeaderSyntax& header,
 
     output.appendText(" ");
     output.appendPlaceholder(toCamelCase(header.name.valueText()));
-    output.appendText(" (\n");
+    output.appendText(" (");
 
     // get ports
     maxLen = 0;
@@ -206,18 +206,22 @@ void resolveModuleInstance(const slang::syntax::ModuleHeaderSyntax& header,
         maxLen = visitor.maxLen;
     }
 
-    // append ports
-    for (size_t i = 0; i < names.size(); ++i) {
-        auto name = std::string{names[i]};
-        auto nameFmt = name + std::string(maxLen - name.length(), ' ');
-        output.appendText("\t." + nameFmt + "(");
-        output.appendPlaceholder(name);
-        output.appendText(")");
-        if (i < names.size() - 1) {
-            output.appendText(",\n");
-        }
-        else {
-            output.appendText("\n");
+    if (names.size() != 0) {
+        output.appendText("\n");
+
+        // append ports
+        for (size_t i = 0; i < names.size(); ++i) {
+            auto name = std::string{names[i]};
+            auto nameFmt = name + std::string(maxLen - name.length(), ' ');
+            output.appendText("\t." + nameFmt + "(");
+            output.appendPlaceholder(name);
+            output.appendText(")");
+            if (i < names.size() - 1) {
+                output.appendText(",\n");
+            }
+            else {
+                output.appendText("\n");
+            }
         }
     }
 
