@@ -52,7 +52,7 @@
           "value": "````systemverilog\nmodule cycle_test_module;\n````"
         },
         "filterText": "cycle_test_module",
-        "insertText": "cycle_test_module ${1:cycle_test_module} (\n);",
+        "insertText": "cycle_test_module ${1:cycle_test_module} ();",
         "insertTextFormat": "Snippet"
       },
       {
@@ -78,7 +78,7 @@
           "value": "````systemverilog\nmodule tb;\n````"
         },
         "filterText": "tb",
-        "insertText": "tb ${1:tb} (\n);",
+        "insertText": "tb ${1:tb} ();",
         "insertTextFormat": "Snippet"
       },
       {
