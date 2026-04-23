@@ -282,6 +282,69 @@ TEST_CASE("FindReferences - Cross-File Function") {
     CHECK(refs->size() >= 2);
 }
 
+TEST_CASE("FindReferences - Included Package Member Uses Included Buffer URI") {
+    ServerHarness server("include_ref_uri");
+    auto pkgHdl = server.openFile("pkg.sv");
+    auto topHdl = server.openFile("top.sv");
+    pkgHdl.ensureSynced();
+    topHdl.ensureSynced();
+    topHdl.save();
+
+    auto cursor = pkgHdl.after("parameter int ");
+    auto refs = server.getDocReferences(lsp::ReferenceParams{
+        .context = {.includeDeclaration = true},
+        .textDocument = {.uri = pkgHdl.m_uri},
+        .position = cursor.getPosition(),
+    });
+
+    REQUIRE(refs.has_value());
+    REQUIRE(refs->size() == 5);
+
+    bool foundDeclaration = false;
+    bool foundIncludedUse = false;
+    bool foundTopUse = false;
+    for (const auto& ref : *refs) {
+        if (ref.uri.str().find("pkg.sv") != std::string::npos) {
+            foundDeclaration = true;
+        }
+        if (ref.uri.str().find("refs.svh") != std::string::npos) {
+            foundIncludedUse = true;
+        }
+        if (ref.uri.str().find("top.sv") != std::string::npos) {
+            foundTopUse = true;
+        }
+    }
+
+    CHECK(foundDeclaration);
+    CHECK(foundIncludedUse);
+    CHECK(!foundTopUse);
+}
+
+TEST_CASE("FindReferences - Package Member Does Not Match Other Package") {
+    ServerHarness server("include_ref_uri");
+    auto pkgHdl = server.openFile("pkg.sv");
+    auto otherPkgHdl = server.openFile("other_pkg.sv");
+    auto topHdl = server.openFile("top.sv");
+    pkgHdl.ensureSynced();
+    otherPkgHdl.ensureSynced();
+    topHdl.ensureSynced();
+    topHdl.save();
+
+    auto cursor = pkgHdl.after("parameter int ");
+    auto refs = server.getDocReferences(lsp::ReferenceParams{
+        .context = {.includeDeclaration = true},
+        .textDocument = {.uri = pkgHdl.m_uri},
+        .position = cursor.getPosition(),
+    });
+
+    REQUIRE(refs.has_value());
+    REQUIRE(refs->size() == 5);
+
+    for (const auto& ref : *refs) {
+        CHECK(ref.uri.str().find("other_pkg.sv") == std::string::npos);
+    }
+}
+
 TEST_CASE("FindReferences - Goto Refs On Returned Refs") {
     ServerHarness server("indexer_test");
     auto hdl = server.openFile("references_test.sv");

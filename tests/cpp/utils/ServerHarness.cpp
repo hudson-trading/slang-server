@@ -187,6 +187,38 @@ std::vector<std::string> ServerHarness::getModulesInFile(const std::string& file
     return SlangServer::getModulesInFile(absolutePath.string());
 }
 
+std::optional<std::vector<lsp::Location>> ServerHarness::getDocReferences(
+    const lsp::ReferenceParams& params) {
+    auto refs = SlangServer::getDocReferences(params);
+    if (!refs) {
+        return refs;
+    }
+
+    auto srcDoc = getDoc(params.textDocument.uri);
+    REQUIRE(srcDoc);
+
+    auto srcLoc = srcDoc->getLocation(params.position);
+    REQUIRE(srcLoc.has_value());
+
+    auto srcTok = srcDoc->getWordTokenAt(*srcLoc);
+    REQUIRE(srcTok);
+
+    auto expectedText = std::string(srcTok->valueText());
+    for (const auto& ref : *refs) {
+        auto refDoc = m_driver->getDocument(ref.uri);
+        REQUIRE(refDoc);
+
+        auto refLoc = refDoc->getLocation(ref.range.start);
+        REQUIRE(refLoc.has_value());
+
+        auto refTok = refDoc->getWordTokenAt(*refLoc);
+        REQUIRE(refTok);
+        CHECK(refTok->valueText() == expectedText);
+    }
+
+    return refs;
+}
+
 // ------------------- DocumentHandle -------------------
 
 DocumentHandle::DocumentHandle(ServerHarness& server, URI uri, std::string text) :

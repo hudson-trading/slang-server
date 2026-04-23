@@ -793,29 +793,26 @@ void ServerDriver::addMemberReferences(std::vector<lsp::Location>& references,
         // making analysis
         if (!isTypeMember && parentSymbol.kind == ast::SymbolKind::Package) {
             auto& meta = fileDoc->getSyntaxTree()->getMetadata();
-            bool hasWildcard = false;
-            for (auto ref : meta.packageImports) {
-                for (auto item : ref->items) {
-                    if (item->package.valueText() == parentSymbol.name) {
-                        if (item->item.kind == parsing::TokenKind::Star) {
-                            hasWildcard = true;
-                            break;
+            bool hasWildcard = [&] {
+                for (auto ref : meta.packageImports) {
+                    for (auto item : ref->items) {
+                        if (item->package.valueText() == parentSymbol.name &&
+                            item->item.kind == parsing::TokenKind::Star) {
+                            return true;
                         }
                     }
                 }
-                if (hasWildcard) {
-                    break;
-                }
-            }
+                return false;
+            }();
             if (!hasWildcard) {
                 // no wildcard, just check cases of pkg::<targetName>
                 for (auto ref : meta.classPackageNames) {
+                    if (ref->identifier.valueText() != parentSymbol.name) {
+                        continue;
+                    }
                     auto tok = ref->parent->as<ScopedNameSyntax>().right->getFirstToken();
                     if (tok.valueText() == targetName) {
-                        references.push_back(lsp::Location{
-                            .uri = fileUri,
-                            .range = toOriginalRange(tok.range(), sm),
-                        });
+                        references.push_back(toOriginalLocation(tok.range(), sm));
                     }
                 }
                 continue;
@@ -861,35 +858,25 @@ std::optional<std::vector<lsp::Location>> ServerDriver::getDocReferences(
 
     auto targetName = declTok->rawText();
 
-    auto findPkgReferencesInDocument = [&](const parsing::ParserMetadata& meta, const URI& uri) {
+    auto findPkgReferencesInDocument = [&](const parsing::ParserMetadata& meta, const URI&) {
         for (auto ref : meta.packageImports) {
             for (auto item : ref->items) {
                 if (item->package.valueText() == targetName) {
-                    references.push_back(lsp::Location{
-                        .uri = uri,
-                        .range = toRange(item->package.range(), sm),
-                    });
+                    references.push_back(toOriginalLocation(item->package.range(), sm));
                 }
             }
         }
         for (auto ref : meta.classPackageNames) {
             if (ref->identifier.valueText() == targetName) {
-                references.push_back(lsp::Location{
-                    .uri = uri,
-                    .range = toRange(ref->identifier.range(), sm),
-                });
+                references.push_back(toOriginalLocation(ref->identifier.range(), sm));
             }
         }
     };
 
-    auto findModuleReferencesInDocument = [&](const parsing::ParserMetadata& meta,
-                                              const URI& fileUri) {
+    auto findModuleReferencesInDocument = [&](const parsing::ParserMetadata& meta, const URI&) {
         for (auto inst : meta.globalInstances) {
             if (inst->type.valueText() == targetName) {
-                references.push_back(lsp::Location{
-                    .uri = fileUri,
-                    .range = toRange(inst->type.range(), sm),
-                });
+                references.push_back(toOriginalLocation(inst->type.range(), sm));
             }
         }
     };
