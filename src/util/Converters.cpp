@@ -55,6 +55,14 @@ lsp::Range toOriginalRange(const SourceRange& range, const SourceManager& source
     return toRange(origRange, sourceManager);
 }
 
+lsp::Location toOriginalLocation(const SourceRange& range, const SourceManager& sourceManager) {
+    auto origRange = sourceManager.getFullyOriginalRange(range);
+    return lsp::Location{
+        .uri = URI::fromFile(sourceManager.getFullPath(origRange.start().buffer())),
+        .range = toRange(origRange, sourceManager),
+    };
+}
+
 lsp::Range toRange(const SourceLocation& loc, const SourceManager& sourceManager,
                    const size_t length) {
 
