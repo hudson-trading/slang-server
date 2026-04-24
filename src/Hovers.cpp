@@ -20,7 +20,8 @@
 namespace server {
 
 lsp::MarkupContent getHover(const SourceManager& sm, const BufferID docBuffer,
-                            const DefinitionInfo& info) {
+                            const DefinitionInfo& info,
+                            const std::optional<std::string>& elaboratedParamValue) {
     markup::Document doc;
 
     auto& infoPg = doc.addParagraph();
@@ -72,10 +73,15 @@ lsp::MarkupContent getHover(const SourceManager& sm, const BufferID docBuffer,
 
         // Values for elab-known values like parameters, type aliases, and enum values
         if (ast::ParameterSymbol::isKind(info.symbol->kind)) {
-            auto& param = info.symbol->as<ast::ParameterSymbol>();
-            auto value = param.getValue();
-            if (!value.bad()) {
-                infoPg.appendText("Value: ").appendCode(formatConstantValue(value)).newLine();
+            if (elaboratedParamValue) {
+                infoPg.appendText("Value: ").appendCode(*elaboratedParamValue).newLine();
+            }
+            else {
+                auto& param = info.symbol->as<ast::ParameterSymbol>();
+                auto value = param.getValue();
+                if (!value.bad()) {
+                    infoPg.appendText("Value: ").appendCode(formatConstantValue(value)).newLine();
+                }
             }
         }
         else if (ast::Type::isKind(info.symbol->kind)) {

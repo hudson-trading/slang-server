@@ -131,6 +131,8 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
 
     // Config modification
     registerCommand<std::string, std::monostate, &SlangServer::addDefine>("slang.addDefine");
+    registerCommand<std::string, std::monostate, &SlangServer::setActiveInstance>(
+        "slang.setActiveInstance");
 
     if (params.workspaceFolders.has_value() && !params.workspaceFolders->empty()) {
         auto folders = params.workspaceFolders.value();
@@ -634,7 +636,17 @@ rfl::Variant<lsp::Definition, std::vector<lsp::DefinitionLink>, std::monostate> 
 }
 
 std::optional<lsp::Hover> SlangServer::getDocHover(const lsp::HoverParams& params) {
-    return m_driver->getDocHover(params.textDocument.uri, params.position);
+    return m_driver->getDocHover(params.textDocument.uri, params.position, m_activeInstancePath);
+}
+
+std::monostate SlangServer::setActiveInstance(const std::string& hierPath) {
+    if (hierPath.empty()) {
+        m_activeInstancePath = std::nullopt;
+    }
+    else {
+        m_activeInstancePath = hierPath;
+    }
+    return {};
 }
 
 std::optional<std::vector<rfl::Variant<lsp::Command, lsp::CodeAction>>> SlangServer::
