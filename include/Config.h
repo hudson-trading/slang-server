@@ -89,12 +89,12 @@ struct Config {
         wcpCommand;
 
     struct HoverConfig {
-        enum class DocComments { plaintext, markdown, raw };
+        enum class DocCommentFormat { plaintext, markdown, raw };
         rfl::Description<"How to render leading doc comments in hovers: 'markdown' renders as "
                          "markdown, 'plaintext' escapes markdown characters, 'raw' shows the "
                          "comment text verbatim including comment markers.",
-                         DocComments>
-            docComments = DocComments::markdown;
+                         DocCommentFormat>
+            docCommentFormat = DocCommentFormat::markdown;
     };
 
     rfl::Description<"Hover behavior settings", HoverConfig> hovers = HoverConfig{};
@@ -150,20 +150,19 @@ struct Config {
 };
 
 template<>
-struct rfl::config::enum_descriptions<Config::HoverConfig::DocComments> {
+struct rfl::config::enum_descriptions<Config::HoverConfig::DocCommentFormat> {
     static constexpr bool has_descriptions = true;
-    static constexpr std::string_view get(Config::HoverConfig::DocComments value) {
+    static constexpr std::string_view get(Config::HoverConfig::DocCommentFormat value) {
         switch (value) {
-            case Config::HoverConfig::DocComments::plaintext:
+            case Config::HoverConfig::DocCommentFormat::plaintext:
                 return "Strip comment markers and escape markdown characters so the text renders "
                        "as-is.";
-            case Config::HoverConfig::DocComments::markdown:
+            case Config::HoverConfig::DocCommentFormat::markdown:
                 return "Strip comment markers and render the contents as markdown.";
-            case Config::HoverConfig::DocComments::raw:
+            case Config::HoverConfig::DocCommentFormat::raw:
                 return "Show the comment text verbatim, including comment markers, in a code "
                        "block.";
-            default:
-                return "";
         }
+        return "";
     }
 };

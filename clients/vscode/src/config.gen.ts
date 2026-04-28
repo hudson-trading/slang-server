@@ -45,7 +45,7 @@ export interface Config__Build {
 
 export interface Config__HoverConfig {
   /** How to render leading doc comments in hovers: 'markdown' renders as markdown, 'plaintext' escapes markdown characters, 'raw' shows the comment text verbatim including comment markers. */
-  docComments?: "plaintext" | "markdown" | "raw"
+  docCommentFormat?: "plaintext" | "markdown" | "raw"
 }
 
 export interface Config__IndexConfig {

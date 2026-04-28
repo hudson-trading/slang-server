@@ -128,7 +128,7 @@
     "Config__HoverConfig": {
       "type": "object",
       "properties": {
-        "docComments": {
+        "docCommentFormat": {
           "description": "How to render leading doc comments in hovers: 'markdown' renders as markdown, 'plaintext' escapes markdown characters, 'raw' shows the comment text verbatim including comment markers.",
           "oneOf": [
             {

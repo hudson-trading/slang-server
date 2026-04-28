@@ -111,7 +111,7 @@ TEST_CASE("HoverPlaintextDocComments") {
     ServerHarness server;
 
     Config config;
-    config.hovers.value().docComments = Config::HoverConfig::DocComments::plaintext;
+    config.hovers.value().docCommentFormat = Config::HoverConfig::DocCommentFormat::plaintext;
     server.loadConfig(config);
 
     auto doc = server.openFile("test.sv", R"(
@@ -137,7 +137,7 @@ TEST_CASE("HoverRawDocComments") {
     ServerHarness server;
 
     Config config;
-    config.hovers.value().docComments = Config::HoverConfig::DocComments::raw;
+    config.hovers.value().docCommentFormat = Config::HoverConfig::DocCommentFormat::raw;
     server.loadConfig(config);
 
     auto doc = server.openFile("test.sv", R"(

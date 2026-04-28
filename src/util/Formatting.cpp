@@ -230,28 +230,16 @@ inline void rtrim(std::string& s) {
             s.end());
 }
 
-std::string stripDocComment(const syntax::SyntaxNode& node,
-                            const Config::HoverConfig::DocComments docComments) {
+std::string getDocCommentForHover(const syntax::SyntaxNode& node,
+                                  const Config::HoverConfig::DocCommentFormat format) {
+    SLANG_ASSERT(format != Config::HoverConfig::DocCommentFormat::raw);
+
     auto triviaSpan = node.getFirstToken().trivia();
     auto start = findLeadingDocCommentStart(node);
     if (!start)
         return {};
 
     fmt::memory_buffer out;
-
-    if (docComments == Config::HoverConfig::DocComments::raw) {
-        for (auto it = *start; it != triviaSpan.end(); ++it) {
-            const auto& t = *it;
-            if (t.kind == parsing::TriviaKind::LineComment ||
-                t.kind == parsing::TriviaKind::BlockComment ||
-                t.kind == parsing::TriviaKind::EndOfLine) {
-                fmt::format_to(fmt::appender(out), "{}", t.getRawText());
-            }
-        }
-        std::string result = fmt::to_string(out);
-        rtrim(result);
-        return result;
-    }
 
     auto appendLine = [&](std::string_view line, parsing::TriviaKind kind) {
 #ifdef _WIN32
@@ -286,7 +274,7 @@ std::string stripDocComment(const syntax::SyntaxNode& node,
 
         const bool hasText = !line.empty();
 
-        if (docComments == Config::HoverConfig::DocComments::plaintext) {
+        if (format == Config::HoverConfig::DocCommentFormat::plaintext) {
             const std::string escaped = markup::escapeMarkdownLine(line);
             fmt::format_to(fmt::appender(out), "{}", escaped);
         }
@@ -417,6 +405,13 @@ std::string formatCode(const syntax::SyntaxNode& node) {
     stripBlankLines(res);
     shiftIndent(res);
 
+    return res;
+}
+
+std::string formatCodeWithLeadingComments(const syntax::SyntaxNode& node) {
+    auto res = slang::syntax::SyntaxPrinter().printWithLeadingComments(node).str();
+    stripBlankLines(res);
+    shiftIndent(res);
     return res;
 }
 

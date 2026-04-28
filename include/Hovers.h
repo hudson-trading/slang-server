@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: Hudson River Trading
+// SPDX-License-Identifier: MIT
+
+#pragma once
 
 #include "Config.h"
 #include "document/ShallowAnalysis.h"

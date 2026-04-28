@@ -127,18 +127,18 @@ lsp::MarkupContent getHover(const SourceManager& sm, const BufferID docBuffer,
 
     const syntax::SyntaxNode& display_node = selectDisplayNode(*info.node);
 
-    const auto docCommentsMode = hovers.docComments.value();
-    const std::string docComments = stripDocComment(display_node, docCommentsMode);
+    const auto docCommentFormat = hovers.docCommentFormat.value();
 
-    if (!docComments.empty()) {
-        if (docCommentsMode == Config::HoverConfig::DocComments::raw)
-            doc.addParagraph().appendCodeBlock(docComments);
-        else
-            doc.addParagraph().appendText(docComments).newLine();
+    if (docCommentFormat == Config::HoverConfig::DocCommentFormat::raw) {
+        // Print the node verbatim with its leading comments in a single code block
+        doc.addParagraph().appendCodeBlock(formatCodeWithLeadingComments(display_node));
     }
-
-    // Add the main code block with proper formatting
-    doc.addParagraph().appendCodeBlock(formatCode(display_node));
+    else {
+        const std::string docComments = getDocCommentForHover(display_node, docCommentFormat);
+        if (!docComments.empty())
+            doc.addParagraph().appendText(docComments).newLine();
+        doc.addParagraph().appendCodeBlock(formatCode(display_node));
+    }
 
     // Show what a macro expands to
     if (!info.macroExpansionText.empty()) {

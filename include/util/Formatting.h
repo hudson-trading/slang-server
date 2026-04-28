@@ -44,11 +44,12 @@ bool isSingleLine(const std::string& s);
 
 std::string detailFormat(const syntax::SyntaxNode& node);
 
-/// Extract the leading doc comment text from a node.
-/// For plaintext/markdown, comment markers are stripped (and plaintext escapes markdown chars).
-/// For raw, the comment text is returned verbatim including markers.
-std::string stripDocComment(const syntax::SyntaxNode& node,
-                            const Config::HoverConfig::DocComments docComments);
+/// Extract the leading doc comment text from a node, with comment markers stripped.
+/// In plaintext mode, markdown characters are escaped so the text renders as-is.
+/// Should not be called with `raw` — raw mode renders the node with leading comments
+/// directly via formatCodeWithLeadingComments.
+std::string getDocCommentForHover(const syntax::SyntaxNode& node,
+                                  const Config::HoverConfig::DocCommentFormat format);
 
 /// Select the best syntax node to display for hover/code snippets
 const syntax::SyntaxNode& selectDisplayNode(const syntax::SyntaxNode& node);
@@ -58,6 +59,9 @@ std::string formatDocComment(const syntax::SyntaxNode& node);
 
 /// Format a syntax node's code excluding leading comments as plain text
 std::string formatCode(const syntax::SyntaxNode& node);
+
+/// Format a syntax node's code with its leading comments as plain text
+std::string formatCodeWithLeadingComments(const syntax::SyntaxNode& node);
 
 std::string svCodeBlockString(std::string_view code);
 std::string svCodeBlockString(const syntax::SyntaxNode& node);

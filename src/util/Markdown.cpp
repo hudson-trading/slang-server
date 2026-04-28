@@ -12,32 +12,36 @@
 
 namespace server::markup {
 
-inline bool isSpace(char c) {
+namespace {
+
+bool isSpace(char c) {
     return std::isspace(static_cast<unsigned char>(c)) != 0;
 }
 
-inline bool isAlpha(char c) {
+bool isAlpha(char c) {
     return std::isalpha(static_cast<unsigned char>(c)) != 0;
 }
 
-inline bool isAlnum(char c) {
+bool isAlnum(char c) {
     return std::isalnum(static_cast<unsigned char>(c)) != 0;
 }
 
-inline bool isDigit(char c) {
+bool isDigit(char c) {
     return std::isdigit(static_cast<unsigned char>(c)) != 0;
 }
 
-inline bool isXDigit(char c) {
+bool isXDigit(char c) {
     return std::isxdigit(static_cast<unsigned char>(c)) != 0;
 }
 
-inline std::string_view rtrim(std::string_view s) {
+std::string_view rtrim(std::string_view s) {
     while (!s.empty() && isSpace(s.back())) {
         s.remove_suffix(1);
     }
     return s;
 }
+
+} // namespace
 
 // Paragraph implementation
 
@@ -106,6 +110,8 @@ lsp::MarkupContent Document::build() const {
 
     return lsp::MarkupContent{.kind = lsp::MarkupKind::make<"markdown">(), .value = result.str()};
 }
+
+namespace {
 
 // Function adapted from the LLVM project
 // https://github.com/llvm/llvm-project/blob/11515959b571739ab046b368c351b75e46ef7c3b/clang-tools-extra/clangd/support/Markup.cpp#L27-L152
@@ -253,6 +259,8 @@ bool needsLeadingEscapePlaintext(char c, std::string_view before, std::string_vi
             return false;
     }
 }
+
+} // namespace
 
 std::string escapeMarkdownLine(std::string_view line) {
     std::string out;
