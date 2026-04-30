@@ -135,6 +135,34 @@ All configuration options are optional and have sensible defaults. In VSCode, th
 
 ---
 
+### `hovers`
+
+:   **Type:** `HoverConfig`
+
+    ```typescript
+    interface HoverConfig {
+      /** How leading doc comments are rendered in hovers */
+      docCommentFormat?: "plaintext" | "markdown" | "raw"  // default: "markdown"
+    }
+    ```
+
+    Controls how hover popups present leading comments
+
+    - **`docCommentFormat`**: How to render the leading doc comment of the hovered symbol.
+        - `"markdown"` (default): strip `//` / `/* */` markers and render the contents as markdown, so things like `**bold**`, links, and lists render in the hover.
+        - `"plaintext"`: strip markers but escape markdown characters so the comment text appears literally — useful when comments contain characters like `*`, `_`, or `<tag/>` that you don't want rendered.
+        - `"raw"`: don't strip anything — show the comment text and the declaration together in a single SystemVerilog code block, exactly as they appear in source. Useful when comments contain code-like content (e.g. timing diagrams, ASCII tables) that should not be reflowed by a markdown renderer.
+
+    **Example:**
+
+    ```json
+    "hovers": {
+      "docCommentFormat": "plaintext"
+    }
+    ```
+
+---
+
 ### `inlayHints`
 
 :   **Type:** `InlayHints`
