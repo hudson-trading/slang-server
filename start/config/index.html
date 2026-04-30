@@ -592,6 +592,15 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#hovers" class="md-nav__link">
+    <span class="md-ellipsis">
+      hovers
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#inlayhints" class="md-nav__link">
     <span class="md-ellipsis">
       inlayHints
@@ -1133,6 +1142,15 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#hovers" class="md-nav__link">
+    <span class="md-ellipsis">
+      hovers
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#inlayhints" class="md-nav__link">
     <span class="md-ellipsis">
       inlayHints
@@ -1314,6 +1332,32 @@
 <p><strong>Type:</strong> <code>string</code></p>
 <p>Waveform viewer command where <code>{}</code> will be replaced with the WCP port.</p>
 <p><strong>Example:</strong> <code>"surfer --wcp-initiate {}"</code></p>
+</dd>
+</dl>
+<hr />
+<h3 id="hovers"><code>hovers</code><a class="headerlink" href="#hovers" title="Permanent link">&para;</a></h3>
+<dl>
+<dd>
+<p><strong>Type:</strong> <code>HoverConfig</code></p>
+<div class="language-typescript highlight"><pre><span></span><code><span class="kd">interface</span><span class="w"> </span><span class="nx">HoverConfig</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="cm">/** How leading doc comments are rendered in hovers */</span>
+<span class="w">  </span><span class="nx">docCommentFormat</span><span class="o">?:</span><span class="w"> </span><span class="s2">&quot;plaintext&quot;</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s2">&quot;markdown&quot;</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s2">&quot;raw&quot;</span><span class="w">  </span><span class="c1">// default: &quot;markdown&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Controls how hover popups present leading comments</p>
+<ul>
+<li><strong><code>docCommentFormat</code></strong>: How to render the leading doc comment of the hovered symbol.<ul>
+<li><code>"markdown"</code> (default): strip <code>//</code> / <code>/* */</code> markers and render the contents as markdown, so things like <code>**bold**</code>, links, and lists render in the hover.</li>
+<li><code>"plaintext"</code>: strip markers but escape markdown characters so the comment text appears literally — useful when comments contain characters like <code>*</code>, <code>_</code>, or <code>&lt;tag/&gt;</code> that you don't want rendered.</li>
+<li><code>"raw"</code>: don't strip anything — show the comment text and the declaration together in a single SystemVerilog code block, exactly as they appear in source. Useful when comments contain code-like content (e.g. timing diagrams, ASCII tables) that should not be reflowed by a markdown renderer.</li>
+</ul>
+</li>
+</ul>
+<p><strong>Example:</strong></p>
+<div class="language-json highlight"><pre><span></span><code><span class="nt">&quot;hovers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;docCommentFormat&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;plaintext&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
 </dd>
 </dl>
 <hr />
