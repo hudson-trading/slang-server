@@ -9,7 +9,6 @@
 #include "Config.h"
 
 #include "SlangLspClient.h"
-#include "lsp/LspClient.h"
 #include "rfl/Result.hpp"
 #include "rfl/from_generic.hpp"
 #include "util/Logging.h"

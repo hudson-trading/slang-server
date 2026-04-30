@@ -3,7 +3,9 @@
 
 #include "util/Formatting.h"
 
+#include "Config.h"
 #include "lsp/LspTypes.h"
+#include "util/Markdown.h"
 #include <cctype>
 #include <fmt/format.h>
 #include <sstream>
@@ -222,7 +224,16 @@ std::optional<std::span<const parsing::Trivia>::iterator> findLeadingDocCommentS
     return leadingCommentStart;
 }
 
-std::string stripDocComment(const syntax::SyntaxNode& node) {
+inline void rtrim(std::string& s) {
+    s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) { return !std::isspace(ch); })
+                .base(),
+            s.end());
+}
+
+std::string getDocCommentForHover(const syntax::SyntaxNode& node,
+                                  const Config::HoverConfig::DocCommentFormat format) {
+    SLANG_ASSERT(format != Config::HoverConfig::DocCommentFormat::raw);
+
     auto triviaSpan = node.getFirstToken().trivia();
     auto start = findLeadingDocCommentStart(node);
     if (!start)
@@ -263,7 +274,13 @@ std::string stripDocComment(const syntax::SyntaxNode& node) {
 
         const bool hasText = !line.empty();
 
-        fmt::format_to(fmt::appender(out), "{}", line);
+        if (format == Config::HoverConfig::DocCommentFormat::plaintext) {
+            const std::string escaped = markup::escapeMarkdownLine(line);
+            fmt::format_to(fmt::appender(out), "{}", escaped);
+        }
+        else {
+            fmt::format_to(fmt::appender(out), "{}", line);
+        }
 
         // Force markdown to respect newlines by replacing `\n` with `  \n`
         if (hasText) {
@@ -362,12 +379,6 @@ const syntax::SyntaxNode& selectDisplayNode(const syntax::SyntaxNode& node) {
     return *fmtNode;
 }
 
-inline void rtrim(std::string& s) {
-    s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) { return !std::isspace(ch); })
-                .base(),
-            s.end());
-}
-
 std::string formatDocComment(const syntax::SyntaxNode& node) {
     auto res = slang::syntax::SyntaxPrinter().printLeadingComments(node).str();
 
@@ -394,6 +405,13 @@ std::string formatCode(const syntax::SyntaxNode& node) {
     stripBlankLines(res);
     shiftIndent(res);
 
+    return res;
+}
+
+std::string formatCodeWithLeadingComments(const syntax::SyntaxNode& node) {
+    auto res = slang::syntax::SyntaxPrinter().printWithLeadingComments(node).str();
+    stripBlankLines(res);
+    shiftIndent(res);
     return res;
 }
 

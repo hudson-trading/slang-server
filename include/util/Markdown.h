@@ -57,4 +57,6 @@ private:
     std::vector<Paragraph> paragraphs;
 };
 
+std::string escapeMarkdownLine(std::string_view line);
+
 } // namespace server::markup

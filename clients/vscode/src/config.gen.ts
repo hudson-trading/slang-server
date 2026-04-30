@@ -26,6 +26,8 @@ export interface Config {
   wavesPattern?: string | null
   /** Waveform viewer command ({} will be replaced with the WCP port), used for direct wcp connection with neovim and surfer. */
   wcpCommand?: string | null
+  /** Hover behavior settings */
+  hovers?: Config__HoverConfig
   /** Inline hints for things like ordered arguments, wildcard ports, and others */
   inlayHints?: Config__InlayHints
   /** Builds for direct .f selection or command-based .f generation */
@@ -39,6 +41,11 @@ export interface Config__Build {
   glob?: string
   /** Optional command that produces .f content on stdout when passed the selected file */
   command?: string
+}
+
+export interface Config__HoverConfig {
+  /** How to render leading doc comments in hovers: 'markdown' renders as markdown, 'plaintext' escapes markdown characters, 'raw' shows the comment text verbatim including comment markers. */
+  docCommentFormat?: "plaintext" | "markdown" | "raw"
 }
 
 export interface Config__IndexConfig {

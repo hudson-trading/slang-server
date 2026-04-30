@@ -2,6 +2,7 @@
 
 #include "Hovers.h"
 
+#include "Config.h"
 #include "document/ShallowAnalysis.h"
 #include "util/Formatting.h"
 #include "util/Markdown.h"
@@ -20,7 +21,7 @@
 namespace server {
 
 lsp::MarkupContent getHover(const SourceManager& sm, const BufferID docBuffer,
-                            const DefinitionInfo& info) {
+                            const DefinitionInfo& info, const Config::HoverConfig& hovers) {
     markup::Document doc;
 
     auto& infoPg = doc.addParagraph();
@@ -126,13 +127,18 @@ lsp::MarkupContent getHover(const SourceManager& sm, const BufferID docBuffer,
 
     const syntax::SyntaxNode& display_node = selectDisplayNode(*info.node);
 
-    const std::string docComments = stripDocComment(display_node);
+    const auto docCommentFormat = hovers.docCommentFormat.value();
 
-    if (!docComments.empty())
-        doc.addParagraph().appendText(docComments).newLine();
-
-    // Add the main code block with proper formatting
-    doc.addParagraph().appendCodeBlock(formatCode(display_node));
+    if (docCommentFormat == Config::HoverConfig::DocCommentFormat::raw) {
+        // Print the node verbatim with its leading comments in a single code block
+        doc.addParagraph().appendCodeBlock(formatCodeWithLeadingComments(display_node));
+    }
+    else {
+        const std::string docComments = getDocCommentForHover(display_node, docCommentFormat);
+        if (!docComments.empty())
+            doc.addParagraph().appendText(docComments).newLine();
+        doc.addParagraph().appendCodeBlock(formatCode(display_node));
+    }
 
     // Show what a macro expands to
     if (!info.macroExpansionText.empty()) {

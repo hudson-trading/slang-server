@@ -99,7 +99,11 @@ def type_from_schema(s: dict) -> str:
     """Convert JSON schema type to TypeScript type."""
     if "$ref" in s:
         return s["$ref"].split("/")[-1]
-
+    if "const" in s:
+        return json.dumps(s["const"])
+    if "enum" in s:
+        values = s["enum"]
+        return " | ".join(json.dumps(v) for v in values)
     if s.get("type") == "string":
         return "string"
     if s.get("type") in ("integer", "number"):
@@ -115,6 +119,8 @@ def type_from_schema(s: dict) -> str:
 
     if "anyOf" in s:
         return " | ".join(type_from_schema(t) for t in s["anyOf"])
+    if "oneOf" in s:
+        return " | ".join(type_from_schema(t) for t in s["oneOf"])
 
     if s.get("type") == "object" and "properties" in s:
         props = []
