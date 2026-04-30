@@ -82,7 +82,7 @@ return {
 }
 ```
 
-The above assumes that a slang-server config has been added to `nvim-lspconfig` using one of the preceding steps.
+The above assumes that a slang-server config has been added to `vim.lsp.config` or `nvim-lspconfig` using one of the preceding steps.
 
 Optionally, run `:LspInfo` to make sure the LSP was correctly installed.
 
