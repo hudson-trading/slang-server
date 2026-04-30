@@ -1101,7 +1101,7 @@ export class ProjectComponent
         await this.openBuildFile({ name: basename, top: top })
       }
       await this.setInstance.func(fullpath, {
-        revealHierarchy: true,
+        revealHierarchy: false,
         revealFile: true,
         revealInstance: true,
         focus: 'editor',
