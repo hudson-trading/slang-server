@@ -187,3 +187,30 @@ jobs:
             ${{ matrix.artifact_name }}.tar.gz
             ${{ matrix.artifact_name }}.zip
           retention-days: 7
+
+  clang-debug:
+    runs-on: ubuntu-latest
+    container: rockylinux:8
+    steps:
+      - name: Install dependencies (Rocky Linux 8)
+        run: |
+          dnf -y update
+          dnf -y install 'dnf-command(config-manager)'
+          dnf config-manager --set-enabled powertools
+          dnf -y install epel-release
+          dnf -y install gcc-c++ clang cmake git make gcc-toolset-14-libatomic-devel
+
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          submodules: true
+          fetch-depth: 0
+
+      - name: Configure
+        run: cmake --preset clang-debug -DSLANG_CI_BUILD=ON -DCMAKE_CXX_COMPILER=clang++
+
+      - name: Build C++ tests
+        run: cmake --build build/clang-debug -j8 --target server_unittests
+
+      - name: Run C++ tests
+        run: ctest --test-dir build/clang-debug --output-on-failure --no-tests=error -j8

@@ -94,7 +94,7 @@ lsp::Location toLocation(const SourceRange& range, const SourceManager& sourceMa
 lsp::Location toLocation(const SourceLocation& loc, const SourceManager& sourceManager) {
     return lsp::Location{.uri = URI::fromFile(sourceManager.getFullPath(loc.buffer())),
                          .range = lsp::Range{.start = toPosition(loc, sourceManager),
-                                             .end = toPosition(loc + 1, sourceManager)}};
+                                             .end = toPosition(loc, sourceManager)}};
 }
 
 lsp::SymbolKind toSymbolKind(const syntax::SyntaxKind& kind) {
