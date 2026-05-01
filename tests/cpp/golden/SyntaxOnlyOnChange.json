@@ -9,7 +9,7 @@
           },
           "end": {
             "line": 4,
-            "character": 16
+            "character": 15
           }
         },
         "severity": "Error",
@@ -41,7 +41,7 @@
           },
           "end": {
             "line": 4,
-            "character": 16
+            "character": 15
           }
         },
         "severity": "Error",

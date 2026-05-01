@@ -8,7 +8,7 @@
         },
         "end": {
           "line": 10,
-          "character": 9
+          "character": 8
         }
       },
       "severity": "Warning",
@@ -26,7 +26,7 @@
         },
         "end": {
           "line": 6,
-          "character": 13
+          "character": 12
         }
       },
       "severity": "Error",
@@ -42,7 +42,7 @@
               },
               "end": {
                 "line": 6,
-                "character": 30
+                "character": 29
               }
             }
           },
