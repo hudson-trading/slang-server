@@ -206,9 +206,8 @@ static void handleInstanceArray(std::vector<HierItem_t>& result,
     std::vector<HierItem_t> elements;
 
     // Need to handle instance indices manually
-    // Use isLittleEndian to determine whether indexing high->low or vice versa
     int32_t instanceIdx = array.range.left;
-    int8_t step = array.range.isLittleEndian() ? -1 : 1;
+    int8_t step = array.range.isDescending() ? -1 : 1;
 
     for (const slang::ast::Symbol* block : array.elements) {
         if (auto inst = block->as_if<slang::ast::InstanceSymbol>()) {

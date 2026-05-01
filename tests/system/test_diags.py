@@ -9,6 +9,10 @@ if typing.TYPE_CHECKING:
 from .conftest import SlangClient
 
 
+def assert_diagnostic_messages(diags, messages: list[str]):
+    assert [diag.message for diag in diags.diagnostics] == messages
+
+
 @pytest.mark.asyncio
 async def test_publish_diagnostics(
     client: SlangClient,
@@ -26,7 +30,7 @@ async def test_publish_diagnostics(
 
     diags = await client.wait_for_notification("textDocument/publishDiagnostics")
 
-    assert len(diags.diagnostics) == 1
+    assert len(diags.diagnostics) == 2
     assert diags.uri == uri
 
 
@@ -47,7 +51,7 @@ async def test_diags_update(
     )
 
     diags = await client.wait_for_notification("textDocument/publishDiagnostics")
-    assert len(diags.diagnostics) == 1
+    assert len(diags.diagnostics) == 2
 
     doc.append(
         text="""

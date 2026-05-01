@@ -62,9 +62,6 @@ ShallowAnalysis::ShallowAnalysis(SourceManager& sourceManager, slang::BufferID b
     syntaxes(*tree), m_sourceManager(sourceManager), m_buffer(buffer), m_tree(tree),
     m_allTrees(allTrees), m_analysisOptions(options.getOrDefault<analysis::AnalysisOptions>()),
     m_symbolTreeVisitor(m_sourceManager), m_symbolIndexer(buffer) {
-    // Override numThreads to avoid persistent thread pool
-    // Analysis for shallow compilation should be quick and won't benefit as much from threading
-    m_analysisOptions.numThreads = 1;
 
     if (!m_tree) {
         ERROR("DocumentAnalysis initialized with null syntax tree");
@@ -273,14 +270,13 @@ const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declT
 
     // Handle macro args
     std::shared_ptr<SyntaxTree> tokTree; // syntax needs to live for this function
-    if (syntax->kind == syntax::SyntaxKind::TokenList &&
-        syntax->parent->kind == syntax::SyntaxKind::MacroActualArgument) {
+    if (syntax->kind == syntax::SyntaxKind::MacroActualArgument) {
         // parse the token list, and use those name syntaxes for lookups
         // TODO: be more precise; handle args that produce lhs ids
         // they may not refer to
         // anything, like if being used to make a lhs id name.
 
-        auto& macroArgSyntax = syntax->parent->as<syntax::MacroActualArgumentSyntax>();
+        auto& macroArgSyntax = syntax->as<syntax::MacroActualArgumentSyntax>();
 
         auto firstToken = macroArgSyntax.getFirstToken();
         auto lastToken = macroArgSyntax.getLastToken();

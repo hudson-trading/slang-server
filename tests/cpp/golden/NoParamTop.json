@@ -21,6 +21,42 @@
     {
       "range": {
         "start": {
+          "line": 192,
+          "character": 9
+        },
+        "end": {
+          "line": 192,
+          "character": 17
+        }
+      },
+      "severity": "Warning",
+      "code": "empty-output-connection",
+      "codeDescription": {
+        "href": "https://sv-lang.com/warning-ref.html#empty-output-connection"
+      },
+      "message": "output port 'data_out' is explicitly connected to nothing"
+    },
+    {
+      "range": {
+        "start": {
+          "line": 205,
+          "character": 13
+        },
+        "end": {
+          "line": 205,
+          "character": 21
+        }
+      },
+      "severity": "Warning",
+      "code": "empty-output-connection",
+      "codeDescription": {
+        "href": "https://sv-lang.com/warning-ref.html#empty-output-connection"
+      },
+      "message": "output port 'data_out' is explicitly connected to nothing"
+    },
+    {
+      "range": {
+        "start": {
           "line": 95,
           "character": 47
         },
