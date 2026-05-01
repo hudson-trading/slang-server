@@ -217,7 +217,7 @@ macromodule m3;
       ^^^^^^^ Sym m2_inst : Instance
 
         .a({1, 2}),
-         ^ Ref -> **Variable** `a` in `m2`  \n\Type: `dynamic array of int`  \n\\n\\n\---\n\\n\`input int a[]`
+         ^ Ref -> **Variable** `a` in `m2`  \n\Type: `int$[]`  \n\\n\\n\---\n\\n\`input int a[]`
 
         .b(b),
          ^ Ref -> **Variable** `b` in `m2`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`(* bar = "asdf" *) output logic b = 1`
@@ -452,7 +452,7 @@ macromodule m3;
 
             tagged Add .s: case (s) matches
                         ^ Sym s : PatternVar
-                                 ^ Ref -> **PatternVar** `s` in `m3`  \n\Type: UnpackedStruct `<unnamed unpacked struct>`  \n\\n\\n\---\n\\n\`.s`
+                                 ^ Ref -> **PatternVar** `s` in `m3`  \n\Type: UnpackedStruct `struct{bit[4:0] reg1, bit[4:0] reg2, bit[4:0] regd}`  \n\\n\\n\---\n\\n\`.s`
 
                             '{.*, .*, 0} : ; // no op
 
@@ -460,18 +460,18 @@ macromodule m3;
                                ^^ Sym r1 : PatternVar
                                     ^^ Sym r2 : PatternVar
                                          ^^ Sym rd : PatternVar
-                                               ^^ Ref -> **Variable** `rf` in `m3`  \n\Type: `dynamic array of int`  \n\\n\\n\---\n\\n\`automatic int rf[] = new [3];`
+                                               ^^ Ref -> **Variable** `rf` in `m3`  \n\Type: `int$[]`  \n\\n\\n\---\n\\n\`automatic int rf[] = new [3];`
                                                   ^^ Ref -> **PatternVar** `rd` in `m3`  \n\Type: `bit[4:0]`  \n\Width: `5`  \n\\n\\n\---\n\\n\`.rd`
-                                                        ^^ Ref -> **Variable** `rf` in `m3`  \n\Type: `dynamic array of int`  \n\\n\\n\---\n\\n\`automatic int rf[] = new [3];`
+                                                        ^^ Ref -> **Variable** `rf` in `m3`  \n\Type: `int$[]`  \n\\n\\n\---\n\\n\`automatic int rf[] = new [3];`
                                                            ^^ Ref -> **PatternVar** `r1` in `m3`  \n\Type: `bit[4:0]`  \n\Width: `5`  \n\\n\\n\---\n\\n\`.r1`
-                                                                 ^^ Ref -> **Variable** `rf` in `m3`  \n\Type: `dynamic array of int`  \n\\n\\n\---\n\\n\`automatic int rf[] = new [3];`
+                                                                 ^^ Ref -> **Variable** `rf` in `m3`  \n\Type: `int$[]`  \n\\n\\n\---\n\\n\`automatic int rf[] = new [3];`
                                                                     ^^ Ref -> **PatternVar** `r2` in `m3`  \n\Type: `bit[4:0]`  \n\Width: `5`  \n\\n\\n\---\n\\n\`.r2`
 
                           endcase
 
             tagged Jmp .j: case (j) matches
                         ^ Sym j : PatternVar
-                                 ^ Ref -> **PatternVar** `j` in `m3`  \n\Type: UnpackedUnion `<unnamed unpacked union>`  \n\\n\\n\---\n\\n\`.j`
+                                 ^ Ref -> **PatternVar** `j` in `m3`  \n\Type: UnpackedUnion `union{bit[9:0] JmpU, struct{bit[1:0] cc, bit[9:0] addr} JmpC}`  \n\\n\\n\---\n\\n\`.j`
 
                             tagged JmpU .a : pc = pc + a;
                                          ^ Sym a : PatternVar
@@ -482,7 +482,7 @@ macromodule m3;
                             tagged JmpC '{.c, .a} : if (rf[c]) pc = a;
                                            ^ Sym c : PatternVar
                                                ^ Sym a : PatternVar
-                                                        ^^ Ref -> **Variable** `rf` in `m3`  \n\Type: `dynamic array of int`  \n\\n\\n\---\n\\n\`automatic int rf[] = new [3];`
+                                                        ^^ Ref -> **Variable** `rf` in `m3`  \n\Type: `int$[]`  \n\\n\\n\---\n\\n\`automatic int rf[] = new [3];`
                                                            ^ Ref -> **PatternVar** `c` in `m3`  \n\Type: `bit[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`.c`
                                                                ^^ Ref -> **Variable** `pc` in `m3`  \n\Type: `longint`  \n\Width: `64`  \n\\n\\n\---\n\\n\`static longint pc = 'x;`
                                                                     ^ Ref -> **PatternVar** `a` in `m3`  \n\Type: `bit[9:0]`  \n\Width: `10`  \n\\n\\n\---\n\\n\`.a`
@@ -498,7 +498,7 @@ macromodule m3;
                                        ^ Sym j : PatternVar
 
             j matches (tagged JmpC '{cc:.c,addr:.a})) begin
-            ^ Ref -> **PatternVar** `j` in `m3`  \n\Type: UnpackedUnion `<unnamed unpacked union>`  \n\\n\\n\---\n\\n\`.j`
+            ^ Ref -> **PatternVar** `j` in `m3`  \n\Type: UnpackedUnion `union{bit[9:0] JmpU, struct{bit[1:0] cc, bit[9:0] addr} JmpC}`  \n\\n\\n\---\n\\n\`.j`
                                          ^ Sym c : PatternVar
                                                  ^ Sym a : PatternVar
 
@@ -512,7 +512,7 @@ macromodule m3;
                  ^^^^^ Ref -> **Variable** `instr` in `m3`  \n\Type: UnpackedUnion `Instr`  \n\\n\\n\---\n\\n\`Instr instr;`
 
                   j matches (tagged JmpC '{cc:.c,addr:.a}) ? c[0] & a[0] : 0;
-                  ^ Ref -> **PatternVar** `j` in `m3`  \n\Type: UnpackedUnion `<unnamed unpacked union>`  \n\\n\\n\---\n\\n\`.j`
+                  ^ Ref -> **PatternVar** `j` in `m3`  \n\Type: UnpackedUnion `union{bit[9:0] JmpU, struct{bit[1:0] cc, bit[9:0] addr} JmpC}`  \n\\n\\n\---\n\\n\`.j`
                                                              ^ Ref -> **PatternVar** `c` in `m3`  \n\Type: `bit[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`.c`
                                                                     ^ Ref -> **PatternVar** `a` in `m3`  \n\Type: `bit[9:0]`  \n\Width: `10`  \n\\n\\n\---\n\\n\`.a`
 
@@ -1666,13 +1666,13 @@ module m10;
         constraint G { len > 1; payload.size == len ; }
                    ^ Sym G : ConstraintBlock
                        ^^^ Ref -> **ClassProperty** `len` in `m10.Packet`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int len;`
-                                ^^^^^^^ Ref -> **ClassProperty** `payload` in `m10.Packet`  \n\Type: `dynamic array of byte`  \n\\n\\n\---\n\\n\`byte payload[];`
+                                ^^^^^^^ Ref -> **ClassProperty** `payload` in `m10.Packet`  \n\Type: `byte$[]`  \n\\n\\n\---\n\\n\`byte payload[];`
                                                 ^^^ Ref -> **ClassProperty** `len` in `m10.Packet`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int len;`
 
         function void post_randomize; crc = payload.sum; endfunction
                       ^^^^^^^^^^^^^^ Sym post_randomize : Subroutine
                                       ^^^ Ref -> **ClassProperty** `crc` in `m10.Packet`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int crc;`
-                                            ^^^^^^^ Ref -> **ClassProperty** `payload` in `m10.Packet`  \n\Type: `dynamic array of byte`  \n\\n\\n\---\n\\n\`byte payload[];`
+                                            ^^^^^^^ Ref -> **ClassProperty** `payload` in `m10.Packet`  \n\Type: `byte$[]`  \n\\n\\n\---\n\\n\`byte payload[];`
 
     endclass
 
@@ -1693,16 +1693,16 @@ module m10;
                             ^ Ref -> **Variable** `p` in `m10`  \n\Type: `Packet`  \n\\n\\n\---\n\\n\`automatic Packet p = new;`
                               ^^^ Ref -> **ClassProperty** `len` in `m10.Packet`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int len;`
                                    ^ Ref -> **Variable** `p` in `m10`  \n\Type: `Packet`  \n\\n\\n\---\n\\n\`automatic Packet p = new;`
-                                     ^^^^^^^ Ref -> **ClassProperty** `payload` in `m10.Packet`  \n\Type: `dynamic array of byte`  \n\\n\\n\---\n\\n\`byte payload[];`
+                                     ^^^^^^^ Ref -> **ClassProperty** `payload` in `m10.Packet`  \n\Type: `byte$[]`  \n\\n\\n\---\n\\n\`byte payload[];`
                                                         ^ Ref -> **Variable** `p` in `m10`  \n\Type: `Packet`  \n\\n\\n\---\n\\n\`automatic Packet p = new;`
                                                           ^^^ Ref -> **ClassProperty** `len` in `m10.Packet`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int len;`
                                                                 ^ Ref -> **Variable** `p` in `m10`  \n\Type: `Packet`  \n\\n\\n\---\n\\n\`automatic Packet p = new;`
                                                                   ^^^ Ref -> **ClassProperty** `crc` in `m10.Packet`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int crc;`
-                                                                           ^^^^^^ Ref -> **Variable** `stream` in `m10`  \n\Type: `queue of byte`  \n\\n\\n\---\n\\n\`byte stream[$];`
+                                                                           ^^^^^^ Ref -> **Variable** `stream` in `m10`  \n\Type: `byte$[$]`  \n\\n\\n\---\n\\n\`byte stream[$];`
 
         stream = stream[ $bits(p) / 8 : $ ];
-        ^^^^^^ Ref -> **Variable** `stream` in `m10`  \n\Type: `queue of byte`  \n\\n\\n\---\n\\n\`byte stream[$];`
-                 ^^^^^^ Ref -> **Variable** `stream` in `m10`  \n\Type: `queue of byte`  \n\\n\\n\---\n\\n\`byte stream[$];`
+        ^^^^^^ Ref -> **Variable** `stream` in `m10`  \n\Type: `byte$[$]`  \n\\n\\n\---\n\\n\`byte stream[$];`
+                 ^^^^^^ Ref -> **Variable** `stream` in `m10`  \n\Type: `byte$[$]`  \n\\n\\n\---\n\\n\`byte stream[$];`
                                ^ Ref -> **Variable** `p` in `m10`  \n\Type: `Packet`  \n\\n\\n\---\n\\n\`automatic Packet p = new;`
 
     end

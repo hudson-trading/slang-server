@@ -501,8 +501,7 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
         // Normal macro usage (`FOO) or usage inside a `define body
         return declTok->kind == parsing::TokenKind::Directive &&
                (declSyntax->kind == syntax::SyntaxKind::MacroUsage ||
-                (declSyntax->kind == syntax::SyntaxKind::TokenList &&
-                 declSyntax->parent->kind == syntax::SyntaxKind::DefineDirective));
+                declSyntax->kind == syntax::SyntaxKind::DefineDirective);
     };
     auto isUndefRef = [&]() {
         // Identifier in `undef FOO
