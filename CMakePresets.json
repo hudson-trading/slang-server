@@ -70,6 +70,19 @@
       }
     },
     {
+      "name": "winarm64-release",
+      "displayName": "WinARM64 Release",
+      "inherits": "windows-release",
+      "architecture": {
+        "value": "arm64",
+        "strategy": "external"
+      },
+      "cacheVariables": {
+        "SLANG_INCLUDE_THREADTEST": "ON",
+        "SLANG_SERVER_STATIC_LINK_STDLIB": "ON"
+      }
+    },
+    {
       "name": "gcc-flags",
       "hidden": true,
       "cacheVariables": {
