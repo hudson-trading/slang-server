@@ -5,13 +5,17 @@ local M = {}
 ---@type slang-server.ui.Subcommand
 M.addToWaves = {
    impl = function(args)
+      local capabilities = require("slang-server._lsp.capabilities")
+      local bufnr = vim.api.nvim_get_current_buf()
+      if not capabilities.check_or_notify(bufnr, { "slang.getInstances", "slang.addToWaveform" }) then
+         return
+      end
+
       local client = require("slang-server._lsp.client")
       local handlers = require("slang-server.handlers")
       local ui = require("slang-server._core.ui")
 
       local recursive = args[1] == "true"
-
-      local bufnr = vim.api.nvim_get_current_buf()
 
       local first_client = vim.lsp.get_clients({ bufnr = vim.api.nvim_get_current_buf() })[1]
       local position_encoding = first_client and first_client.offset_encoding or 'utf-16'
