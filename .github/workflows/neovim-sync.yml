@@ -23,12 +23,21 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Set up uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
       - name: Mirror the subdirectory to the plugin repo
         env:
           GH_PAT: ${{ secrets.NEOVIM_PAT }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          RUNNING_REPO: ${{ github.repository }}
+          UPSTREAM_REPO: hudson-trading/slang-server
         run: |
           uv venv
           source .venv/bin/activate
           uv sync
-          scripts/ci/neovim-sync.py --event ${{ github.event_name }}
+          DRY_RUN="--dry-run"
+          if [ "$RUNNING_REPO" = "$UPSTREAM_REPO" ] && \
+             { [ "$EVENT_NAME" != "pull_request" ] || [ "$PR_HEAD_REPO" = "$RUNNING_REPO" ]; }; then
+            DRY_RUN=""
+          fi
+          scripts/ci/neovim-sync.py --event "$EVENT_NAME" $DRY_RUN
