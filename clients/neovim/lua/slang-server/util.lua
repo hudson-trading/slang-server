@@ -130,7 +130,7 @@ function M.jump_loc(loc, winnr)
 
    local win = vim.fn.win_getid(winnr)
    vim.api.nvim_set_current_win(win)
-   vim.cmd.edit(loc.uri)
+   vim.cmd.edit(vim.uri_to_fname(loc.uri))
 
    local start = loc.range.start
    vim.api.nvim_win_set_cursor(win, { start.line + 1, start.character })
