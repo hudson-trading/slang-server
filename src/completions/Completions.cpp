@@ -44,7 +44,7 @@ using namespace slang;
 
 lsp::CompletionItem getMacroCompletion(std::string name) {
     return lsp::CompletionItem{
-        .label = "`" + name,
+        .label = name,
         .labelDetails =
             lsp::CompletionItemLabelDetails{
                 .detail = " Macro",
