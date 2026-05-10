@@ -125,7 +125,7 @@ public:
             if (portSymbol) {
                 leaves.insert(portSymbol);
             }
-            for (const auto driver : drivers) {
+            for (const auto& driver : drivers) {
                 leaves.insert(driver);
             }
         }
