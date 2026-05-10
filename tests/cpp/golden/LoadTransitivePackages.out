@@ -64,6 +64,7 @@ module cycle_test_module;
                                           ^^^^^^^ Ref -> **EnumValue** `SUCCESS` in `util_pkg::result_t`  \n\Value: `2'b0`  \n\\n\\n\---\n\\n\`typedef enum logic [1:0] {\n\    SUCCESS = 2'b00,\n\    FAILURE = 2'b01,\n\    PENDING = 2'b10,\n\    ERROR_CODE = 2'b11\n\} result_t;`
 
             $display("Configuration valid");
+            ^^^^^^^^ Sym $display : SystemName
 
         end else if (operation_result == base_pkg::ERROR_CODE) begin
                      ^^^^^^^^^^^^^^^^ Ref -> **Variable** `operation_result` in `cycle_test_module`  \n\Type: Enum `result_t` (`logic[1:0]`)  \n\Width: `2`  \n\\n\\n\---\n\\n\`base_pkg::result_t operation_result;`
@@ -71,12 +72,14 @@ module cycle_test_module;
                                                    ^^^^^^^^^^ Ref -> **EnumValue** `ERROR_CODE` in `util_pkg::result_t`  \n\Value: `2'b11`  \n\\n\\n\---\n\\n\`typedef enum logic [1:0] {\n\    SUCCESS = 2'b00,\n\    FAILURE = 2'b01,\n\    PENDING = 2'b10,\n\    ERROR_CODE = 2'b11\n\} result_t;`
 
             $display("Configuration error");
+            ^^^^^^^^ Sym $display : SystemName
 
         end
 
 
 
         $finish;
+        ^^^^^^^ Sym $finish : SystemName
 
     end
 

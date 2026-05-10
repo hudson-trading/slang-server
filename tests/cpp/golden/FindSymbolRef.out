@@ -238,6 +238,7 @@ macromodule m3;
 
 
     $info("Hello %s", "world");
+    ^^^^^ Sym $info : ElabSystemTask
 
 
 
@@ -438,9 +439,11 @@ macromodule m3;
 
             tagged Invalid &&& ~w : $display ("v is Invalid");
                                 ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
+                                    ^^^^^^^^ Sym $display : SystemName
 
             tagged Valid .n : $display ("v is Valid with value %d", n);
                           ^ Sym n : PatternVar
+                              ^^^^^^^^ Sym $display : SystemName
                                                                     ^ Ref -> **PatternVar** `n` in `m3`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`.n`
 
         endcase
@@ -553,6 +556,7 @@ macromodule m3;
     generate
 
         case ($bits(w))
+              ^^^^^ Sym $bits : SystemName
                     ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
 
             0, 1: begin end
@@ -569,9 +573,11 @@ macromodule m3;
 
     assertion0: assert #0 (1 == 1) else $display("Hello!");
     ^^^^^^^^^^ Sym assertion0 : StatementBlock
+                                        ^^^^^^^^ Sym $display : SystemName
 
     assertion1: assume final (2 != 1) else $display("Hello!");
     ^^^^^^^^^^ Sym assertion1 : StatementBlock
+                                           ^^^^^^^^ Sym $display : SystemName
 
 
 
@@ -977,9 +983,11 @@ checker assert_window1 (
 
     event clock = $inferred_clock,
           ^^^^^ Sym clock : AssertionPort
+                  ^^^^^^^^^^^^^^^ Sym $inferred_clock : SystemName
 
     logic reset = $inferred_disable,
           ^^^^^ Sym reset : AssertionPort
+                  ^^^^^^^^^^^^^^^^^ Sym $inferred_disable : SystemName
 
     string error_msg = "violation",
            ^^^^^^^^^ Sym error_msg : AssertionPort
@@ -1058,6 +1066,7 @@ checker assert_window1 (
     a_window: assert property (p_window) else $error(error_msg);
     ^^^^^^^^ Sym a_window : StatementBlock
                                ^^^^^^^^ Ref -> **Property** `p_window` in `assert_window1`  \n\\n\\n\---\n\\n\`property p_window;\n\    start_event && !window |=> test_expr[+] ##0 end_event;\n\endproperty`
+                                              ^^^^^^ Sym $error : SystemName
                                                      ^^^^^^^^^ Ref -> **AssertionPort** `error_msg` in `assert_window1`  \n\\n\\n\---\n\\n\`string error_msg = "violation"`
 
 
@@ -1073,6 +1082,7 @@ checker assert_window1 (
                                                            ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
 
         $display("window_open covered");
+        ^^^^^^^^ Sym $display : SystemName
 
         cover_window: cover property (
         ^^^^^^^^^^^^ Sym cover_window : StatementBlock
@@ -1090,6 +1100,7 @@ checker assert_window1 (
                              ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
 
         ) $display("window covered");
+          ^^^^^^^^ Sym $display : SystemName
 
     end : cover_b
           ^^^^^^^ Ref -> **GenerateBlock** `cover_b` in `assert_window1`  \n\\n\\n\---\n\\n\`begin : cover_b\n\    cover_window_open: cover property (start_event && !window)\n\    $display("window_open covered");\n\    cover_window: cover property (\n\        start_event && !window\n\        ##1 (!end_event && window) [*]\n\        ##1 end_event && window\n\    ) $display("window covered");\n\end : cover_b`
@@ -1176,11 +1187,13 @@ module m5;
                 ^^^ Ref -> **Sequence** `abc` in `m5`  \n\\n\\n\---\n\\n\`sequence abc;\n\    @(posedge clk) a ##1 b ##1 c;\n\endsequence`
 
                 $display( "abc succeeded" );
+                ^^^^^^^^ Sym $display : SystemName
 
             if( de.triggered )
                 ^^ Ref -> **Sequence** `de` in `m5`  \n\\n\\n\---\n\\n\`sequence de;\n\    @(negedge clk) d ##[2:5] e;\n\endsequence`
 
                 $display( "de succeeded" );
+                ^^^^^^^^ Sym $display : SystemName
 
         end
 
@@ -1486,6 +1499,7 @@ module m6;
 
             second : repeat($urandom_range(2, 6)) first;
             ^^^^^^ Sym second : RandSeqProduction
+                            ^^^^^^^^^^^^^^ Sym $urandom_range : SystemName
 
             add : if (depth < 2) first else second;
             ^^^ Sym add : RandSeqProduction
@@ -1703,6 +1717,7 @@ module m10;
         stream = stream[ $bits(p) / 8 : $ ];
         ^^^^^^ Ref -> **Variable** `stream` in `m10`  \n\Type: `byte$[$]`  \n\\n\\n\---\n\\n\`byte stream[$];`
                  ^^^^^^ Ref -> **Variable** `stream` in `m10`  \n\Type: `byte$[$]`  \n\\n\\n\---\n\\n\`byte stream[$];`
+                         ^^^^^ Sym $bits : SystemName
                                ^ Ref -> **Variable** `p` in `m10`  \n\Type: `Packet`  \n\\n\\n\---\n\\n\`automatic Packet p = new;`
 
     end
