@@ -29,6 +29,7 @@ patterns:
   - include: '#cast-operator'
   - include: '#storage-scope'
   - include: '#attributes'
+  - include: '#dpi-import-export'
   - include: '#imports'
   - include: '#operators'
   - include: '#constants'
@@ -926,6 +927,29 @@ repository:
       - include: '#constants'
       - include: '#strings'
     name: meta.attribute.systemverilog
+  dpi-import-export:
+    # Two alternatives encode the positional asymmetry of the c_identifier
+    # alias around `=`: import puts the c_identifier *before* `=`
+    # (`import "DPI-C" my_c_name = function ...`); export puts it *after*
+    # (`export "DPI-C" = my_c_name function ...`). A single
+    # `(id?)\s*=\s*(id?)` form would over-match by accepting both sides at once.
+    match: '[ \t\r\n]*\b(import|export)[ \t\r\n]+("DPI(?:-C)?")(?:[ \t\r\n]+\b(pure|context)\b)?(?:[ \t\r\n]+(?:([a-zA-Z_][a-zA-Z0-9_$]*)[ \t\r\n]*(=)|(=)[ \t\r\n]*([a-zA-Z_][a-zA-Z0-9_$]*)))?'
+    captures:
+      '1':
+        name: keyword.control.systemverilog
+      '2':
+        name: string.quoted.double.systemverilog
+      '3':
+        name: keyword.control.systemverilog
+      '4':
+        name: entity.name.function.systemverilog
+      '5':
+        name: keyword.operator.assignment.systemverilog
+      '6':
+        name: keyword.operator.assignment.systemverilog
+      '7':
+        name: entity.name.function.systemverilog
+    name: meta.import.dpi.systemverilog
   imports:
     match: '[ \t\r\n]*\b(import|export)[ \t\r\n]+([a-zA-Z_][a-zA-Z0-9_$]*|\*)[ \t\r\n]*(::)[ \t\r\n]*([a-zA-Z_][a-zA-Z0-9_$]*|\*)[ \t\r\n]*(,|;)'
     captures:
