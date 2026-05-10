@@ -11,6 +11,7 @@
 #include "Hovers.h"
 #include "Indexer.h"
 #include "ServerDiagClient.h"
+#include "SystemTaskDocs.h"
 #include "ast/ServerCompilation.h"
 #include "completions/CompletionDispatch.h"
 #include "document/SlangDoc.h"
@@ -26,6 +27,7 @@
 
 #include "slang/ast/Compilation.h"
 #include "slang/ast/Symbol.h"
+#include "slang/ast/SystemSubroutine.h"
 #include "slang/ast/symbols/CompilationUnitSymbols.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
 #include "slang/ast/symbols/ParameterSymbols.h"
@@ -556,6 +558,25 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
     else {
         symbol = analysis->getSymbolAtToken(declTok);
         if (!symbol) {
+            // System tasks ($display, $finish, etc.) aren't materialized as
+            // Symbols by slang at use sites — they live in the Compilation's
+            // SystemSubroutine registry. Resolve them here and short-circuit
+            // with a synthetic DefinitionInfo carrying just the docs.
+            auto rawText = declTok->rawText();
+            if (!rawText.empty() && rawText[0] == '$') {
+                if (auto* sub = analysis->getCompilation()->getSystemSubroutine(rawText)) {
+                    if (auto* sysDoc = getSystemTaskDoc(sub->knownNameId)) {
+                        DefinitionInfo ret{};
+                        ret.node = declSyntax;
+                        ret.nameToken = *declTok;
+                        ret.macroUsageRange = SourceRange::NoLocation;
+                        ret.symbol = nullptr;
+                        ret.sysTaskDoc = sysDoc;
+                        ret.sysIsTask = (sub->kind == ast::SubroutineKind::Task);
+                        return ret;
+                    }
+                }
+            }
             // check the index
             auto symbols = m_indexer.getFilesForSymbol(declTok->rawText());
             if (symbols.empty()) {

@@ -3,6 +3,7 @@
 #include "Hovers.h"
 
 #include "Config.h"
+#include "SystemTaskDocs.h"
 #include "document/ShallowAnalysis.h"
 #include "util/Formatting.h"
 #include "util/Markdown.h"
@@ -23,6 +24,27 @@ namespace server {
 lsp::MarkupContent getHover(const SourceManager& sm, const BufferID docBuffer,
                             const DefinitionInfo& info, const Config::HoverConfig& hovers) {
     markup::Document doc;
+
+    // Built-in system tasks/functions ($display, $finish, etc.) don't have a
+    // user-defined source location, no doc-comment, no macro expansion — render
+    // the doc table entry directly and short-circuit.
+    if (info.sysTaskDoc) {
+        auto& head = doc.addParagraph();
+        head.appendBold(info.sysIsTask ? "System task" : "System function")
+            .appendText(" ")
+            .appendCode(info.nameToken.valueText());
+        if (!info.sysTaskDoc->ieeeSection.empty()) {
+            head.appendText(" (IEEE 1800 §")
+                .appendText(info.sysTaskDoc->ieeeSection)
+                .appendText(")");
+        }
+        head.newLine();
+        doc.addParagraph().appendCodeBlock(info.sysTaskDoc->signature);
+        if (!info.sysTaskDoc->description.empty()) {
+            doc.addParagraph().appendText(info.sysTaskDoc->description);
+        }
+        return doc.build();
+    }
 
     auto& infoPg = doc.addParagraph();
 

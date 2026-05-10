@@ -74,6 +74,7 @@
 
 
 `define INFO(msg) $display("Info: %s", msg);
+                  ^^^^^^^^ Sym $display : DefineDirective
 
 
 
@@ -194,6 +195,7 @@ module test;
     `DECLARE_INT(log_int, $clog2(other_int))
     ^^^^^^^^^^^^ Ref -> DefineDirective DECLARE_INT  \n\\n\\n\---\n\\n\``define DECLARE_INT(name, val) localparam int name = val;`\n\\n\---\n\\n\Expands to   \n\`localparam int log_int = $clog2(other_int);`
                  ^^^^^^^ Ref -> **Parameter** `log_int` in `test`  \n\Type: `int`  \n\Value: `1`  \n\\n\\n\---\n\\n\`localparam int log_int = $clog2(other_int)`\n\\n\---\n\\n\Expanded from   \n\``DECLARE_INT(log_int, $clog2(other_int))`
+                          ^^^^^^ Sym $clog2 : MacroActualArgument
                                  ^^^^^^^^^ Ref -> **Parameter** `other_int` in `test`  \n\Type: `int`  \n\Value: `2`  \n\\n\\n\---\n\\n\`localparam int other_int = 2`\n\\n\---\n\\n\Expanded from   \n\``DECLARE_INT(other_int, 2)`
 
 
@@ -312,15 +314,19 @@ module test;
     initial begin
 
         $display("Testing macro: %d", `SIMPLE_MACRO);
+        ^^^^^^^^ Sym $display : SystemName
                                       ^^^^^^^^^^^^^ Ref -> DefineDirective SIMPLE_MACRO  \n\\n\\n\---\n\\n\Basic macro definitions  \n\  \n\\n\\n\---\n\\n\``define SIMPLE_MACRO 42`\n\\n\---\n\\n\Expands to   \n\`42`
 
         $display("Function macro result: %d", `FUNC_MACRO(25));
+        ^^^^^^^^ Sym $display : SystemName
                                               ^^^^^^^^^^^ Ref -> DefineDirective FUNC_MACRO  \n\\n\\n\---\n\\n\``define FUNC_MACRO(x) (x + 1)`\n\\n\---\n\\n\Expands to   \n\`(25 + 1)`
 
         $display("Max value: %d", `MAX(10, 20));
+        ^^^^^^^^ Sym $display : SystemName
                                   ^^^^ Ref -> DefineDirective MAX  \n\From `common_macros.svh`  \n\\n\\n\---\n\\n\``define MAX(a, b) ((a) > (b) ? (a) : (b))`
 
         $display("Min value: %d", `MIN(10, 20));
+        ^^^^^^^^ Sym $display : SystemName
                                   ^^^^ Ref -> DefineDirective MIN  \n\From `common_macros.svh`  \n\\n\\n\---\n\\n\``define MIN(a, b) ((a) < (b) ? (a) : (b))`
 
 
