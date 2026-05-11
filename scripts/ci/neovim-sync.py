@@ -41,11 +41,15 @@ https://github.com/hudson-trading/slang-server/commit/{this_commit}
     logging.warning(commit_message)
     author = Actor("Hudson River Trading", "opensource@hudson-trading.com")
 
+    gh_pat = os.environ.get("GH_PAT")
+    if not gh_pat and not args.dry_run:
+        sys.exit("GH_PAT is required for non-dry-run sync")
+
+    auth = f"x-access-token:{gh_pat}@" if gh_pat else ""
+    clone_url = f"https://{auth}github.com/hudson-trading/slang-server.nvim.git"
+
     temp_dir = TemporaryDirectory()
-    plugin_repo = Repo.clone_from(
-        f"https://x-access-token:{os.environ['GH_PAT']}@github.com/hudson-trading/slang-server.nvim.git",
-        temp_dir.name,
-    )
+    plugin_repo = Repo.clone_from(clone_url, temp_dir.name)
     plugin_remote = plugin_repo.remote()
     branch_ref = f"origin/{branch}"
     if branch == "main":
