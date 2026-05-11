@@ -257,6 +257,10 @@ void ServerDiagClient::pushDiags(const URI& priorityUri) {
         m_client.onDocPublishDiagnostics(
             lsp::PublishDiagnosticsParams{.uri = priorityUri, .diagnostics = it->second});
     }
+    else if (m_dirtyUris.contains(priorityUri)) {
+        m_client.onDocPublishDiagnostics(
+            lsp::PublishDiagnosticsParams{.uri = priorityUri, .diagnostics = {}});
+    }
     m_dirtyUris.erase(priorityUri);
     pushDiags();
 }
