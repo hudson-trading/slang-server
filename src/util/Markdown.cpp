@@ -51,7 +51,25 @@ Paragraph& Paragraph::appendText(std::string_view text) {
 }
 
 Paragraph& Paragraph::appendCode(std::string_view code) {
-    fmt::format_to(std::back_inserter(buffer), "`` {} ``", code);
+    // Find the longest run of consecutive backticks in the content
+    size_t maxBackticks = 0;
+    size_t currentRun = 0;
+    for (char c : code) {
+        if (c == '`') {
+            currentRun++;
+            maxBackticks = std::max(maxBackticks, currentRun);
+        }
+        else {
+            currentRun = 0;
+        }
+    }
+
+    // Use one more backtick than the longest run in the content
+    // Minimum of 1 backtick (for content with no backticks)
+    size_t delimiterCount = maxBackticks + 1;
+    std::string delimiter(delimiterCount, '`');
+
+    fmt::format_to(std::back_inserter(buffer), "{} {} {}", delimiter, code, delimiter);
     return *this;
 }
 

@@ -48,25 +48,40 @@ TEST_CASE("AppendCode_BacktickWrapping") {
     using namespace server::markup;
 
     // Test case from issue #310: SystemVerilog macros with backticks
-    // should be wrapped with double backticks to prevent markdown rendering issues
+    // should be wrapped with dynamic delimiter (one more than longest run)
     Paragraph para;
     para.appendCode("`define MACRO_A 10");
 
-    std::string result = para.asMarkdown();
+    std::string result{para.asMarkdown()};
 
     // Should use double backticks with spaces: `` code ``
+    // (single backtick in content requires 2-backtick delimiter)
     CHECK(result == "`` `define MACRO_A 10 ``");
 }
 
 TEST_CASE("AppendCode_TripleBacktickTokenPaste") {
     using namespace server::markup;
 
-    // Test case from issue #310: macro token-paste operators with triple backticks
+    // Test case: macro token-paste operators with triple backticks (```)
+    // Dynamic delimiter must use 4 backticks to wrap content with 3
     Paragraph para;
     para.appendCode("`define JOIN_MACRO(name) name```MACRO_A");
 
-    std::string result = para.asMarkdown();
+    std::string result{para.asMarkdown()};
 
-    // Double backtick wrapping should handle triple backticks in content
-    CHECK(result == "`` `define JOIN_MACRO(name) name```MACRO_A ``");
+    // Should use quad backticks (4) to wrap triple backticks (3) in content
+    CHECK(result == "```` `define JOIN_MACRO(name) name```MACRO_A ````");
+}
+
+TEST_CASE("AppendCode_NoBackticks") {
+    using namespace server::markup;
+
+    // Content with no backticks should use single backtick delimiter
+    Paragraph para;
+    para.appendCode("int variable = 42");
+
+    std::string result{para.asMarkdown()};
+
+    // Should use single backticks (minimum)
+    CHECK(result == "` int variable = 42 `");
 }
