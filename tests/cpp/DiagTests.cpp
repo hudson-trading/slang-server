@@ -299,6 +299,34 @@ endmodule
     CHECK_FALSE(hasCode(docCompilation.getDiagnostics(), "constant-conversion"));
 }
 
+TEST_CASE("DiagsClearedWhenAllErrorsFixed") {
+    // Regression: when an edit removes the last diagnostic from a file, the server
+    // must publish an empty diagnostics list so the client clears its squiggles.
+    // Previously this worked by accident via a duplicate publish in pushDiags(uri);
+    // removing that duplicate must not regress the empty-publish behavior.
+    ServerHarness server;
+
+    auto doc = server.openFile("fix_me.sv", R"(
+module top;
+    blargh
+endmodule
+)");
+
+    // File starts with a parse error; client should have at least one diag.
+    CHECK(!server.client.getDiagnostics(doc.m_uri).empty());
+
+    // Replace the body with valid SystemVerilog, so the file is now clean.
+    doc.erase(0, doc.getText().size());
+    doc.append(R"(
+module top;
+endmodule
+)");
+    doc.publishChanges();
+
+    // Server must have published an empty diagnostics list to clear the prior errors.
+    CHECK(server.client.getDiagnostics(doc.m_uri).empty());
+}
+
 TEST_CASE("RangeOOBSuppressedInUntakenGenerate") {
     ServerHarness server;
 
