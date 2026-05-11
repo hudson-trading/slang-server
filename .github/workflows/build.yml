@@ -115,7 +115,7 @@ jobs:
         # unfortunately that uncovers the fact that the neovim builds from that
         # GH action require a newer GLIBC version than rockylinux provides.
         # Not going down that rabbit hole right now
-        if: runner.os != 'Windows' && matrix.container == ''
+        if: matrix.container == ''
         uses: nvim-neorocks/nvim-busted-action@v1
         env:
           SLANG_SERVER_BIN: ../../build/${{ matrix.preset }}/bin/slang-server
