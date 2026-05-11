@@ -51,7 +51,7 @@ Paragraph& Paragraph::appendText(std::string_view text) {
 }
 
 Paragraph& Paragraph::appendCode(std::string_view code) {
-    fmt::format_to(std::back_inserter(buffer), "`{}`", code);
+    fmt::format_to(std::back_inserter(buffer), "`` {} ``", code);
     return *this;
 }
 
