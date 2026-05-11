@@ -43,3 +43,30 @@ TEST_CASE("EscapeMarkdown") {
 
     CHECK(escapeMultilineMarkdown("1. item\n2) item\n<tag/>") == "1\\. item\n2\\) item\n\\<tag/>");
 }
+
+TEST_CASE("AppendCode_BacktickWrapping") {
+    using namespace server::markup;
+
+    // Test case from issue #310: SystemVerilog macros with backticks
+    // should be wrapped with double backticks to prevent markdown rendering issues
+    Paragraph para;
+    para.appendCode("`define MACRO_A 10");
+
+    std::string result = para.asMarkdown();
+
+    // Should use double backticks with spaces: `` code ``
+    CHECK(result == "`` `define MACRO_A 10 ``");
+}
+
+TEST_CASE("AppendCode_TripleBacktickTokenPaste") {
+    using namespace server::markup;
+
+    // Test case from issue #310: macro token-paste operators with triple backticks
+    Paragraph para;
+    para.appendCode("`define JOIN_MACRO(name) name```MACRO_A");
+
+    std::string result = para.asMarkdown();
+
+    // Double backtick wrapping should handle triple backticks in content
+    CHECK(result == "`` `define JOIN_MACRO(name) name```MACRO_A ``");
+}
