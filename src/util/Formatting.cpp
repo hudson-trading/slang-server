@@ -183,12 +183,10 @@ std::string detailFormat(const syntax::SyntaxNode& node) {
 
 /// Copied from `Slang::SyntaxPrinter::printLeadingComments` with minor adjustments
 /// Licensed under MIT; see external/slang/LICENSE
-std::optional<std::span<const parsing::Trivia>::iterator> findLeadingDocCommentStart(
-    const syntax::SyntaxNode& node) {
+std::optional<size_t> findLeadingDocCommentStart(const syntax::SyntaxNode& node) {
     auto triviaSpan = node.getFirstToken().trivia();
-    using Iterator = std::span<const parsing::Trivia>::iterator;
-    std::optional<Iterator> lastComment;
-    std::optional<Iterator> leadingCommentStart;
+    std::optional<size_t> lastComment;
+    std::optional<size_t> leadingCommentStart;
 
     // Walk backwards through trivia until
     // - block comment
@@ -196,8 +194,9 @@ std::optional<std::span<const parsing::Trivia>::iterator> findLeadingDocCommentS
     // This misses leading trivia at first line, although that's typically for license/file
     auto findDocBoundary = [&]() {
         bool lastIsNewline = false;
-        for (auto it = triviaSpan.rbegin(); it != triviaSpan.rend(); it++) {
-            const auto& trivia = *it;
+        for (size_t i = triviaSpan.size(); i > 0; --i) {
+            const size_t triviaIndex = i - 1;
+            const auto& trivia = triviaSpan[triviaIndex];
             switch (trivia.kind) {
                 case parsing::TriviaKind::EndOfLine:
                     if (lastIsNewline && lastComment) {
@@ -209,10 +208,10 @@ std::optional<std::span<const parsing::Trivia>::iterator> findLeadingDocCommentS
                     break;
                 case parsing::TriviaKind::BlockComment:
                     // the first block comment is the start
-                    leadingCommentStart = it.base() - 1;
+                    leadingCommentStart = triviaIndex;
                     return;
                 case parsing::TriviaKind::LineComment:
-                    lastComment = it.base() - 1;
+                    lastComment = triviaIndex;
                     [[fallthrough]];
                 default:
                     lastIsNewline = false;
@@ -291,7 +290,8 @@ std::string getDocCommentForHover(const syntax::SyntaxNode& node,
         }
     };
 
-    for (auto it = *start; it != triviaSpan.end(); ++it) {
+    for (auto it = triviaSpan.begin() + static_cast<std::ptrdiff_t>(*start); it != triviaSpan.end();
+         ++it) {
         const auto& t = *it;
 
         if (t.kind == parsing::TriviaKind::LineComment) {
