@@ -82,6 +82,6 @@ TEST_CASE("AppendCode_NoBackticks") {
 
     std::string result{para.asMarkdown()};
 
-    // Should use single backticks (minimum)
-    CHECK(result == "` int variable = 42 `");
+    // Should use single backticks without spaces (no backticks in content)
+    CHECK(result == "`int variable = 42`");
 }

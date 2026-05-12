@@ -69,7 +69,14 @@ Paragraph& Paragraph::appendCode(std::string_view code) {
     size_t delimiterCount = maxBackticks + 1;
     std::string delimiter(delimiterCount, '`');
 
-    fmt::format_to(std::back_inserter(buffer), "{} {} {}", delimiter, code, delimiter);
+    // Add spaces only if content contains backticks (required by CommonMark spec)
+    bool needsSpaces = maxBackticks > 0;
+    if (needsSpaces) {
+        fmt::format_to(std::back_inserter(buffer), "{} {} {}", delimiter, code, delimiter);
+    }
+    else {
+        fmt::format_to(std::back_inserter(buffer), "{}{}{}", delimiter, code, delimiter);
+    }
     return *this;
 }
 
