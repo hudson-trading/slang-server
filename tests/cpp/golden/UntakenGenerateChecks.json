@@ -30,6 +30,10 @@
         }
       },
       "severity": "Error",
+      "code": "undefined-param-override",
+      "codeDescription": {
+        "href": "https://sv-lang.com/warning-ref.html#undefined-param-override"
+      },
       "message": "parameter 'p1' does not exist in 'x'"
     },
     {
@@ -58,6 +62,10 @@
         }
       },
       "severity": "Error",
+      "code": "undefined-param-override",
+      "codeDescription": {
+        "href": "https://sv-lang.com/warning-ref.html#undefined-param-override"
+      },
       "message": "parameter 'p2' does not exist in 'x'"
     },
     {
@@ -86,6 +94,10 @@
         }
       },
       "severity": "Error",
+      "code": "undefined-param-override",
+      "codeDescription": {
+        "href": "https://sv-lang.com/warning-ref.html#undefined-param-override"
+      },
       "message": "parameter 'p3' does not exist in 'x'"
     },
     {
