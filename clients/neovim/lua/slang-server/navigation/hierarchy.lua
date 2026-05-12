@@ -44,8 +44,7 @@ local function map_keys(split, tree)
       ["yf"] = {
          impl = function(node)
             if node and node.instLoc and node.instLoc.uri then
-               local uri = string.gsub(node.instLoc.uri, "^file://", "")
-               util.yank_and_notify(uri)
+               util.yank_and_notify(vim.uri_to_fname(node.instLoc.uri))
             end
          end,
          opts = { noremap = true },
