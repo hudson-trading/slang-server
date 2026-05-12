@@ -34,37 +34,58 @@ on:
 
 jobs:
   build:
+    name: ${{ matrix.name }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - preset: clang-release
+          - name: linux-x64-clang
+            preset: clang-release
             os: ubuntu-latest
             container: rockylinux:8
-            artifact_name: slang-server-linux-x64-clang
             extra_flags: -DCMAKE_CXX_COMPILER=clang++
-          - preset: gcc-release
+          - name: linux-arm64-clang
+            preset: clang-release
+            os: ubuntu-24.04-arm
+            container: rockylinux:8
+            extra_flags: -DCMAKE_CXX_COMPILER=clang++
+          - name: linux-x64-gcc
+            preset: gcc-release
             os: ubuntu-latest
             container: rockylinux:8
-            artifact_name: slang-server-linux-x64-gcc
             extra_flags: -DCMAKE_CXX_COMPILER=/opt/rh/gcc-toolset-14/root/usr/bin/g++
-          - preset: clang-release
+          - name: newer-linux-x64-clang
+            preset: clang-release
             os: ubuntu-latest
-            artifact_name: slang-server-newer-linux-x64-clang
             extra_flags: -DCMAKE_CXX_COMPILER=clang++
-          - preset: gcc-release
+          - name: newer-linux-x64-gcc
+            preset: gcc-release
             os: ubuntu-latest
-            artifact_name: slang-server-newer-linux-x64-gcc
-          - preset: macos-release
+          - name: linux-arm64-gcc
+            preset: gcc-release
+            os: ubuntu-24.04-arm
+            container: rockylinux:8
+            extra_flags: -DCMAKE_CXX_COMPILER=/opt/rh/gcc-toolset-14/root/usr/bin/g++
+          # Not very available/used
+          # - name: macos-x64
+          #   preset: macos-release
+          #   os: macos-15-intel
+          #   extra_flags: -DCMAKE_CXX_COMPILER=clang++
+          - name: macos-arm64
+            preset: macos-release
             os: macos-15
-            artifact_name: slang-server-macos
             extra_flags: -DCMAKE_CXX_COMPILER=clang++
-          - preset: win64-release
+          - name: windows-x64
+            preset: win64-release
             os: windows-latest
-            artifact_name: slang-server-windows-x64
+          - name: windows-arm64
+            preset: winarm64-release
+            os: windows-11-arm
 
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
+    env:
+      SLANG_SERVER_ARTIFACT_NAME: slang-server-${{ matrix.name }}
     steps:
       - name: Install dependencies (Rocky Linux 8)
         if: matrix.container == 'rockylinux:8'
@@ -81,6 +102,8 @@ jobs:
           fetch-depth: 0
       - uses: ilammy/msvc-dev-cmd@v1
         if: runner.os == 'Windows'
+        with:
+          arch: ${{ runner.arch == 'ARM64' && 'arm64' || 'x64' }}
       - uses: maxim-lobanov/setup-xcode@v1
         if: runner.os == 'macOS'
         with:
@@ -153,7 +176,7 @@ jobs:
         if: inputs.upload_artifacts
         shell: bash
         run: |
-          cat > release-artifacts/README.txt << 'EOF'
+          cat > release-artifacts/README.txt << EOF
           Slang Server - SystemVerilog Language Server
 
           This is a pre-built binary of slang-server.
@@ -166,7 +189,7 @@ jobs:
           For more information, visit:
           https://github.com/hudson-trading/slang-server
 
-          Platform: ${{ matrix.artifact_name }}
+          Platform: ${{ env.SLANG_SERVER_ARTIFACT_NAME }}
           Build date: $(date -u +%Y-%m-%d)
           EOF
 
@@ -174,7 +197,7 @@ jobs:
         if: inputs.upload_artifacts && runner.os != 'Windows'
         run: |
           cd release-artifacts
-          tar -czf ../${{ matrix.artifact_name }}.tar.gz *
+          tar -czf ../${{ env.SLANG_SERVER_ARTIFACT_NAME }}.tar.gz *
           cd ..
 
       - name: Create zip (Windows)
@@ -182,17 +205,17 @@ jobs:
         shell: bash
         run: |
           cd release-artifacts
-          7z a ../${{ matrix.artifact_name }}.zip *
+          7z a ../${{ env.SLANG_SERVER_ARTIFACT_NAME }}.zip *
           cd ..
 
       - name: Upload artifact
         if: inputs.upload_artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }}
+          name: ${{ env.SLANG_SERVER_ARTIFACT_NAME }}
           path: |
-            ${{ matrix.artifact_name }}.tar.gz
-            ${{ matrix.artifact_name }}.zip
+            ${{ env.SLANG_SERVER_ARTIFACT_NAME }}.tar.gz
+            ${{ env.SLANG_SERVER_ARTIFACT_NAME }}.zip
           retention-days: 7
 
   clang-debug:
