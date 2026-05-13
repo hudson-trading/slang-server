@@ -1,3 +1,5 @@
+local capabilities = require("slang-server._lsp.capabilities")
+
 local M = {}
 
 -- LSP commands
@@ -9,20 +11,9 @@ local lsp_execute = function(bufnr, params, handlers)
 
    local on_failure = handlers.on_failure or function() end
 
-   local client_found = false
-   for _, client in pairs(vim.lsp.get_clients({ bufnr = bufnr })) do
-      if client.server_capabilities.executeCommandProvider then
-         for _, value in ipairs(client.server_capabilities.executeCommandProvider.commands) do
-            if command == value then
-               client_found = true
-               break
-            end
-         end
-      end
-   end
-
-   if not client_found then
-      on_failure("No client found")
+   local ok, err = capabilities.command_supported(bufnr, command)
+   if not ok then
+      on_failure(err)
       return
    end
 
