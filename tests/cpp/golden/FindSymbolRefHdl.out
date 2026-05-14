@@ -629,9 +629,9 @@ module NoDefaults #(
 
     assign test_2d_access = sub_2d[0][1].data_out + sub_2d[1][2].data_out;
            ^^^^^^^^^^^^^^ Ref -> **Variable** `test_2d_access` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\Test 2D instance array access  \n\  \n\\n\\n\---\n\\n\`logic [WIDTH-1:0] test_2d_access;`
-                            ^^^^^^ Ref -> **InstanceArray** `` in `NoDefaults.sub_2d`  \n\\n\\n\---\n\\n\2D instance array  \n\  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(WIDTH)) sub_2d [2][3] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(data_in),\n\    .data_out()\n\);`
+                            ^^^^^^ Ref -> **InstanceArray** `sub_2d` in `NoDefaults`  \n\\n\\n\---\n\\n\2D instance array  \n\  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(WIDTH)) sub_2d [2][3] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(data_in),\n\    .data_out()\n\);`
                                          ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
-                                                    ^^^^^^ Ref -> **InstanceArray** `` in `NoDefaults.sub_2d`  \n\\n\\n\---\n\\n\2D instance array  \n\  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(WIDTH)) sub_2d [2][3] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(data_in),\n\    .data_out()\n\);`
+                                                    ^^^^^^ Ref -> **InstanceArray** `sub_2d` in `NoDefaults`  \n\\n\\n\---\n\\n\2D instance array  \n\  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(WIDTH)) sub_2d [2][3] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(data_in),\n\    .data_out()\n\);`
                                                                  ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
 
 
