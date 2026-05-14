@@ -933,7 +933,13 @@ repository:
     # (`import "DPI-C" my_c_name = function ...`); export puts it *after*
     # (`export "DPI-C" = my_c_name function ...`). A single
     # `(id?)\s*=\s*(id?)` form would over-match by accepting both sides at once.
-    match: '[ \t\r\n]*\b(import|export)[ \t\r\n]+("DPI(?:-C)?")(?:[ \t\r\n]+\b(pure|context)\b)?(?:[ \t\r\n]+(?:([a-zA-Z_][a-zA-Z0-9_$]*)[ \t\r\n]*(=)|(=)[ \t\r\n]*([a-zA-Z_][a-zA-Z0-9_$]*)))?'
+    #
+    # The trailing `function|task` keyword is captured here (not delegated to
+    # `#function-task`) so it gets the same `keyword.control` color as the rest
+    # of the DPI declaration. Side-effect: the function name and parameter list
+    # fall through to default identifier patterns instead of being treated as a
+    # function definition body.
+    match: '[ \t\r\n]*\b(import|export)[ \t\r\n]+("DPI(?:-C)?")(?:[ \t\r\n]+\b(pure|context)\b)?(?:[ \t\r\n]+(?:([a-zA-Z_][a-zA-Z0-9_$]*)[ \t\r\n]*(=)|(=)[ \t\r\n]*([a-zA-Z_][a-zA-Z0-9_$]*)))?(?:[ \t\r\n]+\b(function|task)\b)?'
     captures:
       '1':
         name: keyword.control.systemverilog
@@ -949,6 +955,8 @@ repository:
         name: keyword.operator.assignment.systemverilog
       '7':
         name: entity.name.function.systemverilog
+      '8':
+        name: keyword.control.systemverilog
     name: meta.import.dpi.systemverilog
   imports:
     match: '[ \t\r\n]*\b(import|export)[ \t\r\n]+([a-zA-Z_][a-zA-Z0-9_$]*|\*)[ \t\r\n]*(::)[ \t\r\n]*([a-zA-Z_][a-zA-Z0-9_$]*|\*)[ \t\r\n]*(,|;)'

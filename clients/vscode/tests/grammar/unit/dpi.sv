@@ -3,7 +3,7 @@
 import "DPI-C" function int my_func(input int x);
 // <----- keyword.control.systemverilog
 //     ^^^^^^^ string.quoted.double.systemverilog
-//             ^^^^^^^^ storage.type.function.systemverilog
+//             ^^^^^^^^ keyword.control.systemverilog
 
 import "DPI-C" pure function real sqrt(real x);
 // <----- keyword.control.systemverilog
