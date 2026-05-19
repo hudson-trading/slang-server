@@ -1,0 +1,173 @@
+# TODO: genvar, program, generate
+
+contexts:
+  module_member:
+    keywords:
+      - logic
+      - assign
+      - wire
+      - reg
+
+    snippets:
+      - include: "#scalar-types"
+      - include: "#struct-types"
+      - include: "#enum-types"
+      - include: "#classes"
+      - include: "#tasks"
+      - include: "#packages"
+      - include: "#interfaces"
+      - include: "#misc"
+      - include: "#block-snippets"
+
+repository:
+  scalar-types:
+    defaults:
+      value: value
+      declaration: "${type} ${1:${name}} = ${2:${value}};"
+
+    variants:
+      - type: bit
+        name: bit_name
+      - type: int
+        name: int_name
+      - type: shortint
+        name: name
+      - type: longint
+        name: name
+      - type: byte
+        name: byte_name
+
+  struct-types:
+    defaults:
+      name: struct_name
+      body: |
+        ${tokens} {
+        	$0
+        } ${1:${name}};
+      documentation: "${tokens} { ... } name"
+
+    variants:
+      - tokens: struct
+      - tokens: typedef struct
+      - tokens: struct packed
+      - tokens: typedef struct packed
+
+  block-snippets:
+    defaults:
+      body: |
+        ${open}
+        	$0
+        ${close}
+      documentation: "${open} ... ${close}"
+
+    variants:
+      - label: fork join
+        open: fork
+        close: join
+
+      - label: always_comb
+        open: always_comb begin
+        close: end
+
+      - label: always_latch
+        open: always_latch begin
+        close: end
+
+  enum-types:
+    defaults:
+      data_type: data_type
+      name: name
+      body: "${tokens} ${1:${data_type}} { $0 } ${2:${name}};"
+      documentation: "${tokens} (data_type) { ... } name"
+
+    variants:
+      - tokens: enum
+      - tokens: typedef enum
+
+  classes:
+    snippets:
+      - label: class
+        body: |
+          class ${1:className};
+          	function new();
+          		$0
+          	endfunction : new
+          endclass : $1
+        documentation: "class name; ... endclass"
+
+      - label: class extends
+        filterText: class
+        body: |
+          class ${1:className} extends ${2:superClass};
+          	function new();
+          		$0
+          	endfunction : new
+          endclass : $1
+        documentation: "class name extends super; ... endclass"
+
+  tasks:
+    snippets:
+      - label: task
+        body: |
+          task ${1:automatic} ${2:taskName}(${3:arguments});
+            $0
+          endtask : $1
+        documentation: "task name; ... endtask"
+
+  packages:
+    snippets:
+      - label: package
+        body: |
+          package ${1:package_name}
+          	$2
+          endpackage : $1
+        documentation: "package name; ... endpackage"
+
+      - label: import
+        body: "import ${1:name}::${2:scope};"
+        documentation: "import name::scope"
+
+  interfaces:
+    snippets:
+      - label: interface
+        body: |
+          interface ${1:interfacename};
+          	$0
+          endinterface : $1
+        documentation: "interface name; ... endinterface"
+
+      - label: modport
+        body: |
+          modport ${1:identifier} (
+          input ${2:input_ports},
+          output ${3:output_ports}
+          );
+        documentation: "modport name (input ports_in, output ports_out); "
+
+  misc:
+    snippets:
+      - label: display
+        body: "\\$display(\"$1\"$2);$0"
+        documentation: "$display(\"...\", params...)"
+
+      - label: queue
+        body: "${1:data_type} ${2:queue_name}[\\$];"
+        documentation: "insert queue."
+
+      - label: mailbox
+        body: |
+          mailbox mbx
+          ${1:mbx = new();}
+        documentation: "insert mailbox instance"
+
+      - label: assert
+        body: |
+          assert (${1:condition}) $2
+          else   ${3:error_process}
+        documentation: "insert assert() ... else ..."
+
+      - label: always_ff
+        body: |
+          always_ff @($0) begin
+          	$1
+          end

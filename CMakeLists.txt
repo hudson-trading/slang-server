@@ -295,6 +295,7 @@ add_library(
   src/completions/Completions.cpp
   src/completions/CompletionContext.cpp
   src/completions/CompletionDispatch.cpp
+  src/completions/SyntacticalCompletions.cpp
   src/lsp/URI.cpp
   src/util/Converters.cpp
   src/util/Formatting.cpp

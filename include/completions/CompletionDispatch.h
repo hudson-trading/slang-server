@@ -41,9 +41,14 @@ public:
     CompletionDispatch(ServerDriver& driver, const Indexer& indexer, SourceManager& sourceManager,
                        slang::Bag& options);
 
+    /// Invoked completions happen when an identifier is starting to be typed or when the user
+    /// presses a shortcut
+    /// triggerKind == 1 for Invoked, 2 for Triggered
     void getInvokedCompletions(std::vector<lsp::CompletionItem>& results,
                                std::shared_ptr<SlangDoc> doc, const SourceLocation& loc);
 
+    /// Triggered completions happen when the user types a trigger character, which we configure as:
+    /// `.` for member access, `::` for package members, and `#` for module instantiations
     void getTriggerCompletions(char triggerChar, char prevChar, std::shared_ptr<SlangDoc> doc,
                                slang::SourceLocation loc,
                                std::vector<lsp::CompletionItem>& results);
