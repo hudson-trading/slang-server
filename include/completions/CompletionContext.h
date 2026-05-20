@@ -27,9 +27,23 @@ namespace server {
 class SlangDoc;
 class ShallowAnalysis;
 
-#define CCK(x) x(PortList) x(Expression) x(ModuleMember) x(Procedural) x(Unknown)
+#define CCK(x) x(CompilationUnit) x(PortList) x(Expression) x(ModuleMember) x(Procedural) x(Unknown)
 SLANG_ENUM(CompletionContextKind, CCK)
 #undef CCK
+
+using CompletionContextMask = uint32_t;
+
+constexpr CompletionContextMask toMask(CompletionContextKind kind) {
+    return 1u << static_cast<uint32_t>(kind);
+}
+
+constexpr CompletionContextMask operator|(CompletionContextKind lhs, CompletionContextKind rhs) {
+    return toMask(lhs) | toMask(rhs);
+}
+
+constexpr CompletionContextMask operator|(CompletionContextMask lhs, CompletionContextKind rhs) {
+    return lhs | toMask(rhs);
+}
 
 /// Represents the completion context at a specific location in the source
 struct CompletionContext {

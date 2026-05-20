@@ -69,6 +69,7 @@ lsp::CompletionItem getHierarchicalCompletion(const slang::ast::Symbol& parentSy
                                               const slang::ast::Symbol& symbol);
 
 /// Add completions for keywords, like 'logic' and 'always_ff'
-void addModuleMemberKwCompletions(std::vector<lsp::CompletionItem>& results);
+void addModuleMemberKwCompletions(std::vector<lsp::CompletionItem>& results,
+                                  const CompletionContext& ctx);
 
 } // namespace server::completions

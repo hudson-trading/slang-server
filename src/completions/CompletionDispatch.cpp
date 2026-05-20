@@ -57,7 +57,7 @@ void CompletionDispatch::getInvokedCompletions(std::vector<lsp::CompletionItem>&
         completions::addMemberCompletions(results, scope, ctx.kind, scope);
     }
 
-    completions::addModuleMemberKwCompletions(results);
+    completions::addModuleMemberKwCompletions(results, ctx);
 
     INFO("Returning {} completions in {} context", results.size(), toString(ctx.kind));
 }

@@ -35,16 +35,50 @@ def load_yaml(path: Path) -> dict[str, Any]:
 # Matches ${foo}, but intentionally does not match LSP placeholders like ${1:name}.
 TEMPLATE_RE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
 
+# Matches a string that is exactly ${foo}.
+# This lets us preserve non-string values like lists:
+#
+#   context:
+#     - ModuleMember
+#     - ${context_variant}
+#
+# where context_variant is:
+#
+#   - CompilationUnit
+WHOLE_TEMPLATE_RE = re.compile(r"^\$\{([A-Za-z_][A-Za-z0-9_]*)\}$")
+
 
 def substitute_template(value: Any, scope: dict[str, Any]) -> Any:
     if isinstance(value, list):
-        return [substitute_template(item, scope) for item in value]
+        result: list[Any] = []
+
+        for item in value:
+            substituted = substitute_template(item, scope)
+
+            # Splice list-valued substitutions into the parent list.
+            # Example:
+            #   ["ModuleMember", "${context_variant}"]
+            # becomes:
+            #   ["ModuleMember", "CompilationUnit"]
+            if isinstance(substituted, list):
+                result.extend(substituted)
+            else:
+                result.append(substituted)
+
+        return result
 
     if isinstance(value, dict):
         return {k: substitute_template(v, scope) for k, v in value.items()}
 
     if not isinstance(value, str):
         return value
+
+    # If the entire string is exactly ${foo}, preserve the original type.
+    # This is the key behavior needed for list-valued context_variant.
+    match = WHOLE_TEMPLATE_RE.match(value)
+    if match:
+        key = match.group(1)
+        return scope[key] if key in scope else value
 
     previous = None
     current = value
@@ -73,6 +107,36 @@ def normalize_body(value: Any) -> str:
     raise TypeError(
         f"snippet body must be a string or list, got {type(value).__name__}"
     )
+
+
+def normalize_contexts(value: Any) -> list[str]:
+    if value is None:
+        return []
+
+    if isinstance(value, str):
+        # Drop unresolved placeholders like ${context_variant}.
+        if WHOLE_TEMPLATE_RE.fullmatch(value):
+            return []
+        return [value]
+
+    if isinstance(value, list):
+        result: list[str] = []
+
+        for item in value:
+            result.extend(normalize_contexts(item))
+
+        # Deduplicate while preserving order.
+        seen: set[str] = set()
+        deduped: list[str] = []
+
+        for ctx in result:
+            if ctx not in seen:
+                seen.add(ctx)
+                deduped.append(ctx)
+
+        return deduped
+
+    raise TypeError(f"context must be a string or list, got {type(value).__name__}")
 
 
 def get_label(scope: dict[str, Any]) -> str:
@@ -125,7 +189,7 @@ def format_documentation(summary: str, body: str) -> str:
     return f"{markdown_inline_code(summary)}\n\n```systemverilog\n{body}\n```"
 
 
-def normalize_snippet(entry: dict[str, Any]) -> dict[str, str]:
+def normalize_snippet(entry: dict[str, Any]) -> dict[str, Any]:
     label = get_label(entry)
     insert_text = get_body(entry)
     documentation = str(entry.get("documentation", label))
@@ -135,6 +199,7 @@ def normalize_snippet(entry: dict[str, Any]) -> dict[str, str]:
         "filterText": str(entry.get("filterText", label)),
         "insertText": insert_text,
         "documentation": format_documentation(documentation, insert_text),
+        "context": normalize_contexts(entry.get("context")),
     }
 
 
@@ -160,11 +225,11 @@ def apply_defaults(defaults: dict[str, Any], variant: dict[str, Any]) -> dict[st
     }
 
 
-def expand_concrete_snippets(snippets: Any) -> list[dict[str, str]]:
+def expand_concrete_snippets(snippets: Any) -> list[dict[str, Any]]:
     if not isinstance(snippets, list):
         raise TypeError("'snippets' must be a list")
 
-    result: list[dict[str, str]] = []
+    result: list[dict[str, Any]] = []
 
     for snippet in snippets:
         if not isinstance(snippet, dict):
@@ -175,13 +240,13 @@ def expand_concrete_snippets(snippets: Any) -> list[dict[str, str]]:
     return result
 
 
-def expand_variants(defaults: Any, variants: Any) -> list[dict[str, str]]:
+def expand_variants(defaults: Any, variants: Any) -> list[dict[str, Any]]:
     if not isinstance(defaults, dict):
         raise TypeError("'defaults' must be a mapping")
     if not isinstance(variants, list):
         raise TypeError("'variants' must be a list")
 
-    result: list[dict[str, str]] = []
+    result: list[dict[str, Any]] = []
 
     for variant in variants:
         if not isinstance(variant, dict):
@@ -192,7 +257,7 @@ def expand_variants(defaults: Any, variants: Any) -> list[dict[str, str]]:
     return result
 
 
-def expand_group(name: str, group: Any) -> list[dict[str, str]]:
+def expand_group(name: str, group: Any) -> list[dict[str, Any]]:
     if not isinstance(group, dict):
         raise TypeError(f"repository group {name!r} must be a mapping")
 
@@ -215,12 +280,12 @@ def expand_group(name: str, group: Any) -> list[dict[str, str]]:
     )
 
 
-def expand_repository(data: dict[str, Any]) -> list[dict[str, str]]:
+def expand_repository(data: dict[str, Any]) -> list[dict[str, Any]]:
     repository = data.get("repository", {})
     if not isinstance(repository, dict):
         raise TypeError("'repository' must be a mapping")
 
-    snippets: list[dict[str, str]] = []
+    snippets: list[dict[str, Any]] = []
 
     for name, group in repository.items():
         snippets.extend(expand_group(str(name), group))
@@ -262,7 +327,14 @@ def cpp_string_literal(
     return "\n".join(rendered)
 
 
-def emit_cpp(snippets: list[dict[str, str]]) -> str:
+def cpp_context_expr(contexts: list[str]) -> str:
+    if not contexts:
+        return "toMask(CompletionContextKind::Unknown)"
+
+    return " | ".join(f"toMask(CompletionContextKind::{ctx})" for ctx in contexts)
+
+
+def emit_cpp(snippets: list[dict[str, Any]]) -> str:
     lines: list[str] = [
         "//------------------------------------------------------------------------------",
         "// <auto-generated>",
@@ -273,13 +345,18 @@ def emit_cpp(snippets: list[dict[str, str]]) -> str:
         "",
         "#pragma once",
         "",
+        '#include "completions/CompletionContext.h"',
+        "",
         "#include <string_view>",
+        "",
+        "using namespace server;",
         "",
         "struct SVSnippet {",
         "    std::string_view label;",
         "    std::string_view filterText;",
         "    std::string_view insertText;",
         "    std::string_view documentation;",
+        "    CompletionContextMask context;",
         "};",
         "",
         f"static constexpr SVSnippet {CPP_SNIPPETS_NAME}[] = {{",
@@ -293,6 +370,7 @@ def emit_cpp(snippets: list[dict[str, str]]) -> str:
                 f"        .filterText = {cpp_string_literal(snippet['filterText'])},",
                 f"        .insertText = {cpp_string_literal(snippet['insertText'], multiline=True, indent='                      ')},",
                 f"        .documentation = {cpp_string_literal(snippet['documentation'], multiline=True, indent='                         ')},",
+                f"        .context = {cpp_context_expr(snippet['context'])},",
                 "    },",
             ]
         )

@@ -96,6 +96,15 @@ bool isProceduralBlockContext(SyntaxKind kind) {
     }
 }
 
+bool isCompilationUnitContext(SyntaxKind kind) {
+    switch (kind) {
+        case SyntaxKind::CompilationUnit:
+            return true;
+        default:
+            return false;
+    }
+}
+
 } // anonymous namespace
 
 CompletionContext CompletionContext::fromLocation(SlangDoc& doc, SourceLocation loc) {
@@ -145,6 +154,13 @@ CompletionContext CompletionContext::fromLocation(SlangDoc& doc, SourceLocation 
         // that are not on the first token may need signals
         if (MemberSyntax::isKind(kind) && node->getFirstToken().range().end() < loc) {
             ctx.kind = CompletionContextKind::Expression;
+            return ctx;
+        }
+
+        // Check for compilation unit context
+        // ie: top level of a file, outside of any module/class or program
+        if (isCompilationUnitContext(kind)) {
+            ctx.kind = CompletionContextKind::CompilationUnit;
             return ctx;
         }
     }

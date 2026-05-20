@@ -7,13 +7,17 @@
 
 #pragma once
 
+#include "completions/CompletionContext.h"
 #include <string_view>
+
+using namespace server;
 
 struct SVSnippet {
     std::string_view label;
     std::string_view filterText;
     std::string_view insertText;
     std::string_view documentation;
+    CompletionContextMask context;
 };
 
 static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
@@ -26,6 +30,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "```systemverilog\n"
                          "logic\n"
                          "```",
+        .context = toMask(CompletionContextKind::Unknown),
     },
     {
         .label = "assign",
@@ -36,6 +41,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "```systemverilog\n"
                          "assign\n"
                          "```",
+        .context = toMask(CompletionContextKind::Unknown),
     },
     {
         .label = "wire",
@@ -46,6 +52,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "```systemverilog\n"
                          "wire\n"
                          "```",
+        .context = toMask(CompletionContextKind::Unknown),
     },
     {
         .label = "reg",
@@ -56,6 +63,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "```systemverilog\n"
                          "reg\n"
                          "```",
+        .context = toMask(CompletionContextKind::Unknown),
     },
     {
         .label = "bit",
@@ -66,6 +74,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "```systemverilog\n"
                          "bit ${1:bit_name} = ${2:value};\n"
                          "```",
+        .context = toMask(CompletionContextKind::Unknown),
     },
     {
         .label = "int",
@@ -76,6 +85,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "```systemverilog\n"
                          "int ${1:int_name} = ${2:value};\n"
                          "```",
+        .context = toMask(CompletionContextKind::Unknown),
     },
     {
         .label = "shortint",
@@ -86,6 +96,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "```systemverilog\n"
                          "shortint ${1:name} = ${2:value};\n"
                          "```",
+        .context = toMask(CompletionContextKind::Unknown),
     },
     {
         .label = "longint",
@@ -96,6 +107,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "```systemverilog\n"
                          "longint ${1:name} = ${2:value};\n"
                          "```",
+        .context = toMask(CompletionContextKind::Unknown),
     },
     {
         .label = "byte",
@@ -106,6 +118,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "```systemverilog\n"
                          "byte ${1:byte_name} = ${2:value};\n"
                          "```",
+        .context = toMask(CompletionContextKind::Unknown),
     },
     {
         .label = "struct",
@@ -120,6 +133,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "\t$0\n"
                          "} ${1:struct_name};\n"
                          "```",
+        .context = toMask(CompletionContextKind::ModuleMember),
     },
     {
         .label = "typedef struct",
@@ -134,6 +148,8 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "\t$0\n"
                          "} ${1:struct_name};\n"
                          "```",
+        .context = toMask(CompletionContextKind::ModuleMember) |
+                   toMask(CompletionContextKind::CompilationUnit),
     },
     {
         .label = "struct packed",
@@ -148,6 +164,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "\t$0\n"
                          "} ${1:struct_name};\n"
                          "```",
+        .context = toMask(CompletionContextKind::ModuleMember),
     },
     {
         .label = "typedef struct packed",
@@ -162,6 +179,8 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "\t$0\n"
                          "} ${1:struct_name};\n"
                          "```",
+        .context = toMask(CompletionContextKind::ModuleMember) |
+                   toMask(CompletionContextKind::CompilationUnit),
     },
     {
         .label = "enum",
@@ -176,6 +195,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "\t$0\n"
                          "} ${1:struct_name};\n"
                          "```",
+        .context = toMask(CompletionContextKind::ModuleMember),
     },
     {
         .label = "typedef enum",
@@ -190,6 +210,70 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "\t$0\n"
                          "} ${1:struct_name};\n"
                          "```",
+        .context = toMask(CompletionContextKind::ModuleMember) |
+                   toMask(CompletionContextKind::CompilationUnit),
+    },
+    {
+        .label = "union",
+        .filterText = "union",
+        .insertText = "union {\n"
+                      "\t$0\n"
+                      "} ${1:struct_name};",
+        .documentation = "`union { ... } name`\n"
+                         "\n"
+                         "```systemverilog\n"
+                         "union {\n"
+                         "\t$0\n"
+                         "} ${1:struct_name};\n"
+                         "```",
+        .context = toMask(CompletionContextKind::ModuleMember),
+    },
+    {
+        .label = "union packed",
+        .filterText = "union packed",
+        .insertText = "union packed {\n"
+                      "\t$0\n"
+                      "} ${1:struct_name};",
+        .documentation = "`union packed { ... } name`\n"
+                         "\n"
+                         "```systemverilog\n"
+                         "union packed {\n"
+                         "\t$0\n"
+                         "} ${1:struct_name};\n"
+                         "```",
+        .context = toMask(CompletionContextKind::ModuleMember),
+    },
+    {
+        .label = "typedef union",
+        .filterText = "typedef union",
+        .insertText = "typedef union {\n"
+                      "\t$0\n"
+                      "} ${1:struct_name};",
+        .documentation = "`typedef union { ... } name`\n"
+                         "\n"
+                         "```systemverilog\n"
+                         "typedef union {\n"
+                         "\t$0\n"
+                         "} ${1:struct_name};\n"
+                         "```",
+        .context = toMask(CompletionContextKind::ModuleMember) |
+                   toMask(CompletionContextKind::CompilationUnit),
+    },
+    {
+        .label = "typedef union packed",
+        .filterText = "typedef union packed",
+        .insertText = "typedef union packed {\n"
+                      "\t$0\n"
+                      "} ${1:struct_name};",
+        .documentation = "`typedef union packed { ... } name`\n"
+                         "\n"
+                         "```systemverilog\n"
+                         "typedef union packed {\n"
+                         "\t$0\n"
+                         "} ${1:struct_name};\n"
+                         "```",
+        .context = toMask(CompletionContextKind::ModuleMember) |
+                   toMask(CompletionContextKind::CompilationUnit),
     },
     {
         .label = "fork join",
@@ -204,6 +288,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "\t$0\n"
                          "join\n"
                          "```",
+        .context = toMask(CompletionContextKind::ModuleMember),
     },
     {
         .label = "always_comb",
@@ -218,6 +303,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "\t$0\n"
                          "end\n"
                          "```",
+        .context = toMask(CompletionContextKind::ModuleMember),
     },
     {
         .label = "always_latch",
@@ -232,6 +318,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "\t$0\n"
                          "end\n"
                          "```",
+        .context = toMask(CompletionContextKind::ModuleMember),
     },
     {
         .label = "begin end",
@@ -246,6 +333,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "\t$0\n"
                          "end\n"
                          "```",
+        .context = toMask(CompletionContextKind::ModuleMember),
     },
     {
         .label = "case",
@@ -260,6 +348,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "\t${1:expression_case}: ${2:statement}\n"
                          "endcase\n"
                          "```",
+        .context = toMask(CompletionContextKind::Procedural),
     },
     {
         .label = "casez",
@@ -274,6 +363,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "\t${1:expression_case}: ${2:statement}\n"
                          "endcase\n"
                          "```",
+        .context = toMask(CompletionContextKind::Procedural),
     },
     {
         .label = "casex",
@@ -288,6 +378,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "\t${1:expression_case}: ${2:statement}\n"
                          "endcase\n"
                          "```",
+        .context = toMask(CompletionContextKind::Procedural),
     },
     {
         .label = "unique case",
@@ -302,6 +393,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "\t${1:expression_case}: ${2:statement}\n"
                          "endcase\n"
                          "```",
+        .context = toMask(CompletionContextKind::Procedural),
     },
     {
         .label = "unique casez",
@@ -316,6 +408,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "\t${1:expression_case}: ${2:statement}\n"
                          "endcase\n"
                          "```",
+        .context = toMask(CompletionContextKind::Procedural),
     },
     {
         .label = "unique casex",
@@ -330,6 +423,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "\t${1:expression_case}: ${2:statement}\n"
                          "endcase\n"
                          "```",
+        .context = toMask(CompletionContextKind::Procedural),
     },
     {
         .label = "unique0 case",
@@ -344,6 +438,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "\t${1:expression_case}: ${2:statement}\n"
                          "endcase\n"
                          "```",
+        .context = toMask(CompletionContextKind::Procedural),
     },
     {
         .label = "unique0 casez",
@@ -358,6 +453,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "\t${1:expression_case}: ${2:statement}\n"
                          "endcase\n"
                          "```",
+        .context = toMask(CompletionContextKind::Procedural),
     },
     {
         .label = "unique0 casex",
@@ -372,6 +468,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "\t${1:expression_case}: ${2:statement}\n"
                          "endcase\n"
                          "```",
+        .context = toMask(CompletionContextKind::Procedural),
     },
     {
         .label = "priority case",
@@ -386,6 +483,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "\t${1:expression_case}: ${2:statement}\n"
                          "endcase\n"
                          "```",
+        .context = toMask(CompletionContextKind::Procedural),
     },
     {
         .label = "priority casez",
@@ -400,6 +498,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "\t${1:expression_case}: ${2:statement}\n"
                          "endcase\n"
                          "```",
+        .context = toMask(CompletionContextKind::Procedural),
     },
     {
         .label = "priority casex",
@@ -414,6 +513,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "\t${1:expression_case}: ${2:statement}\n"
                          "endcase\n"
                          "```",
+        .context = toMask(CompletionContextKind::Procedural),
     },
     {
         .label = "class",
@@ -432,6 +532,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "\tendfunction : new\n"
                          "endclass : $1\n"
                          "```",
+        .context = toMask(CompletionContextKind::CompilationUnit),
     },
     {
         .label = "class extends",
@@ -450,6 +551,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "\tendfunction : new\n"
                          "endclass : $1\n"
                          "```",
+        .context = toMask(CompletionContextKind::CompilationUnit),
     },
     {
         .label = "task",
@@ -464,6 +566,8 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "  $0\n"
                          "endtask : $1\n"
                          "```",
+        .context = toMask(CompletionContextKind::CompilationUnit) |
+                   toMask(CompletionContextKind::ModuleMember),
     },
     {
         .label = "package",
@@ -478,6 +582,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "\t$2\n"
                          "endpackage : $1\n"
                          "```",
+        .context = toMask(CompletionContextKind::CompilationUnit),
     },
     {
         .label = "import",
@@ -488,6 +593,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "```systemverilog\n"
                          "import ${1:name}::${2:scope};\n"
                          "```",
+        .context = toMask(CompletionContextKind::CompilationUnit),
     },
     {
         .label = "interface",
@@ -502,6 +608,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "\t$0\n"
                          "endinterface : $1\n"
                          "```",
+        .context = toMask(CompletionContextKind::CompilationUnit),
     },
     {
         .label = "modport",
@@ -518,6 +625,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "output ${3:output_ports}\n"
                          ");\n"
                          "```",
+        .context = toMask(CompletionContextKind::ModuleMember),
     },
     {
         .label = "display",
@@ -528,6 +636,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "```systemverilog\n"
                          "\\$display(\"$1\"$2);$0\n"
                          "```",
+        .context = toMask(CompletionContextKind::Procedural),
     },
     {
         .label = "queue",
@@ -538,6 +647,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "```systemverilog\n"
                          "${1:data_type} ${2:queue_name}[\\$];\n"
                          "```",
+        .context = toMask(CompletionContextKind::Unknown),
     },
     {
         .label = "mailbox",
@@ -550,6 +660,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "mailbox mbx\n"
                          "${1:mbx = new();}\n"
                          "```",
+        .context = toMask(CompletionContextKind::Unknown),
     },
     {
         .label = "assert",
@@ -562,6 +673,7 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
                          "assert (${1:condition}) $2\n"
                          "else   ${3:error_process}\n"
                          "```",
+        .context = toMask(CompletionContextKind::Procedural),
     },
     {
         .label = "always_ff",
@@ -569,12 +681,13 @@ static constexpr SVSnippet SV_MODULE_MEMBER_SNIPPETS[] = {
         .insertText = "always_ff @($0) begin\n"
                       "\t$1\n"
                       "end",
-        .documentation = "`always_ff`\n"
+        .documentation = "`always_ff @(...) ... end`\n"
                          "\n"
                          "```systemverilog\n"
                          "always_ff @($0) begin\n"
                          "\t$1\n"
                          "end\n"
                          "```",
+        .context = toMask(CompletionContextKind::Procedural),
     },
 };
