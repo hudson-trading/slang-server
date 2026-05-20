@@ -1,25 +1,13 @@
-# TODO: genvar, program, generate
-
-contexts:
-  module_member:
-    keywords:
-      - logic
-      - assign
-      - wire
-      - reg
-
-    snippets:
-      - include: "#scalar-types"
-      - include: "#struct-types"
-      - include: "#enum-types"
-      - include: "#classes"
-      - include: "#tasks"
-      - include: "#packages"
-      - include: "#interfaces"
-      - include: "#misc"
-      - include: "#block-snippets"
-
 repository:
+  keywords:
+    defaults:
+      body: "${label}"
+    variants:
+      - label: logic
+      - label: assign
+      - label: wire
+      - label: reg
+
   scalar-types:
     defaults:
       value: value
@@ -37,7 +25,7 @@ repository:
       - type: byte
         name: byte_name
 
-  struct-types:
+  struct-enum-types:
     defaults:
       name: struct_name
       body: |
@@ -51,7 +39,9 @@ repository:
       - tokens: typedef struct
       - tokens: struct packed
       - tokens: typedef struct packed
-
+      - tokens: enum
+      - tokens: typedef enum
+      
   block-snippets:
     defaults:
       body: |
@@ -73,16 +63,31 @@ repository:
         open: always_latch begin
         close: end
 
-  enum-types:
+      - label: begin end
+        open: begin
+        close: end
+  
+  case:
     defaults:
-      data_type: data_type
-      name: name
-      body: "${tokens} ${1:${data_type}} { $0 } ${2:${name}};"
-      documentation: "${tokens} (data_type) { ... } name"
+      body: |
+        ${label} (${0:expression})
+        	${1:expression_case}: ${2:statement}
+        endcase
+      documentation: "${label} ... ${endcase}"
 
-    variants:
-      - tokens: enum
-      - tokens: typedef enum
+    variants: # TODO: think about separating regular cases and adding a default?
+      - label: case
+      - label: casez
+      - label: casex
+      - label: unique case
+      - label: unique casez
+      - label: unique casex
+      - label: unique0 case
+      - label: unique0 casez
+      - label: unique0 casex
+      - label: priority case
+      - label: priority casez
+      - label: priority casex
 
   classes:
     snippets:
@@ -96,7 +101,7 @@ repository:
         documentation: "class name; ... endclass"
 
       - label: class extends
-        filterText: class
+        filterText: class extends
         body: |
           class ${1:className} extends ${2:superClass};
           	function new();

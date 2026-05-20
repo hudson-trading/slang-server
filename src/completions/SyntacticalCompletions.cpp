@@ -5,15 +5,6 @@
 namespace server::completions {
 
 void addModuleMemberKwCompletions(std::vector<lsp::CompletionItem>& results) {
-    for (const auto& kw : SV_MODULE_MEMBER_KEYWORDS) {
-        results.emplace_back(lsp::CompletionItem{
-            .label = std::string(kw),
-            .kind = lsp::CompletionItemKind::Keyword,
-            .documentation = std::nullopt,
-            .filterText = std::string(kw),
-        });
-    }
-
     for (const auto& snippet : SV_MODULE_MEMBER_SNIPPETS) {
         results.emplace_back(lsp::CompletionItem{
             .label = std::string(snippet.label),
