@@ -1,7 +1,6 @@
 #include "Snippets.hpp"
 #include "completions/Completions.h"
 #include "lsp/LspTypes.h"
-#include <string_view>
 
 namespace server::completions {
 
