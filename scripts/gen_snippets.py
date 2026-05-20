@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
+from argparse import ArgumentParser
 from pathlib import Path
 import re
 from typing import Any
 
-
 SCRIPT_DIR = Path(__file__).resolve().parent
+
 INPUT_FILE = SCRIPT_DIR / "syntax.yaml"
-OUTPUT_FILE = SCRIPT_DIR / "Snippets.hpp"
 
 CPP_SNIPPETS_NAME = "SV_MODULE_MEMBER_SNIPPETS"
 
@@ -36,15 +36,6 @@ def load_yaml(path: Path) -> dict[str, Any]:
 TEMPLATE_RE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
 
 # Matches a string that is exactly ${foo}.
-# This lets us preserve non-string values like lists:
-#
-#   context:
-#     - ModuleMember
-#     - ${context_variant}
-#
-# where context_variant is:
-#
-#   - CompilationUnit
 WHOLE_TEMPLATE_RE = re.compile(r"^\$\{([A-Za-z_][A-Za-z0-9_]*)\}$")
 
 
@@ -54,12 +45,6 @@ def substitute_template(value: Any, scope: dict[str, Any]) -> Any:
 
         for item in value:
             substituted = substitute_template(item, scope)
-
-            # Splice list-valued substitutions into the parent list.
-            # Example:
-            #   ["ModuleMember", "${context_variant}"]
-            # becomes:
-            #   ["ModuleMember", "CompilationUnit"]
             if isinstance(substituted, list):
                 result.extend(substituted)
             else:
@@ -73,11 +58,11 @@ def substitute_template(value: Any, scope: dict[str, Any]) -> Any:
     if not isinstance(value, str):
         return value
 
-    # If the entire string is exactly ${foo}, preserve the original type.
-    # This is the key behavior needed for list-valued context_variant.
-    match = WHOLE_TEMPLATE_RE.match(value)
-    if match:
-        key = match.group(1)
+    # If the whole string is exactly ${foo}, preserve the original type.
+    # This matters for list-valued variables like context_variant.
+    whole = WHOLE_TEMPLATE_RE.match(value)
+    if whole:
+        key = whole.group(1)
         return scope[key] if key in scope else value
 
     previous = None
@@ -93,6 +78,10 @@ def substitute_template(value: Any, scope: dict[str, Any]) -> Any:
         current = TEMPLATE_RE.sub(repl, current)
 
     return current
+
+
+def has_unresolved_template(value: str) -> bool:
+    return TEMPLATE_RE.search(value) is not None
 
 
 def normalize_body(value: Any) -> str:
@@ -117,6 +106,10 @@ def normalize_contexts(value: Any) -> list[str]:
         # Drop unresolved placeholders like ${context_variant}.
         if WHOLE_TEMPLATE_RE.fullmatch(value):
             return []
+
+        if has_unresolved_template(value):
+            raise ValueError(f"unresolved template in context: {value!r}")
+
         return [value]
 
     if isinstance(value, list):
@@ -158,12 +151,6 @@ def get_body(scope: dict[str, Any]) -> str:
 
 
 def markdown_inline_code(text: str) -> str:
-    """
-    Wrap text in Markdown inline code.
-
-    If the documentation itself contains backticks, use a longer backtick fence
-    so the Markdown remains valid.
-    """
     max_run = max(
         (len(match.group(0)) for match in re.finditer(r"`+", text)), default=0
     )
@@ -172,15 +159,6 @@ def markdown_inline_code(text: str) -> str:
 
 
 def format_documentation(summary: str, body: str) -> str:
-    """
-    Format snippet documentation as Markdown:
-
-        `summary`
-
-        ```systemverilog
-        body
-        ```
-    """
     summary = summary.strip()
 
     if not summary:
@@ -192,20 +170,31 @@ def format_documentation(summary: str, body: str) -> str:
 def normalize_snippet(entry: dict[str, Any]) -> dict[str, Any]:
     label = get_label(entry)
     insert_text = get_body(entry)
-    documentation = str(entry.get("documentation", label))
+
+    detail = str(entry.get("detail", ""))
+    description = str(entry.get("description", label))
+
+    documentation_summary = str(entry.get("documentation", description))
+    documentation = format_documentation(documentation_summary, insert_text)
+
+    filter_text = str(entry.get("filterText", label))
 
     return {
         "label": label,
-        "filterText": str(entry.get("filterText", label)),
+        "detail": detail,
+        "description": description,
+        "filterText": filter_text,
         "insertText": insert_text,
-        "documentation": format_documentation(documentation, insert_text),
+        "documentation": documentation,
         "context": normalize_contexts(entry.get("context")),
     }
 
 
 def apply_defaults(defaults: dict[str, Any], variant: dict[str, Any]) -> dict[str, Any]:
+    # Variant values override defaults.
     scope: dict[str, Any] = {**defaults, **variant}
 
+    # If no label is provided, derive one from tokens or type.
     if "label" not in scope:
         if "tokens" in scope:
             scope["label"] = scope["tokens"]
@@ -215,6 +204,7 @@ def apply_defaults(defaults: dict[str, Any], variant: dict[str, Any]) -> dict[st
     if "filterText" not in scope and "label" in scope:
         scope["filterText"] = scope["label"]
 
+    # Two-pass substitution allows generated fields like label to be used by body.
     substituted = {
         key: substitute_template(value, scope) for key, value in scope.items()
     }
@@ -258,25 +248,27 @@ def expand_variants(defaults: Any, variants: Any) -> list[dict[str, Any]]:
 
 
 def expand_group(name: str, group: Any) -> list[dict[str, Any]]:
+    if isinstance(group, list):
+        return expand_concrete_snippets(group)
+
     if not isinstance(group, dict):
-        raise TypeError(f"repository group {name!r} must be a mapping")
+        raise TypeError(f"repository group {name!r} must be a mapping or list")
 
-    has_snippets = "snippets" in group
     has_variants = "variants" in group
-
-    if has_snippets and has_variants:
-        raise ValueError(
-            f"repository group {name!r} cannot contain both 'snippets' and 'variants'"
-        )
-
-    if has_snippets:
-        return expand_concrete_snippets(group["snippets"])
+    has_defaults = "defaults" in group or "default" in group
 
     if has_variants:
-        return expand_variants(group.get("defaults", {}), group["variants"])
+        defaults = group.get("defaults", group.get("default", {}))
+        return expand_variants(defaults, group["variants"])
+
+    if has_defaults and not has_variants:
+        raise ValueError(
+            f"repository group {name!r} has defaults/default but no variants"
+        )
 
     raise ValueError(
-        f"repository group {name!r} must contain either 'snippets' or 'variants'"
+        f"repository group {name!r} must be either a list or contain "
+        "'defaults'/'default' + 'variants'"
     )
 
 
@@ -291,11 +283,6 @@ def expand_repository(data: dict[str, Any]) -> list[dict[str, Any]]:
         snippets.extend(expand_group(str(name), group))
 
     return snippets
-
-
-# -----------------------------------------------------------------------------
-# C++ emission
-# -----------------------------------------------------------------------------
 
 
 def cpp_escape_single_line(text: str) -> str:
@@ -329,9 +316,11 @@ def cpp_string_literal(
 
 def cpp_context_expr(contexts: list[str]) -> str:
     if not contexts:
-        return "toMask(CompletionContextKind::Unknown)"
+        return "server::toMask(server::CompletionContextKind::Unknown)"
 
-    return " | ".join(f"toMask(CompletionContextKind::{ctx})" for ctx in contexts)
+    return " | ".join(
+        f"server::toMask(server::CompletionContextKind::{ctx})" for ctx in contexts
+    )
 
 
 def emit_cpp(snippets: list[dict[str, Any]]) -> str:
@@ -349,14 +338,14 @@ def emit_cpp(snippets: list[dict[str, Any]]) -> str:
         "",
         "#include <string_view>",
         "",
-        "using namespace server;",
-        "",
         "struct SVSnippet {",
         "    std::string_view label;",
+        "    std::string_view detail;",
+        "    std::string_view description;",
         "    std::string_view filterText;",
         "    std::string_view insertText;",
         "    std::string_view documentation;",
-        "    CompletionContextMask context;",
+        "    server::CompletionContextMask context;",
         "};",
         "",
         f"static constexpr SVSnippet {CPP_SNIPPETS_NAME}[] = {{",
@@ -367,6 +356,8 @@ def emit_cpp(snippets: list[dict[str, Any]]) -> str:
             [
                 "    {",
                 f"        .label = {cpp_string_literal(snippet['label'])},",
+                f"        .detail = {cpp_string_literal(snippet['detail'])},",
+                f"        .description = {cpp_string_literal(snippet['description'])},",
                 f"        .filterText = {cpp_string_literal(snippet['filterText'])},",
                 f"        .insertText = {cpp_string_literal(snippet['insertText'], multiline=True, indent='                      ')},",
                 f"        .documentation = {cpp_string_literal(snippet['documentation'], multiline=True, indent='                         ')},",
@@ -380,15 +371,35 @@ def emit_cpp(snippets: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+
+CPP_SNIPPETS_NAME = "SV_MODULE_MEMBER_SNIPPETS"
+
+
+def parse_args() -> Path:
+    parser = ArgumentParser()
+
+    parser.add_argument(
+        "--outDir",
+        type=Path,
+        default=SCRIPT_DIR,
+    )
+
+    args = parser.parse_args()
+
+    output_file = args.outDir / "Snippets.hpp"
+
+    return output_file
+
+
 def main() -> None:
-    if not INPUT_FILE.exists():
-        raise FileNotFoundError(INPUT_FILE)
+    output_file = parse_args()
 
     data = load_yaml(INPUT_FILE)
     snippets = expand_repository(data)
 
-    OUTPUT_FILE.write_text(emit_cpp(snippets), encoding="utf-8")
-    print(f"Wrote {OUTPUT_FILE}")
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    output_file.write_text(emit_cpp(snippets), encoding="utf-8")
 
 
 if __name__ == "__main__":

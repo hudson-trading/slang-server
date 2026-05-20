@@ -27,7 +27,9 @@ namespace server {
 class SlangDoc;
 class ShallowAnalysis;
 
-#define CCK(x) x(CompilationUnit) x(PortList) x(Expression) x(ModuleMember) x(Procedural) x(Unknown)
+#define CCK(x)                                                                                  \
+    x(CompilationUnit) x(PortList) x(Expression) x(ModuleMember) x(PackageMember) x(Procedural) \
+        x(Unknown)
 SLANG_ENUM(CompletionContextKind, CCK)
 #undef CCK
 

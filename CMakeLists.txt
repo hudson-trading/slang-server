@@ -276,6 +276,22 @@ endif()
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/util/VersionInfo.cpp.in
                ${CMAKE_CURRENT_BINARY_DIR}/VersionInfo.cpp @ONLY)
 
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
+set(SCRIPTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/scripts")
+
+add_custom_command(
+  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/slang-server/completions/Snippets.hpp"
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${SCRIPTS_DIR}/gen_snippets.py"
+    --outDir "${CMAKE_CURRENT_BINARY_DIR}/slang-server/completions"
+  DEPENDS
+    "${SCRIPTS_DIR}/gen_snippets.py"
+    "${SCRIPTS_DIR}/syntax.yaml"
+  COMMENT "Generating snippets"
+)
+
 # Build the slang-server library
 add_library(
   slang_server_obj_lib OBJECT
@@ -306,11 +322,14 @@ add_library(
   src/Indexer.cpp
   src/ServerDriver.cpp
   src/SlangServer.cpp
-  src/ServerDiagClient.cpp)
+  src/ServerDiagClient.cpp
+  ${CMAKE_CURRENT_BINARY_DIR}/slang-server/completions/Snippets.hpp)
 
 target_include_directories(slang_server_obj_lib PUBLIC include)
 target_include_directories(slang_server_obj_lib SYSTEM
                            PRIVATE external/reflect-cpp/include)
+target_include_directories(slang_server_obj_lib 
+                           PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/slang-server")
 
 target_precompile_headers(slang_server_obj_lib PRIVATE
                           "${PROJECT_SOURCE_DIR}/include/lsp/LspTypes.h")

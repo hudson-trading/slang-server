@@ -1,6 +1,6 @@
-#include "Snippets.hpp"
 #include "completions/CompletionContext.h"
 #include "completions/Completions.h"
+#include "completions/Snippets.hpp"
 #include "lsp/LspTypes.h"
 
 namespace server::completions {
@@ -11,7 +11,8 @@ void addModuleMemberKwCompletions(std::vector<lsp::CompletionItem>& results,
         if (toMask(ctx.kind) & snippet.context) {
             results.emplace_back(lsp::CompletionItem{
                 .label = std::string(snippet.label),
-                .labelDetails = lsp::CompletionItemLabelDetails{"", std::string(snippet.label)},
+                .labelDetails = lsp::CompletionItemLabelDetails{std::string(snippet.detail),
+                                                                std::string(snippet.description)},
                 .kind = lsp::CompletionItemKind::Snippet,
                 .documentation = lsp::MarkupContent{lsp::MarkupKind{"markdown"},
                                                     std::string(snippet.documentation)},

@@ -484,6 +484,7 @@ void addMemberCompletions(std::vector<lsp::CompletionItem>& results, const slang
     // Only show types (not signals/variables) when at the top level of a module body
     // or in a port list — these are declaration positions.
     bool typesOnly = (contextKind == CompletionContextKind::ModuleMember ||
+                      contextKind == CompletionContextKind::PackageMember ||
                       contextKind == CompletionContextKind::PortList);
 
     if (!scope) {

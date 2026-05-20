@@ -67,10 +67,19 @@ bool isModuleMemberContext(SyntaxKind kind) {
         case SyntaxKind::ModuleDeclaration:
         case SyntaxKind::InterfaceDeclaration:
         case SyntaxKind::ProgramDeclaration:
-        case SyntaxKind::PackageDeclaration:
         case SyntaxKind::ClassDeclaration:
         case SyntaxKind::GenerateBlock:
         case SyntaxKind::GenerateRegion:
+            return true;
+        default:
+            return false;
+    }
+}
+
+/// Check if a syntax kind represents a package item context
+bool isPackageMemberContext(SyntaxKind kind) {
+    switch (kind) {
+        case SyntaxKind::PackageDeclaration:
             return true;
         default:
             return false;
@@ -104,7 +113,6 @@ bool isCompilationUnitContext(SyntaxKind kind) {
             return false;
     }
 }
-
 } // anonymous namespace
 
 CompletionContext CompletionContext::fromLocation(SlangDoc& doc, SourceLocation loc) {
@@ -147,6 +155,14 @@ CompletionContext CompletionContext::fromLocation(SlangDoc& doc, SourceLocation 
         // we're at the top level of the module body (declaration position).
         if (isModuleMemberContext(kind)) {
             ctx.kind = CompletionContextKind::ModuleMember;
+            return ctx;
+        }
+
+        // Check for package scope boundaries — if we reach one directly,
+        // we're at the top level of the package (declaration position).
+        // ie package XXX;
+        if (isPackageMemberContext(kind)) {
+            ctx.kind = CompletionContextKind::PackageMember;
             return ctx;
         }
 
