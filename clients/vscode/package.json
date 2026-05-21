@@ -254,32 +254,7 @@
         "path": "./languages/dotf/dotf.tmLanguage.json"
       }
     ],
-    "snippets": [
-      {
-        "language": "verilog",
-        "path": "./languages/verilog/verilog.snippets.json"
-      },
-      {
-        "language": "systemverilog",
-        "path": "./languages/verilog/verilog.snippets.json"
-      },
-      {
-        "language": "systemverilog",
-        "path": "./languages/sv/systemverilog.snippets.json"
-      },
-      {
-        "language": "verilogheader",
-        "path": "./languages/verilog/verilog.snippets.json"
-      },
-      {
-        "language": "systemverilogheader",
-        "path": "./languages/verilog/verilog.snippets.json"
-      },
-      {
-        "language": "systemverilogheader",
-        "path": "./languages/sv/systemverilog.snippets.json"
-      }
-    ],
+    "snippets": [],
     "configuration": {
       "title": "verilog configuration",
       "properties": {
