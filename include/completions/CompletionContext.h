@@ -27,6 +27,7 @@ namespace server {
 class SlangDoc;
 class ShallowAnalysis;
 
+// TODO renamer the CompilationUnit enum type to top level or something.
 #define CCK(x)                                                                                  \
     x(CompilationUnit) x(PortList) x(Expression) x(ModuleMember) x(PackageMember) x(Procedural) \
         x(Unknown)
