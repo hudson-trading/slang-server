@@ -10,12 +10,12 @@
 #include "SlangServer.h"
 
 #include "Config.h"
-#include "SemanticTokensLegend.hpp"
 #include "ast/WcpClient.h"
 #include "completions/CompletionDispatch.h"
 #include "lsp/LspTypeExtensions.h"
 #include "lsp/LspTypes.h"
 #include "lsp/URI.h"
+#include "semantic_tokens/SemanticToken.hpp"
 #include "util/Converters.h"
 #include "util/Logging.h"
 #include <algorithm>
@@ -224,7 +224,7 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
                         },
                     .callHierarchyProvider = true,
                     .semanticTokensProvider =
-                        lsp::SemanticTokensOptions{.legend = makeSemanticTokensLegend(),
+                        lsp::SemanticTokensOptions{.legend = SemanticTokensLegendConfig,
                                                    .full = true},
                     .inlayHintProvider =
                         lsp::InlayHintOptions{

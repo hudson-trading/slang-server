@@ -1,7 +1,7 @@
 #pragma once
 
-#include "document/SemanticTokenTypes.hpp"
 #include "lsp/LspServer.h"
+#include "semantic_tokens/SemanticToken.hpp"
 
 #include "slang/parsing/TokenKind.h"
 

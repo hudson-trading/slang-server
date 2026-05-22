@@ -9,8 +9,8 @@
 #include "document/ShallowAnalysis.h"
 
 #include "document/InlayHintCollector.h"
-#include "document/SemanticTokens.hpp"
 #include "lsp/LspTypes.h"
+#include "semantic_tokens/SemanticTokensClassifier.hpp"
 #include "util/Converters.h"
 #include "util/Logging.h"
 #include "util/SlangExtensions.h"
@@ -613,45 +613,16 @@ Diagnostics ShallowAnalysis::getAnalysisDiags() {
          diag::UnusedPackageTypedef, diag::UnusedPackageVar});
 }
 
-struct SemanticTokenInfo {
-    uint32_t line;
-    uint32_t character;
-    uint32_t length;
-    uint32_t tokenType;
-    uint32_t tokenModifiers = 0;
-};
-
-static std::vector<uint32_t> encodeSemanticTokens(std::vector<SemanticTokenInfo> tokens) {
-    std::ranges::sort(tokens, {},
-                      [](const SemanticTokenInfo& t) { return std::pair{t.line, t.character}; });
-
-    std::vector<uint32_t> data;
-    data.reserve(tokens.size() * 5);
-
-    uint32_t prevLine = 0;
-    uint32_t prevChar = 0;
-    bool first = true;
-
-    for (const auto& token : tokens) {
-        uint32_t deltaLine = first ? token.line : token.line - prevLine;
-        uint32_t deltaChar = deltaLine == 0 ? token.character - prevChar : token.character;
-
-        data.push_back(deltaLine);
-        data.push_back(deltaChar);
-        data.push_back(token.length);
-        data.push_back(token.tokenType);
-        data.push_back(token.tokenModifiers);
-
-        prevLine = token.line;
-        prevChar = token.character;
-        first = false;
-    }
-
-    return data;
-}
-
 lsp::SemanticTokens ShallowAnalysis::getSemanticTokens() {
-    std::vector<SemanticTokenInfo> rawTokens;
+    struct SemanticTokenInfo {
+        uint32_t line;
+        uint32_t character;
+        uint32_t length;
+        uint32_t tokenType;
+        uint32_t tokenModifiers = 0;
+    };
+
+    std::vector<SemanticTokenInfo> tokens;
 
     for (const auto* token : syntaxes.collected) {
         if (!token || token->location().buffer() != m_buffer) {
@@ -670,7 +641,7 @@ lsp::SemanticTokens ShallowAnalysis::getSemanticTokens() {
             continue;
         }
 
-        rawTokens.push_back(SemanticTokenInfo{
+        tokens.push_back(SemanticTokenInfo{
             .line = static_cast<uint32_t>(range.start.line),
             .character = static_cast<uint32_t>(range.start.character),
             .length = static_cast<uint32_t>(range.end.character - range.start.character),
@@ -679,9 +650,51 @@ lsp::SemanticTokens ShallowAnalysis::getSemanticTokens() {
         });
     }
 
-    return lsp::SemanticTokens{
-        .data = encodeSemanticTokens(std::move(rawTokens)),
-    };
+    std::sort(tokens.begin(), tokens.end(),
+              [](const SemanticTokenInfo& lhs, const SemanticTokenInfo& rhs) {
+                  if (lhs.line != rhs.line) {
+                      return lhs.line < rhs.line;
+                  }
+
+                  return lhs.character < rhs.character;
+              });
+
+    std::vector<uint32_t> data;
+    data.reserve(tokens.size() * 5);
+
+    uint32_t prevLine = 0;
+    uint32_t prevChar = 0;
+    bool first = true;
+
+    for (const auto& token : tokens) {
+        /// From
+        /// https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_semanticTokens
+        // A specific token i in the file consists of the following array indices:
+        //  * at index 5*i - deltaLine: token line number, relative to the start of the previous
+        //  token
+        //  * at index 5*i+1 - deltaStart: token start character, relative to the start of the
+        //  previous token (relative to 0 or the previous token’s start if they are on the same
+        //  line)
+        //  * at index 5*i+2 - length: the length of the token. at index 5*i+3 - tokenType: will be
+        //  looked up in SemanticTokensLegend.tokenTypes. We currently ask that tokenType < 65536.
+        //  * at index 5*i+4 - tokenModifiers: each set bit will be looked up in
+        //  SemanticTokensLegend.tokenModifiers
+
+        uint32_t deltaLine = first ? token.line : token.line - prevLine;
+        uint32_t deltaChar = deltaLine == 0 ? token.character - prevChar : token.character;
+
+        data.push_back(deltaLine);
+        data.push_back(deltaChar);
+        data.push_back(token.length);
+        data.push_back(token.tokenType);
+        data.push_back(token.tokenModifiers);
+
+        prevLine = token.line;
+        prevChar = token.character;
+        first = false;
+    }
+
+    return lsp::SemanticTokens{.data = data};
 }
 
 } // namespace server
