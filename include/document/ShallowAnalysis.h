@@ -131,6 +131,8 @@ public:
     /// @brief Gets the AST symbol that a declared token refers to, if any
     const slang::ast::Symbol* getSymbolAtToken(const slang::parsing::Token* node) const;
 
+    lsp::SemanticTokens getSemanticTokens();
+
     /// Syntax finder for location->syntax mapping
     SyntaxIndexer syntaxes;
 
@@ -185,8 +187,8 @@ private:
     slang::analysis::AnalysisOptions m_analysisOptions;
 
     /// Symbol tree visitor for /documentSymbols
-    /// Currently this is relies on syntax, but we should switch it to use the shallow compilation
-    /// when symbols exist
+    /// Currently this is relies on syntax, but we should switch it to use the shallow
+    /// compilation when symbols exist
     SymbolTreeVisitor m_symbolTreeVisitor;
 
     /// Symbol indexer for syntax->symbol mappings of definitions; Used for lookups

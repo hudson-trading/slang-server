@@ -213,6 +213,9 @@ public:
     std::optional<std::vector<lsp::DocumentHighlight>> getDocDocumentHighlight(
         const lsp::DocumentHighlightParams&) override;
 
+    std::optional<lsp::SemanticTokens> getDocSemanticTokensFull(
+        const lsp::SemanticTokensParams&) override;
+
     ////////////////////////////////////////////////
     /// Cone tracing
     ////////////////////////////////////////////////

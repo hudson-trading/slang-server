@@ -9,6 +9,7 @@
 #include "document/ShallowAnalysis.h"
 
 #include "document/InlayHintCollector.h"
+#include "document/SemanticTokens.hpp"
 #include "lsp/LspTypes.h"
 #include "util/Converters.h"
 #include "util/Logging.h"
@@ -36,6 +37,7 @@
 #include "slang/text/SourceLocation.h"
 #include "slang/text/SourceManager.h"
 #include "slang/util/Util.h"
+
 namespace server {
 using namespace slang;
 
@@ -609,6 +611,77 @@ Diagnostics ShallowAnalysis::getAnalysisDiags() {
     return driverAnalysis.getDiagnostics().filter(
         {diag::UnusedDefinition, diag::UnusedPackageParameter, diag::UnusedPackageSubroutine,
          diag::UnusedPackageTypedef, diag::UnusedPackageVar});
+}
+
+struct SemanticTokenInfo {
+    uint32_t line;
+    uint32_t character;
+    uint32_t length;
+    uint32_t tokenType;
+    uint32_t tokenModifiers = 0;
+};
+
+static std::vector<uint32_t> encodeSemanticTokens(std::vector<SemanticTokenInfo> tokens) {
+    std::ranges::sort(tokens, {},
+                      [](const SemanticTokenInfo& t) { return std::pair{t.line, t.character}; });
+
+    std::vector<uint32_t> data;
+    data.reserve(tokens.size() * 5);
+
+    uint32_t prevLine = 0;
+    uint32_t prevChar = 0;
+    bool first = true;
+
+    for (const auto& token : tokens) {
+        uint32_t deltaLine = first ? token.line : token.line - prevLine;
+        uint32_t deltaChar = deltaLine == 0 ? token.character - prevChar : token.character;
+
+        data.push_back(deltaLine);
+        data.push_back(deltaChar);
+        data.push_back(token.length);
+        data.push_back(token.tokenType);
+        data.push_back(token.tokenModifiers);
+
+        prevLine = token.line;
+        prevChar = token.character;
+        first = false;
+    }
+
+    return data;
+}
+
+lsp::SemanticTokens ShallowAnalysis::getSemanticTokens() {
+    std::vector<SemanticTokenInfo> rawTokens;
+
+    for (const auto* token : syntaxes.collected) {
+        if (!token || token->location().buffer() != m_buffer) {
+            continue;
+        }
+
+        const auto token_kind = token->kind;
+        const auto token_id = classifySemanticTokenKind(token_kind);
+        if (!token_id) {
+            continue;
+        }
+
+        auto range = toRange(token->range(), m_sourceManager);
+
+        if (range.start.line != range.end.line) {
+            continue;
+        }
+
+        rawTokens.push_back(SemanticTokenInfo{
+            .line = static_cast<uint32_t>(range.start.line),
+            .character = static_cast<uint32_t>(range.start.character),
+            .length = static_cast<uint32_t>(range.end.character - range.start.character),
+            .tokenType = *token_id,
+            .tokenModifiers = 0,
+        });
+    }
+
+    return lsp::SemanticTokens{
+        .data = encodeSemanticTokens(std::move(rawTokens)),
+    };
 }
 
 } // namespace server
