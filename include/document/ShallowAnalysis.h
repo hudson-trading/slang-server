@@ -128,6 +128,8 @@ public:
     /// syntax pointers
     markup::Paragraph getDebugHover(const SourceLocation& loc) const;
 
+    markup::Paragraph getSemanticTokenDebugInfo(const SourceLocation& loc) const;
+
     /// @brief Gets the AST symbol that a declared token refers to, if any
     const slang::ast::Symbol* getSymbolAtToken(const slang::parsing::Token* node) const;
 

@@ -645,7 +645,8 @@ std::optional<lsp::Hover> ServerDriver::getDocHover(const URI& uri, const lsp::P
     if (!loc) {
         return {};
     }
-    auto maybeInfo = getDefinitionInfoAt(uri, position);
+
+    const auto maybeInfo = getDefinitionInfoAt(uri, position);
     if (!maybeInfo) {
 #ifdef SLANG_DEBUG
         // Shows debug info for the token under cursor when debugging
@@ -656,8 +657,16 @@ std::optional<lsp::Hover> ServerDriver::getDocHover(const URI& uri, const lsp::P
 #endif
         return {};
     }
+
+    markup::Document markup;
+#ifdef SLANG_DEBUG
+    auto analysis = doc->getAnalysis();
+    markup.addParagraph(analysis->getDebugHover(loc.value()));
+#endif
+
     const auto& info = *maybeInfo;
-    return lsp::Hover{.contents = getHover(sm, doc->getBuffer(), info, m_config.hovers.value())};
+    getHover(markup, sm, doc->getBuffer(), info, m_config.hovers.value());
+    return lsp::Hover{.contents = markup.build()};
 }
 
 std::vector<lsp::LocationLink> ServerDriver::getDocDefinition(const URI& uri,

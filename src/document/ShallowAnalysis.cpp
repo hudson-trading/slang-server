@@ -543,12 +543,46 @@ bool ShallowAnalysis::hasValidBuffers() {
     return true;
 }
 
+markup::Paragraph ShallowAnalysis::getSemanticTokenDebugInfo(const SourceLocation& loc) const {
+    markup::Paragraph para;
+    const auto tok = syntaxes.getTokenAt(loc);
+    if (tok) {
+        para.appendBold("Token:").appendCode(toString(tok->kind)).newLine();
+
+        auto semanticTokenType = classifySemanticTokenKind(tok->kind);
+        if (semanticTokenType) {
+            // TODO: Add modifier token
+            para.appendBold("Semantic token: ")
+                .appendCode(fmt::format("{}", semanticTokenTypeToString(*semanticTokenType)))
+                .newLine();
+        }
+        else {
+            para.appendBold("Semantic token: ").appendText("(none)").newLine();
+        }
+
+        para.newLine();
+    }
+    return para;
+}
+
 markup::Paragraph ShallowAnalysis::getDebugHover(const SourceLocation& loc) const {
     markup::Paragraph para;
     auto tok = syntaxes.getTokenAt(loc);
     // Token info header
     if (tok) {
         para.appendBold("Token:").appendCode(toString(tok->kind)).newLine();
+
+        auto semanticTokenType = classifySemanticTokenKind(tok->kind);
+        if (semanticTokenType) {
+            para.appendBold("Semantic token: ")
+                .appendCode(fmt::format("{}", semanticTokenTypeToString(*semanticTokenType)))
+                .newLine();
+        }
+        else {
+            para.appendBold("Semantic token: ").appendText("(none)").newLine();
+        }
+
+        para.newLine();
     }
 
     // Walk up the syntax tree
@@ -634,8 +668,46 @@ lsp::SemanticTokens ShallowAnalysis::getSemanticTokens() {
         if (!token_id) {
             continue;
         }
+        auto triviaView = token->trivia();
 
-        auto range = toRange(token->range(), m_sourceManager);
+        size_t triviaOffset = token->location().offset();
+        for (const auto& trivia : triviaView) {
+            triviaOffset -= trivia.getRawText().size();
+        }
+
+        for (const auto& trivia : triviaView) {
+            auto text = trivia.getRawText();
+
+            if (text.empty()) {
+                continue;
+            }
+
+            auto loc = trivia.getExplicitLocation().value_or(
+                SourceLocation(m_buffer, triviaOffset));
+
+            if (loc.buffer() == m_buffer && (trivia.kind == parsing::TriviaKind::LineComment ||
+                                             trivia.kind == parsing::TriviaKind::BlockComment)) {
+
+                auto range =
+                    toRange(SourceRange(loc, SourceLocation(m_buffer, loc.offset() + text.size())),
+                            m_sourceManager);
+
+                if (range.start.line == range.end.line) {
+                    tokens.push_back(SemanticTokenInfo{
+                        .line = static_cast<uint32_t>(range.start.line),
+                        .character = static_cast<uint32_t>(range.start.character),
+                        .length = static_cast<uint32_t>(range.end.character -
+                                                        range.start.character),
+                        .tokenType = static_cast<uint32_t>(SemanticTokenType::Comment),
+                        .tokenModifiers = 0,
+                    });
+                }
+            }
+
+            triviaOffset += text.size();
+        }
+
+        const auto range = toRange(token->range(), m_sourceManager);
 
         if (range.start.line != range.end.line) {
             continue;

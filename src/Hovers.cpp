@@ -20,10 +20,8 @@
 
 namespace server {
 
-lsp::MarkupContent getHover(const SourceManager& sm, const BufferID docBuffer,
-                            const DefinitionInfo& info, const Config::HoverConfig& hovers) {
-    markup::Document doc;
-
+void getHover(markup::Document& doc, const SourceManager& sm, const BufferID docBuffer,
+              const DefinitionInfo& info, const Config::HoverConfig& hovers) {
     auto& infoPg = doc.addParagraph();
 
     if (info.symbol) {
@@ -154,8 +152,6 @@ lsp::MarkupContent getHover(const SourceManager& sm, const BufferID docBuffer,
         auto text = sm.getText(info.macroUsageRange);
         doc.addParagraph().appendText("Expanded from ").newLine().appendCodeBlock(text);
     }
-
-    return doc.build();
 }
 
 } // namespace server
