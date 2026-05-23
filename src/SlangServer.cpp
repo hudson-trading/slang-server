@@ -10,12 +10,12 @@
 #include "SlangServer.h"
 
 #include "Config.h"
+#include "SemanticToken.hpp"
 #include "ast/WcpClient.h"
 #include "completions/CompletionDispatch.h"
 #include "lsp/LspTypeExtensions.h"
 #include "lsp/LspTypes.h"
 #include "lsp/URI.h"
-#include "SemanticToken.hpp"
 #include "util/Converters.h"
 #include "util/Logging.h"
 #include <algorithm>
