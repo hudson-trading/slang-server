@@ -855,14 +855,14 @@ std::optional<lsp::WorkspaceEdit> SlangServer::getDocRename(const lsp::RenamePar
 std::optional<lsp::SemanticTokens> SlangServer::getDocSemanticTokensFull(
     const lsp::SemanticTokensParams& params) {
 
-    auto doc = m_driver->getDocument(params.textDocument.uri);
+    const auto doc = m_driver->getDocument(params.textDocument.uri);
     if (!doc) {
         return lsp::SemanticTokens{
             .data = {},
         };
     }
 
-    auto analysis = doc->getAnalysis();
+    const auto analysis = doc->getAnalysis();
     if (!analysis) {
         return lsp::SemanticTokens{
             .data = {},

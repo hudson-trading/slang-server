@@ -131,7 +131,9 @@ public:
     /// @brief Gets the AST symbol that a declared token refers to, if any
     const slang::ast::Symbol* getSymbolAtToken(const slang::parsing::Token* node) const;
 
-    lsp::SemanticTokens getSemanticTokens(bool inactiveRegions);
+    /// @brief Gets semantic tokens for the document
+    /// @param inactiveRegionsSupported If inactive regions aren't supported, include them as tokens
+    lsp::SemanticTokens getSemanticTokens(bool inactiveRegionsSupported);
 
     /// Syntax finder for location->syntax mapping
     SyntaxIndexer syntaxes;

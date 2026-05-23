@@ -613,26 +613,26 @@ Diagnostics ShallowAnalysis::getAnalysisDiags() {
 
 lsp::SemanticTokens ShallowAnalysis::getSemanticTokens(bool inactiveRegionsSupported) {
     struct SemanticTokenInfo {
-        uint32_t line;
-        uint32_t character;
-        uint32_t length;
-        // uint32_t tokenType;
-        // uint32_t tokenModifiers = 0;
+        lsp::uint line;
+        lsp::uint character;
+        lsp::uint length;
+        lsp::uint tokenType = 0;
+        lsp::uint tokenModifiers = 0;
     };
 
     std::vector<SemanticTokenInfo> tokens;
 
     if (!inactiveRegionsSupported) {
         for (const auto& region : syntaxes.disabledRegions) {
-            auto range = toRange(region, m_sourceManager);
+            const auto range = toRange(region, m_sourceManager);
 
-            for (uint32_t line = range.start.line; line <= range.end.line; line++) {
-                uint32_t startChar = line == range.start.line ? range.start.character : 0;
-                uint32_t endChar = range.end.character;
+            for (lsp::uint line = range.start.line; line <= range.end.line; line++) {
+                const lsp::uint startChar = line == range.start.line ? range.start.character : 0;
+                lsp::uint endChar = range.end.character;
 
                 if (line != range.end.line) {
                     auto text = m_sourceManager.getLine(m_buffer, line + 1);
-                    endChar = static_cast<uint32_t>(text.size());
+                    endChar = static_cast<lsp::uint>(text.size());
                 }
 
                 if (endChar > startChar) {
@@ -654,11 +654,11 @@ lsp::SemanticTokens ShallowAnalysis::getSemanticTokens(bool inactiveRegionsSuppo
         return lhs.character < rhs.character;
     });
 
-    std::vector<uint32_t> data;
+    std::vector<lsp::uint> data;
     data.reserve(tokens.size() * 5);
 
-    uint32_t prevLine = 0;
-    uint32_t prevChar = 0;
+    lsp::uint prevLine = 0;
+    lsp::uint prevChar = 0;
     bool first = true;
 
     for (const auto& token : tokens) {
@@ -675,14 +675,14 @@ lsp::SemanticTokens ShallowAnalysis::getSemanticTokens(bool inactiveRegionsSuppo
         //  * at index 5*i+4 - tokenModifiers: each set bit will be looked up in
         //  SemanticTokensLegend.tokenModifiers
 
-        uint32_t deltaLine = first ? token.line : token.line - prevLine;
-        uint32_t deltaChar = deltaLine == 0 ? token.character - prevChar : token.character;
+        const lsp::uint deltaLine = first ? token.line : token.line - prevLine;
+        const lsp::uint deltaChar = deltaLine == 0 ? token.character - prevChar : token.character;
 
         data.push_back(deltaLine);
         data.push_back(deltaChar);
         data.push_back(token.length);
-        data.push_back(0);
-        data.push_back(0);
+        data.push_back(token.tokenType);
+        data.push_back(token.tokenModifiers);
 
         prevLine = token.line;
         prevChar = token.character;
