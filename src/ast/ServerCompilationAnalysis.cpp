@@ -21,27 +21,21 @@ ServerCompilationAnalysis::ServerCompilationAnalysis(
     std::vector<std::shared_ptr<SlangDoc>>& documents, Bag& options, SourceManager& sourceManager) :
     compilation(options),
     m_analysisOptions(options.getOrDefault<slang::analysis::AnalysisOptions>()) {
-    // Collect all buffer IDs from all syntax trees
-    {
-        std::vector<BufferID> allBuffers;
-        std::unordered_set<BufferID> includedBuffers;
-        for (auto& doc : documents) {
-            auto tree = doc->getSyntaxTree();
-            compilation.addSyntaxTree(tree);
-            for (auto bufId : tree->getSourceBufferIds()) {
-                allBuffers.push_back(bufId);
-            }
-            for (auto inc : tree->getIncludeDirectives()) {
-                includedBuffers.insert(inc.buffer.id);
-            }
+    std::vector<BufferID> bufferIds;
+    std::unordered_set<BufferID> seenBuffers;
+
+    for (auto& doc : documents) {
+        auto tree = doc->getSyntaxTree();
+        compilation.addSyntaxTree(tree);
+
+        for (auto bufferId : tree->getSourceBufferIds()) {
+            if (seenBuffers.insert(bufferId).second)
+                bufferIds.push_back(bufferId);
         }
-        // add to vec
-        for (auto bufId : includedBuffers) {
-            allBuffers.push_back(bufId);
-        }
-        // Retain buffer data to prevent deallocation while this compilation exists
-        m_retainedBuffers = sourceManager.retainBuffers(allBuffers);
     }
+
+    // Retain buffer data to prevent deallocation while this compilation exists
+    m_retainedBuffers = sourceManager.retainBuffers(bufferIds);
 
     // reset and rebuild indexed info
     auto& root = compilation.getRoot();

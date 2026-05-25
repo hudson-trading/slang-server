@@ -82,8 +82,8 @@ ShallowAnalysis::ShallowAnalysis(SourceManager& sourceManager, slang::BufferID b
     }
 
     // Index macro references (usages and undefs) with their active definitions
-    for (auto& usage : m_tree->getMacroUsages()) {
-        macroUsageDefinitions[usage.syntax] = usage.definition;
+    for (auto& ref : m_tree->getPreprocessorMetadata().macroRefs) {
+        macroUsageDefinitions[ref.syntax] = ref.definition;
     }
 
     // Set up options for shallow compilation

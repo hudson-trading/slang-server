@@ -726,7 +726,7 @@ void SlangServer::onWorkspaceDidChangeWatchedFiles(const lsp::DidChangeWatchedFi
             break;
         }
         if (path.ends_with(".f") &&
-            m_driver->driver.getDefineSources().contains(std::filesystem::path(path))) {
+            m_driver->driver.getCommandFileMetadata().contains(std::filesystem::path(path))) {
             needsReload = true;
             break;
         }
