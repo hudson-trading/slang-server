@@ -631,7 +631,7 @@ lsp::SemanticTokens ShallowAnalysis::getSemanticTokens(bool inactiveRegionsSuppo
                 lsp::uint endChar = range.end.character;
 
                 if (line != range.end.line) {
-                    auto text = m_sourceManager.getLine(m_buffer, line + 1);
+                    const auto text = m_sourceManager.getLine(m_buffer, line + 1);
                     endChar = static_cast<lsp::uint>(text.size());
                 }
 
