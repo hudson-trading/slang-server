@@ -616,8 +616,8 @@ lsp::SemanticTokens ShallowAnalysis::getSemanticTokens(bool inactiveRegionsSuppo
         lsp::uint line;
         lsp::uint character;
         lsp::uint length;
-        lsp::uint tokenType = 0;
-        lsp::uint tokenModifiers = 0;
+        lsp::uint tokenType;
+        lsp::uint tokenModifiers;
     };
 
     std::vector<SemanticTokenInfo> tokens;
@@ -640,6 +640,8 @@ lsp::SemanticTokens ShallowAnalysis::getSemanticTokens(bool inactiveRegionsSuppo
                         line,
                         startChar,
                         endChar - startChar,
+                        0,
+                        0,
                     });
                 }
             }
