@@ -35,7 +35,7 @@ std::string SyntaxIndexer::MacroExpansionTokens::getText() const {
 }
 
 SyntaxIndexer::SyntaxIndexer(const slang::syntax::SyntaxTree& tree) {
-    SLANG_ASSERT(tree.getSourceBufferIds().size() == 1);
+    SLANG_ASSERT(tree.getSourceBufferIds().size() >= 1);
     m_buffer = tree.getSourceBufferIds()[0];
     m_sourceManager = &tree.sourceManager();
     visit(tree.root());

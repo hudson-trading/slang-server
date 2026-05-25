@@ -63,11 +63,11 @@ void ServerDriver::parseAndLoadSources(const std::vector<std::string>& buildfile
 
     // Parse each config file's flags separately so -D defines are attributed correctly
     bool ok = true;
+
     for (auto& src : m_config.flagsByFile.value()) {
-        driver.currentParseSource = src.filePath;
+        auto guard = driver.setCurrentCommandFile(src.filePath);
         ok &= driver.parseCommandLine(src.flags, parseOpts);
     }
-    driver.currentParseSource.clear();
 
     driver.options.errorLimit = 0;
     ok &= driver.processOptions(false);
@@ -86,8 +86,8 @@ void ServerDriver::parseAndLoadSources(const std::vector<std::string>& buildfile
     }
 
     // Build macro name -> source file map from the driver's per-file define lists
-    for (auto& [path, defines] : driver.getDefineSources()) {
-        for (auto& define : defines) {
+    for (auto& [path, meta] : driver.getCommandFileMetadata()) {
+        for (auto& define : meta.defines) {
             auto eqPos = define.find('=');
             auto macroName = eqPos != std::string::npos ? define.substr(0, eqPos) : define;
             m_defineSources[macroName] = path;

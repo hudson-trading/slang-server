@@ -41,40 +41,28 @@ jobs:
         include:
           - name: linux-x64-clang
             preset: clang-release
-            os: ubuntu-latest
-            container: rockylinux:8
-            extra_flags: -DCMAKE_CXX_COMPILER=clang++
+            os: ubuntu-24.04
           - name: linux-arm64-clang
             preset: clang-release
             os: ubuntu-24.04-arm
-            container: rockylinux:8
-            extra_flags: -DCMAKE_CXX_COMPILER=clang++
+          - name: linux-x64-clang-debug
+            preset: clang-debug
+            os: ubuntu-24.04
+            run_pytests: false
+            run_neovim_tests: false
+            upload_artifact: false
           - name: linux-x64-gcc
             preset: gcc-release
-            os: ubuntu-latest
-            container: rockylinux:8
-            extra_flags: -DCMAKE_CXX_COMPILER=/opt/rh/gcc-toolset-14/root/usr/bin/g++
-          - name: newer-linux-x64-clang
-            preset: clang-release
-            os: ubuntu-latest
-            extra_flags: -DCMAKE_CXX_COMPILER=clang++
-          - name: newer-linux-x64-gcc
+            os: ubuntu-24.04
+            # to support older libc
+          - name: old-linux-x64-gcc
             preset: gcc-release
-            os: ubuntu-latest
-          - name: linux-arm64-gcc
-            preset: gcc-release
-            os: ubuntu-24.04-arm
+            os: ubuntu-24.04
             container: rockylinux:8
-            extra_flags: -DCMAKE_CXX_COMPILER=/opt/rh/gcc-toolset-14/root/usr/bin/g++
-          # Not very available/used
-          # - name: macos-x64
-          #   preset: macos-release
-          #   os: macos-15-intel
-          #   extra_flags: -DCMAKE_CXX_COMPILER=clang++
-          - name: macos-arm64
+            cmake_args: -DCMAKE_CXX_COMPILER=/opt/rh/gcc-toolset-14/root/usr/bin/g++
+          - name: macos
             preset: macos-release
             os: macos-15
-            extra_flags: -DCMAKE_CXX_COMPILER=clang++
           - name: windows-x64
             preset: win64-release
             os: windows-latest
@@ -94,7 +82,18 @@ jobs:
           dnf -y install 'dnf-command(config-manager)'
           dnf config-manager --set-enabled powertools
           dnf -y install epel-release
-          dnf -y install gcc-c++ clang cmake git make gcc-toolset-14-libatomic-devel
+          dnf -y install gcc-c++ clang git make gcc-toolset-14-gcc-c++ gcc-toolset-14-libatomic-devel python39-pip
+          # Need newer cmake
+          python3.9 -m pip install --upgrade pip
+          python3.9 -m pip install cmake==3.31.6
+          cmake --version
+      - name: Install Clang 21 (Ubuntu)
+        if: startsWith(matrix.preset, 'clang-')
+        run: |
+          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+          sudo add-apt-repository "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-21 main"
+          sudo apt-get update
+          sudo apt-get install -y clang-21
       - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref || github.ref }}
@@ -110,7 +109,7 @@ jobs:
           xcode-version: 'latest'
 
       - name: Configure
-        run: cmake --preset ${{ matrix.preset }} -DSLANG_CI_BUILD=ON ${{ matrix.extra_flags }}
+        run: cmake --preset ${{ matrix.preset }} -DSLANG_CI_BUILD=ON ${{ matrix.cmake_args }}
 
       - name: Build
         run: cmake --build build/${{ matrix.preset }} -j8
@@ -119,10 +118,11 @@ jobs:
         run: ctest --test-dir build/${{ matrix.preset }} --output-on-failure --no-tests=error -j8
 
       - name: Set up uv
+        if: matrix.run_pytests != false
         uses: astral-sh/setup-uv@v6
 
       - name: Run pytest (Linux/macOS)
-        if: runner.os != 'Windows'
+        if: runner.os != 'Windows' && matrix.run_pytests != false
         run: |
           uv venv
           source .venv/bin/activate
@@ -130,7 +130,7 @@ jobs:
           pytest tests/system/ --binary build/${{ matrix.preset }}/bin/slang-server
 
       - name: Run pytest (Windows)
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && matrix.run_pytests != false
         run: |
           uv venv
           .venv\Scripts\activate
@@ -145,38 +145,30 @@ jobs:
         # unfortunately that uncovers the fact that the neovim builds from that
         # GH action require a newer GLIBC version than rockylinux provides.
         # Not going down that rabbit hole right now
-        if: runner.os != 'Windows' && matrix.container == ''
+        if: runner.os != 'Windows' && matrix.container == '' && matrix.run_neovim_tests != false
         uses: nvim-neorocks/nvim-busted-action@v1
         env:
           SLANG_SERVER_BIN: ../../build/${{ matrix.preset }}/bin/slang-server
         with:
           luarocks_args: 'clients/neovim/slang-server.nvim-scm-1.rockspec --test-type busted -- -C clients/neovim/'
 
-      # Artifact creation for releases
-      - name: Strip binary (Linux)
-        if: inputs.upload_artifacts && runner.os == 'Linux'
-        run: strip build/${{ matrix.preset }}/bin/slang-server
-
-      - name: Create artifact directory
-        if: inputs.upload_artifacts
-        run: mkdir -p release-artifacts
-
-      - name: Copy binary (Linux/macOS)
-        if: inputs.upload_artifacts && runner.os != 'Windows'
-        run: |
-          cp build/${{ matrix.preset }}/bin/slang-server release-artifacts/slang-server
-          chmod +x release-artifacts/slang-server
-
-      - name: Copy binary (Windows)
-        if: inputs.upload_artifacts && runner.os == 'Windows'
-        shell: bash
-        run: cp build/${{ matrix.preset }}/bin/slang-server.exe release-artifacts/slang-server.exe
-
-      - name: Create README
-        if: inputs.upload_artifacts
+      - name: Package release artifact
+        if: inputs.upload_artifacts && matrix.upload_artifact != false
         shell: bash
         run: |
-          cat > release-artifacts/README.txt << EOF
+          mkdir -p release-artifacts
+
+          if [[ "${RUNNER_OS}" == "Windows" ]]; then
+            cp build/${{ matrix.preset }}/bin/slang-server.exe release-artifacts/slang-server.exe
+          else
+            cp build/${{ matrix.preset }}/bin/slang-server release-artifacts/slang-server
+            chmod +x release-artifacts/slang-server
+            if [[ "${RUNNER_OS}" == "Linux" ]]; then
+              strip release-artifacts/slang-server
+            fi
+          fi
+
+          cat > release-artifacts/README.txt <<EOF
           Slang Server - SystemVerilog Language Server
 
           This is a pre-built binary of slang-server.
@@ -193,23 +185,14 @@ jobs:
           Build date: $(date -u +%Y-%m-%d)
           EOF
 
-      - name: Create tarball (Linux/macOS)
-        if: inputs.upload_artifacts && runner.os != 'Windows'
-        run: |
-          cd release-artifacts
-          tar -czf ../${{ env.SLANG_SERVER_ARTIFACT_NAME }}.tar.gz *
-          cd ..
-
-      - name: Create zip (Windows)
-        if: inputs.upload_artifacts && runner.os == 'Windows'
-        shell: bash
-        run: |
-          cd release-artifacts
-          7z a ../${{ env.SLANG_SERVER_ARTIFACT_NAME }}.zip *
-          cd ..
+          if [[ "${RUNNER_OS}" == "Windows" ]]; then
+            (cd release-artifacts && 7z a ../${{ env.SLANG_SERVER_ARTIFACT_NAME }}.zip *)
+          else
+            tar -czf ${{ env.SLANG_SERVER_ARTIFACT_NAME }}.tar.gz -C release-artifacts .
+          fi
 
       - name: Upload artifact
-        if: inputs.upload_artifacts
+        if: inputs.upload_artifacts && matrix.upload_artifact != false
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.SLANG_SERVER_ARTIFACT_NAME }}
@@ -217,30 +200,3 @@ jobs:
             ${{ env.SLANG_SERVER_ARTIFACT_NAME }}.tar.gz
             ${{ env.SLANG_SERVER_ARTIFACT_NAME }}.zip
           retention-days: 7
-
-  clang-debug:
-    runs-on: ubuntu-latest
-    container: rockylinux:8
-    steps:
-      - name: Install dependencies (Rocky Linux 8)
-        run: |
-          dnf -y update
-          dnf -y install 'dnf-command(config-manager)'
-          dnf config-manager --set-enabled powertools
-          dnf -y install epel-release
-          dnf -y install gcc-c++ clang cmake git make gcc-toolset-14-libatomic-devel
-
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ inputs.ref || github.ref }}
-          submodules: true
-          fetch-depth: 0
-
-      - name: Configure
-        run: cmake --preset clang-debug -DSLANG_CI_BUILD=ON -DCMAKE_CXX_COMPILER=clang++
-
-      - name: Build C++ tests
-        run: cmake --build build/clang-debug -j8 --target server_unittests
-
-      - name: Run C++ tests
-        run: ctest --test-dir build/clang-debug --output-on-failure --no-tests=error -j8

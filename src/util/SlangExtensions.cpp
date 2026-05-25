@@ -16,18 +16,12 @@ bool hasValidBuffers(const SourceManager& sm, const std::shared_ptr<syntax::Synt
     if (!tree)
         return false;
 
-    // Check the main buffer
+    // Check the main buffer and included buffers
     auto buffers = tree->getSourceBufferIds();
-    if (buffers.empty() || !sm.isLatestData(buffers[0]))
-        return false;
-
-    // Check all included file buffers
-    for (const auto& inc : tree->getIncludeDirectives()) {
-        if (!inc.buffer.id.valid())
-            continue;
-
-        if (!sm.isLatestData(inc.buffer.id))
+    for (auto buf : buffers) {
+        if (buf.valid() && !sm.isLatestData(buf)) {
             return false;
+        }
     }
 
     return true;
