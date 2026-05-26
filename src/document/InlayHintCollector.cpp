@@ -340,16 +340,20 @@ void InlayHintCollector::handle(const ClassNameSyntax& syntax) {
     }
     size_t paramIndex = 0;
     for (auto paramSyntax : syntax.parameters->parameters) {
-        if (paramSyntax->kind == SyntaxKind::OrderedParamAssignment &&
-            paramIndex < cls.genericClass->paramDecls.size()) {
-            result.push_back(lsp::InlayHint{
-                .position = toPosition(paramSyntax->getFirstToken().location(),
-                                       m_analysis.m_sourceManager),
-                .label = fmt::format("{}:", cls.genericClass->paramDecls[paramIndex++].name),
-                .kind = lsp::InlayHintKind::Parameter,
-                .paddingRight = true,
-            });
+        if (paramSyntax->kind != SyntaxKind::OrderedParamAssignment) {
+            continue;
         }
+        auto paramDecls = cls.genericClass->getParameterDecls();
+        if (paramIndex >= paramDecls.size()) {
+            continue;
+        }
+        result.push_back(lsp::InlayHint{
+            .position = toPosition(paramSyntax->getFirstToken().location(),
+                                   m_analysis.m_sourceManager),
+            .label = fmt::format("{}:", paramDecls[paramIndex++].name),
+            .kind = lsp::InlayHintKind::Parameter,
+            .paddingRight = true,
+        });
     }
 }
 

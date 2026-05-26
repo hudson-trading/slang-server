@@ -3,7 +3,7 @@
 
 `slang-server` requires the following tools in order to build:
 - [python 3](https://www.python.org/)
-- [CMake](https://cmake.org/) (3.20 or later)
+- [CMake](https://cmake.org/) (3.28 or later)
 - C++20 compatible compiler. Minimum supported compiler versions:
     - GCC 11
     - clang 17
