@@ -11,7 +11,9 @@
         },
         "indexGlobs": {
           "type": "array",
-          "description": "Deprecated: use 'index' instead. Globs of what to index. By default will index all sv and svh files in the workspace.",
+          "description": "Globs of what to index. By default will index all sv and svh files in the workspace.",
+          "deprecated": true,
+          "deprecationMessage": "Use 'index' instead.",
           "items": {
             "type": "string"
           }
@@ -25,7 +27,9 @@
         },
         "excludeDirs": {
           "type": "array",
-          "description": "Deprecated: use 'index' instead. Directories to exclude",
+          "description": "Directories to exclude",
+          "deprecated": true,
+          "deprecationMessage": "Use 'index' instead.",
           "items": {
             "type": "string"
           }
