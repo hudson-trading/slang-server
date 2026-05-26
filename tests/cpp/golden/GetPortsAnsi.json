@@ -1,0 +1,19 @@
+[
+  {
+    "ports": [
+      {
+        "name": "clk",
+        "direction": "input",
+        "type": "logic",
+        "isAnsi": true
+      },
+      {
+        "name": "done",
+        "direction": "output",
+        "type": "logic",
+        "isAnsi": true
+      }
+    ],
+    "hasAnsiPorts": true
+  }
+]

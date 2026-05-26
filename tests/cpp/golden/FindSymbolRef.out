@@ -732,7 +732,7 @@ endprimitive
 
 (* attr = 3.14 *) bind m3.m m1 #(1) bound('x, , , );
                           ^ Ref -> **Instance** `m` in `m3`  \n\Type: m2  \n\\n\\n\---\n\\n\`m2 #(\n\    .x_t(y_t)\n\) m (, b, c, d, );`
-                            ^^ Ref -> **Definition** `m1`  \n\\n\\n\---\n\\n\`module automatic m1 import p::*; #(int i = 1)\n\(a, b, , .c({a, b[0]}));`
+                            ^^ Ref -> **Definition** `m1`  \n\\n\\n\---\n\\n\`module automatic m1 import p::*; #(int i = 1)\n\(a, b, , .c({a, b[0]}));\n\   input logic a;\n\   output logic[1:0] b;\n\   input void ;\n\   input logic a;\n\   output logic ;\n\\n\  endmodule : m1`
                                     ^^^^^ Sym bound : Instance
 
 

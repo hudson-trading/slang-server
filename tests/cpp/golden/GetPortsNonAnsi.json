@@ -1,20 +1,31 @@
 [
-  [
-    {
-      "name": "clk",
-      "direction": "In"
-    },
-    {
-      "name": "rst",
-      "direction": "In"
-    },
-    {
-      "name": "io",
-      "direction": "InOut"
-    },
-    {
-      "name": "done",
-      "direction": "Out"
-    }
-  ]
+  {
+    "ports": [
+      {
+        "name": "clk",
+        "direction": "input",
+        "type": "logic",
+        "isAnsi": false
+      },
+      {
+        "name": "rst",
+        "direction": "input",
+        "type": "logic",
+        "isAnsi": false
+      },
+      {
+        "name": "io",
+        "direction": "inout",
+        "type": "logic",
+        "isAnsi": false
+      },
+      {
+        "name": "done",
+        "direction": "output",
+        "type": "logic",
+        "isAnsi": false
+      }
+    ],
+    "hasAnsiPorts": false
+  }
 ]
