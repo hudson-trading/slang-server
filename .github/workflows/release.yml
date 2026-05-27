@@ -4,20 +4,26 @@ on:
   workflow_dispatch:
     inputs:
       kind:
-        description: 'Update kind (major, minor, patch)'
-        required: true
+        description: 'Update kind (major, minor, patch). Ignored when existing_tag is set.'
+        required: false
         type: choice
         options:
           - patch
           - minor
           - major
         default: 'patch'
+      existing_tag:
+        description: 'Amend an existing release tag (e.g. v0.2.6) by re-running build + asset upload. Skips version bump and release creation.'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: write
 
 jobs:
   create-release:
+    if: inputs.existing_tag == ''
     runs-on: ubuntu-latest
     outputs:
       tag_name: ${{ steps.create_tag.outputs.tag_name }}
@@ -101,13 +107,17 @@ jobs:
 
   build:
     needs: create-release
+    if: always() && (needs.create-release.result == 'success' || needs.create-release.result == 'skipped')
     uses: ./.github/workflows/build.yml
     with:
       upload_artifacts: true
-      ref: main # Build from main branch with updated VERSION
+      # If amending, build from the existing tag so binaries match the release.
+      # Otherwise build from main (which now has the bumped VERSION committed).
+      ref: ${{ inputs.existing_tag || 'main' }}
 
   add-release-assets:
     needs: [create-release, build]
+    if: always() && needs.build.result == 'success'
     runs-on: ubuntu-latest
 
     steps:
@@ -143,7 +153,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG_NAME="${{ needs.create-release.outputs.tag_name }}"
+          TAG_NAME="${{ inputs.existing_tag || needs.create-release.outputs.tag_name }}"
           echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
 
           # Get existing release notes
