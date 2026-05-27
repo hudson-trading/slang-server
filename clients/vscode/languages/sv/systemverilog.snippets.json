@@ -42,8 +42,8 @@
       "class ${1:className};",
       "\tfunction new();",
       "\t\t$0",
-      "\tendfunction //new()",
-      "endclass //$1"
+      "\tendfunction : new",
+      "endclass : $1"
     ],
     "description": "class name; ... endclass"
   },
@@ -53,8 +53,8 @@
       "class ${1:className} extends ${2:superClass};",
       "\tfunction new();",
       "\t\t$0",
-      "\tendfunction //new()",
-      "endclass //$1 extends $2"
+      "\tendfunction : new",
+      "endclass : $1"
     ],
     "description": "class name extends super; ... endclass"
   },
@@ -63,16 +63,16 @@
     "body": [
       "task ${1:automatic} ${2:taskName}(${3:arguments});",
       "\t$0",
-      "endtask //$1"
+      "endtask : $1"
     ],
     "description": "task name; ... endtask"
   },
   "package": {
     "prefix": "package",
     "body": [
-      "package ${1:package_name}",
+      "package ${1:package_name};",
       "\t$2",
-      "endpackage"
+      "endpackage : $1"
     ],
     "description": "package name; ... endpackage"
   },
@@ -86,7 +86,7 @@
     "body": [
       "interface ${1:interfacename};",
       "\t$0",
-      "endinterface //$1"
+      "endinterface : $1"
     ],
     "description": "interface name; ... endinterface"
   },
