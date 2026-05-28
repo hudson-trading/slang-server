@@ -549,6 +549,10 @@
     "views": {
       "slang": [
         {
+          "id": "slang.project.topLevels",
+          "name": "Top Level"
+        },
+        {
           "id": "slang.project",
           "name": "Hierarchy"
         },

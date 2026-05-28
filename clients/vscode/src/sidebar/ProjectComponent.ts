@@ -32,6 +32,7 @@ import {
   getGeneratedBuildOutputPath,
   resolveCommandToken,
 } from './BuildConfigUtils'
+import { TopLevelModulesView } from './TopLevelsModulesView'
 
 const STRUCTURE_SYMS = [
   slang.SlangKind.Instance,
@@ -439,6 +440,8 @@ export class ProjectComponent
   treeView: vscode.TreeView<HierItem> | undefined
   focused: HierItem | undefined = undefined
 
+  topLevels: TopLevelModulesView
+
   // Instances Index
   instancesView: InstancesView = new InstancesView()
 
@@ -495,6 +498,24 @@ export class ProjectComponent
       await this.setTopLevel.func(vscode.Uri.file(file.fsPath))
     }
   )
+
+  async selectRootTopLevel(
+    top: RootItem,
+    revealOptions: RevealOptions = {
+      revealHierarchy: true,
+      revealFile: false,
+      revealInstance: true,
+    }
+  ): Promise<void> {
+    this.top = top
+    this.focused = top
+
+    this._onDidChangeTreeData.fire()
+    this.topLevels.refresh()
+
+    await this.setInstance.func(top, revealOptions)
+  }
+
   isRevalingFile: boolean = false
 
   async onStart(): Promise<void> {
@@ -522,6 +543,8 @@ export class ProjectComponent
       this.top = undefined
 
       await this.instancesView.clearModules()
+      this.topLevels.refresh()
+
       this._onDidChangeTreeData.fire()
       await slang.setBuildFile('')
       this.focusedBar.hide()
@@ -1223,6 +1246,9 @@ export class ProjectComponent
           '[Select Build File](command:slang.project.selectBuildFile)\n[Select Top Level](command:slang.project.selectTopLevel)',
       },
     })
+
+    this.topLevels = new TopLevelModulesView(this)
+
     this.focusedBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100)
     this.focusedBar.name = 'Slang Instance'
     vscode.window.onDidChangeActiveTextEditor(async (e: vscode.TextEditor | undefined) => {
@@ -1562,6 +1588,7 @@ export class ProjectComponent
     )
 
     const tops = this.unit.children.filter((item) => item.inst.kind === slang.SlangKind.Instance)
+    this.topLevels.refresh()
 
     if (tops.length === 1 && this.treeView !== undefined) {
       this.top = tops[0]
@@ -1598,6 +1625,11 @@ export class ProjectComponent
       if (this.unit === undefined) {
         return []
       }
+
+      if (this.top !== undefined) {
+        return [this.top]
+      }
+
       return this.unit.getChildren()
     }
     const children = await element.getChildren()
