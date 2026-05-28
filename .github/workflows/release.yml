@@ -147,44 +147,10 @@ jobs:
             ls -lh release-assets/
           fi
 
-      - name: Get release info
+      - name: Upload assets to release
         if: steps.prepare.outputs.has_artifacts == 'true'
-        id: release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG_NAME="${{ inputs.existing_tag || needs.create-release.outputs.tag_name }}"
-          echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
-
-          # Get existing release notes
-          RELEASE_NOTES=$(gh release view "$TAG_NAME" --json body -q .body)
-          echo "notes<<EOF" >> $GITHUB_OUTPUT
-          echo "$RELEASE_NOTES" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Generate checksums and update release
-        if: steps.prepare.outputs.has_artifacts == 'true'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TAG_NAME="${{ steps.release.outputs.tag }}"
-
-          # Generate checksums
-          cd release-assets
-          CHECKSUMS=$(sha256sum * | sed 's/^/    /')
-          cd ..
-
-          # Append checksums to release notes
-          cat > updated-notes.md << 'EOF'
-          ${{ steps.release.outputs.notes }}
-
-          ## Checksums
-
-          ```
-          EOF
-          echo "$CHECKSUMS" >> updated-notes.md
-          echo '```' >> updated-notes.md
-
-          # Update release with checksums and upload artifacts
-          gh release edit "$TAG_NAME" --notes-file updated-notes.md
           gh release upload "$TAG_NAME" release-assets/* --clobber
