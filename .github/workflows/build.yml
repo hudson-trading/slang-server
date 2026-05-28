@@ -48,9 +48,9 @@ jobs:
           - name: linux-x64-clang-debug
             preset: clang-debug
             os: ubuntu-24.04
-            run_pytests: false
-            run_neovim_tests: false
-            upload_artifact: false
+            skip_pytests: true
+            skip_neovim_tests: true
+            skip_upload: true
           - name: linux-x64-gcc
             preset: gcc-release
             os: ubuntu-24.04
@@ -118,11 +118,11 @@ jobs:
         run: ctest --test-dir build/${{ matrix.preset }} --output-on-failure --no-tests=error -j8
 
       - name: Set up uv
-        if: matrix.run_pytests != false
+        if: matrix.skip_pytests != true
         uses: astral-sh/setup-uv@v6
 
       - name: Run pytest (Linux/macOS)
-        if: runner.os != 'Windows' && matrix.run_pytests != false
+        if: runner.os != 'Windows' && matrix.skip_pytests != true
         run: |
           uv venv
           source .venv/bin/activate
@@ -130,7 +130,7 @@ jobs:
           pytest tests/system/ --binary build/${{ matrix.preset }}/bin/slang-server
 
       - name: Run pytest (Windows)
-        if: runner.os == 'Windows' && matrix.run_pytests != false
+        if: runner.os == 'Windows' && matrix.skip_pytests != true
         run: |
           uv venv
           .venv\Scripts\activate
@@ -145,7 +145,7 @@ jobs:
         # unfortunately that uncovers the fact that the neovim builds from that
         # GH action require a newer GLIBC version than rockylinux provides.
         # Not going down that rabbit hole right now
-        if: runner.os != 'Windows' && matrix.container == '' && matrix.run_neovim_tests != false
+        if: runner.os != 'Windows' && matrix.container == '' && matrix.skip_neovim_tests != true
         uses: nvim-neorocks/nvim-busted-action@v1
         env:
           SLANG_SERVER_BIN: ../../build/${{ matrix.preset }}/bin/slang-server
@@ -153,7 +153,7 @@ jobs:
           luarocks_args: 'clients/neovim/slang-server.nvim-scm-1.rockspec --test-type busted -- -C clients/neovim/'
 
       - name: Package release artifact
-        if: inputs.upload_artifacts && matrix.upload_artifact != false
+        if: inputs.upload_artifacts && !matrix.skip_upload
         shell: bash
         run: |
           mkdir -p release-artifacts
@@ -192,7 +192,7 @@ jobs:
           fi
 
       - name: Upload artifact
-        if: inputs.upload_artifacts && matrix.upload_artifact != false
+        if: inputs.upload_artifacts && !matrix.skip_upload
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.SLANG_SERVER_ARTIFACT_NAME }}
