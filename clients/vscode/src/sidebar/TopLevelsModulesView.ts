@@ -9,6 +9,8 @@ const projectByView = new WeakMap<TopLevelModulesView, ProjectComponent>()
 class TopLevelModuleItem {
   constructor(
     public readonly top: RootItem,
+
+    /// Whether this module is the active top level module.
     private readonly selected: boolean
   ) {}
 
