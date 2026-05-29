@@ -534,6 +534,21 @@
       {
         "command": "slang.updateConfig",
         "title": "Extdev: update config (package.json and CONFIG.md)"
+      },
+      {
+        "command": "slang.project.topLevels.attachWaveform",
+        "title": "Attach Waveform",
+        "icon": "$(add)"
+      },
+      {
+        "command": "slang.project.topLevels.openWaveform",
+        "title": "Open Waveform",
+        "icon": "$(graph-line)"
+      },
+      {
+        "command": "slang.project.topLevels.detachWaveform",
+        "title": "Detach Waveform",
+        "icon": "$(close)"
       }
     ],
     "viewsContainers": {
@@ -641,6 +656,26 @@
           "command": "slang.project.instancesView.showInWaveform",
           "group": "inline",
           "when": "view == slang.project.instancesView && viewItem == Instance"
+        },
+        {
+          "command": "slang.project.topLevels.attachWaveform",
+          "group": "inline",
+          "when": "view == slang.project.topLevels && viewItem == TopLevelModule"
+        },
+        {
+          "command": "slang.project.topLevels.attachWaveform",
+          "group": "inline",
+          "when": "view == slang.project.topLevels && viewItem == TopLevelModuleWithWaveforms"
+        },
+        {
+          "command": "slang.project.topLevels.openWaveform",
+          "group": "inline",
+          "when": "view == slang.project.topLevels && viewItem == TopLevelWaveform"
+        },
+        {
+          "command": "slang.project.topLevels.detachWaveform",
+          "group": "inline",
+          "when": "view == slang.project.topLevels && viewItem == TopLevelWaveform"
         }
       ],
       "editor/title": [

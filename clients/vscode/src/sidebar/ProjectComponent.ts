@@ -736,11 +736,18 @@ export class ProjectComponent
     }
   )
 
-  public async maybeOpenWaveform(): Promise<boolean> {
+  public async maybeOpenWaveform(path?: string): Promise<boolean> {
     const vvExt = await vv.getApi()
 
     if (vvExt === undefined) {
       return false
+    }
+
+    if (path) {
+      const openedActiveWaveform = await this.topLevels.openActiveWaveformForPath(path)
+      if (openedActiveWaveform) {
+        return true
+      }
     }
 
     // check if a waveform is already open
@@ -1040,7 +1047,7 @@ export class ProjectComponent
         return
       }
 
-      const ok = await this.maybeOpenWaveform()
+      const ok = await this.maybeOpenWaveform(item.getPath())
       if (!ok) {
         return
       }
