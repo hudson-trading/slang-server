@@ -1042,7 +1042,6 @@ export class ProjectComponent
         if (didToggle) {
           void this.reveal(item)
         }
-
         await item.showChildrenInWaveform(this.logger)
       }
     }
