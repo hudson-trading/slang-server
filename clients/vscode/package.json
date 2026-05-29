@@ -564,7 +564,7 @@
     },
     "viewsWelcome": [
       {
-        "view": "slang.project",
+        "view": "slang.project.topLevels",
         "contents": "[Select Build File](command:slang.project.selectBuildFile)\n[Select Top Level](command:slang.project.selectTopLevel)"
       }
     ],
@@ -583,12 +583,12 @@
         {
           "command": "slang.project.showBuildFile",
           "group": "navigation",
-          "when": "view == slang.project"
+          "when": "view == slang.project.topLevels"
         },
         {
           "command": "slang.project.selectBuildFile",
           "group": "navigation",
-          "when": "view == slang.project"
+          "when": "view == slang.project.topLevels"
         },
         {
           "command": "slang.project.toggleParams",
@@ -608,7 +608,7 @@
         {
           "command": "slang.project.refreshCompilation",
           "group": "navigation",
-          "when": "view == slang.project"
+          "when": "view == slang.project.topLevels"
         }
       ],
       "view/item/context": [
