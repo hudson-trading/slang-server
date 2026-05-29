@@ -58,15 +58,6 @@
     ],
     "description": "class name extends super; ... endclass"
   },
-  "task": {
-    "prefix": "task",
-    "body": [
-      "task ${1:automatic} ${2:taskName}(${3:arguments});",
-      "\t$0",
-      "endtask : $1"
-    ],
-    "description": "task name; ... endtask"
-  },
   "package": {
     "prefix": "package",
     "body": [
@@ -89,6 +80,24 @@
       "endinterface : $1"
     ],
     "description": "interface name; ... endinterface"
+  },
+  "property": {
+    "prefix": "property",
+    "body": [
+      "property ${1:propertyName};",
+      "\t$0",
+      "endproperty : $1"
+    ],
+    "description": "property name; ... endproperty"
+  },
+  "sequence": {
+    "prefix": "sequence",
+    "body": [
+      "sequence ${1:sequenceName};",
+      "\t$0",
+      "endsequence : $1"
+    ],
+    "description": "sequence name; ... endsequence"
   },
   "modport": {
     "prefix": "modport",

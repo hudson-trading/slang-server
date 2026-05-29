@@ -24,10 +24,6 @@
       "end"
     ],
     [
-      "randcase",
-      "endcase"
-    ],
-    [
       "casex",
       "endcase"
     ],
@@ -44,20 +40,12 @@
       "endchecker"
     ],
     [
-      "class",
-      "endclass"
-    ],
-    [
       "clocking",
       "endclocking"
     ],
     [
       "config",
       "endconfig"
-    ],
-    [
-      "coverage",
-      "endcoverage"
     ],
     [
       "covergroup",
@@ -76,16 +64,8 @@
       "join_none"
     ],
     [
-      "function",
-      "endfunction"
-    ],
-    [
       "generate",
       "endgenerate"
-    ],
-    [
-      "interface",
-      "endinterface"
     ],
     [
       "macromodule",
@@ -108,10 +88,6 @@
       "endprogram"
     ],
     [
-      "property",
-      "endproperty"
-    ],
-    [
       "randcase",
       "endcase"
     ],
@@ -120,16 +96,8 @@
       "endspecify"
     ],
     [
-      "sequence",
-      "endsequence"
-    ],
-    [
       "table",
       "endtable"
-    ],
-    [
-      "task",
-      "endtask"
     ]
   ],
   "autoClosingPairs": [
@@ -177,8 +145,8 @@
   ],
   "folding": {
     "markers": {
-      "start": "^[ \\t\\n]*(?://[ \\t\\n]*#?region|`(?:ifdef|ifndef|elsif|else)\\b|\\b(?:(?:macro)?module|class)\\b)",
-      "end": "^[ \\t\\n]*(?://[ \\t\\n]*#?endregion|`(?:elsif|else|endif)\\b|\\b(?:endmodule|endclass)\\b)"
+      "start": "^[ \\t\\n]*(?://[ \\t\\n]*#?region|`(?:ifdef|ifndef|elsif|else)\\b|\\b(?:(?:macro)?module|class|task|function|interface|property|sequence|package|program)\\b)",
+      "end": "^[ \\t\\n]*(?://[ \\t\\n]*#?endregion|`(?:elsif|else|endif)\\b|\\b(?:endmodule|endclass|endtask|endfunction|endinterface|endproperty|endsequence|endpackage|endprogram)\\b)"
     }
   }
 }

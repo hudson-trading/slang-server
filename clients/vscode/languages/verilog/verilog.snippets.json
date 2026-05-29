@@ -282,12 +282,20 @@
   "function": {
     "prefix": "function",
     "body": [
-      "function $1;",
-      "\t$2;",
-      "\t$3",
-      "endfunction"
+      "function ${1:automatic} ${2:functionName}(${3:arguments});",
+      "\t$0",
+      "endfunction : $2"
     ],
-    "description": "function (...) ... endfunction"
+    "description": "function name(args); ... endfunction"
+  },
+  "task": {
+    "prefix": "task",
+    "body": [
+      "task ${1:automatic} ${2:taskName}(${3:arguments});",
+      "\t$0",
+      "endtask : $2"
+    ],
+    "description": "task name(args); ... endtask"
   },
   "generate": {
     "prefix": "generate",
