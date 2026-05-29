@@ -48,6 +48,9 @@
       "include": "#all-types"
     },
     {
+      "include": "#assertion"
+    },
+    {
       "include": "#module-parameters"
     },
     {
@@ -61,9 +64,6 @@
     },
     {
       "include": "#system-tf"
-    },
-    {
-      "include": "#assertion"
     },
     {
       "include": "#bind-directive"
@@ -422,7 +422,7 @@
       "name": "meta.definition.systemverilog"
     },
     "assertion": {
-      "match": "\\b([a-zA-Z_][a-zA-Z0-9_$]*)[ \\t\\r\\n]*(:)[ \\t\\r\\n]*(assert|assume|cover|restrict)\\b",
+      "match": "[ \\t\\r\\n]*(?:\\b([a-zA-Z_][a-zA-Z0-9_$]*)[ \\t\\r\\n]*(:)[ \\t\\r\\n]*)?\\b(assert|assume|cover|restrict)\\b(?:[ \\t\\r\\n]+(property|sequence|final)\\b)?",
       "captures": {
         "1": {
           "name": "entity.name.goto-label.php"
@@ -431,6 +431,9 @@
           "name": "keyword.operator.systemverilog"
         },
         "3": {
+          "name": "keyword.sva.systemverilog"
+        },
+        "4": {
           "name": "keyword.sva.systemverilog"
         }
       }
