@@ -10,6 +10,15 @@ const projectByView = new WeakMap<TopLevelModulesView, ProjectComponent>()
 
 type TopLevelTreeItem = TopLevelModuleItem | TopLevelWaveformItem
 
+type PersistedTopLevelWaveforms = {
+  version: 1
+  activeWaveform?: {
+    topKey: string
+    uri: string
+  }
+  waveformsByTop: Record<string, string[]>
+}
+
 class TopLevelWaveformItem {
   readonly contextValue = 'TopLevelWaveform'
 
@@ -26,7 +35,7 @@ class TopLevelWaveformItem {
     item.tooltip = filePath
     item.contextValue = this.contextValue
     item.resourceUri = this.resourceUri
-    item.iconPath = 'graph-line'
+    item.iconPath = new vscode.ThemeIcon('graph-line')
     item.command = {
       title: 'Open Waveform',
       command: 'slang.project.topLevels.openWaveform',
@@ -81,6 +90,7 @@ export class TopLevelModulesView
 
   private readonly waveformsByTop = new Map<string, TopLevelWaveformItem[]>()
   private activeWaveform: TopLevelWaveformItem | undefined
+  private extensionContext: vscode.ExtensionContext | undefined
 
   constructor(project: ProjectComponent) {
     super({ name: 'Top Level' })
@@ -95,6 +105,10 @@ export class TopLevelModulesView
     }
 
     return project
+  }
+
+  private get storageKey(): string {
+    return `${this.configPath ?? 'slang.project.topLevels'}.waveforms`
   }
 
   private get roots(): RootItem[] {
@@ -146,6 +160,58 @@ export class TopLevelModulesView
     }
   }
 
+  private loadWaveforms(): void {
+    const stored = this.extensionContext?.workspaceState.get<PersistedTopLevelWaveforms>(
+      this.storageKey
+    )
+
+    if (!stored || stored.version !== 1) {
+      return
+    }
+
+    this.waveformsByTop.clear()
+    this.activeWaveform = undefined
+
+    for (const [topKey, uriStrings] of Object.entries(stored.waveformsByTop)) {
+      const waveforms = uriStrings.map(
+        (uriString) => new TopLevelWaveformItem(vscode.Uri.parse(uriString), topKey)
+      )
+
+      if (waveforms.length > 0) {
+        this.waveformsByTop.set(topKey, waveforms)
+      }
+    }
+
+    if (stored.activeWaveform) {
+      this.activeWaveform = this.waveformsByTop
+        .get(stored.activeWaveform.topKey)
+        ?.find((waveform) => waveform.resourceUri.toString() === stored.activeWaveform?.uri)
+    }
+
+    this.refresh()
+  }
+
+  private saveWaveforms(): void {
+    const waveformsByTop: Record<string, string[]> = {}
+
+    for (const [topKey, waveforms] of this.waveformsByTop.entries()) {
+      waveformsByTop[topKey] = waveforms.map((waveform) => waveform.resourceUri.toString())
+    }
+
+    const stored: PersistedTopLevelWaveforms = {
+      version: 1,
+      activeWaveform: this.activeWaveform
+        ? {
+            topKey: this.activeWaveform.topKey,
+            uri: this.activeWaveform.resourceUri.toString(),
+          }
+        : undefined,
+      waveformsByTop,
+    }
+
+    void this.extensionContext?.workspaceState.update(this.storageKey, stored)
+  }
+
   private addWaveform(top: RootItem, uri: vscode.Uri): TopLevelWaveformItem {
     const topKey = this.getTopKey(top)
     const waveforms = this.waveformsByTop.get(topKey) ?? []
@@ -159,6 +225,7 @@ export class TopLevelModulesView
     }
 
     this.activeWaveform ??= waveform
+    this.saveWaveforms()
     this.refresh()
 
     return waveform
@@ -170,6 +237,7 @@ export class TopLevelModulesView
     }
 
     this.activeWaveform = waveform
+    this.saveWaveforms()
 
     const top = this.getTopForKey(waveform.topKey)
 
@@ -195,6 +263,8 @@ export class TopLevelModulesView
   }
 
   async activate(context: vscode.ExtensionContext): Promise<void> {
+    this.extensionContext = context
+
     this.treeView = vscode.window.createTreeView(this.configPath!, {
       treeDataProvider: this,
       showCollapseAll: false,
@@ -202,6 +272,8 @@ export class TopLevelModulesView
       dragAndDropController: undefined,
       manageCheckboxStateManually: false,
     })
+
+    this.loadWaveforms()
 
     context.subscriptions.push(
       this.treeView,
@@ -220,6 +292,16 @@ export class TopLevelModulesView
       vscode.commands.registerCommand(
         this.configPath! + '.openWaveform',
         (item: TopLevelWaveformItem) => this.openWaveform(item)
+      ),
+      vscode.commands.registerCommand(
+        this.configPath! + '.openActiveWaveformForPath',
+        async (path: string) => {
+          const opened = await this.openActiveWaveformForPath(path)
+
+          if (!opened) {
+            vscode.window.showInformationMessage('No waveform has been selected for this top level')
+          }
+        }
       ),
       vscode.commands.registerCommand(
         this.configPath! + '.detachWaveform',
@@ -292,6 +374,7 @@ export class TopLevelModulesView
       this.activeWaveform = remaining[0]
     }
 
+    this.saveWaveforms()
     this.refresh()
   }
 
