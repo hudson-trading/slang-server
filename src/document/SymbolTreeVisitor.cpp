@@ -90,6 +90,10 @@ void SymbolTreeVisitor::handle_recursive(const SyntaxNode& node, lsp::DocumentSy
         m_symbols_ptr = parent_ptr;
     }
 
+    // LSP rejects symbols with empty names
+    if (symbol.name.empty()) {
+        return;
+    }
     m_symbols_ptr->push_back(symbol);
 }
 
