@@ -481,15 +481,21 @@ void resolveMemberCompletion(const slang::ast::Scope& scope, lsp::CompletionItem
 void addMemberCompletions(std::vector<lsp::CompletionItem>& results, const slang::ast::Scope* scope,
                           CompletionContextKind contextKind, const slang::ast::Scope* originalScope,
                           bool isOriginalCall) {
-    // Only show types (not signals/variables) when at the top level of a module body
-    // or in a port list — these are declaration positions.
-    bool typesOnly = (contextKind == CompletionContextKind::ModuleMember ||
-                      contextKind == CompletionContextKind::PortList);
+
+    if (contextKind == CompletionContextKind::ModuleMember) {
+        // Add SV keywords that are only valid in module bodies
+        addModuleMemberKwCompletions(results);
+    }
 
     if (!scope) {
         ERROR("No scope for member completion");
         return;
     }
+
+    // Only show types (not signals/variables) when at the top level of a module body
+    // or in a port list — these are declaration positions.
+    bool typesOnly = (contextKind == CompletionContextKind::ModuleMember ||
+                      contextKind == CompletionContextKind::PortList);
 
     // Walk up the scope hierarchy until we hit a module instance or run out of scopes
     const slang::ast::Scope* currentScope = scope;
