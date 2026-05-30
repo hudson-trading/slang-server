@@ -22,7 +22,7 @@
       "range": {
         "start": {
           "line": 6,
-          "character": 12
+          "character": 26
         },
         "end": {
           "line": 6,
@@ -38,11 +38,11 @@
             "range": {
               "start": {
                 "line": 6,
-                "character": 29
+                "character": 27
               },
               "end": {
                 "line": 6,
-                "character": 29
+                "character": 33
               }
             }
           },
