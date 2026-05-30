@@ -121,6 +121,13 @@ TEST_CASE("LoadTransitivePackages") {
     scanner.scanDocument(hdl);
 }
 
+TEST_CASE("LoadPackageDependenciesOfInterfaces") {
+    ServerHarness server("repo1");
+    auto hdl = server.openFile("interface_consumer.sv");
+
+    CHECK(hdl.doc->getAnalysis()->getCompilation()->getPackage("transitive_pkg") != nullptr);
+}
+
 TEST_CASE("FindReferencesAllTokens_all.sv") {
     /// Find references at each location in all.sv
     ServerHarness server("");

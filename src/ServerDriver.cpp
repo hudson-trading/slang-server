@@ -349,13 +349,8 @@ std::vector<std::shared_ptr<SlangDoc>> ServerDriver::getDependentDocs(
                 result.push_back(newdoc);
                 docs[newdoc->getURI()] = newdoc;
 
-                // Only add packages to the queue for recursive processing
-                for (auto& [decl, _] : newdoc->getSyntaxTree()->getMetadata().nodeMeta) {
-                    if (decl->kind == syntax::SyntaxKind::PackageDeclaration) {
-                        treesToProcess.push(newdoc->getSyntaxTree());
-                        break;
-                    }
-                }
+                // Interfaces and modules can add package dependencies of their own.
+                treesToProcess.push(newdoc->getSyntaxTree());
             }
             else {
                 ERROR("No doc found for {}", filePath);
