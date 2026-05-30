@@ -21,7 +21,9 @@
 namespace server {
 
 lsp::MarkupContent getHover(const SourceManager& sm, const BufferID docBuffer,
-                            const DefinitionInfo& info, const Config::HoverConfig& hovers) {
+                            const DefinitionInfo& info,
+                            std::optional<std::string_view> variableKind,
+                            const Config::HoverConfig& hovers) {
     markup::Document doc;
 
     auto& infoPg = doc.addParagraph();
@@ -29,7 +31,8 @@ lsp::MarkupContent getHover(const SourceManager& sm, const BufferID docBuffer,
     if (info.symbol) {
         // <Kind/Type> <Name> in <Scope>
 
-        infoPg.appendBold(toString(info.symbol->kind)).appendCode(info.symbol->name);
+        infoPg.appendBold(variableKind.value_or(toString(info.symbol->kind)))
+            .appendCode(info.symbol->name);
 
         auto symbolScope = info.symbol->getParentScope();
         auto& parentSym = symbolScope->asSymbol();

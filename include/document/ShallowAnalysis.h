@@ -31,6 +31,11 @@
 #include "slang/text/SourceLocation.h"
 #include "slang/text/SourceManager.h"
 #include "slang/util/Bag.h"
+
+namespace slang::analysis {
+class AnalysisManager;
+}
+
 namespace server {
 using namespace slang;
 struct DefinitionInfo {
@@ -71,6 +76,7 @@ public:
     ShallowAnalysis(SourceManager& sourceManager, slang::BufferID buffer,
                     std::shared_ptr<slang::syntax::SyntaxTree> tree, slang::Bag options,
                     const std::vector<std::shared_ptr<slang::syntax::SyntaxTree>>& allTrees = {});
+    ~ShallowAnalysis();
 
     /// @brief Retrieves document symbols for LSP outline view, called right after open
     /// @return Vector of LSP document symbols representing the document structure
@@ -165,6 +171,9 @@ public:
     /// @return The analysis diagnostics (owned by internal AnalysisManager)
     Diagnostics getAnalysisDiags();
 
+    /// @brief Returns a more specific kind for variables with definitive driver semantics
+    std::optional<std::string_view> getVariableKind(const slang::ast::Symbol& symbol);
+
 private:
     /// Reference to the source manager. Not const because we may need to parse macro args.
     SourceManager& m_sourceManager;
@@ -183,6 +192,9 @@ private:
 
     /// Analysis options for driver analysis (numThreads=1 to avoid persistent threads)
     slang::analysis::AnalysisOptions m_analysisOptions;
+
+    /// Driver analysis is shared by diagnostics and hover classification.
+    std::unique_ptr<slang::analysis::AnalysisManager> m_driverAnalysis;
 
     /// Symbol tree visitor for /documentSymbols
     /// Currently this is relies on syntax, but we should switch it to use the shallow compilation
@@ -218,6 +230,8 @@ private:
     /// @param node The syntax node to search from
     /// @return Pointer to the name syntax, or nullptr if none found
     const slang::syntax::NameSyntax* findNameSyntax(const slang::syntax::SyntaxNode& node) const;
+
+    slang::analysis::AnalysisManager& getDriverAnalysis();
 };
 
 } // namespace server

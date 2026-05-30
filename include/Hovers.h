@@ -10,6 +10,8 @@
 namespace server {
 
 lsp::MarkupContent getHover(const SourceManager& sm, const BufferID docBuffer,
-                            const DefinitionInfo& info, const Config::HoverConfig& hovers);
+                            const DefinitionInfo& info,
+                            std::optional<std::string_view> variableKind,
+                            const Config::HoverConfig& hovers);
 
 }

@@ -657,7 +657,10 @@ std::optional<lsp::Hover> ServerDriver::getDocHover(const URI& uri, const lsp::P
         return {};
     }
     const auto& info = *maybeInfo;
-    return lsp::Hover{.contents = getHover(sm, doc->getBuffer(), info, m_config.hovers.value())};
+    auto analysis = doc->getAnalysis();
+    auto variableKind = info.symbol ? analysis->getVariableKind(*info.symbol) : std::nullopt;
+    return lsp::Hover{
+        .contents = getHover(sm, doc->getBuffer(), info, variableKind, m_config.hovers.value())};
 }
 
 std::vector<lsp::LocationLink> ServerDriver::getDocDefinition(const URI& uri,

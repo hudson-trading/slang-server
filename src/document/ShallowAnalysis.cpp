@@ -18,12 +18,14 @@
 #include <string_view>
 
 #include "slang/analysis/AnalysisManager.h"
+#include "slang/analysis/ValueDriver.h"
 #include "slang/ast/ASTContext.h"
 #include "slang/ast/Compilation.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
 #include "slang/ast/symbols/MemberSymbols.h"
 #include "slang/ast/symbols/PortSymbols.h"
 #include "slang/ast/symbols/ValueSymbol.h"
+#include "slang/ast/symbols/VariableSymbols.h"
 #include "slang/ast/types/AllTypes.h"
 #include "slang/ast/types/Type.h"
 #include "slang/diagnostics/AnalysisDiags.h"
@@ -104,6 +106,8 @@ ShallowAnalysis::ShallowAnalysis(SourceManager& sourceManager, slang::BufferID b
     // - syntax -> scopes
     m_compilation->getRoot().visit(m_symbolIndexer);
 }
+
+ShallowAnalysis::~ShallowAnalysis() = default;
 
 std::vector<lsp::DocumentSymbol> ShallowAnalysis::getDocSymbols() {
     if (!m_tree) {
@@ -600,15 +604,45 @@ Diagnostics ShallowAnalysis::getAnalysisDiags() {
         return {};
     }
 
-    slang::analysis::AnalysisManager driverAnalysis(m_analysisOptions);
-    m_compilation->freeze();
-    driverAnalysis.analyze(*m_compilation);
-    m_compilation->unfreeze();
-
     // filter out unused def/decl diags, since shallow analysis will likely not have all references.
-    return driverAnalysis.getDiagnostics().filter(
+    return getDriverAnalysis().getDiagnostics().filter(
         {diag::UnusedDefinition, diag::UnusedPackageParameter, diag::UnusedPackageSubroutine,
          diag::UnusedPackageTypedef, diag::UnusedPackageVar});
+}
+
+std::optional<std::string_view> ShallowAnalysis::getVariableKind(const ast::Symbol& symbol) {
+    if (symbol.kind != ast::SymbolKind::Variable) {
+        return std::nullopt;
+    }
+
+    bool isNet = false;
+    for (auto driver : getDriverAnalysis().getDrivers(symbol.as<ast::ValueSymbol>())) {
+        if (driver->flags.has(analysis::DriverFlags::Initializer) ||
+            driver->isUnidirectionalPort()) {
+            continue;
+        }
+
+        if (driver->source == analysis::DriverSource::AlwaysLatch ||
+            driver->source == analysis::DriverSource::AlwaysFF) {
+            return "Register";
+        }
+
+        if (driver->kind == analysis::DriverKind::Continuous ||
+            driver->source == analysis::DriverSource::AlwaysComb) {
+            isNet = true;
+        }
+    }
+    return isNet ? std::optional<std::string_view>("Net") : std::nullopt;
+}
+
+analysis::AnalysisManager& ShallowAnalysis::getDriverAnalysis() {
+    if (!m_driverAnalysis) {
+        m_driverAnalysis = std::make_unique<analysis::AnalysisManager>(m_analysisOptions);
+        m_compilation->freeze();
+        m_driverAnalysis->analyze(*m_compilation);
+        m_compilation->unfreeze();
+    }
+    return *m_driverAnalysis;
 }
 
 } // namespace server

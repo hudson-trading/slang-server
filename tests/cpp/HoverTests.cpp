@@ -4,6 +4,7 @@
 #include "utils/GoldenTest.h"
 #include "utils/ServerHarness.h"
 #include <cstdlib>
+#include <fmt/format.h>
 
 TEST_CASE("HoverMacroExpansion") {
     ServerHarness server;
@@ -156,4 +157,39 @@ endmodule
     // Raw mode preserves the comment markers verbatim
     CHECK(content.value.find("/// a doc line") != std::string::npos);
     CHECK(content.value.find("/// another line") != std::string::npos);
+}
+
+TEST_CASE("HoverNetAndRegisterKinds") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+module top(input logic clk);
+    wire wire_signal;
+    logic continuous_signal;
+    logic combinational_signal;
+    logic register_signal;
+    logic latch_signal;
+    logic undriven_signal;
+
+    assign continuous_signal = wire_signal;
+    always_comb combinational_signal = wire_signal;
+    always_ff @(posedge clk) register_signal <= combinational_signal;
+    always_latch latch_signal <= combinational_signal;
+endmodule
+)");
+
+    auto checkKind = [&](std::string_view signal, std::string_view kind) {
+        auto cursor = doc.before(signal);
+        auto hover = doc.getHoverAt(cursor.m_offset);
+        REQUIRE(hover.has_value());
+        auto content = rfl::get<lsp::MarkupContent>(hover->contents);
+        CHECK(content.value.find(fmt::format("**{}** `{}`", kind, signal)) != std::string::npos);
+    };
+
+    checkKind("wire_signal", "Net");
+    checkKind("continuous_signal", "Net");
+    checkKind("combinational_signal", "Net");
+    checkKind("register_signal", "Register");
+    checkKind("latch_signal", "Register");
+    checkKind("undriven_signal", "Variable");
 }
