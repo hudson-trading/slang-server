@@ -475,8 +475,8 @@ macromodule m3;
 
                             tagged JmpU .a : pc = pc + a;
                                          ^ Sym a : PatternVar
-                                             ^^ Ref -> **Variable** `pc` in `m3`  \n\Type: `longint`  \n\Width: `64`  \n\\n\\n\---\n\\n\`static longint pc = 'x;`
-                                                  ^^ Ref -> **Variable** `pc` in `m3`  \n\Type: `longint`  \n\Width: `64`  \n\\n\\n\---\n\\n\`static longint pc = 'x;`
+                                             ^^ Ref -> **Net** `pc` in `m3`  \n\Type: `longint`  \n\Width: `64`  \n\\n\\n\---\n\\n\`static longint pc = 'x;`
+                                                  ^^ Ref -> **Net** `pc` in `m3`  \n\Type: `longint`  \n\Width: `64`  \n\\n\\n\---\n\\n\`static longint pc = 'x;`
                                                        ^ Ref -> **PatternVar** `a` in `m3`  \n\Type: `bit[9:0]`  \n\Width: `10`  \n\\n\\n\---\n\\n\`.a`
 
                             tagged JmpC '{.c, .a} : if (rf[c]) pc = a;
@@ -484,7 +484,7 @@ macromodule m3;
                                                ^ Sym a : PatternVar
                                                         ^^ Ref -> **Variable** `rf` in `m3`  \n\Type: `int$[]`  \n\\n\\n\---\n\\n\`automatic int rf[] = new [3];`
                                                            ^ Ref -> **PatternVar** `c` in `m3`  \n\Type: `bit[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`.c`
-                                                               ^^ Ref -> **Variable** `pc` in `m3`  \n\Type: `longint`  \n\Width: `64`  \n\\n\\n\---\n\\n\`static longint pc = 'x;`
+                                                               ^^ Ref -> **Net** `pc` in `m3`  \n\Type: `longint`  \n\Width: `64`  \n\\n\\n\---\n\\n\`static longint pc = 'x;`
                                                                     ^ Ref -> **PatternVar** `a` in `m3`  \n\Type: `bit[9:0]`  \n\Width: `10`  \n\\n\\n\---\n\\n\`.a`
 
                            endcase
@@ -503,12 +503,12 @@ macromodule m3;
                                                  ^ Sym a : PatternVar
 
             pc = c[0] & a[0];
-            ^^ Ref -> **Variable** `pc` in `m3`  \n\Type: `longint`  \n\Width: `64`  \n\\n\\n\---\n\\n\`static longint pc = 'x;`
+            ^^ Ref -> **Net** `pc` in `m3`  \n\Type: `longint`  \n\Width: `64`  \n\\n\\n\---\n\\n\`static longint pc = 'x;`
                  ^ Ref -> **PatternVar** `c` in `m3`  \n\Type: `bit[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`.c`
                         ^ Ref -> **PatternVar** `a` in `m3`  \n\Type: `bit[9:0]`  \n\Width: `10`  \n\\n\\n\---\n\\n\`.a`
 
             pc = instr matches (tagged Jmp .j) &&&
-            ^^ Ref -> **Variable** `pc` in `m3`  \n\Type: `longint`  \n\Width: `64`  \n\\n\\n\---\n\\n\`static longint pc = 'x;`
+            ^^ Ref -> **Net** `pc` in `m3`  \n\Type: `longint`  \n\Width: `64`  \n\\n\\n\---\n\\n\`static longint pc = 'x;`
                  ^^^^^ Ref -> **Variable** `instr` in `m3`  \n\Type: UnpackedUnion `Instr`  \n\\n\\n\---\n\\n\`Instr instr;`
 
                   j matches (tagged JmpC '{cc:.c,addr:.a}) ? c[0] & a[0] : 0;
@@ -1010,24 +1010,24 @@ checker assert_window1 (
 
         if (reset || window && end_event)
             ^^^^^ Ref -> **AssertionPort** `reset` in `assert_window1`  \n\\n\\n\---\n\\n\`logic reset = $inferred_disable`
-                     ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+                     ^^^^^^ Ref -> **Register** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
                                ^^^^^^^^^ Ref -> **AssertionPort** `end_event` in `assert_window1`  \n\\n\\n\---\n\\n\`untyped end_event`
 
             next_window = 1'b0;
-            ^^^^^^^^^^^ Ref -> **Variable** `next_window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+            ^^^^^^^^^^^ Ref -> **Net** `next_window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
 
         else if (!window && start_event)
-                  ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+                  ^^^^^^ Ref -> **Register** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
                             ^^^^^^^^^^^ Ref -> **AssertionPort** `start_event` in `assert_window1`  \n\\n\\n\---\n\\n\`untyped start_event`
 
             next_window = 1'b1;
-            ^^^^^^^^^^^ Ref -> **Variable** `next_window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+            ^^^^^^^^^^^ Ref -> **Net** `next_window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
 
         else
 
             next_window = window;
-            ^^^^^^^^^^^ Ref -> **Variable** `next_window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
-                          ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+            ^^^^^^^^^^^ Ref -> **Net** `next_window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+                          ^^^^^^ Ref -> **Register** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
 
     end
 
@@ -1037,8 +1037,8 @@ checker assert_window1 (
                ^^^^^ Ref -> **AssertionPort** `clock` in `assert_window1`  \n\\n\\n\---\n\\n\`event clock = $inferred_clock`
 
         window <= next_window;
-        ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
-                  ^^^^^^^^^^^ Ref -> **Variable** `next_window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+        ^^^^^^ Ref -> **Register** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+                  ^^^^^^^^^^^ Ref -> **Net** `next_window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
 
 
 
@@ -1047,7 +1047,7 @@ checker assert_window1 (
 
         start_event && !window |=> test_expr[+] ##0 end_event;
         ^^^^^^^^^^^ Ref -> **AssertionPort** `start_event` in `assert_window1`  \n\\n\\n\---\n\\n\`untyped start_event`
-                        ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+                        ^^^^^^ Ref -> **Register** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
                                    ^^^^^^^^^ Ref -> **AssertionPort** `test_expr` in `assert_window1`  \n\\n\\n\---\n\\n\`logic test_expr`
                                                     ^^^^^^^^^ Ref -> **AssertionPort** `end_event` in `assert_window1`  \n\\n\\n\---\n\\n\`untyped end_event`
 
@@ -1070,7 +1070,7 @@ checker assert_window1 (
         cover_window_open: cover property (start_event && !window)
         ^^^^^^^^^^^^^^^^^ Sym cover_window_open : StatementBlock
                                            ^^^^^^^^^^^ Ref -> **AssertionPort** `start_event` in `assert_window1`  \n\\n\\n\---\n\\n\`untyped start_event`
-                                                           ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+                                                           ^^^^^^ Ref -> **Register** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
 
         $display("window_open covered");
 
@@ -1079,15 +1079,15 @@ checker assert_window1 (
 
             start_event && !window
             ^^^^^^^^^^^ Ref -> **AssertionPort** `start_event` in `assert_window1`  \n\\n\\n\---\n\\n\`untyped start_event`
-                            ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+                            ^^^^^^ Ref -> **Register** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
 
             ##1 (!end_event && window) [*]
                   ^^^^^^^^^ Ref -> **AssertionPort** `end_event` in `assert_window1`  \n\\n\\n\---\n\\n\`untyped end_event`
-                               ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+                               ^^^^^^ Ref -> **Register** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
 
             ##1 end_event && window
                 ^^^^^^^^^ Ref -> **AssertionPort** `end_event` in `assert_window1`  \n\\n\\n\---\n\\n\`untyped end_event`
-                             ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+                             ^^^^^^ Ref -> **Register** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
 
         ) $display("window covered");
 
