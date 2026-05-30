@@ -37,6 +37,36 @@ endmodule
     golden.record(doc.getDiagnostics());
 }
 
+TEST_CASE("LocationOnlyDiagnosticCoversIdentifier") {
+    ServerHarness server;
+
+    auto doc = server.openFile("redefinition.sv", R"(
+module top;
+    logic foo;
+    logic foo;
+endmodule
+)");
+
+    auto expectedStart = doc.after("logic foo;\n    logic ").getPosition();
+    auto expectedEnd = expectedStart;
+    expectedEnd.character += 3;
+
+    bool foundRedefinition = false;
+    for (const auto& diag : doc.getDiagnostics()) {
+        if (diag.message.find("redefinition of 'foo'") == std::string::npos) {
+            continue;
+        }
+
+        foundRedefinition = true;
+        CHECK(diag.range.start.line == expectedStart.line);
+        CHECK(diag.range.start.character == expectedStart.character);
+        CHECK(diag.range.end.line == expectedEnd.line);
+        CHECK(diag.range.end.character == expectedEnd.character);
+    }
+
+    CHECK(foundRedefinition);
+}
+
 TEST_CASE("DiagsPublishedOnOpenCachedDoc") {
     ServerHarness server("cached_dep");
 

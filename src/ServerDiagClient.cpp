@@ -26,6 +26,60 @@
 #include "slang/text/SourceManager.h"
 namespace server {
 
+bool isSimpleIdentifierChar(char c) {
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ||
+           c == '_' || c == '$';
+}
+
+bool isTokenWhitespace(char c) {
+    return c == '\0' || c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' ||
+           c == '\v';
+}
+
+lsp::Location toDiagnosticLocation(SourceLocation loc, const SourceManager& sourceManager) {
+    if (!sourceManager.isFileLoc(loc)) {
+        return toLocation(loc, sourceManager);
+    }
+
+    auto text = sourceManager.getSourceText(loc.buffer());
+    auto offset = loc.offset();
+    if (offset >= text.size() || isTokenWhitespace(text[offset])) {
+        return toLocation(loc, sourceManager);
+    }
+
+    auto escapedStart = offset;
+    while (escapedStart > 0 && !isTokenWhitespace(text[escapedStart - 1])) {
+        escapedStart--;
+    }
+    if (text[escapedStart] == '\\') {
+        auto end = offset + 1;
+        while (end < text.size() && !isTokenWhitespace(text[end])) {
+            end++;
+        }
+        return toLocation(SourceRange{SourceLocation{loc.buffer(), escapedStart},
+                                      SourceLocation{loc.buffer(), end}},
+                          sourceManager);
+    }
+
+    auto start = offset;
+    while (start > 0 && isSimpleIdentifierChar(text[start - 1])) {
+        start--;
+    }
+
+    if (!isSimpleIdentifierChar(text[offset])) {
+        return toLocation(loc, sourceManager);
+    }
+
+    auto end = offset + 1;
+    while (end < text.size() && isSimpleIdentifierChar(text[end])) {
+        end++;
+    }
+
+    return toLocation(SourceRange{SourceLocation{loc.buffer(), start},
+                                  SourceLocation{loc.buffer(), end}},
+                      sourceManager);
+}
+
 lsp::DiagnosticSeverity convertSeverity(slang::DiagnosticSeverity severity) {
     switch (severity) {
         case slang::DiagnosticSeverity::Ignored:
@@ -120,7 +174,7 @@ void ServerDiagClient::report(const slang::ReportedDiagnostic& diag) {
         bool hasLocation = loc.buffer() != SourceLocation::NoLocation.buffer();
         if (ranges.empty()) {
             if (hasLocation) {
-                return toLocation(loc, m_sourceManager);
+                return toDiagnosticLocation(loc, m_sourceManager);
             }
             else {
                 ERROR("Diagnostic has no ranges and no location: {}", message);
@@ -195,11 +249,16 @@ void ServerDiagClient::report(const slang::ReportedDiagnostic& diag) {
             }
             continue;
         }
-        auto noteLoc = toLocation(note.location, m_sourceManager);
-        related.emplace_back(lsp::DiagnosticRelatedInformation{
-            .location = noteLoc,
-            .message = engine->formatMessage(note),
-        });
+        auto noteMessage = engine->formatMessage(note);
+        SmallVector<SourceRange> noteRanges;
+        engine->mapSourceRanges(note.location, note.ranges, noteRanges);
+        auto noteLoc = getLocation(note.location, noteRanges, noteMessage);
+        if (noteLoc) {
+            related.emplace_back(lsp::DiagnosticRelatedInformation{
+                .location = *noteLoc,
+                .message = noteMessage,
+            });
+        }
     }
 
     m_diagnostics[uri].push_back(lsp::Diagnostic{
