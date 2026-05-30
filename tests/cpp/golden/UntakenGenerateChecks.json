@@ -22,11 +22,11 @@
       "range": {
         "start": {
           "line": 12,
-          "character": 23
+          "character": 21
         },
         "end": {
           "line": 12,
-          "character": 21
+          "character": 23
         }
       },
       "severity": "Error",
@@ -40,11 +40,11 @@
       "range": {
         "start": {
           "line": 12,
-          "character": 37
+          "character": 32
         },
         "end": {
           "line": 12,
-          "character": 32
+          "character": 37
         }
       },
       "severity": "Error",
@@ -54,11 +54,11 @@
       "range": {
         "start": {
           "line": 14,
-          "character": 23
+          "character": 21
         },
         "end": {
           "line": 14,
-          "character": 21
+          "character": 23
         }
       },
       "severity": "Error",
@@ -72,11 +72,11 @@
       "range": {
         "start": {
           "line": 14,
-          "character": 37
+          "character": 32
         },
         "end": {
           "line": 14,
-          "character": 32
+          "character": 37
         }
       },
       "severity": "Error",
@@ -86,11 +86,11 @@
       "range": {
         "start": {
           "line": 18,
-          "character": 23
+          "character": 21
         },
         "end": {
           "line": 18,
-          "character": 21
+          "character": 23
         }
       },
       "severity": "Error",
@@ -104,11 +104,11 @@
       "range": {
         "start": {
           "line": 18,
-          "character": 37
+          "character": 32
         },
         "end": {
           "line": 18,
-          "character": 32
+          "character": 37
         }
       },
       "severity": "Error",
