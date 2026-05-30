@@ -68,11 +68,11 @@ void addExpandMacroAction(std::vector<rfl::Variant<lsp::Command, lsp::CodeAction
     changes[ctx.params.textDocument.uri.str()].push_back(
         lsp::TextEdit{.range = usageRange, .newText = std::move(expandedText)});
 
-    results.push_back(lsp::CodeAction{
-        .title = "Expand macro",
-        .kind = lsp::CodeActionKind::from_name<"refactor">(),
-        .edit = lsp::WorkspaceEdit{.changes = std::move(changes)},
-    });
+    lsp::CodeAction action;
+    action.title = "Expand macro";
+    action.kind = lsp::CodeActionKind::from_name<"refactor">();
+    action.edit = lsp::WorkspaceEdit{.changes = std::move(changes)};
+    results.push_back(std::move(action));
 }
 
 } // namespace server::codeactions
