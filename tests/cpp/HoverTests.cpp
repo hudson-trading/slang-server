@@ -179,7 +179,7 @@ endmodule
 )");
 
     auto checkKind = [&](std::string_view signal, std::string_view kind) {
-        auto cursor = doc.before(signal);
+        auto cursor = doc.before(std::string(signal));
         auto hover = doc.getHoverAt(cursor.m_offset);
         REQUIRE(hover.has_value());
         auto content = rfl::get<lsp::MarkupContent>(hover->contents);
