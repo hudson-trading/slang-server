@@ -349,8 +349,14 @@ std::vector<std::shared_ptr<SlangDoc>> ServerDriver::getDependentDocs(
                 result.push_back(newdoc);
                 docs[newdoc->getURI()] = newdoc;
 
-                // Interfaces and modules can add package dependencies of their own.
-                treesToProcess.push(newdoc->getSyntaxTree());
+                // Packages and interfaces can add package dependencies of their own.
+                for (auto& [decl, _] : newdoc->getSyntaxTree()->getMetadata().nodeMeta) {
+                    if (decl->kind == syntax::SyntaxKind::PackageDeclaration ||
+                        decl->kind == syntax::SyntaxKind::InterfaceDeclaration) {
+                        treesToProcess.push(newdoc->getSyntaxTree());
+                        break;
+                    }
+                }
             }
             else {
                 ERROR("No doc found for {}", filePath);
