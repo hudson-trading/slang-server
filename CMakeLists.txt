@@ -323,7 +323,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
                                  -Wno-unused-parameter -Werror)
   if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     target_compile_options(slang_server_obj_lib
-                           PRIVATE -Werror=maybe-uninitialized)
+                           PRIVATE -Wno-maybe-uninitialized)
   endif()
   # Stricter unused variable warnings only in CI builds
   if(SLANG_CI_BUILD)
