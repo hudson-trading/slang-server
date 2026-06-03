@@ -611,4 +611,87 @@ Diagnostics ShallowAnalysis::getAnalysisDiags() {
          diag::UnusedPackageTypedef, diag::UnusedPackageVar});
 }
 
+lsp::SemanticTokens ShallowAnalysis::getSemanticTokens(bool inactiveRegionsSupported) {
+    struct SemanticTokenInfo {
+        lsp::uint line;
+        lsp::uint character;
+        lsp::uint length;
+        lsp::uint tokenType;
+        lsp::uint tokenModifiers;
+    };
+
+    std::vector<SemanticTokenInfo> tokens;
+
+    if (!inactiveRegionsSupported) {
+        for (const auto& region : syntaxes.disabledRegions) {
+            const auto range = toRange(region, m_sourceManager);
+
+            for (lsp::uint line = range.start.line; line <= range.end.line; line++) {
+                const lsp::uint startChar = line == range.start.line ? range.start.character : 0;
+                lsp::uint endChar = range.end.character;
+
+                if (line != range.end.line) {
+                    const auto text = m_sourceManager.getLine(m_buffer, line + 1);
+                    endChar = static_cast<lsp::uint>(text.size());
+                }
+
+                if (endChar > startChar) {
+                    tokens.push_back({
+                        line,
+                        startChar,
+                        endChar - startChar,
+                        0,
+                        0,
+                    });
+                }
+            }
+        }
+    }
+
+    std::sort(tokens.begin(), tokens.end(), [](const auto& lhs, const auto& rhs) {
+        if (lhs.line != rhs.line) {
+            return lhs.line < rhs.line;
+        }
+
+        return lhs.character < rhs.character;
+    });
+
+    std::vector<lsp::uint> data;
+    data.reserve(tokens.size() * 5);
+
+    lsp::uint prevLine = 0;
+    lsp::uint prevChar = 0;
+    bool first = true;
+
+    for (const auto& token : tokens) {
+        /// From
+        /// https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_semanticTokens
+        // A specific token i in the file consists of the following array indices:
+        //  * at index 5*i - deltaLine: token line number, relative to the start of the previous
+        //  token
+        //  * at index 5*i+1 - deltaStart: token start character, relative to the start of the
+        //  previous token (relative to 0 or the previous token’s start if they are on the same
+        //  line)
+        //  * at index 5*i+2 - length: the length of the token. at index 5*i+3 - tokenType: will be
+        //  looked up in SemanticTokensLegend.tokenTypes. We currently ask that tokenType < 65536.
+        //  * at index 5*i+4 - tokenModifiers: each set bit will be looked up in
+        //  SemanticTokensLegend.tokenModifiers
+
+        const lsp::uint deltaLine = first ? token.line : token.line - prevLine;
+        const lsp::uint deltaChar = deltaLine == 0 ? token.character - prevChar : token.character;
+
+        data.push_back(deltaLine);
+        data.push_back(deltaChar);
+        data.push_back(token.length);
+        data.push_back(token.tokenType);
+        data.push_back(token.tokenModifiers);
+
+        prevLine = token.line;
+        prevChar = token.character;
+        first = false;
+    }
+
+    return lsp::SemanticTokens{.data = data};
+}
+
 } // namespace server
