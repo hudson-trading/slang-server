@@ -880,6 +880,19 @@ std::optional<std::vector<lsp::Location>> ServerDriver::getDocReferences(
         }
     };
 
+    auto findInterfaceReferencesInDocument = [&](const parsing::ParserMetadata& meta, const URI&) {
+        for (auto inst : meta.globalInstances) {
+            if (inst->type.valueText() == targetName) {
+                references.push_back(toOriginalLocation(inst->type.range(), sm));
+            }
+        }
+        for (auto intf : meta.interfacePorts) {
+            if (intf->nameOrKeyword.valueText() == targetName) {
+                references.push_back(toOriginalLocation(intf->nameOrKeyword.range(), sm));
+            }
+        }
+    };
+
     auto targetLoc = sm.getFullyOriginalLoc(targetSymbol->location);
     auto targetDoc = getDocument(URI::fromFile(sm.getFullPath(targetLoc.buffer())));
 
@@ -930,8 +943,13 @@ std::optional<std::vector<lsp::Location>> ServerDriver::getDocReferences(
                 findModuleReferencesInDocument);
         } break;
         case ast::SymbolKind::Definition: {
-            processReferencingFiles(targetSymbol->as<ast::DefinitionSymbol>().name,
-                                    findModuleReferencesInDocument);
+            const auto& definition = targetSymbol->as<ast::DefinitionSymbol>();
+            if (definition.definitionKind == ast::DefinitionKind::Interface) {
+                processReferencingFiles(definition.name, findInterfaceReferencesInDocument);
+            }
+            else {
+                processReferencingFiles(definition.name, findModuleReferencesInDocument);
+            }
         } break;
         case ast::SymbolKind::Package: {
             processReferencingFiles(targetName, findPkgReferencesInDocument);
