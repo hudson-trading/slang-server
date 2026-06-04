@@ -71,9 +71,9 @@ export abstract class HierItem implements HasChildren {
       return
     }
     await Promise.all(
-      signals.map(async (signal) =>
+      signals.map((signal) =>
         vv.commands.addVariable({
-          instancePath: await ext.project.toWaveformPath(signal.getPath()),
+          instancePath: signal.getPath(),
         })
       )
     )
@@ -1008,30 +1008,6 @@ export class ProjectComponent
     }
   )
 
-  // Checks if the top level module has any ports. If so we prefix with TOP.
-  // This is a Verilator specific workaround.
-  public async toWaveformPath(path: string): Promise<string> {
-    if (path === 'TOP' || path.startsWith('TOP.')) {
-      return path
-    }
-
-    const rootName = path.split('.')[0]
-    const rootTop = this.unit?.children.find(
-      (child): child is RootItem =>
-        child.inst.kind === slang.SlangKind.Instance && child.getPath() === rootName
-    )
-
-    if (!rootTop) {
-      return path
-    }
-
-    const hasPorts = (await rootTop.getChildren()).some(
-      (child) => child.inst.kind === slang.SlangKind.Port
-    )
-
-    return hasPorts ? `TOP.${path}` : path
-  }
-
   showInWaveform: TreeItemButton = new TreeItemButton(
     {
       title: 'Show in Waveform',
@@ -1052,10 +1028,9 @@ export class ProjectComponent
         return
       }
       if (item instanceof VarItem) {
-        const waveformPath = await this.toWaveformPath(item.getPath())
-        this.logger.info('Showing variable in waveform: ' + waveformPath)
+        this.logger.info('Showing variable in waveform: ' + item.getPath())
         await vv.commands.addVariable({
-          instancePath: waveformPath,
+          instancePath: item.getPath(),
         })
       } else {
         this.logger.info('Showing scope in waveform: ' + item.getPath())
