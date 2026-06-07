@@ -6,7 +6,7 @@ local M = {}
 M.hierarchy = {
    impl = function(args, opts)
       local capabilities = require("slang-server._lsp.capabilities")
-      local bufnr = vim.api.nvim_get_current_buf()
+      local bufnr = capabilities.get_source_context()
       local required = { "slang.getScope", "slang.getScopesByModule", "slang.getInstancesOfModule" }
       if not capabilities.check_or_notify(bufnr, required) then
          return
