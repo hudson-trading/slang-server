@@ -1077,8 +1077,10 @@ struct TextDocumentContentClientCapabilities {
 
 /// An event describing a change to a text document. If only a text is provided
 /// it is considered to be the full content of the document.
-using TextDocumentContentChangeEvent =
-    rfl::Variant<TextDocumentContentChangePartial, TextDocumentContentChangeWholeDocument>;
+using TextDocumentContentChangeEvent = rfl::Variant<
+    // ORDER MATTERS: Partial and WholeDocument both have a text field, but Partial is more
+    // specific, so it must be checked first.
+    TextDocumentContentChangePartial, TextDocumentContentChangeWholeDocument>;
 
 /// A string value used as a snippet is a template which allows to insert text
 /// and to control the editor cursor when insertion happens.

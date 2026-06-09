@@ -117,6 +117,7 @@ public:
     void insert(lsp::uint offset, std::string text);
     void append(std::string text);
     void erase(size_t start, size_t end);
+    void replaceAll(std::string text);
 
     Cursor before(std::string before, lsp::uint start_pos = 0);
     Cursor after(std::string after, lsp::uint start_pos = 0);
