@@ -7,6 +7,13 @@ M.addToWaves = {
    impl = function(args)
       local capabilities = require("slang-server._lsp.capabilities")
       local bufnr = vim.api.nvim_get_current_buf()
+      if not capabilities.get_client(bufnr) then
+         vim.notify(
+            "slang-server: addToWaves must be run from a buffer with an attached slang-server LSP client.",
+            vim.log.levels.ERROR
+         )
+         return
+      end
       if not capabilities.check_or_notify(bufnr, { "slang.getInstances", "slang.addToWaveform" }) then
          return
       end
@@ -17,7 +24,7 @@ M.addToWaves = {
 
       local recursive = args[1] == "true"
 
-      local first_client = vim.lsp.get_clients({ bufnr = vim.api.nvim_get_current_buf() })[1]
+      local first_client = vim.lsp.get_clients({ bufnr = bufnr })[1]
       local position_encoding = first_client and first_client.offset_encoding or 'utf-16'
 
       client.getInstances(bufnr, {

@@ -3,6 +3,7 @@ local M = {}
 M.MIN_SERVER_VERSION = "0.2.2"
 
 local UPGRADE_HINT = "Please upgrade slang-server and possibly also this plugin."
+local SOURCE_FILETYPES = { "verilog", "systemverilog" }
 
 ---@param v string
 ---@return integer, integer, integer
@@ -36,6 +37,27 @@ function M.get_client(bufnr)
       end
    end
    return nil
+end
+
+---@return integer bufnr
+function M.get_source_context()
+   local bufnr = vim.api.nvim_get_current_buf()
+   if M.get_client(bufnr) then
+      return bufnr
+   end
+
+   local util = require("slang-server.util")
+   local source_win = util.last_win({ buflisted = true, filetype = SOURCE_FILETYPES })
+   if source_win and M.get_client(source_win.bufnr) then
+      return source_win.bufnr
+   end
+
+   local source_buf = util.last_buf({ buflisted = true, filetype = SOURCE_FILETYPES })
+   if source_buf and M.get_client(source_buf.bufnr) then
+      return source_buf.bufnr
+   end
+
+   return bufnr
 end
 
 -- Per-client cached commands set. Keyed by client.id; populated lazily on the

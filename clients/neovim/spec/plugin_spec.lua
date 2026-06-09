@@ -32,6 +32,21 @@ local function wait_on(buf_name)
    return lines
 end
 
+---@param fn fun()
+---@return string[]
+local function capture_notifications(fn)
+   local old_notify = vim.notify
+   local messages = {}
+   vim.notify = function(msg, ...)
+      messages[#messages + 1] = msg
+   end
+
+   local ok, err = pcall(fn)
+   vim.notify = old_notify
+   assert(ok, err)
+   return messages
+end
+
 describe("SlangServer", function()
    -- load test SV
    vim.cmd("edit tests/foo.sv")
@@ -68,6 +83,41 @@ describe("SlangServer", function()
    └╴foo
   sub (4)]=]
       assert.are.same(expected, table.concat(lines, "\n"))
+      vim.api.nvim_buf_delete(0, { force = true })
+   end)
+
+   it("Explicit commands use the source buffer when focus is in the hierarchy panel", function()
+      vim.cmd("SlangServer hierarchy")
+      wait_on("Slang-server: Hierarchy")
+
+      local messages = capture_notifications(function()
+         vim.cmd("SlangServer setTopLevel tests/foo.sv")
+      end)
+      for _, msg in ipairs(messages) do
+         assert.is_nil(string.find(msg, "no slang-server LSP client attached", 1, true))
+      end
+
+      vim.api.nvim_buf_delete(0, { force = true })
+   end)
+
+   it("Context-sensitive commands require source buffer focus", function()
+      vim.cmd("SlangServer hierarchy")
+      wait_on("Slang-server: Hierarchy")
+
+      local messages = capture_notifications(function()
+         vim.cmd("SlangServer setTopLevel")
+         vim.cmd("SlangServer addToWaves")
+      end)
+
+      assert.are.same({
+         "slang-server: setTopLevel without a file must be run from a buffer with an attached slang-server LSP client.",
+         "slang-server: addToWaves must be run from a buffer with an attached slang-server LSP client.",
+      }, messages)
+
+      for _, msg in ipairs(messages) do
+         assert.is_nil(string.find(msg, "Please upgrade slang-server", 1, true))
+      end
+
       vim.api.nvim_buf_delete(0, { force = true })
    end)
 
