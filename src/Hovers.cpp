@@ -59,6 +59,33 @@ std::string_view driverKindToString(const slang::analysis::DriverKind kind) {
 
     return "unknown";
 }
+
+const syntax::SyntaxNode* getDriverDisplayNode(const ShallowAnalysis& analysis,
+                                               const slang::analysis::ValueDriver& driver) {
+    if (driver.kind != slang::analysis::DriverKind::Continuous) {
+        return nullptr;
+    }
+
+    const auto range = driver.getSourceRange();
+    if (range == SourceRange::NoLocation) {
+        return nullptr;
+    }
+
+    const auto loc = analysis.getSourceManager().getFullyOriginalLoc(range.start());
+    auto node = analysis.syntaxes.getSyntaxAt(loc);
+
+    for (auto cur = node; cur; cur = cur->parent) {
+        switch (cur->kind) {
+            case syntax::SyntaxKind::ContinuousAssign:
+                return &selectDisplayNode(*cur);
+
+            default:
+                break;
+        }
+    }
+
+    return nullptr;
+}
 } // namespace
 
 lsp::MarkupContent getHover(const SourceManager& sm,
@@ -68,6 +95,8 @@ lsp::MarkupContent getHover(const SourceManager& sm,
     markup::Document doc;
 
     auto& infoPg = doc.addParagraph();
+
+    const syntax::SyntaxNode* extraDisplayNode = nullptr;
 
     if (info.symbol) {
         // <Kind/Type> <Name> in <Scope>
@@ -97,9 +126,9 @@ lsp::MarkupContent getHover(const SourceManager& sm,
         // Type info for value symbols and instance symbols
         if (ast::ValueSymbol::isKind(info.symbol->kind) &&
             info.symbol->kind != ast::SymbolKind::EnumValue) {
-            auto& valSym = info.symbol->as<ast::ValueSymbol>();
-            auto& type = valSym.getType();
-            auto typeStr = getHoverTypeString(type);
+            const auto& valSym = info.symbol->as<ast::ValueSymbol>();
+            const auto& type = valSym.getType();
+            const auto typeStr = getHoverTypeString(type);
             infoPg.appendText("Type: ").appendText(typeStr).newLine();
             if (!ast::ParameterSymbol::isKind(info.symbol->kind) && !type.isError() &&
                 type.getBitWidth() > 1) {
@@ -110,26 +139,34 @@ lsp::MarkupContent getHover(const SourceManager& sm,
 
             const auto drivers = analysis->getDrivers(valSym);
             if (!drivers.empty()) {
+                /// We only show driver info for values that have a single unique driver.
+                /// `structs` and variables that use `always` statements can have multiple drivers.
+                std::vector<const slang::analysis::ValueDriver*> uniqueDrivers;
 
-                const std::unordered_set<const slang::analysis::ValueDriver*> uniqueDrivers(
-                    drivers.begin(), drivers.end());
-
-                for (const auto* driver : uniqueDrivers) {
+                for (const auto* driver : drivers) {
                     if (!driver) {
                         continue;
                     }
 
+                    if (std::ranges::find(uniqueDrivers, driver) == uniqueDrivers.end()) {
+                        uniqueDrivers.push_back(driver);
+                    }
+                }
+
+                if (uniqueDrivers.size() == 1) {
+                    const auto* driver = uniqueDrivers.front();
+
                     const auto kind = driver->kind;
                     const auto source = driver->source;
 
-                    const std::string driverStr = source == slang::analysis::DriverSource::Other
-                                                      ? std::string(driverKindToString(kind))
-                                                      : fmt::format("{} ({})",
-                                                                    driverKindToString(kind),
-                                                                    driverSourceToString(source));
+                    const auto driverStr = source == slang::analysis::DriverSource::Other
+                                               ? std::string(driverKindToString(kind))
+                                               : fmt::format("{} ({})", driverKindToString(kind),
+                                                             driverSourceToString(source));
 
                     infoPg.appendText("Driver: ").appendCode(driverStr).newLine();
-                    break;
+
+                    extraDisplayNode = getDriverDisplayNode(*analysis, *driver);
                 }
             }
         }
@@ -193,19 +230,32 @@ lsp::MarkupContent getHover(const SourceManager& sm,
         }
     }
 
-    const syntax::SyntaxNode& display_node = selectDisplayNode(*info.node);
-
+    const syntax::SyntaxNode& displayNode = selectDisplayNode(*info.node);
     const auto docCommentFormat = hovers.docCommentFormat.value();
 
     if (docCommentFormat == Config::HoverConfig::DocCommentFormat::raw) {
-        // Print the node verbatim with its leading comments in a single code block
-        doc.addParagraph().appendCodeBlock(formatCodeWithLeadingComments(display_node));
+        std::string code = formatCodeWithLeadingComments(displayNode);
+
+        if (extraDisplayNode) {
+            code += "\n";
+            code += formatCode(*extraDisplayNode);
+        }
+
+        doc.addParagraph().appendCodeBlock(code);
     }
     else {
-        const std::string docComments = getDocCommentForHover(display_node, docCommentFormat);
+        const std::string docComments = getDocCommentForHover(displayNode, docCommentFormat);
         if (!docComments.empty())
             doc.addParagraph().appendText(docComments).newLine();
-        doc.addParagraph().appendCodeBlock(formatCode(display_node));
+
+        std::string code = formatCode(displayNode);
+
+        if (extraDisplayNode) {
+            code += "\n";
+            code += formatCode(*extraDisplayNode);
+        }
+
+        doc.addParagraph().appendCodeBlock(code);
     }
 
     // Show what a macro expands to
