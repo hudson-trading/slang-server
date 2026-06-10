@@ -9,7 +9,9 @@
 
 namespace server {
 
-lsp::MarkupContent getHover(const SourceManager& sm, const BufferID docBuffer,
-                            const DefinitionInfo& info, const Config::HoverConfig& hovers);
+lsp::MarkupContent getHover(const SourceManager& sm,
+                            const std::shared_ptr<ShallowAnalysis> analysis,
+                            const BufferID docBuffer, const DefinitionInfo& info,
+                            const Config::HoverConfig& hovers);
 
 }
