@@ -5,6 +5,10 @@ on:
   pull_request:
     paths: [clients/vscode/**]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   test:
     strategy:
