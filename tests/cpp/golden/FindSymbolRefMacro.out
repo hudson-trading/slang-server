@@ -259,11 +259,11 @@ module test;
 
             `SIMPLE_MACRO: bus_signal = `TWO_ARG_MACRO(1, 2);
             ^^^^^^^^^^^^^ Ref -> DefineDirective SIMPLE_MACRO  \n\\n\\n\---\n\\n\Basic macro definitions  \n\  \n\\n\\n\---\n\\n\``define SIMPLE_MACRO 42`\n\\n\---\n\\n\Expands to   \n\`42`
-                           ^^^^^^^^^^ Ref -> **Variable** `bus_signal` in `test`  \n\Type: `logic[-1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`logic [-1:0] bus_signal;`
+                           ^^^^^^^^^^ Ref -> **Variable** `bus_signal` in `test`  \n\Type: `logic[-1:0]`  \n\Width: `2`  \n\Driver: `procedural (always_comb)`  \n\\n\\n\---\n\\n\`logic [-1:0] bus_signal;`
                                         ^^^^^^^^^^^^^^ Ref -> DefineDirective TWO_ARG_MACRO  \n\\n\\n\---\n\\n\``define TWO_ARG_MACRO(a, b) (a + b)`\n\\n\---\n\\n\Expands to   \n\`(1 + 2)`
 
             default: bus_signal = `FUNC_MACRO(0);
-                     ^^^^^^^^^^ Ref -> **Variable** `bus_signal` in `test`  \n\Type: `logic[-1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`logic [-1:0] bus_signal;`
+                     ^^^^^^^^^^ Ref -> **Variable** `bus_signal` in `test`  \n\Type: `logic[-1:0]`  \n\Width: `2`  \n\Driver: `procedural (always_comb)`  \n\\n\\n\---\n\\n\`logic [-1:0] bus_signal;`
                                   ^^^^^^^^^^^ Ref -> DefineDirective FUNC_MACRO  \n\\n\\n\---\n\\n\``define FUNC_MACRO(x) (x + 1)`\n\\n\---\n\\n\Expands to   \n\`(0 + 1)`
 
         endcase

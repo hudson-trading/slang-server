@@ -148,7 +148,14 @@ lsp::MarkupContent getHover(const SourceManager& sm,
                         continue;
                     }
 
-                    if (std::ranges::find(uniqueDrivers, driver) == uniqueDrivers.end()) {
+                    const auto sameKindAndSource =
+                        [driver](const slang::analysis::ValueDriver* existing) {
+                            return existing && existing->kind == driver->kind &&
+                                   existing->source == driver->source;
+                        };
+
+                    if (std::ranges::find_if(uniqueDrivers, sameKindAndSource) ==
+                        uniqueDrivers.end()) {
                         uniqueDrivers.push_back(driver);
                     }
                 }
