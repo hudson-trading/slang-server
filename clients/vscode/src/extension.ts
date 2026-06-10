@@ -143,7 +143,7 @@ File input is sent to stdin, and formatted output is read from stdout.',
         githubRepo: 'hudson-trading/slang-server',
         assetNames: {
           windows: 'slang-server-windows-x64.zip',
-          linux: 'slang-server-linux-x64-gcc.tar.gz',
+          linux: 'slang-server-linux-x64.tar.gz',
           mac: 'slang-server-macos.tar.gz',
         },
       },

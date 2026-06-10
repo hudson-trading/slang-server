@@ -20,7 +20,7 @@ function testConfig(platform: Platform): GithubInstallerConfig {
     githubRepo: 'test/repo',
     assetNames: {
       windows: 'slang-server-windows-x64.zip',
-      linux: 'slang-server-linux-x64-gcc.tar.gz',
+      linux: 'slang-server-linux-x64.tar.gz',
       mac: 'slang-server-macos.tar.gz',
     },
     platform,
