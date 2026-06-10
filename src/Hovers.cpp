@@ -241,6 +241,8 @@ lsp::MarkupContent getHover(const SourceManager& sm,
     const auto docCommentFormat = hovers.docCommentFormat.value();
 
     if (docCommentFormat == Config::HoverConfig::DocCommentFormat::raw) {
+        // Print the node verbatim with its leading comments in a single code block
+
         std::string code = formatCodeWithLeadingComments(displayNode);
 
         if (extraDisplayNode) {
