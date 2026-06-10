@@ -139,7 +139,7 @@ lsp::MarkupContent getHover(const SourceManager& sm,
 
             const auto drivers = analysis->getDrivers(valSym);
             if (!drivers.empty()) {
-                /// We only show driver info for values that have a single unique driver.
+                /// We only show driver info for values that have a single unique driver source.
                 /// `structs` and variables that use `always` statements can have multiple drivers.
                 std::vector<const slang::analysis::ValueDriver*> uniqueDrivers;
 
