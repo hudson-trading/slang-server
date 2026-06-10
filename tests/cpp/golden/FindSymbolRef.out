@@ -245,7 +245,7 @@ macromodule m3;
               ^ Sym w : Net
 
     assign (supply0, weak1) #(1:0:1, 2:1:0) w = 2;
-                                            ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `continuous`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;\n\assign (supply0, weak1) #(1:0:1, 2:1:0) w = 2;`
+                                            ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `continuous`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
 
 
 
@@ -256,7 +256,7 @@ macromodule m3;
     alias {u,v} = w;
            ^ Ref -> **Net** `u` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wor u,v;`
              ^ Ref -> **Net** `v` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wor u,v;`
-                  ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `continuous`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;\n\assign (supply0, weak1) #(1:0:1, 2:1:0) w = 2;`
+                  ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `continuous`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
 
 
 
@@ -315,7 +315,7 @@ macromodule m3;
 
 
         unique0 casex (w)
-                       ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `continuous`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;\n\assign (supply0, weak1) #(1:0:1, 2:1:0) w = 2;`
+                       ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `continuous`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
 
             0, 1: ;
 
@@ -326,7 +326,7 @@ macromodule m3;
 
 
         case (w) inside
-              ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `continuous`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;\n\assign (supply0, weak1) #(1:0:1, 2:1:0) w = 2;`
+              ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `continuous`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
 
             [0: 3]: ;
 
@@ -359,7 +359,7 @@ macromodule m3;
                                                     ^ Ref -> **Variable** `i` in `m3`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int i = 0`
 
         foreach (w[q]) begin end
-                 ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `continuous`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;\n\assign (supply0, weak1) #(1:0:1, 2:1:0) w = 2;`
+                 ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `continuous`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
 
     end
 
@@ -437,7 +437,7 @@ macromodule m3;
               ^ Ref -> **Variable** `v` in `m3`  \n\Type: UnpackedUnion `VInt`  \n\\n\\n\---\n\\n\`VInt v;`
 
             tagged Invalid &&& ~w : $display ("v is Invalid");
-                                ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `continuous`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;\n\assign (supply0, weak1) #(1:0:1, 2:1:0) w = 2;`
+                                ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `continuous`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
 
             tagged Valid .n : $display ("v is Valid with value %d", n);
                           ^ Sym n : PatternVar
@@ -553,7 +553,7 @@ macromodule m3;
     generate
 
         case ($bits(w))
-                    ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `continuous`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;\n\assign (supply0, weak1) #(1:0:1, 2:1:0) w = 2;`
+                    ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `continuous`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
 
             0, 1: begin end
 
