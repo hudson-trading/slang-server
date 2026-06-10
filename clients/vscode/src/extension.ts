@@ -21,6 +21,7 @@ import {
   ViewContainerSpec,
 } from './lib/libconfig'
 import { PathConfigObject } from './lib/pathConfig'
+import { isOldGlibc } from './lib/platform'
 import { ProjectComponent } from './sidebar/ProjectComponent'
 import * as slang from './SlangInterface'
 import {
@@ -143,7 +144,9 @@ File input is sent to stdin, and formatted output is read from stdout.',
         githubRepo: 'hudson-trading/slang-server',
         assetNames: {
           windows: 'slang-server-windows-x64.zip',
-          linux: 'slang-server-linux-x64-gcc.tar.gz',
+          linux: isOldGlibc()
+            ? 'slang-server-old-linux-x64-gcc.tar.gz'
+            : 'slang-server-linux-x64-gcc.tar.gz',
           mac: 'slang-server-macos.tar.gz',
         },
       },
