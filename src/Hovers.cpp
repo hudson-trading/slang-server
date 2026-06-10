@@ -60,9 +60,19 @@ std::string_view driverKindToString(const slang::analysis::DriverKind kind) {
     return "unknown";
 }
 
+/// Obtains the driver display node if available. Currently it only collects
+/// continuous assignment drivers (ie: `assign`) since they are guaranteed to only have a single
+/// driver node (though I'm not 100% sure about this).
 const syntax::SyntaxNode* getDriverDisplayNode(const ShallowAnalysis& analysis,
-                                               const slang::analysis::ValueDriver& driver) {
+                                               const slang::analysis::ValueDriver& driver,
+                                               const int driversCount) {
     if (driver.kind != slang::analysis::DriverKind::Continuous) {
+        return nullptr;
+    }
+
+    if (driversCount > 1) {
+        // If there's more than one continuous assign driver, then there's an error
+        // in the code and we early exit
         return nullptr;
     }
 
@@ -141,6 +151,7 @@ lsp::MarkupContent getHover(const SourceManager& sm,
             if (!drivers.empty()) {
                 /// We only show driver info for values that have a single unique driver source.
                 /// `structs` and variables that use `always` statements can have multiple drivers.
+                /// TODO: think about replacing with hashes?
                 std::vector<const slang::analysis::ValueDriver*> uniqueDrivers;
 
                 for (const auto* driver : drivers) {
@@ -173,7 +184,7 @@ lsp::MarkupContent getHover(const SourceManager& sm,
 
                     infoPg.appendText("Driver: ").appendCode(driverStr).newLine();
 
-                    extraDisplayNode = getDriverDisplayNode(*analysis, *driver);
+                    extraDisplayNode = getDriverDisplayNode(*analysis, *driver, drivers.size());
                 }
             }
         }
