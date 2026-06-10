@@ -111,7 +111,7 @@ lsp::MarkupContent getHover(const SourceManager& sm,
             const auto drivers = analysis->getDrivers(valSym);
             if (!drivers.empty()) {
 
-                std::unordered_set<const slang::analysis::ValueDriver*> uniqueDrivers(
+                const std::unordered_set<const slang::analysis::ValueDriver*> uniqueDrivers(
                     drivers.begin(), drivers.end());
 
                 for (const auto* driver : uniqueDrivers) {
@@ -122,10 +122,6 @@ lsp::MarkupContent getHover(const SourceManager& sm,
                     const auto kind = driver->kind;
                     const auto source = driver->source;
 
-                    // if (source == slang::analysis::DriverSource::Other) {
-                    //     break;
-                    // }
-
                     const std::string driverStr = source == slang::analysis::DriverSource::Other
                                                       ? std::string(driverKindToString(kind))
                                                       : fmt::format("{} ({})",
@@ -133,9 +129,6 @@ lsp::MarkupContent getHover(const SourceManager& sm,
                                                                     driverSourceToString(source));
 
                     infoPg.appendText("Driver: ").appendCode(driverStr).newLine();
-                    // .appendText(driverKindToString(driver->kind))
-                    // .appendText(" from ")
-                    // .appendCode(driverSourceToString(driver->source));
                     break;
                 }
             }
