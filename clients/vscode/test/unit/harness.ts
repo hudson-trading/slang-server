@@ -34,7 +34,6 @@ export async function createFakeAssets(root: string, platform: 'linux' | 'window
   } else if (platform === 'mac') {
     await makeTarGz('slang-server-macos', 'slang-server')
   } else if (platform === 'linux') {
-    await makeTarGz('slang-server-linux-x64-gcc', 'slang-server')
-    await makeTarGz('slang-server-linux-x64-clang', 'slang-server')
+    await makeTarGz('slang-server-linux-x64', 'slang-server')
   }
 }
