@@ -27,8 +27,8 @@ In general the existing code is pretty consistent so please try to follow the pa
 
 All proposed changes must be run through clang-format with the project's local settings as well as pass pre-commit checks. Most editors can be configured to run clang-format for you automatically. Additionally as a helpful hint, you can "install" pre-commit hooks into your local checkout and have them run automatically on every commit so that you don't forget:
 
-    pip install pre-commit
-    pre-commit install
+    pip install prek
+    prek install
 
 All documentation should adhere to the [Google Developer Documentation Style
 Guide](https://developers.google.com/style).
