@@ -140,6 +140,22 @@ bool SlangDoc::textMatches(std::string_view text) {
 }
 
 void SlangDoc::onChange(const std::vector<lsp::TextDocumentContentChangeEvent>& contentChanges) {
+    // From the LSP spec:
+    //
+    // The actual content changes. The content changes describe single state changes to the
+    // document. So if there are two content changes c1 (at array index 0) and c2 (at array
+    // index 1) for a document in state S then c1 moves the document from S to S' and c2 from
+    // S' to S''. So c1 is computed on the state S and c2 is computed on the state S'.
+    //
+    // To mirror the content of a document using change events use the following approach:
+    // - start with the same initial content
+    // - apply the 'textDocument/didChange' notifications in the order you receive them.
+    // - apply the `TextDocumentContentChangeEvent`s in a single notification in the order you
+    //   receive them.
+    //
+    // Partial is defined in the variant first, so it will match first iff range and text are both
+    // present. WholeDocument will match if text is present, but only be tried second. Less specific
+    // cases are tried later.
     SmallVector<char> buffer;
     std::string_view textView = getText();
     std::vector<size_t> lineOffsets;
@@ -163,29 +179,54 @@ void SlangDoc::onChange(const std::vector<lsp::TextDocumentContentChangeEvent>& 
         return std::make_pair(startOffset, endOffset);
     };
 
+    auto ensureNullTerminated = [&]() {
+        if (buffer.empty() || buffer.back() != '\0')
+            buffer.push_back('\0');
+    };
+
     // Single change (most common)
-    auto change = rfl::get<lsp::TextDocumentContentChangePartial>(contentChanges[0]);
-    auto offsets = getOffsets(change.range);
-    // insert all parts
-    buffer.append(textView.begin(), textView.begin() + offsets.first);
-    buffer.append(change.text.begin(), change.text.end());
-    buffer.append(textView.begin() + offsets.second, textView.end());
-    if (buffer.empty() || buffer.back() != '\0')
-        buffer.push_back('\0');
+    rfl::visit(
+        [&](const auto& change) {
+            using T = std::decay_t<decltype(change)>;
+            if constexpr (std::is_same_v<T, lsp::TextDocumentContentChangePartial>) {
+                auto offsets = getOffsets(change.range);
+                buffer.append(textView.begin(), textView.begin() + offsets.first);
+                buffer.append(change.text.begin(), change.text.end());
+                buffer.append(textView.begin() + offsets.second, textView.end());
+            }
+            else {
+                buffer.append(change.text.begin(), change.text.end());
+            }
+        },
+        contentChanges[0]);
+    ensureNullTerminated();
 
     // More than one change is rare- typically things like rename actions, or if there's some lag.
     for (size_t i = 1; i < contentChanges.size(); i++) {
         textView = std::string_view{buffer.data(), buffer.size()};
-        change = rfl::get<lsp::TextDocumentContentChangePartial>(contentChanges[i]);
         lineOffsets.clear();
-        auto offsets = getOffsets(change.range);
-
-        // handle deletes
-        if (offsets.second > offsets.first) {
-            buffer.erase(buffer.begin() + offsets.first, buffer.begin() + offsets.second);
-        }
-        // handle inserts
-        buffer.insert(buffer.begin() + offsets.first, change.text.begin(), change.text.end());
+        rfl::visit(
+            [&](const auto& change) {
+                using T = std::decay_t<decltype(change)>;
+                if constexpr (std::is_same_v<T, lsp::TextDocumentContentChangePartial>) {
+                    auto offsets = getOffsets(change.range);
+                    // handle deletes
+                    if (offsets.second > offsets.first) {
+                        buffer.erase(buffer.begin() + offsets.first,
+                                     buffer.begin() + offsets.second);
+                    }
+                    // handle inserts
+                    buffer.insert(buffer.begin() + offsets.first, change.text.begin(),
+                                  change.text.end());
+                }
+                else {
+                    // WholeDocument collapses all prior changes
+                    buffer.clear();
+                    buffer.append(change.text.begin(), change.text.end());
+                    ensureNullTerminated();
+                }
+            },
+            contentChanges[i]);
     }
     m_buffer = m_sourceManager.replaceBuffer(m_buffer.id, std::move(buffer));
 

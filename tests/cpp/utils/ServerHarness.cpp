@@ -279,6 +279,16 @@ void DocumentHandle::erase(size_t start, size_t end) {
     state = DocState::Dirty;
 }
 
+void DocumentHandle::replaceAll(std::string text) {
+    CHECK(state != DocState::Closed);
+
+    m_text = text;
+    pending_changes.push_back(
+        {lsp::TextDocumentContentChangeWholeDocument{.text = std::move(text)}});
+
+    state = DocState::Dirty;
+}
+
 void DocumentHandle::publishChanges() {
     CHECK(state == DocState::Dirty);
     m_server.onDocDidChange(lsp::DidChangeTextDocumentParams{
