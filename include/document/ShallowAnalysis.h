@@ -192,10 +192,7 @@ private:
     std::unique_ptr<slang::ast::Compilation> m_compilation;
 
     /// Analysis manager for running driver analysis (multi-driven, unused, etc)
-    std::unique_ptr<slang::analysis::AnalysisManager> m_driverAnalysis;
-
-    /// Flag to track if `AnalysisManager` has been run
-    bool m_analysisRun = false;
+    std::unique_ptr<slang::analysis::AnalysisManager> m_driverAnalysis = nullptr;
 
     /// Cached diagnostics from the latest analysis run, if available
     std::optional<Diagnostics> m_cachedAnalysisDiags;

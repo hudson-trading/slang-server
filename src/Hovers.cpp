@@ -8,6 +8,7 @@
 #include "util/Markdown.h"
 
 #include "slang/analysis/ValueDriver.h"
+#include "slang/ast/SemanticFacts.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
 #include "slang/ast/symbols/PortSymbols.h"
 #include "slang/ast/symbols/ValueSymbol.h"
@@ -22,50 +23,12 @@
 namespace server {
 
 namespace {
-std::string_view driverSourceToString(const slang::analysis::DriverSource source) {
-    using slang::analysis::DriverSource;
-
-    switch (source) {
-        case DriverSource::Initial:
-            return "initial";
-        case DriverSource::Final:
-            return "final";
-        case DriverSource::Always:
-            return "always";
-        case DriverSource::AlwaysComb:
-            return "always_comb";
-        case DriverSource::AlwaysLatch:
-            return "always_latch";
-        case DriverSource::AlwaysFF:
-            return "always_ff";
-        case DriverSource::Subroutine:
-            return "subroutine";
-        case DriverSource::Other:
-            return "other";
-    }
-
-    return "unknown";
-}
-
-std::string_view driverKindToString(const slang::analysis::DriverKind kind) {
-    using slang::analysis::DriverKind;
-
-    switch (kind) {
-        case DriverKind::Procedural:
-            return "procedural";
-        case DriverKind::Continuous:
-            return "continuous";
-    }
-
-    return "unknown";
-}
-
 /// Obtains the driver display node if available. Currently it only collects
 /// continuous assignment drivers (ie: `assign`) since they are guaranteed to only have a single
 /// driver node (though I'm not 100% sure about this).
 const syntax::SyntaxNode* getDriverDisplayNode(const ShallowAnalysis& analysis,
                                                const slang::analysis::ValueDriver& driver,
-                                               const int driversCount) {
+                                               const std::size_t driversCount) {
     if (driver.kind != slang::analysis::DriverKind::Continuous) {
         return nullptr;
     }
@@ -177,10 +140,14 @@ lsp::MarkupContent getHover(const SourceManager& sm,
                     const auto kind = driver->kind;
                     const auto source = driver->source;
 
-                    const auto driverStr = source == slang::analysis::DriverSource::Other
-                                               ? std::string(driverKindToString(kind))
-                                               : fmt::format("{} ({})", driverKindToString(kind),
-                                                             driverSourceToString(source));
+                    const auto driverStr =
+                        (source == slang::analysis::DriverSource::Other ||
+                         source == slang::analysis::DriverSource::Subroutine)
+                            ? std::string(toString(kind))
+                            : fmt::format(
+                                  "{} ({})", toString(kind),
+                                  ast::SemanticFacts::getProcedureKindStr(
+                                      static_cast<slang::ast::ProceduralBlockKind>(source)));
 
                     infoPg.appendText("Driver: ").appendCode(driverStr).newLine();
 

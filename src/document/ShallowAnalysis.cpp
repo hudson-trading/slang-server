@@ -606,11 +606,9 @@ Diagnostics ShallowAnalysis::getAnalysisDiags() {
 }
 
 const slang::analysis::AnalysisManager* ShallowAnalysis::getAnalysisManager() {
-    if (m_analysisRun) {
+    if (m_driverAnalysis) {
         return m_driverAnalysis.get();
     }
-
-    m_analysisRun = true;
 
     (void)m_compilation->getSemanticDiagnostics();
 
