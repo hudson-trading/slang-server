@@ -112,33 +112,27 @@ lsp::MarkupContent getHover(const SourceManager& sm,
 
             const auto drivers = analysis->getDrivers(valSym);
             if (!drivers.empty()) {
-                /// We only show driver info for values that have a single unique driver source.
-                /// `structs` and variables that use `always` statements can have multiple drivers.
-                /// TODO: think about replacing with hashes?
-                std::vector<const slang::analysis::ValueDriver*> uniqueDrivers;
+                const slang::analysis::ValueDriver* uniqueDriver = nullptr;
 
                 for (const auto* driver : drivers) {
                     if (!driver) {
                         continue;
                     }
 
-                    const auto sameKindAndSource =
-                        [driver](const slang::analysis::ValueDriver* existing) {
-                            return existing && existing->kind == driver->kind &&
-                                   existing->source == driver->source;
-                        };
+                    if (!uniqueDriver) {
+                        uniqueDriver = driver;
+                    }
 
-                    if (std::ranges::find_if(uniqueDrivers, sameKindAndSource) ==
-                        uniqueDrivers.end()) {
-                        uniqueDrivers.push_back(driver);
+                    else if (driver->kind != uniqueDriver->kind ||
+                             driver->source != uniqueDriver->source) {
+                        uniqueDriver = nullptr;
+                        break;
                     }
                 }
 
-                if (uniqueDrivers.size() == 1) {
-                    const auto* driver = uniqueDrivers.front();
-
-                    const auto kind = driver->kind;
-                    const auto source = driver->source;
+                if (uniqueDriver) {
+                    const auto kind = uniqueDriver->kind;
+                    const auto source = uniqueDriver->source;
 
                     const auto driverStr =
                         (source == slang::analysis::DriverSource::Other ||
@@ -151,7 +145,8 @@ lsp::MarkupContent getHover(const SourceManager& sm,
 
                     infoPg.appendText("Driver: ").appendCode(driverStr).newLine();
 
-                    extraDisplayNode = getDriverDisplayNode(*analysis, *driver, drivers.size());
+                    extraDisplayNode = getDriverDisplayNode(*analysis, *uniqueDriver,
+                                                            drivers.size());
                 }
             }
         }
