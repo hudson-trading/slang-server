@@ -282,6 +282,45 @@ TEST_CASE("FindReferences - Cross-File Function") {
     CHECK(refs->size() >= 2);
 }
 
+TEST_CASE("FindReferences - Cross-File Interface Modport Port Header") {
+    ServerHarness server("indexer_test");
+    auto intfHdl = server.openFile("crossfile_interface_defs.sv");
+    auto userHdl = server.openFile("crossfile_interface_user.sv");
+    intfHdl.ensureSynced();
+    userHdl.ensureSynced();
+
+    auto ifaceUse = userHdl.before("cross_if.producer");
+    auto ifaceDefs = ifaceUse.getDefinitions();
+    REQUIRE(!ifaceDefs.empty());
+    CHECK(ifaceDefs[0].targetUri == intfHdl.m_uri);
+
+    auto modportUse = userHdl.after("cross_if.");
+    auto modportDefs = modportUse.getDefinitions();
+    REQUIRE(!modportDefs.empty());
+    CHECK(modportDefs[0].targetUri == intfHdl.m_uri);
+    CHECK(modportDefs[0].targetSelectionRange.start.line == 2);
+
+    auto ifaceDecl = intfHdl.after("interface ");
+    auto ifaceRefs = server.getDocReferences(lsp::ReferenceParams{
+        .context = {.includeDeclaration = true},
+        .textDocument = {.uri = intfHdl.m_uri},
+        .position = ifaceDecl.getPosition(),
+    });
+    REQUIRE(ifaceRefs.has_value());
+    CHECK(ifaceRefs->size() == 3);
+    verifyReferenceTokens(server, *ifaceRefs, "cross_if");
+
+    auto modportDecl = intfHdl.after("modport ");
+    auto modportRefs = server.getDocReferences(lsp::ReferenceParams{
+        .context = {.includeDeclaration = true},
+        .textDocument = {.uri = intfHdl.m_uri},
+        .position = modportDecl.getPosition(),
+    });
+    REQUIRE(modportRefs.has_value());
+    CHECK(modportRefs->size() == 2);
+    verifyReferenceTokens(server, *modportRefs, "producer");
+}
+
 TEST_CASE("FindReferences - Included Package Member Uses Included Buffer URI") {
     ServerHarness server("include_ref_uri");
     auto pkgHdl = server.openFile("pkg.sv");
