@@ -197,6 +197,11 @@ jobs:
             (cd release-artifacts && 7z a ../${{ env.SLANG_SERVER_ARTIFACT_NAME }}.zip *)
           else
             tar -czf ${{ env.SLANG_SERVER_ARTIFACT_NAME }}.tar.gz -C release-artifacts .
+            if [[ "${{ matrix.name }}" == "linux-x64" ]]; then
+              cp ${{ env.SLANG_SERVER_ARTIFACT_NAME }}.tar.gz slang-server-old-linux-x64-gcc.tar.gz
+            elif [[ "${{ matrix.name }}" == "linux-arm64" ]]; then
+              cp ${{ env.SLANG_SERVER_ARTIFACT_NAME }}.tar.gz slang-server-linux-arm64-clang.tar.gz
+            fi
           fi
 
       - name: Upload artifact
@@ -207,4 +212,6 @@ jobs:
           path: |
             ${{ env.SLANG_SERVER_ARTIFACT_NAME }}.tar.gz
             ${{ env.SLANG_SERVER_ARTIFACT_NAME }}.zip
+            slang-server-old-linux-x64-gcc.tar.gz
+            slang-server-linux-arm64-clang.tar.gz
           retention-days: 7
