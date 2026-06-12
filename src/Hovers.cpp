@@ -1,5 +1,3 @@
-
-
 #include "Hovers.h"
 
 #include "Config.h"
@@ -25,7 +23,7 @@ namespace server {
 namespace {
 /// Obtains the driver display node if available. Currently it only collects
 /// continuous assignment drivers (ie: `assign`) since they are guaranteed to only have a single
-/// driver node (though I'm not 100% sure about this).
+/// driver node (except for `tri` and maybe others).
 const syntax::SyntaxNode* getDriverDisplayNode(const ShallowAnalysis& analysis,
                                                const slang::analysis::ValueDriver& driver,
                                                const std::size_t driversCount) {
