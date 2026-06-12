@@ -33,6 +33,8 @@
 #include "slang/util/Bag.h"
 namespace server {
 using namespace slang;
+struct SystemTaskDoc;
+
 struct DefinitionInfo {
     // The syntax that the token refers to
     const slang::syntax::SyntaxNode* node;
@@ -46,10 +48,17 @@ struct DefinitionInfo {
     std::string macroExpansionText;
     // For command-line defines: the config/build file that defined this directive
     std::string defineSourceFile;
+    // Documentation for built-in system tasks/functions. Set when the token
+    // names a slang-known $task and `symbol`/`node` are not the source of truth.
+    const SystemTaskDoc* sysTaskDoc = nullptr;
+    // Whether the system subroutine is a task (true) or a function (false).
+    // Only meaningful when `sysTaskDoc` is non-null.
+    bool sysIsTask = false;
 
     bool operator==(const DefinitionInfo& other) const {
         return node == other.node && nameToken.location() == other.nameToken.location() &&
-               macroUsageRange == other.macroUsageRange && symbol == other.symbol;
+               macroUsageRange == other.macroUsageRange && symbol == other.symbol &&
+               sysTaskDoc == other.sysTaskDoc;
     }
 
     bool operator!=(const DefinitionInfo& other) const { return !(*this == other); }
