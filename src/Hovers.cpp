@@ -1,5 +1,3 @@
-
-
 #include "Hovers.h"
 
 #include "Config.h"
@@ -7,6 +5,8 @@
 #include "util/Formatting.h"
 #include "util/Markdown.h"
 
+#include "slang/analysis/ValueDriver.h"
+#include "slang/ast/SemanticFacts.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
 #include "slang/ast/symbols/PortSymbols.h"
 #include "slang/ast/symbols/ValueSymbol.h"
@@ -20,11 +20,54 @@
 
 namespace server {
 
-lsp::MarkupContent getHover(const SourceManager& sm, const BufferID docBuffer,
-                            const DefinitionInfo& info, const Config::HoverConfig& hovers) {
+namespace {
+/// Obtains the driver display node if available. Currently it only collects
+/// continuous assignment drivers (ie: `assign`) since they are guaranteed to only have a single
+/// driver node (except for `tri` and maybe others).
+const syntax::SyntaxNode* getDriverDisplayNode(const ShallowAnalysis& analysis,
+                                               const slang::analysis::ValueDriver& driver,
+                                               const std::size_t driversCount) {
+    if (driver.kind != slang::analysis::DriverKind::Continuous) {
+        return nullptr;
+    }
+
+    if (driversCount > 1) {
+        // If there's more than one continuous assign driver, then there's an error
+        // in the code and we early exit
+        return nullptr;
+    }
+
+    const auto range = driver.getSourceRange();
+    if (range == SourceRange::NoLocation) {
+        return nullptr;
+    }
+
+    const auto loc = analysis.getSourceManager().getFullyOriginalLoc(range.start());
+    auto node = analysis.syntaxes.getSyntaxAt(loc);
+
+    for (auto cur = node; cur; cur = cur->parent) {
+        switch (cur->kind) {
+            case syntax::SyntaxKind::ContinuousAssign:
+                return &selectDisplayNode(*cur);
+
+            default:
+                break;
+        }
+    }
+
+    return nullptr;
+}
+} // namespace
+
+lsp::MarkupContent getHover(const SourceManager& sm,
+                            const std::shared_ptr<ShallowAnalysis> analysis,
+                            const BufferID docBuffer, const DefinitionInfo& info,
+                            const Config::HoverConfig& hovers) {
     markup::Document doc;
 
     auto& infoPg = doc.addParagraph();
+
+    const syntax::SyntaxNode* extraDisplayNode = nullptr;
 
     if (info.symbol) {
         // <Kind/Type> <Name> in <Scope>
@@ -54,15 +97,55 @@ lsp::MarkupContent getHover(const SourceManager& sm, const BufferID docBuffer,
         // Type info for value symbols and instance symbols
         if (ast::ValueSymbol::isKind(info.symbol->kind) &&
             info.symbol->kind != ast::SymbolKind::EnumValue) {
-            auto& valSym = info.symbol->as<ast::ValueSymbol>();
-            auto& type = valSym.getType();
-            auto typeStr = getHoverTypeString(type);
+            const auto& valSym = info.symbol->as<ast::ValueSymbol>();
+            const auto& type = valSym.getType();
+            const auto typeStr = getHoverTypeString(type);
             infoPg.appendText("Type: ").appendText(typeStr).newLine();
             if (!ast::ParameterSymbol::isKind(info.symbol->kind) && !type.isError() &&
                 type.getBitWidth() > 1) {
                 infoPg.appendText("Width: ")
                     .appendCode(fmt::format("{}", type.getBitWidth()))
                     .newLine();
+            }
+
+            const auto drivers = analysis->getDrivers(valSym);
+            if (!drivers.empty()) {
+                const slang::analysis::ValueDriver* uniqueDriver = nullptr;
+
+                for (const auto* driver : drivers) {
+                    if (!driver) {
+                        continue;
+                    }
+
+                    if (!uniqueDriver) {
+                        uniqueDriver = driver;
+                    }
+
+                    else if (driver->kind != uniqueDriver->kind ||
+                             driver->source != uniqueDriver->source) {
+                        uniqueDriver = nullptr;
+                        break;
+                    }
+                }
+
+                if (uniqueDriver) {
+                    const auto kind = uniqueDriver->kind;
+                    const auto source = uniqueDriver->source;
+
+                    const auto driverStr =
+                        (source == slang::analysis::DriverSource::Other ||
+                         source == slang::analysis::DriverSource::Subroutine)
+                            ? std::string(toString(kind))
+                            : fmt::format(
+                                  "{} ({})", toString(kind),
+                                  ast::SemanticFacts::getProcedureKindStr(
+                                      static_cast<slang::ast::ProceduralBlockKind>(source)));
+
+                    infoPg.appendText("Driver: ").appendCode(driverStr).newLine();
+
+                    extraDisplayNode = getDriverDisplayNode(*analysis, *uniqueDriver,
+                                                            drivers.size());
+                }
             }
         }
         else if (ast::InstanceSymbol::isKind(info.symbol->kind)) {
@@ -125,19 +208,34 @@ lsp::MarkupContent getHover(const SourceManager& sm, const BufferID docBuffer,
         }
     }
 
-    const syntax::SyntaxNode& display_node = selectDisplayNode(*info.node);
-
+    const syntax::SyntaxNode& displayNode = selectDisplayNode(*info.node);
     const auto docCommentFormat = hovers.docCommentFormat.value();
 
     if (docCommentFormat == Config::HoverConfig::DocCommentFormat::raw) {
         // Print the node verbatim with its leading comments in a single code block
-        doc.addParagraph().appendCodeBlock(formatCodeWithLeadingComments(display_node));
+
+        std::string code = formatCodeWithLeadingComments(displayNode);
+
+        if (extraDisplayNode) {
+            code += "\n";
+            code += formatCode(*extraDisplayNode);
+        }
+
+        doc.addParagraph().appendCodeBlock(code);
     }
     else {
-        const std::string docComments = getDocCommentForHover(display_node, docCommentFormat);
+        const std::string docComments = getDocCommentForHover(displayNode, docCommentFormat);
         if (!docComments.empty())
             doc.addParagraph().appendText(docComments).newLine();
-        doc.addParagraph().appendCodeBlock(formatCode(display_node));
+
+        std::string code = formatCode(displayNode);
+
+        if (extraDisplayNode) {
+            code += "\n";
+            code += formatCode(*extraDisplayNode);
+        }
+
+        doc.addParagraph().appendCodeBlock(code);
     }
 
     // Show what a macro expands to

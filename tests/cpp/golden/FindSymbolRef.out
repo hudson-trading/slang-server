@@ -76,7 +76,7 @@ module automatic m1 import p::*; #(int i = 1)
                                        ^ Sym i : Parameter
 
     (a, b, , .c({a, b[0]}));
-     ^ Ref -> **Net** `a` in `m1`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input a;`
+     ^ Ref -> **Net** `a` in `m1`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input a;`
         ^ Ref -> **Net** `b` in `m1`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`output [1:0] b;`
 
     input a;
@@ -167,7 +167,7 @@ macromodule m3;
     I d(.a(), .b());
     ^ Ref -> **Definition** `I`  \n\\n\\n\---\n\\n\`interface I(.*);`
       ^ Sym d : Instance
-         ^ Ref -> **Net** `a` in `I`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input a`
+         ^ Ref -> **Net** `a` in `I`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input a`
                ^ Ref -> **Net** `b` in `I`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`output b`
 
 
@@ -188,7 +188,7 @@ macromodule m3;
 
     ) m (, b, c, d, );
       ^ Sym m : Instance
-           ^ Ref -> **Net** `b` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wire b;`
+           ^ Ref -> **Net** `b` in `m3`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`wire b;`
               ^ Ref -> **Variable** `c` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic c;`
                  ^ Ref -> **Instance** `d` in `m3`  \n\Type: I  \n\\n\\n\---\n\\n\`I d(.a(), .b());`
 
@@ -217,11 +217,11 @@ macromodule m3;
       ^^^^^^^ Sym m2_inst : Instance
 
         .a({1, 2}),
-         ^ Ref -> **Variable** `a` in `m2`  \n\Type: `int$[]`  \n\\n\\n\---\n\\n\`input int a[]`
+         ^ Ref -> **Variable** `a` in `m2`  \n\Type: `int$[]`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input int a[]`
 
         .b(b),
          ^ Ref -> **Variable** `b` in `m2`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`(* bar = "asdf" *) output logic b = 1`
-           ^ Ref -> **Net** `b` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wire b;`
+           ^ Ref -> **Net** `b` in `m3`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`wire b;`
 
         .c(),
          ^ Ref -> **Variable** `c` in `m2`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`ref c`
@@ -245,7 +245,7 @@ macromodule m3;
               ^ Sym w : Net
 
     assign (supply0, weak1) #(1:0:1, 2:1:0) w = 2;
-                                            ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
+                                            ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
 
 
 
@@ -256,7 +256,7 @@ macromodule m3;
     alias {u,v} = w;
            ^ Ref -> **Net** `u` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wor u,v;`
              ^ Ref -> **Net** `v` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wor u,v;`
-                  ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
+                  ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
 
 
 
@@ -270,18 +270,18 @@ macromodule m3;
     initial begin
 
         repeat (3) @(negedge b) f = #2 1;
-                             ^ Ref -> **Net** `b` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wire b;`
-                                ^ Ref -> **Variable** `f` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic f, z;`
+                             ^ Ref -> **Net** `b` in `m3`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`wire b;`
+                                ^ Ref -> **Variable** `f` in `m3`  \n\Type: `logic`  \n\Driver: `Procedural (initial)`  \n\\n\\n\---\n\\n\`logic f, z;`
 
         wait (f) ++f;
-              ^ Ref -> **Variable** `f` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic f, z;`
-                   ^ Ref -> **Variable** `f` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic f, z;`
+              ^ Ref -> **Variable** `f` in `m3`  \n\Type: `logic`  \n\Driver: `Procedural (initial)`  \n\\n\\n\---\n\\n\`logic f, z;`
+                   ^ Ref -> **Variable** `f` in `m3`  \n\Type: `logic`  \n\Driver: `Procedural (initial)`  \n\\n\\n\---\n\\n\`logic f, z;`
 
         wait fork;
 
         wait_order (m3.ev) f++;
                        ^^ Ref -> **Variable** `ev` in `m3`  \n\Type: `event`  \n\\n\\n\---\n\\n\`event ev;`
-                           ^ Ref -> **Variable** `f` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic f, z;`
+                           ^ Ref -> **Variable** `f` in `m3`  \n\Type: `logic`  \n\Driver: `Procedural (initial)`  \n\\n\\n\---\n\\n\`logic f, z;`
 
 
 
@@ -303,10 +303,10 @@ macromodule m3;
 
 
         assign z = 1;
-               ^ Ref -> **Variable** `z` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic f, z;`
+               ^ Ref -> **Variable** `z` in `m3`  \n\Type: `logic`  \n\Driver: `Procedural (initial)`  \n\\n\\n\---\n\\n\`logic f, z;`
 
         deassign z;
-                 ^ Ref -> **Variable** `z` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic f, z;`
+                 ^ Ref -> **Variable** `z` in `m3`  \n\Type: `logic`  \n\Driver: `Procedural (initial)`  \n\\n\\n\---\n\\n\`logic f, z;`
 
 
 
@@ -315,7 +315,7 @@ macromodule m3;
 
 
         unique0 casex (w)
-                       ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
+                       ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
 
             0, 1: ;
 
@@ -326,7 +326,7 @@ macromodule m3;
 
 
         case (w) inside
-              ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
+              ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
 
             [0: 3]: ;
 
@@ -337,13 +337,13 @@ macromodule m3;
 
 
     always_ff @(posedge b iff f == 1) begin
-                        ^ Ref -> **Net** `b` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wire b;`
-                              ^ Ref -> **Variable** `f` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic f, z;`
+                        ^ Ref -> **Net** `b` in `m3`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`wire b;`
+                              ^ Ref -> **Variable** `f` in `m3`  \n\Type: `logic`  \n\Driver: `Procedural (initial)`  \n\\n\\n\---\n\\n\`logic f, z;`
 
         forever break;
 
         repeat (f + 2) continue;
-                ^ Ref -> **Variable** `f` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic f, z;`
+                ^ Ref -> **Variable** `f` in `m3`  \n\Type: `logic`  \n\Driver: `Procedural (initial)`  \n\\n\\n\---\n\\n\`logic f, z;`
 
         while (1)
 
@@ -359,7 +359,7 @@ macromodule m3;
                                                     ^ Ref -> **Variable** `i` in `m3`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int i = 0`
 
         foreach (w[q]) begin end
-                 ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
+                 ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
 
     end
 
@@ -437,7 +437,7 @@ macromodule m3;
               ^ Ref -> **Variable** `v` in `m3`  \n\Type: UnpackedUnion `VInt`  \n\\n\\n\---\n\\n\`VInt v;`
 
             tagged Invalid &&& ~w : $display ("v is Invalid");
-                                ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
+                                ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
 
             tagged Valid .n : $display ("v is Valid with value %d", n);
                           ^ Sym n : PatternVar
@@ -553,7 +553,7 @@ macromodule m3;
     generate
 
         case ($bits(w))
-                    ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
+                    ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
 
             0, 1: begin end
 
@@ -644,7 +644,7 @@ macromodule m3;
                       ^ Sym r : Net
 
     rcmos #1step (q, r, s, t);
-                  ^ Ref -> **Net** `q` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`q`
+                  ^ Ref -> **Net** `q` in `m3`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`q`
                      ^ Ref -> **Net** `r` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`r`
                         ^ Sym s : Net
                            ^ Sym t : Net
@@ -696,8 +696,8 @@ extern program p(a, b);
 
 program p(a, b);
         ^ Sym p : Definition
-          ^ Ref -> **Net** `a` in `p`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input a, b;`
-             ^ Ref -> **Net** `b` in `p`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input a, b;`
+          ^ Ref -> **Net** `a` in `p`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input a, b;`
+             ^ Ref -> **Net** `b` in `p`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input a, b;`
 
     input a, b;
           ^ Sym a : Net
@@ -759,9 +759,9 @@ endconfig
 module ALU (o1, i1, i2, opcode);
        ^^^ Sym ALU : Definition
             ^^ Ref -> **Net** `o1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`output [7:0] o1;`
-                ^^ Ref -> **Net** `i1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
-                    ^^ Ref -> **Net** `i2` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
-                        ^^^^^^ Ref -> **Net** `opcode` in `ALU`  \n\Type: `logic[2:1]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`input [2:1] opcode;`
+                ^^ Ref -> **Net** `i1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
+                    ^^ Ref -> **Net** `i2` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
+                        ^^^^^^ Ref -> **Net** `opcode` in `ALU`  \n\Type: `logic[2:1]`  \n\Width: `2`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input [2:1] opcode;`
 
     input [7:0] i1, i2;
                 ^^ Sym i1 : Net
@@ -781,24 +781,24 @@ module ALU (o1, i1, i2, opcode);
                   ^^ Sym s1 : Specparam
 
         if (opcode == 2'b00) (i1,i2 *> o1) = (25.0, 25.0);
-            ^^^^^^ Ref -> **Net** `opcode` in `ALU`  \n\Type: `logic[2:1]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`input [2:1] opcode;`
-                              ^^ Ref -> **Net** `i1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
-                                 ^^ Ref -> **Net** `i2` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
+            ^^^^^^ Ref -> **Net** `opcode` in `ALU`  \n\Type: `logic[2:1]`  \n\Width: `2`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input [2:1] opcode;`
+                              ^^ Ref -> **Net** `i1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
+                                 ^^ Ref -> **Net** `i2` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
                                        ^^ Ref -> **Net** `o1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`output [7:0] o1;`
 
         if (opcode == 2'b01) (i1 => o1) = (5.6, 8.0);
-            ^^^^^^ Ref -> **Net** `opcode` in `ALU`  \n\Type: `logic[2:1]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`input [2:1] opcode;`
-                              ^^ Ref -> **Net** `i1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
+            ^^^^^^ Ref -> **Net** `opcode` in `ALU`  \n\Type: `logic[2:1]`  \n\Width: `2`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input [2:1] opcode;`
+                              ^^ Ref -> **Net** `i1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
                                     ^^ Ref -> **Net** `o1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`output [7:0] o1;`
 
         if (opcode == s1) (i2 => o1) = (5.6, 8.0);
-            ^^^^^^ Ref -> **Net** `opcode` in `ALU`  \n\Type: `logic[2:1]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`input [2:1] opcode;`
+            ^^^^^^ Ref -> **Net** `opcode` in `ALU`  \n\Type: `logic[2:1]`  \n\Width: `2`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input [2:1] opcode;`
                       ^^ Ref -> **Specparam** `s1` in `ALU`  \n\Type: `logic signed[31:0]`  \n\Width: `32`  \n\\n\\n\---\n\\n\`s1 = 2`
-                           ^^ Ref -> **Net** `i2` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
+                           ^^ Ref -> **Net** `i2` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
                                  ^^ Ref -> **Net** `o1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`output [7:0] o1;`
 
         (opcode *> o1) = (6.1, 6.5);
-         ^^^^^^ Ref -> **Net** `opcode` in `ALU`  \n\Type: `logic[2:1]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`input [2:1] opcode;`
+         ^^^^^^ Ref -> **Net** `opcode` in `ALU`  \n\Type: `logic[2:1]`  \n\Width: `2`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input [2:1] opcode;`
                    ^^ Ref -> **Net** `o1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`output [7:0] o1;`
 
     endspecify
@@ -1698,11 +1698,11 @@ module m10;
                                                           ^^^ Ref -> **ClassProperty** `len` in `m10.Packet`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int len;`
                                                                 ^ Ref -> **Variable** `p` in `m10`  \n\Type: `Packet`  \n\\n\\n\---\n\\n\`automatic Packet p = new;`
                                                                   ^^^ Ref -> **ClassProperty** `crc` in `m10.Packet`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int crc;`
-                                                                           ^^^^^^ Ref -> **Variable** `stream` in `m10`  \n\Type: `byte$[$]`  \n\\n\\n\---\n\\n\`byte stream[$];`
+                                                                           ^^^^^^ Ref -> **Variable** `stream` in `m10`  \n\Type: `byte$[$]`  \n\Driver: `Procedural (initial)`  \n\\n\\n\---\n\\n\`byte stream[$];`
 
         stream = stream[ $bits(p) / 8 : $ ];
-        ^^^^^^ Ref -> **Variable** `stream` in `m10`  \n\Type: `byte$[$]`  \n\\n\\n\---\n\\n\`byte stream[$];`
-                 ^^^^^^ Ref -> **Variable** `stream` in `m10`  \n\Type: `byte$[$]`  \n\\n\\n\---\n\\n\`byte stream[$];`
+        ^^^^^^ Ref -> **Variable** `stream` in `m10`  \n\Type: `byte$[$]`  \n\Driver: `Procedural (initial)`  \n\\n\\n\---\n\\n\`byte stream[$];`
+                 ^^^^^^ Ref -> **Variable** `stream` in `m10`  \n\Type: `byte$[$]`  \n\Driver: `Procedural (initial)`  \n\\n\\n\---\n\\n\`byte stream[$];`
                                ^ Ref -> **Variable** `p` in `m10`  \n\Type: `Packet`  \n\\n\\n\---\n\\n\`automatic Packet p = new;`
 
     end

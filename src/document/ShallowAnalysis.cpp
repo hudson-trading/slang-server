@@ -596,19 +596,51 @@ markup::Paragraph ShallowAnalysis::getDebugHover(const SourceLocation& loc) cons
 }
 
 Diagnostics ShallowAnalysis::getAnalysisDiags() {
-    if (m_compilation->getRoot().topInstances.empty()) {
+    getAnalysisManager();
+
+    if (!m_cachedAnalysisDiags) {
         return {};
     }
 
-    slang::analysis::AnalysisManager driverAnalysis(m_analysisOptions);
+    return *m_cachedAnalysisDiags;
+}
+
+const slang::analysis::AnalysisManager* ShallowAnalysis::getAnalysisManager() {
+    if (m_driverAnalysis) {
+        return m_driverAnalysis.get();
+    }
+
+    (void)m_compilation->getSemanticDiagnostics();
+
+    if (!m_compilation || m_compilation->getRoot().topInstances.empty()) {
+        m_cachedAnalysisDiags = Diagnostics{};
+        return nullptr;
+    }
+
+    auto manager = std::make_unique<slang::analysis::AnalysisManager>(m_analysisOptions);
+
     m_compilation->freeze();
-    driverAnalysis.analyze(*m_compilation);
+    manager->analyze(*m_compilation);
     m_compilation->unfreeze();
 
     // filter out unused def/decl diags, since shallow analysis will likely not have all references.
-    return driverAnalysis.getDiagnostics().filter(
+    m_cachedAnalysisDiags = manager->getDiagnostics().filter(
         {diag::UnusedDefinition, diag::UnusedPackageParameter, diag::UnusedPackageSubroutine,
          diag::UnusedPackageTypedef, diag::UnusedPackageVar});
+
+    m_driverAnalysis = std::move(manager);
+
+    return m_driverAnalysis.get();
+}
+
+std::vector<const slang::analysis::ValueDriver*> ShallowAnalysis::getDrivers(
+    const slang::ast::ValueSymbol& symbol) {
+    auto* manager = getAnalysisManager();
+    if (!manager) {
+        return {};
+    }
+
+    return manager->getDrivers(symbol);
 }
 
 } // namespace server
