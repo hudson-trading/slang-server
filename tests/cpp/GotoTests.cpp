@@ -2,8 +2,37 @@
 // SPDX-License-Identifier: MIT
 
 #include "utils/ServerHarness.h"
+#include <chrono>
+#include <fstream>
 
 using namespace slang;
+
+namespace {
+struct TempWorkspace {
+    fs::path base;
+    fs::path workspace;
+    fs::path vault;
+
+    TempWorkspace() {
+        auto suffix = std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+        base = fs::temp_directory_path() / ("slang-server-symlink-" + suffix);
+        workspace = base / "workspace";
+        vault = base / "vault";
+        fs::create_directories(workspace / "designs");
+        fs::create_directories(vault);
+    }
+
+    ~TempWorkspace() {
+        std::error_code ec;
+        fs::remove_all(base, ec);
+    }
+};
+
+void writeFile(const fs::path& path, std::string_view text) {
+    std::ofstream out(path);
+    out << text;
+}
+} // namespace
 
 TEST_CASE("FindSyntax") {
     /// Find the syntax at each location in the file
@@ -109,6 +138,82 @@ TEST_CASE("GotoDefinition_IfdefUndefinedMacro") {
     auto cursor = doc.after("`ifdef ");
     auto defs = cursor.getDefinitions();
     CHECK(defs.empty());
+}
+
+TEST_CASE("GotoDefinition_PrefersIndexedWorkspaceSymlink") {
+    TempWorkspace temp;
+
+    auto topTarget = temp.vault / "abcd12345_top";
+    auto depTarget = temp.vault / "abcd12345_dep";
+    auto topLink = temp.workspace / "designs" / "top.sv";
+    auto depLink = temp.workspace / "designs" / "dep.sv";
+
+    writeFile(topTarget, R"(module Top;
+    Dep u_dep();
+endmodule
+)");
+    writeFile(depTarget, R"(module Dep;
+endmodule
+)");
+
+    std::error_code ec;
+    fs::create_symlink(topTarget, topLink, ec);
+    if (ec)
+        SKIP("Unable to create symlink");
+    fs::create_symlink(depTarget, depLink, ec);
+    if (ec)
+        SKIP("Unable to create symlink");
+
+    ServerHarness server(lsp::InitializeParams{
+        .workspaceFolders = {{lsp::WorkspaceFolder{.uri = URI::fromFile(temp.workspace),
+                                                   .name = "symlink-workspace"}}}});
+
+    auto hdl = server.openFile("designs/top.sv");
+    auto defs = hdl.after("    ").getDefinitions();
+
+    REQUIRE(defs.size() == 1);
+    CHECK(defs[0].targetUri == URI::fromFile(depLink));
+    CHECK(defs[0].targetUri != URI::fromFile(depTarget));
+}
+
+TEST_CASE("GotoDefinition_PrefersBuildFileWorkspaceSymlink") {
+    TempWorkspace temp;
+
+    auto topTarget = temp.vault / "abcd12345_top";
+    auto depTarget = temp.vault / "abcd12345_dep";
+    auto topLink = temp.workspace / "designs" / "top.sv";
+    auto depLink = temp.workspace / "designs" / "dep.sv";
+    auto buildFile = temp.workspace / "build.f";
+
+    writeFile(topTarget, R"(module Top;
+    Dep u_dep();
+endmodule
+)");
+    writeFile(depTarget, R"(module Dep;
+endmodule
+)");
+
+    std::error_code ec;
+    fs::create_symlink(topTarget, topLink, ec);
+    if (ec)
+        SKIP("Unable to create symlink");
+    fs::create_symlink(depTarget, depLink, ec);
+    if (ec)
+        SKIP("Unable to create symlink");
+
+    writeFile(buildFile, topLink.string() + "\n" + depLink.string() + "\n");
+
+    ServerHarness server(lsp::InitializeParams{
+        .workspaceFolders = {{lsp::WorkspaceFolder{.uri = URI::fromFile(temp.workspace),
+                                                   .name = "symlink-workspace"}}}});
+    server.setBuildFile(buildFile.string());
+
+    auto hdl = server.openFile("designs/top.sv");
+    auto defs = hdl.after("    ").getDefinitions();
+
+    REQUIRE(defs.size() == 1);
+    CHECK(defs[0].targetUri == URI::fromFile(depLink));
+    CHECK(defs[0].targetUri != URI::fromFile(depTarget));
 }
 
 TEST_CASE("LoadTransitivePackages") {
