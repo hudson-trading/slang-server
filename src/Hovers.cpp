@@ -20,8 +20,111 @@
 
 namespace server {
 
-lsp::MarkupContent getHover(const SourceManager& sm, const BufferID docBuffer,
-                            const DefinitionInfo& info, const Config::HoverConfig& hovers) {
+namespace {
+
+struct PortInfo {
+    std::string name;
+    std::string direction;
+    std::string type;
+    bool isAnsi = true;
+};
+
+struct PortsInfo {
+    std::vector<PortInfo> ports;
+    bool hasAnsiPorts;
+};
+
+std::string portDirectionToString(ast::ArgumentDirection dir) {
+    switch (dir) {
+        case ast::ArgumentDirection::In:
+            return "input";
+        case ast::ArgumentDirection::Out:
+            return "output";
+        case ast::ArgumentDirection::InOut:
+            return "inout";
+        case ast::ArgumentDirection::Ref:
+            return "ref";
+        default:
+            return "";
+    };
+};
+
+PortsInfo getPorts(std::shared_ptr<ShallowAnalysis> analysis, std::string_view moduleName) {
+    using namespace slang;
+    using namespace slang::ast;
+
+    PortsInfo result;
+
+    const Symbol* sym = analysis->getDefinition(moduleName);
+    if (!sym || sym->kind != SymbolKind::Definition)
+        return result;
+
+    const auto& def = sym->as<DefinitionSymbol>();
+    auto& comp = *analysis->getCompilation();
+    const auto& inst = InstanceSymbol::createDefault(comp, def);
+    const auto& body = inst.body;
+
+    result.hasAnsiPorts = !def.hasNonAnsiPorts;
+
+    for (const Symbol* s : body.getPortList()) {
+        switch (s->kind) {
+            case SymbolKind::Port: {
+                const auto& port = s->as<PortSymbol>();
+                result.ports.push_back({std::string(port.name),
+                                        std::string(portDirectionToString(port.direction)),
+                                        std::string(port.getType().toString()), port.isAnsiPort});
+                break;
+            }
+
+            case SymbolKind::MultiPort: {
+                const auto& mp = s->as<MultiPortSymbol>();
+                for (auto& port : mp.ports) {
+                    result.ports.push_back({std::string(port->name),
+                                            std::string(portDirectionToString(port->direction)),
+                                            std::string(port->getType().toString()),
+                                            port->isAnsiPort});
+                }
+                break;
+            }
+
+            case SymbolKind::InterfacePort: {
+                const auto& ip = s->as<InterfacePortSymbol>();
+                result.ports.push_back({std::string(ip.name), "interface", "", true});
+                break;
+            }
+
+            default:
+                break;
+        }
+    }
+
+    return result;
+}
+
+std::string formatNonAnsiModulePorts(const PortsInfo& ports) {
+    fmt::memory_buffer out;
+
+    for (const auto& port : ports.ports) {
+        if (port.direction == "interface") {
+            fmt::format_to(fmt::appender(out), "   interface {};\n", port.name);
+        }
+        else if (!port.type.empty()) {
+            fmt::format_to(fmt::appender(out), "   {} {} {};\n", port.direction, port.type,
+                           port.name);
+        }
+        else {
+            fmt::format_to(fmt::appender(out), "   {} {};\n", port.direction, port.name);
+        }
+    }
+
+    return fmt::to_string(out);
+}
+
+} // namespace
+
+lsp::MarkupContent getHover(const std::shared_ptr<ShallowAnalysis> sa, const SourceManager& sm,
+                            const BufferID docBuffer, const DefinitionInfo& info,
+                            const Config::HoverConfig& hovers) {
     markup::Document doc;
 
     auto& infoPg = doc.addParagraph();
@@ -137,7 +240,22 @@ lsp::MarkupContent getHover(const SourceManager& sm, const BufferID docBuffer,
         const std::string docComments = getDocCommentForHover(display_node, docCommentFormat);
         if (!docComments.empty())
             doc.addParagraph().appendText(docComments).newLine();
-        doc.addParagraph().appendCodeBlock(formatCode(display_node));
+        std::string codeBlock = formatCode(display_node);
+
+        if (display_node.kind == syntax::SyntaxKind::ModuleHeader && info.symbol &&
+            info.symbol->kind == ast::SymbolKind::Definition) {
+            const auto ports = getPorts(sa, info.symbol->name);
+
+            if (!ports.hasAnsiPorts) {
+                const auto portSummary = formatNonAnsiModulePorts(ports);
+                if (!portSummary.empty()) {
+                    codeBlock += "\n" + portSummary +
+                                 "\n  endmodule : " + std::string(info.symbol->name);
+                }
+            }
+        }
+
+        doc.addParagraph().appendCodeBlock(codeBlock);
     }
 
     // Show what a macro expands to
