@@ -64,10 +64,10 @@ function int $clog2(integer_value)
 Returns the ceiling of the base-2 logarithm of the argument. Commonly used to compute the address width needed to index N elements: `$clog2(N)`.
 
 queue declaration $:
-<no system hover>
+<no hover>
 
 queue selector $:
-<no system hover>
+<no hover>
 
 $root:
-<no system hover>
+<no hover>

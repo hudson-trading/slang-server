@@ -41,12 +41,10 @@ public:
     CompletionDispatch(ServerDriver& driver, const Indexer& indexer, SourceManager& sourceManager,
                        slang::Bag& options);
 
-    void getInvokedCompletions(std::vector<lsp::CompletionItem>& results,
-                               std::shared_ptr<SlangDoc> doc, const SourceLocation& loc);
-
-    void getTriggerCompletions(char triggerChar, char prevChar, std::shared_ptr<SlangDoc> doc,
-                               slang::SourceLocation loc,
-                               std::vector<lsp::CompletionItem>& results);
+    /// Top-level completion entry point. Handles both `Invoked` and `TriggerCharacter`
+    /// requests; the dispatch decision is driven by `ctx.triggerChar()` / `ctx.prevText`.
+    void getCompletions(std::vector<lsp::CompletionItem>& results, std::shared_ptr<SlangDoc> doc,
+                        slang::SourceLocation loc, const CompletionContext& ctx);
 
     void resolveModuleCompletion(lsp::CompletionItem& item,
                                  std::optional<std::filesystem::path> modulePath = std::nullopt,
