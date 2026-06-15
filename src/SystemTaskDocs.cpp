@@ -16,8 +16,8 @@ constexpr std::size_t kNumKsn = slang::parsing::KnownSystemName_traits::values.s
 
 // `KnownSystemName` covers two distinct categories of names:
 //   - $-prefixed system tasks/functions ($display, $bits, $fopen, ...) —
-//     reachable from `getDefinitionInfoAt` today via the rawText[0]=='$' guard
-//     and `Compilation::getSystemSubroutine`.
+//     reachable from `getDefinitionInfoAt` today via SystemIdentifier tokens
+//     carrying a `KnownSystemName`.
 //   - Built-in *method* names on queues, strings, enums, dynamic/associative
 //     arrays (pop_back, len, name, find, ...) — invoked as `q.pop_back()`,
 //     not as `$pop_back`. The current resolver path doesn't reach these, so
@@ -550,12 +550,12 @@ constexpr std::array<SystemTaskDoc, kNumKsn> buildDocs() {
         "Returns 1 on success, 0 on failure (compile-time form raises an error).",
         "6.24.3"};
 
-    // ---- §20.11 Static checks ----
+    // ---- slang extensions ----
     d[size_t(KSN::StaticAssert)] = {
         "$static_assert(condition[, message])",
-        "Compile-time assertion checked during elaboration. The optional `message` "
-        "is printed when `condition` evaluates to 0.",
-        "20.11"};
+        "Slang extension for a compile-time assertion checked during elaboration. "
+        "The optional `message` is printed when `condition` evaluates to 0.",
+        ""};
 
     // ---- §20.4 Time / scope ----
     d[size_t(KSN::TimeUnit)] = {
@@ -1010,6 +1010,9 @@ constexpr std::array<SystemTaskDoc, kNumKsn> buildDocs() {
 
 constexpr std::array<SystemTaskDoc, kNumKsn> DOCS = buildDocs();
 
+static_assert(DOCS.size() == slang::parsing::KnownSystemName_traits::values.size(),
+              "SystemTaskDocs: DOCS must stay indexed one-to-one with KnownSystemName values.");
+
 constexpr std::size_t countDocumented() {
     std::size_t n = 0;
     for (std::size_t i = 1; i < DOCS.size(); ++i) {
@@ -1040,6 +1043,11 @@ const SystemTaskDoc* getSystemTaskDoc(KnownSystemName name) {
         return nullptr;
     }
     return &doc;
+}
+
+/// For completions
+std::span<const SystemTaskDoc> getSystemTaskDocs() {
+    return DOCS;
 }
 
 } // namespace server

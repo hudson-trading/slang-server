@@ -1,11 +1,15 @@
 // SPDX-FileCopyrightText: Hudson River Trading
 // SPDX-License-Identifier: MIT
 
+#include "completions/Completions.h"
+#include "completions/SystemTaskCompletions.h"
 #include "lsp/LspTypes.h"
 #include "util/Logging.h"
 #include "utils/GoldenTest.h"
 #include "utils/ServerHarness.h"
 #include <optional>
+
+#include "slang/ast/Compilation.h"
 
 using namespace server;
 
@@ -29,6 +33,113 @@ TEST_CASE("MacroCompletion") {
     // Now that it's saved, it should be indexed
     doc.save();
     CHECK(doc2.begin().getCompletions("`").size() == 2);
+}
+
+TEST_CASE("SystemTaskCompletion") {
+    ServerHarness server("repo1");
+
+    auto doc = server.openFile("system_task_completion.sv", R"(
+    module top;
+        initial begin
+            $
+        end
+    endmodule
+    )");
+
+    auto comps = doc.after("$").getCompletions("$");
+
+    auto findByLabel = [&](std::string_view label) {
+        return std::find_if(comps.begin(), comps.end(), [&](const CompletionHandle& item) {
+            return item.m_item.label == label;
+        });
+    };
+
+    auto display = findByLabel("$display");
+    REQUIRE(display != comps.end());
+    CHECK(display->m_item.filterText == "$display");
+    CHECK(display->m_item.insertText == "\\$display(\"${1:format}\", $0)");
+    CHECK(display->m_item.insertTextFormat == lsp::InsertTextFormat::Snippet);
+    REQUIRE(display->m_item.labelDetails);
+    CHECK(display->m_item.labelDetails->detail == " task $display(string format = \"\", ...)");
+    CHECK(display->m_item.documentation.has_value());
+
+    auto fdisplay = findByLabel("$fdisplay");
+    REQUIRE(fdisplay != comps.end());
+    CHECK(fdisplay->m_item.filterText == "$fdisplay");
+    CHECK(fdisplay->m_item.insertText == "\\$fdisplay(${1:fd}, \"${2:format}\", $0)");
+    CHECK(fdisplay->m_item.insertTextFormat == lsp::InsertTextFormat::Snippet);
+
+    auto fatal = findByLabel("$fatal");
+    REQUIRE(fatal != comps.end());
+    CHECK(fatal->m_item.insertText == "\\$fatal()");
+    REQUIRE(fatal->m_item.labelDetails);
+    CHECK(fatal->m_item.labelDetails->detail ==
+          " task $fatal(int finish_number = 1, string format = \"\", ...)");
+
+    auto clog2 = findByLabel("$clog2");
+    REQUIRE(clog2 != comps.end());
+    CHECK(clog2->m_item.filterText == "$clog2");
+    CHECK(clog2->m_item.insertText == "\\$clog2(${1:integer_value})");
+    CHECK(clog2->m_item.insertTextFormat == lsp::InsertTextFormat::Snippet);
+    REQUIRE(clog2->m_item.labelDetails);
+    CHECK(clog2->m_item.labelDetails->detail == " function int $clog2(integer_value)");
+
+    auto testPlusArgs = findByLabel("$test$plusargs");
+    REQUIRE(testPlusArgs != comps.end());
+    CHECK(testPlusArgs->m_item.filterText == "$test$plusargs");
+    CHECK(testPlusArgs->m_item.insertText == "\\$test\\$plusargs(${1:user_string})");
+    CHECK(testPlusArgs->m_item.insertTextFormat == lsp::InsertTextFormat::Snippet);
+
+    auto fopen = findByLabel("$fopen");
+    REQUIRE(fopen != comps.end());
+    CHECK(fopen->m_item.insertText == "\\$fopen(${1:filename})");
+    REQUIRE(fopen->m_item.labelDetails);
+    CHECK(fopen->m_item.labelDetails->detail ==
+          " function int $fopen(string filename[, string type])");
+
+    auto urandomRange = findByLabel("$urandom_range");
+    REQUIRE(urandomRange != comps.end());
+    CHECK(urandomRange->m_item.insertText == "\\$urandom_range(${1:maxval})");
+    REQUIRE(urandomRange->m_item.labelDetails);
+    CHECK(urandomRange->m_item.labelDetails->detail ==
+          " function bit [31:0] $urandom_range(bit [31:0] maxval[, bit [31:0] minval])");
+
+    auto fflush = findByLabel("$fflush");
+    REQUIRE(fflush != comps.end());
+    CHECK(fflush->m_item.insertText == "\\$fflush()");
+
+    CHECK(findByLabel("randomize") == comps.end());
+}
+
+TEST_CASE("SystemMethodCompletionSnippets") {
+    ast::Compilation compilation;
+
+    auto checkMethod = [&](parsing::KnownSystemName name, ast::SymbolKind typeKind,
+                           std::string_view methodName, std::string_view expectedSnippet,
+                           std::string_view expectedDetail = {}) {
+        auto* method = compilation.getSystemMethod(typeKind, methodName);
+        REQUIRE(method != nullptr);
+
+        auto item = completions::getSystemSubroutineCompletion(name, *method);
+        CHECK(item.insertText == expectedSnippet);
+        CHECK(item.insertTextFormat == lsp::InsertTextFormat::Snippet);
+        if (!expectedDetail.empty()) {
+            REQUIRE(item.labelDetails);
+            CHECK(item.labelDetails->detail == expectedDetail);
+        }
+    };
+
+    checkMethod(parsing::KnownSystemName::Len, ast::SymbolKind::StringType, "len", "len()");
+    checkMethod(parsing::KnownSystemName::Putc, ast::SymbolKind::StringType, "putc",
+                "putc(${1:i}, ${2:c})");
+    checkMethod(parsing::KnownSystemName::PushBack, ast::SymbolKind::QueueType, "push_back",
+                "push_back(${1:value})");
+    checkMethod(parsing::KnownSystemName::RandMode, ast::SymbolKind::ClassProperty, "rand_mode",
+                "rand_mode(${1:on_off})");
+    checkMethod(parsing::KnownSystemName::Sort, ast::SymbolKind::QueueType, "sort", "sort()",
+                " function void array.sort([with (item.expr)])");
+    checkMethod(parsing::KnownSystemName::Find, ast::SymbolKind::QueueType, "find",
+                "find with (${1:item.expr})");
 }
 
 TEST_CASE("ModuleCompletion") {

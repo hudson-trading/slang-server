@@ -195,7 +195,7 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
                                     "(", // function calls
                                     ":", // pkg scope (::), wire width
                                     "[", // wire width, array indexing
-                                    // "$"  // builtins
+                                    "$", // system tasks and functions
                                 },
                             .resolveProvider = true,
                             .completionItem =
