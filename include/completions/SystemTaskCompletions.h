@@ -7,6 +7,7 @@
 //------------------------------------------------------------------------------
 #pragma once
 #include "lsp/LspTypes.h"
+#include <string_view>
 #include <vector>
 
 #include "slang/ast/Compilation.h"
@@ -20,5 +21,9 @@ lsp::CompletionItem getSystemSubroutineCompletion(slang::parsing::KnownSystemNam
 
 void addSystemSubroutineCompletions(std::vector<lsp::CompletionItem>& results,
                                     const slang::ast::Compilation& compilation);
+
+/// Returns true if `prevText` ends inside a `$identifier` token — i.e., walking back from the
+/// cursor through word characters (alnum / `_`) hits a `$`.
+bool inSystemTaskIdent(std::string_view prevText);
 
 } // namespace server::completions

@@ -396,20 +396,39 @@ lsp::CompletionItem getSystemSubroutineCompletion(parsing::KnownSystemName name,
 
 void addSystemSubroutineCompletions(std::vector<lsp::CompletionItem>& results,
                                     const ast::Compilation& compilation) {
-    for (auto name : parsing::KnownSystemName_traits::values) {
-        if (name == parsing::KnownSystemName::Unknown)
-            continue;
+    // The built-in system subroutines slang registers are identical across compilations, so
+    // build the completion list once on the first call and reuse it.
+    static const std::vector<lsp::CompletionItem> cached = [&] {
+        std::vector<lsp::CompletionItem> items;
+        for (auto name : parsing::KnownSystemName_traits::values) {
+            if (name == parsing::KnownSystemName::Unknown)
+                continue;
 
-        auto label = parsing::toString(name);
-        if (label.empty() || label[0] != '$')
-            continue;
+            auto label = parsing::toString(name);
+            if (label.empty() || label[0] != '$')
+                continue;
 
-        auto* subroutine = compilation.getSystemSubroutine(name);
-        if (!subroutine)
-            continue;
+            auto* subroutine = compilation.getSystemSubroutine(name);
+            if (!subroutine)
+                continue;
 
-        results.push_back(getSystemSubroutineCompletion(name, *subroutine));
+            items.push_back(getSystemSubroutineCompletion(name, *subroutine));
+        }
+        return items;
+    }();
+
+    results.insert(results.end(), cached.begin(), cached.end());
+}
+
+bool inSystemTaskIdent(std::string_view prevText) {
+    for (auto it = prevText.rbegin(); it != prevText.rend(); ++it) {
+        char c = *it;
+        if (c == '$')
+            return true;
+        if (!std::isalnum(static_cast<unsigned char>(c)) && c != '_')
+            return false;
     }
+    return false;
 }
 
 } // namespace server::completions
