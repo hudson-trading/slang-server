@@ -44,6 +44,13 @@
 namespace server {
 using namespace slang;
 
+bool ServerDriver::s_debugHoversEnabled =
+#ifdef SLANG_DEBUG
+    true;
+#else
+    false;
+#endif
+
 ServerDriver::ServerDriver(Indexer& indexer, SlangLspClient& client, const Config& config,
                            std::vector<std::string> buildfiles) :
     sm(driver.sourceManager), diagEngine(driver.diagEngine), client(client),
@@ -667,13 +674,13 @@ std::optional<lsp::Hover> ServerDriver::getDocHover(const URI& uri, const lsp::P
     }
     auto maybeInfo = getDefinitionInfoAt(uri, position);
     if (!maybeInfo) {
-#ifdef SLANG_DEBUG
-        // Shows debug info for the token under cursor when debugging
-        auto analysis = doc->getAnalysis();
-        markup::Document markup;
-        markup.addParagraph(analysis->getDebugHover(loc.value()));
-        return lsp::Hover{.contents = markup.build()};
-#endif
+        if (s_debugHoversEnabled) {
+            // Shows debug info for the token under cursor when debugging.
+            auto analysis = doc->getAnalysis();
+            markup::Document markup;
+            markup.addParagraph(analysis->getDebugHover(loc.value()));
+            return lsp::Hover{.contents = markup.build()};
+        }
         return {};
     }
     const auto& info = *maybeInfo;
