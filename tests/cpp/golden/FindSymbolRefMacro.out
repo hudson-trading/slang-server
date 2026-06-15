@@ -74,7 +74,7 @@
 
 
 `define INFO(msg) $display("Info: %s", msg);
-                  ^^^^^^^^ Sym $display : DefineDirective
+                  ^^^^^^^^ Sym $display : SystemName
 
 
 
@@ -195,7 +195,7 @@ module test;
     `DECLARE_INT(log_int, $clog2(other_int))
     ^^^^^^^^^^^^ Ref -> DefineDirective DECLARE_INT  \n\\n\\n\---\n\\n\``define DECLARE_INT(name, val) localparam int name = val;`\n\\n\---\n\\n\Expands to   \n\`localparam int log_int = $clog2(other_int);`
                  ^^^^^^^ Ref -> **Parameter** `log_int` in `test`  \n\Type: `int`  \n\Value: `1`  \n\\n\\n\---\n\\n\`localparam int log_int = $clog2(other_int)`\n\\n\---\n\\n\Expanded from   \n\``DECLARE_INT(log_int, $clog2(other_int))`
-                          ^^^^^^ Sym $clog2 : MacroActualArgument
+                          ^^^^^^ Sym $clog2 : SystemName
                                  ^^^^^^^^^ Ref -> **Parameter** `other_int` in `test`  \n\Type: `int`  \n\Value: `2`  \n\\n\\n\---\n\\n\`localparam int other_int = 2`\n\\n\---\n\\n\Expanded from   \n\``DECLARE_INT(other_int, 2)`
 
 

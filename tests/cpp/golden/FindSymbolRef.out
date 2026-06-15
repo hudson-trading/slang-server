@@ -238,7 +238,7 @@ macromodule m3;
 
 
     $info("Hello %s", "world");
-    ^^^^^ Sym $info : ElabSystemTask
+    ^^^^^ Sym $info : SystemName
 
 
 

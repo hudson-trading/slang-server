@@ -159,130 +159,65 @@ endmodule
 }
 
 TEST_CASE("HoverSystemTask") {
-    // Built-in system tasks ($display, $bits, etc.) should render their
-    // documentation from the SystemTaskDocs table.
     ServerHarness server;
+    GoldenTest golden;
 
     auto doc = server.openFile("test.sv", R"(
-module top;
-    initial begin
-        $display("hello");
-        $finish;
-    end
-    localparam int W = $bits(int);
-    localparam int L = $clog2(64);
-endmodule
-)");
-
-    {
-        auto cursor = doc.before("$display");
-        auto hover = doc.getHoverAt(cursor.m_offset);
-        REQUIRE(hover.has_value());
-        auto content = rfl::get<lsp::MarkupContent>(hover->contents);
-        CHECK(content.value.find("System task") != std::string::npos);
-        CHECK(content.value.find("$display") != std::string::npos);
-        CHECK(content.value.find("§21.2.1") != std::string::npos);
-    }
-
-    {
-        auto cursor = doc.before("$finish");
-        auto hover = doc.getHoverAt(cursor.m_offset);
-        REQUIRE(hover.has_value());
-        auto content = rfl::get<lsp::MarkupContent>(hover->contents);
-        CHECK(content.value.find("$finish") != std::string::npos);
-        CHECK(content.value.find("Halts") != std::string::npos);
-    }
-
-    {
-        auto cursor = doc.before("$bits(int)");
-        auto hover = doc.getHoverAt(cursor.m_offset);
-        REQUIRE(hover.has_value());
-        auto content = rfl::get<lsp::MarkupContent>(hover->contents);
-        CHECK(content.value.find("$bits") != std::string::npos);
-        CHECK(content.value.find("§20.6.2") != std::string::npos);
-        CHECK(content.value.find("number of bits") != std::string::npos);
-    }
-
-    {
-        auto cursor = doc.before("$clog2");
-        auto hover = doc.getHoverAt(cursor.m_offset);
-        REQUIRE(hover.has_value());
-        auto content = rfl::get<lsp::MarkupContent>(hover->contents);
-        CHECK(content.value.find("$clog2") != std::string::npos);
-        CHECK(content.value.find("ceiling of the base-2 logarithm") != std::string::npos);
-    }
-}
-
-TEST_CASE("HoverSystemTask_FunctionVsTaskLabel") {
-    // The hover header distinguishes "System task" from "System function" based
-    // on the SystemSubroutine kind, so users see accurate vocabulary.
-    ServerHarness server;
-
-    auto doc = server.openFile("test.sv", R"(
-module top;
-    localparam int W = $bits(int);
-    initial begin
-        $finish;
-    end
-endmodule
-)");
-
-    {
-        // $bits is a function
-        auto cursor = doc.before("$bits");
-        auto hover = doc.getHoverAt(cursor.m_offset);
-        REQUIRE(hover.has_value());
-        auto content = rfl::get<lsp::MarkupContent>(hover->contents);
-        CHECK(content.value.find("System function") != std::string::npos);
-        CHECK(content.value.find("System task") == std::string::npos);
-    }
-
-    {
-        // $finish is a task
-        auto cursor = doc.before("$finish");
-        auto hover = doc.getHoverAt(cursor.m_offset);
-        REQUIRE(hover.has_value());
-        auto content = rfl::get<lsp::MarkupContent>(hover->contents);
-        CHECK(content.value.find("System task") != std::string::npos);
-        // Don't search for "System function" because the substring would be
-        // present in "System functions" inside any longer description text.
-    }
-}
-
-TEST_CASE("HoverSystemTask_NoFalsePositiveOnNonRegisteredDollarTokens") {
-    // SystemVerilog has $-prefixed tokens that are not system subroutines:
-    // `$root`, `$unit`, and the unbounded literal `$` (used as a queue size
-    // `q[$]`, as an unbounded array index, or as a queue back-element
-    // selector). These must not trigger system-task hover output — the
-    // resolver path keys off `getSystemSubroutine(name)` returning non-null,
-    // and these tokens correctly are not registered there.
-    ServerHarness server;
-
-    auto doc = server.openFile("test.sv", R"(
+`define USE_WIDTH(name, val) localparam int name = val
 module top;
     int q[$];
     initial begin
+        $display("hello");
+        $finish;
         q.push_back(42);
         if (q[$] == 0) $display("first");
         if ($root.top.q.size()) $display("ok");
     end
+    localparam int W = $bits(int);
+    localparam int L = $clog2(64);
+    `USE_WIDTH(M, $clog2(128));
 endmodule
 )");
 
-    auto check = [&](const std::string& target) {
+    auto recordHover = [&](const std::string& label, const std::string& target) {
         auto cursor = doc.before(target);
         auto hover = doc.getHoverAt(cursor.m_offset);
-        if (hover.has_value()) {
-            auto content = rfl::get<lsp::MarkupContent>(hover->contents);
-            CHECK(content.value.find("System task") == std::string::npos);
-            CHECK(content.value.find("System function") == std::string::npos);
+        golden.record(label);
+        golden.record(":\n");
+        if (!hover.has_value()) {
+            golden.record("<no hover>\n\n");
+            return;
         }
+        auto content = rfl::get<lsp::MarkupContent>(hover->contents);
+        golden.record(content.value);
+        golden.record("\n\n");
     };
 
-    // Unbounded `$` in queue declaration `int q[$]`.
-    check("$];");
-    // Unbounded `$` as queue back-element selector `q[$]`.
-    check("$] ==");
-    // `$root` hierarchical reference root.
-    check("$root");
+    auto recordNoSystemHover = [&](const std::string& label, const std::string& target,
+                                   bool trailingBlank = true) {
+        auto cursor = doc.before(target);
+        auto hover = doc.getHoverAt(cursor.m_offset);
+        golden.record(label);
+        golden.record(":\n");
+        if (!hover.has_value()) {
+            golden.record(trailingBlank ? "<no hover>\n\n" : "<no hover>\n");
+            return;
+        }
+        auto content = rfl::get<lsp::MarkupContent>(hover->contents);
+        if (content.value.find("**System ") == std::string::npos) {
+            golden.record(trailingBlank ? "<no system hover>\n\n" : "<no system hover>\n");
+            return;
+        }
+        golden.record(content.value);
+        golden.record(trailingBlank ? "\n\n" : "\n");
+    };
+
+    recordHover("$display", "$display(\"hello\")");
+    recordHover("$finish", "$finish");
+    recordHover("$bits", "$bits(int)");
+    recordHover("$clog2", "$clog2");
+    recordHover("macro argument $clog2", "$clog2(128)");
+    recordNoSystemHover("queue declaration $", "$];");
+    recordNoSystemHover("queue selector $", "$] ==");
+    recordNoSystemHover("$root", "$root", false);
 }

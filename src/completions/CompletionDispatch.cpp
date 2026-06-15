@@ -11,6 +11,7 @@
 #include "ServerDriver.h"
 #include "completions/CompletionContext.h"
 #include "completions/Completions.h"
+#include "completions/SystemTaskCompletions.h"
 #include "document/ShallowAnalysis.h"
 #include "lsp/LspTypes.h"
 #include "util/Converters.h"
@@ -133,6 +134,14 @@ void CompletionDispatch::getTriggerCompletions(char triggerChar, char prevChar,
             results.push_back(completions::getMacroCompletion(name));
         }
     }
+    else if (triggerChar == '$') {
+        auto analysis = doc->getAnalysis();
+        if (!analysis || !analysis->getCompilation()) {
+            ERROR("No analysis or compilation available for document {}", doc->getPath());
+            return;
+        }
+        completions::addSystemSubroutineCompletions(results, *analysis->getCompilation());
+    }
     else if (triggerChar == '.') {
         // Member completions
         // Capture analysis once to avoid invalidation from repeated getAnalysis() calls.
@@ -248,6 +257,9 @@ void CompletionDispatch::resolveMacroCompletion(lsp::CompletionItem& item) {
 
 void CompletionDispatch::getCompletionItemResolve(lsp::CompletionItem& item) {
     INFO("Resolving completion item: {}", item.label);
+    if (!item.label.empty() && item.label[0] == '$')
+        return;
+
     switch (*item.kind) {
         case lsp::CompletionItemKind::Constant: {
             resolveMacroCompletion(item);

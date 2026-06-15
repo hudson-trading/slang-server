@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <span>
 #include <string_view>
 
 #include "slang/parsing/KnownSystemName.h"
@@ -25,5 +26,8 @@ struct SystemTaskDoc {
 /// @returns the documentation for the given slang `KnownSystemName`, or
 /// nullptr if `name` is `Unknown` or the entry is not yet documented.
 const SystemTaskDoc* getSystemTaskDoc(slang::parsing::KnownSystemName name);
+
+/// @returns the complete documentation table, indexed by `KnownSystemName`.
+std::span<const SystemTaskDoc> getSystemTaskDocs();
 
 } // namespace server

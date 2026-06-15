@@ -284,6 +284,7 @@ add_library(
   src/ast/ServerCompilation.cpp
   src/ast/ServerCompilationAnalysis.cpp
   src/ast/WcpClient.cpp
+  src/document/DefinitionInfo.cpp
   src/document/ShallowAnalysis.cpp
   src/document/SlangDoc.cpp
   src/document/SymbolIndexer.cpp
@@ -296,13 +297,13 @@ add_library(
   src/completions/Completions.cpp
   src/completions/CompletionContext.cpp
   src/completions/CompletionDispatch.cpp
+  src/completions/SystemTaskCompletions.cpp
   src/lsp/URI.cpp
   src/util/Converters.cpp
   src/util/Formatting.cpp
   src/util/SlangExtensions.cpp
   src/util/Markdown.cpp
   src/Config.cpp
-  src/Hovers.cpp
   src/Indexer.cpp
   src/ServerDriver.cpp
   src/SlangServer.cpp

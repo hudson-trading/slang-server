@@ -8,6 +8,7 @@
 #pragma once
 
 #include "Config.h"
+#include "document/DefinitionInfo.h"
 #include "document/SymbolIndexer.h"
 #include "document/SymbolTreeVisitor.h"
 #include "document/SyntaxIndexer.h"
@@ -33,36 +34,6 @@
 #include "slang/util/Bag.h"
 namespace server {
 using namespace slang;
-struct SystemTaskDoc;
-
-struct DefinitionInfo {
-    // The syntax that the token refers to
-    const slang::syntax::SyntaxNode* node;
-    // The exact name id in the syntax node, or the first token in the syntax if it wasn't found
-    slang::parsing::Token nameToken;
-    // Optional original source range; exists if it's behind a macro expansion
-    slang::SourceRange macroUsageRange;
-    // The symbol this token refers to (if any)
-    const slang::ast::Symbol* symbol;
-    // Expanded text for macro usages (what the macro expands to at this call site)
-    std::string macroExpansionText;
-    // For command-line defines: the config/build file that defined this directive
-    std::string defineSourceFile;
-    // Documentation for built-in system tasks/functions. Set when the token
-    // names a slang-known $task and `symbol`/`node` are not the source of truth.
-    const SystemTaskDoc* sysTaskDoc = nullptr;
-    // Whether the system subroutine is a task (true) or a function (false).
-    // Only meaningful when `sysTaskDoc` is non-null.
-    bool sysIsTask = false;
-
-    bool operator==(const DefinitionInfo& other) const {
-        return node == other.node && nameToken.location() == other.nameToken.location() &&
-               macroUsageRange == other.macroUsageRange && symbol == other.symbol &&
-               sysTaskDoc == other.sysTaskDoc;
-    }
-
-    bool operator!=(const DefinitionInfo& other) const { return !(*this == other); }
-};
 
 class DocumentHandle;
 class ShallowAnalysis {
