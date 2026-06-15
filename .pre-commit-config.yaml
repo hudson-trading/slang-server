@@ -50,7 +50,7 @@ repos:
     hooks:
       - id: clang-format
         types_or: [c++, c, json]
-        exclude: ^external/.*
+        exclude: ^external/.*|^tests/cpp/golden/.*
 
   # Prettier for typescript and yaml
   - repo: https://github.com/pre-commit/mirrors-prettier

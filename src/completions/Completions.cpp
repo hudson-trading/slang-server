@@ -258,6 +258,7 @@ void resolveModule(const slang::syntax::SyntaxTree& tree, std::string_view modul
 lsp::CompletionItemKind getCompletionKind(const slang::ast::Symbol& symbol) {
     switch (symbol.kind) {
         case slang::ast::SymbolKind::Variable:
+        case slang::ast::SymbolKind::Net:
             return lsp::CompletionItemKind::Variable;
         case slang::ast::SymbolKind::Parameter:
             return lsp::CompletionItemKind::TypeParameter;
@@ -515,8 +516,9 @@ void addMemberCompletions(std::vector<lsp::CompletionItem>& results, const slang
             }
 
             // ports are in there twice as value symbols and port symbols, so skip the value
-            if (member.kind == slang::ast::SymbolKind::Variable && results.size() > 0 &&
-                results.back().label == member.name) {
+            if ((member.kind == slang::ast::SymbolKind::Variable ||
+                 member.kind == slang::ast::SymbolKind::Net) &&
+                results.size() > 0 && results.back().label == member.name) {
                 continue;
             }
 
