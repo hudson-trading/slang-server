@@ -5,6 +5,7 @@
 
 #include "ClientHarness.h"
 #include "GoldenTest.h"
+#include "ServerDriver.h"
 #include "SlangServer.h"
 #include "Utils.h"
 #include "document/ShallowAnalysis.h"
@@ -25,6 +26,12 @@ class DocumentHandle;
 class Cursor;
 
 struct ClientOwner {
+    ClientOwner() {
+        // Synthetic `**Token:** ...` debug hovers exist for developer ergonomics in `SLANG_DEBUG`
+        // builds, but they cause hover goldens to diverge between Debug and Release. Tests don't
+        // exercise them, so turn them off.
+        server::ServerDriver::s_debugHoversEnabled = false;
+    }
     /// This needs to be made before passing to SlangServer
     ClientHarness client;
 };
