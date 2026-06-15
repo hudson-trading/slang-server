@@ -11,6 +11,7 @@
 
 #include "Config.h"
 #include "ast/WcpClient.h"
+#include "completions/CompletionContext.h"
 #include "completions/CompletionDispatch.h"
 #include "lsp/LspTypeExtensions.h"
 #include "lsp/LspTypes.h"
@@ -195,7 +196,7 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
                                     "(", // function calls
                                     ":", // pkg scope (::), wire width
                                     "[", // wire width, array indexing
-                                    // "$"  // builtins
+                                    "$", // system tasks and functions
                                 },
                             .resolveProvider = true,
                             .completionItem =
@@ -784,28 +785,21 @@ rfl::Variant<std::vector<lsp::CompletionItem>, lsp::CompletionList, std::monosta
         m_client.showError(fmt::format("Document {} not found", params.textDocument.uri.getPath()));
         return std::monostate{};
     }
-    char triggerChar = params.context->triggerCharacter
-                           ? params.context->triggerCharacter.value()[0]
-                           : ' ';
-
-    // Prev text including the char that was just written
-    auto prevText = doc->getPrevText(params.position);
-    char prevChar = prevText.size() >= 2 ? prevText[prevText.size() - 2] : ' ';
-    INFO("Completion triggered by: ['{}','{}']", prevChar, triggerChar);
     auto maybeLoc = doc->getLocation(params.position);
-
     if (!maybeLoc) {
         WARN("No location found for position {},{}", params.position.line,
              params.position.character);
         return std::monostate{};
     }
     auto loc = maybeLoc.value();
-    if (params.context->triggerKind == lsp::CompletionTriggerKind::Invoked) {
-        m_driver->completions.getInvokedCompletions(results, doc, loc);
-    }
-    else {
-        m_driver->completions.getTriggerCompletions(triggerChar, prevChar, doc, loc, results);
-    }
+
+    auto prevText = doc->getPrevText(params.position);
+    auto ctx = CompletionContext::fromLocation(*doc, loc, *params.context, prevText);
+
+    INFO("Completion: kind={} trigger='{}' prev='{}{}'", toString(ctx.lspContext.triggerKind),
+         ctx.triggerChar(), ctx.prev2Char(), ctx.lastChar());
+
+    m_driver->completions.getCompletions(results, doc, loc, ctx);
 
     // TODO: rank results using order- the lsp is pretty stupid with this.
     // We need to hack around with client side middileware like in clangd-

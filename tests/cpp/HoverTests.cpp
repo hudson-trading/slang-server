@@ -157,3 +157,67 @@ endmodule
     CHECK(content.value.find("/// a doc line") != std::string::npos);
     CHECK(content.value.find("/// another line") != std::string::npos);
 }
+
+TEST_CASE("HoverSystemTask") {
+    ServerHarness server;
+    GoldenTest golden;
+
+    auto doc = server.openFile("test.sv", R"(
+`define USE_WIDTH(name, val) localparam int name = val
+module top;
+    int q[$];
+    initial begin
+        $display("hello");
+        $finish;
+        q.push_back(42);
+        if (q[$] == 0) $display("first");
+        if ($root.top.q.size()) $display("ok");
+    end
+    localparam int W = $bits(int);
+    localparam int L = $clog2(64);
+    `USE_WIDTH(M, $clog2(128));
+endmodule
+)");
+
+    auto recordHover = [&](const std::string& label, const std::string& target) {
+        auto cursor = doc.before(target);
+        auto hover = doc.getHoverAt(cursor.m_offset);
+        golden.record(label);
+        golden.record(":\n");
+        if (!hover.has_value()) {
+            golden.record("<no hover>\n\n");
+            return;
+        }
+        auto content = rfl::get<lsp::MarkupContent>(hover->contents);
+        golden.record(content.value);
+        golden.record("\n\n");
+    };
+
+    auto recordNoSystemHover = [&](const std::string& label, const std::string& target,
+                                   bool trailingBlank = true) {
+        auto cursor = doc.before(target);
+        auto hover = doc.getHoverAt(cursor.m_offset);
+        golden.record(label);
+        golden.record(":\n");
+        if (!hover.has_value()) {
+            golden.record(trailingBlank ? "<no hover>\n\n" : "<no hover>\n");
+            return;
+        }
+        auto content = rfl::get<lsp::MarkupContent>(hover->contents);
+        if (content.value.find("**System ") == std::string::npos) {
+            golden.record(trailingBlank ? "<no system hover>\n\n" : "<no system hover>\n");
+            return;
+        }
+        golden.record(content.value);
+        golden.record(trailingBlank ? "\n\n" : "\n");
+    };
+
+    recordHover("$display", "$display(\"hello\")");
+    recordHover("$finish", "$finish");
+    recordHover("$bits", "$bits(int)");
+    recordHover("$clog2", "$clog2");
+    recordHover("macro argument $clog2", "$clog2(128)");
+    recordNoSystemHover("queue declaration $", "$];");
+    recordNoSystemHover("queue selector $", "$] ==");
+    recordNoSystemHover("$root", "$root", false);
+}

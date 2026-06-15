@@ -1,0 +1,73 @@
+$display:
+**System task**  `$display` (IEEE 1800 §21.2.1)
+
+---
+
+````systemverilog
+task $display(string format = "", ...)
+````
+
+---
+
+Writes the formatted arguments to stdout, followed by a newline. The default base for unformatted values is decimal. Format specifiers include `%d`, `%h`, `%b`, `%s`, `%t`, `%m`, etc.
+
+$finish:
+**System task**  `$finish` (IEEE 1800 §20.2)
+
+---
+
+````systemverilog
+task $finish(int finish_number = 1)
+````
+
+---
+
+Halts the simulator and exits. The optional `finish_number` controls the diagnostic message printed (0: nothing, 1: simulation time and location, 2: also resource usage).
+
+$bits:
+**System function**  `$bits` (IEEE 1800 §20.6.2)
+
+---
+
+````systemverilog
+function int $bits(type_or_expression)
+````
+
+---
+
+Returns the number of bits required to hold the value of the given type or expression.
+
+$clog2:
+**System function**  `$clog2` (IEEE 1800 §20.8.1)
+
+---
+
+````systemverilog
+function int $clog2(integer_value)
+````
+
+---
+
+Returns the ceiling of the base-2 logarithm of the argument. Commonly used to compute the address width needed to index N elements: `$clog2(N)`.
+
+macro argument $clog2:
+**System function**  `$clog2` (IEEE 1800 §20.8.1)
+
+---
+
+````systemverilog
+function int $clog2(integer_value)
+````
+
+---
+
+Returns the ceiling of the base-2 logarithm of the argument. Commonly used to compute the address width needed to index N elements: `$clog2(N)`.
+
+queue declaration $:
+<no hover>
+
+queue selector $:
+<no hover>
+
+$root:
+<no hover>

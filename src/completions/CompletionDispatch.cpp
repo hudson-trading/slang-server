@@ -11,6 +11,7 @@
 #include "ServerDriver.h"
 #include "completions/CompletionContext.h"
 #include "completions/Completions.h"
+#include "completions/SystemTaskCompletions.h"
 #include "document/ShallowAnalysis.h"
 #include "lsp/LspTypes.h"
 #include "util/Converters.h"
@@ -34,36 +35,12 @@ CompletionDispatch::CompletionDispatch(ServerDriver& driver, const Indexer& inde
     m_driver(driver), m_indexer(indexer), m_sourceManager(sourceManager), m_options(options) {
 }
 
-void CompletionDispatch::getInvokedCompletions(std::vector<lsp::CompletionItem>& results,
-                                               std::shared_ptr<SlangDoc> doc,
-                                               const SourceLocation& loc) {
-    // Invoked happens when an identifier is starting to be typed or when the user presses a
-    // shortcut
+void CompletionDispatch::getCompletions(std::vector<lsp::CompletionItem>& results,
+                                        std::shared_ptr<SlangDoc> doc, slang::SourceLocation loc,
+                                        const CompletionContext& ctx) {
+    char triggerChar = ctx.triggerChar();
+    char prevChar = ctx.prev2Char();
 
-    auto ctx = CompletionContext::fromLocation(*doc, loc);
-
-    auto scope = ctx.scope;
-
-    // Track scope for later resolution
-    if (scope) {
-        m_lastScope = scope->asSymbol().getHierarchicalPath();
-        m_lastDoc = doc;
-    }
-    INFO("Invoked completions with context: {}", toString(ctx.kind));
-
-    completions::addIndexedCompletions(results, m_indexer, ctx);
-
-    if (scope) {
-        completions::addMemberCompletions(results, scope, ctx.kind, scope);
-    }
-
-    INFO("Returning {} completions in {} context", results.size(), toString(ctx.kind));
-}
-
-void CompletionDispatch::getTriggerCompletions(char triggerChar, char prevChar,
-                                               std::shared_ptr<SlangDoc> doc,
-                                               slang::SourceLocation loc,
-                                               std::vector<lsp::CompletionItem>& results) {
     if (triggerChar == '#') {
         // This branch will get hit if the resolve request was not responded to in time, and the
         // user continues with the module inst
@@ -191,8 +168,30 @@ void CompletionDispatch::getTriggerCompletions(char triggerChar, char prevChar,
         }
     }
     else {
-        // Scope-based completions
-        getInvokedCompletions(results, doc, loc);
+        // Generic scope-based completions: members in scope + workspace-indexed symbols.
+        auto scope = ctx.scope;
+        if (scope) {
+            m_lastScope = scope->asSymbol().getHierarchicalPath();
+            m_lastDoc = doc;
+        }
+        INFO("General completions with context: {}", toString(ctx.kind));
+
+        completions::addIndexedCompletions(results, m_indexer, ctx);
+        if (scope) {
+            completions::addMemberCompletions(results, scope, ctx.kind, scope);
+        }
+
+        // System tasks/functions are gated by the cursor sitting inside a `$identifier` token,
+        // not by syntactic position — `$` can appear in expressions, statements, queue dims
+        // (`int q[$]`), array selectors (`q[$]`), etc. Triggering once the user types `$` lets
+        // the editor's client-side filter narrow as they type more.
+        if (completions::inSystemTaskIdent(ctx.prevText)) {
+            if (auto analysis = doc->getAnalysis(); analysis && analysis->getCompilation()) {
+                completions::addSystemSubroutineCompletions(results, *analysis->getCompilation());
+            }
+        }
+
+        INFO("Returning {} completions in {} context", results.size(), toString(ctx.kind));
     }
 }
 
@@ -248,6 +247,9 @@ void CompletionDispatch::resolveMacroCompletion(lsp::CompletionItem& item) {
 
 void CompletionDispatch::getCompletionItemResolve(lsp::CompletionItem& item) {
     INFO("Resolving completion item: {}", item.label);
+    if (!item.label.empty() && item.label[0] == '$')
+        return;
+
     switch (*item.kind) {
         case lsp::CompletionItemKind::Constant: {
             resolveMacroCompletion(item);

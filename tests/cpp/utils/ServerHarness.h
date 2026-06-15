@@ -5,6 +5,7 @@
 
 #include "ClientHarness.h"
 #include "GoldenTest.h"
+#include "ServerDriver.h"
 #include "SlangServer.h"
 #include "Utils.h"
 #include "document/ShallowAnalysis.h"
@@ -25,6 +26,12 @@ class DocumentHandle;
 class Cursor;
 
 struct ClientOwner {
+    ClientOwner() {
+        // Synthetic `**Token:** ...` debug hovers exist for developer ergonomics in `SLANG_DEBUG`
+        // builds, but they cause hover goldens to diverge between Debug and Release. Tests don't
+        // exercise them, so turn them off.
+        server::ServerDriver::s_debugHoversEnabled = false;
+    }
     /// This needs to be made before passing to SlangServer
     ClientHarness client;
 };
@@ -351,9 +358,15 @@ protected:
         auto tok = doc->getWordTokenAt(slang::SourceLocation(doc->getBuffer(), offset));
 
         auto pElem = std::get<server::DefinitionInfo>(*prevElement);
-        if (tok && pElem.nameToken.location() == tok->location()) {
-            auto kindStr = pElem.symbol ? toString(pElem.symbol->kind) : toString(pElem.node->kind);
-            test.record(fmt::format(" Sym {} : {}\n", pElem.nameToken.valueText(), kindStr));
+        auto& nameToken = pElem.nameToken();
+        if (tok && nameToken.location() == tok->location()) {
+            auto symbol = pElem.symbol();
+            auto kindStr = symbol ? toString(symbol->kind)
+                           : pElem.macro() && pElem.macro()->syntaxTarget()
+                               ? toString(pElem.macro()->syntaxTarget()->node->kind)
+                           : pElem.macro() ? "CommandLineDefine"
+                                           : "SystemName";
+            test.record(fmt::format(" Sym {} : {}\n", nameToken.valueText(), kindStr));
         }
         else {
             test.record(fmt::format(" Ref -> "));

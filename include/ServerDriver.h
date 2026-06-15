@@ -161,6 +161,11 @@ public:
     /// Map from macro name to the config/build file that defined it
     flat_hash_map<std::string, std::filesystem::path> m_defineSources;
 
+    /// When true (default in `SLANG_DEBUG` builds), `getDocHover` returns a synthetic
+    /// `**Token:** ...` hover for tokens with no resolved definition. Tests turn this off so
+    /// goldens don't diverge between Debug and Release builds.
+    static bool s_debugHoversEnabled;
+
 private:
     /// Reference to the indexer for module/macro indexing
     Indexer& m_indexer;

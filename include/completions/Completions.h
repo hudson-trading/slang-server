@@ -11,9 +11,9 @@
 #include <string>
 #include <vector>
 
-#include "slang/ast/Compilation.h"
 #include "slang/ast/Symbol.h"
 #include "slang/syntax/AllSyntax.h"
+#include "slang/syntax/SyntaxTree.h"
 
 struct Indexer;
 

@@ -8,9 +8,9 @@
 
 #include "ServerDriver.h"
 
-#include "Hovers.h"
 #include "Indexer.h"
 #include "ServerDiagClient.h"
+#include "SystemTaskDocs.h"
 #include "ast/ServerCompilation.h"
 #include "completions/CompletionDispatch.h"
 #include "document/SlangDoc.h"
@@ -26,6 +26,7 @@
 
 #include "slang/ast/Compilation.h"
 #include "slang/ast/Symbol.h"
+#include "slang/ast/SystemSubroutine.h"
 #include "slang/ast/symbols/CompilationUnitSymbols.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
 #include "slang/ast/symbols/ParameterSymbols.h"
@@ -42,6 +43,13 @@
 
 namespace server {
 using namespace slang;
+
+bool ServerDriver::s_debugHoversEnabled =
+#ifdef SLANG_DEBUG
+    true;
+#else
+    false;
+#endif
 
 ServerDriver::ServerDriver(Indexer& indexer, SlangLspClient& client, const Config& config,
                            std::vector<std::string> buildfiles) :
@@ -553,6 +561,19 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
         symSyntax = macroDef;
         nameToken = macroDef->name;
     }
+    else if (declTok->kind == parsing::TokenKind::SystemIdentifier) {
+        auto knownName = declTok->systemName();
+        if (knownName == parsing::KnownSystemName::Unknown)
+            return {};
+
+        auto* sub = analysis->getCompilation()->getSystemSubroutine(knownName);
+        auto* sysDoc = getSystemTaskDoc(knownName);
+        if (!sub || !sysDoc)
+            return {};
+
+        return DefinitionInfo{DefinitionInfo::SystemSubroutineTarget{
+            *declTok, sysDoc, sub->kind == ast::SubroutineKind::Task}};
+    }
     else {
         symbol = analysis->getSymbolAtToken(declTok);
         if (!symbol) {
@@ -596,44 +617,50 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
         }
     }
 
-    auto ret = DefinitionInfo{
-        symSyntax, *nameToken, SourceRange::NoLocation, symbol, {}, {},
-    };
-
-    // For command-line defines, record which file defined the macro
-    if (!symbol && ret.nameToken) {
-        auto defPath = sm.getFullPath(ret.nameToken.location().buffer());
-        auto defPathStr = defPath.filename().string();
-        if (defPathStr.empty() || defPathStr[0] == '<') {
-            auto srcIt = m_defineSources.find(std::string(ret.nameToken.valueText()));
-            if (srcIt != m_defineSources.end())
-                ret.defineSourceFile = srcIt->second.string();
-        }
-    }
-
-    // Fill in macro expansion text from the SyntaxIndexer
-    if (declSyntax->kind == syntax::SyntaxKind::MacroUsage) {
-        auto it = analysis->syntaxes.macroExpansions.find(declSyntax);
-        if (it != analysis->syntaxes.macroExpansions.end()) {
-            ret.macroExpansionText = it->second.getText();
-        }
-    }
-
-    // fill in original range if behind a macro
-    if (ret.nameToken && sm.isMacroLoc(ret.nameToken.location())) {
-        auto locs = sm.getMacroExpansions(ret.nameToken.location());
+    auto macroUsageRange = SourceRange::NoLocation;
+    if (nameToken && sm.isMacroLoc(nameToken->location())) {
+        auto locs = sm.getMacroExpansions(nameToken->location());
         // TODO: maybe include more expansion infos?
         auto macroInfo = sm.getMacroInfo(locs.back());
         auto text = macroInfo ? sm.getText(macroInfo->expansionRange) : "";
         if (text.empty()) {
-            ERROR("Couldn't get original range for symbol {}", ret.nameToken.valueText());
+            ERROR("Couldn't get original range for symbol {}", nameToken->valueText());
         }
         else {
-            ret.macroUsageRange = macroInfo->expansionRange;
+            macroUsageRange = macroInfo->expansionRange;
         }
     }
 
-    return ret;
+    std::string macroExpansionText;
+    if (declSyntax->kind == syntax::SyntaxKind::MacroUsage) {
+        auto it = analysis->syntaxes.macroExpansions.find(declSyntax);
+        if (it != analysis->syntaxes.macroExpansions.end())
+            macroExpansionText = it->second.getText();
+    }
+
+    auto makeSyntaxTarget = [&]() {
+        return DefinitionInfo::SyntaxTarget{symSyntax, *nameToken, macroUsageRange};
+    };
+
+    auto makeTarget = [&]() -> DefinitionInfo::Target {
+        if (symbol)
+            return DefinitionInfo::SymbolTarget{makeSyntaxTarget(), symbol};
+
+        DefinitionInfo::MacroTarget::Definition macroDefinition = makeSyntaxTarget();
+
+        auto defPath = sm.getFullPath(nameToken->location().buffer());
+        auto defPathStr = defPath.filename().string();
+        if (defPathStr.empty() || defPathStr[0] == '<') {
+            std::string defineSourceFile;
+            auto srcIt = m_defineSources.find(std::string(nameToken->valueText()));
+            if (srcIt != m_defineSources.end())
+                defineSourceFile = srcIt->second.string();
+            macroDefinition = DefinitionInfo::CommandLineDefineTarget{*nameToken, defineSourceFile};
+        }
+
+        return DefinitionInfo::MacroTarget{macroDefinition, macroExpansionText};
+    };
+    return DefinitionInfo{makeTarget()};
 }
 
 std::optional<lsp::Hover> ServerDriver::getDocHover(const URI& uri, const lsp::Position& position) {
@@ -647,83 +674,25 @@ std::optional<lsp::Hover> ServerDriver::getDocHover(const URI& uri, const lsp::P
     }
     auto maybeInfo = getDefinitionInfoAt(uri, position);
     if (!maybeInfo) {
-#ifdef SLANG_DEBUG
-        // Shows debug info for the token under cursor when debugging
-        auto analysis = doc->getAnalysis();
-        markup::Document markup;
-        markup.addParagraph(analysis->getDebugHover(loc.value()));
-        return lsp::Hover{.contents = markup.build()};
-#endif
+        if (s_debugHoversEnabled) {
+            // Shows debug info for the token under cursor when debugging.
+            auto analysis = doc->getAnalysis();
+            markup::Document markup;
+            markup.addParagraph(analysis->getDebugHover(loc.value()));
+            return lsp::Hover{.contents = markup.build()};
+        }
         return {};
     }
     const auto& info = *maybeInfo;
-    return lsp::Hover{.contents = getHover(sm, doc->getBuffer(), info, m_config.hovers.value())};
+    return lsp::Hover{.contents = info.getHover(sm, doc->getBuffer(), m_config.hovers.value())};
 }
 
 std::vector<lsp::LocationLink> ServerDriver::getDocDefinition(const URI& uri,
                                                               const lsp::Position& position) {
     auto maybeInfo = getDefinitionInfoAt(uri, position);
-    if (!maybeInfo) {
+    if (!maybeInfo)
         return {};
-    }
-    const auto& info = *maybeInfo;
-    auto targetRange = info.macroUsageRange != SourceRange::NoLocation ? info.macroUsageRange
-                                                                       : info.nameToken.range();
-    auto path = sm.getFullPath(targetRange.start().buffer());
-    auto pathStr = path.filename().string();
-
-    // For command-line defines (synthetic buffers), navigate to the file that defined the flag
-    if (pathStr.empty() || pathStr[0] == '<') {
-        auto macroName = std::string(info.nameToken.valueText());
-        auto it = m_defineSources.find(macroName);
-        if (it == m_defineSources.end())
-            return {};
-
-        auto& srcPath = it->second;
-
-        // Find the -D flag in the source file for precise line/column
-        lsp::Range defRange = {};
-        SmallVector<char> buf;
-        if (!OS::readFile(srcPath, buf)) {
-            std::string_view content(buf.data(), buf.size() - 1);
-            std::string patterns[] = {"-D" + macroName, "-D " + macroName,
-                                      "--define-macro=" + macroName, "--define-macro " + macroName,
-                                      "+define+" + macroName};
-            for (auto& pat : patterns) {
-                auto pos = content.find(pat);
-                if (pos != std::string::npos) {
-                    lsp::uint line = 0, col = 0;
-                    for (size_t i = 0; i < pos; i++) {
-                        if (content[i] == '\n') {
-                            line++;
-                            col = 0;
-                        }
-                        else {
-                            col++;
-                        }
-                    }
-                    defRange = {.start = {line, col}, .end = {line, col}};
-                    break;
-                }
-            }
-        }
-
-        return {lsp::LocationLink{
-            .targetUri = URI::fromFile(srcPath),
-            .targetRange = defRange,
-            .targetSelectionRange = defRange,
-        }};
-    }
-
-    auto lspRange = toRange(targetRange, sm);
-
-    return {lsp::LocationLink{
-        .targetUri = URI::fromFile(path),
-        // This is supposed to be the full source range- however the hover view already provides
-        // that, leading to a worse UI
-        .targetRange = lspRange,
-        .targetSelectionRange = lspRange,
-    }};
+    return maybeInfo->getDefinition(sm);
 }
 
 std::optional<std::vector<lsp::DocumentHighlight>> ServerDriver::getDocDocumentHighlight(
