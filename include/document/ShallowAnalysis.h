@@ -8,7 +8,6 @@
 #pragma once
 
 #include "Config.h"
-#include "document/DefinitionInfo.h"
 #include "document/SymbolIndexer.h"
 #include "document/SymbolTreeVisitor.h"
 #include "document/SyntaxIndexer.h"
@@ -19,6 +18,7 @@
 #include <string_view>
 #include <vector>
 
+#include "slang/analysis/AnalysisManager.h"
 #include "slang/analysis/AnalysisOptions.h"
 #include "slang/ast/ASTContext.h"
 #include "slang/ast/Compilation.h"
@@ -101,6 +101,15 @@ public:
 
     const std::unique_ptr<slang::ast::Compilation>& getCompilation() const { return m_compilation; }
 
+    /// @brief Ensures the shallow compilation has been analyzed and returns the slang
+    /// `AnalysisManager`. Returns nullptr if analysis could not be run, for example no top
+    /// instances.
+    const slang::analysis::AnalysisManager* getAnalysisManager();
+
+    /// @brief Gets a list of drivers for a given value symbol
+    std::vector<const slang::analysis::ValueDriver*> getDrivers(
+        const slang::ast::ValueSymbol& symbol);
+
     /// @brief Gets the source manager for this analysis
     SourceManager& getSourceManager() const { return m_sourceManager; }
 
@@ -160,6 +169,12 @@ private:
 
     /// Compilation context for symbol resolution
     std::unique_ptr<slang::ast::Compilation> m_compilation;
+
+    /// Analysis manager for running driver analysis (multi-driven, unused, etc)
+    std::unique_ptr<slang::analysis::AnalysisManager> m_driverAnalysis = nullptr;
+
+    /// Cached diagnostics from the latest analysis run, if available
+    std::optional<Diagnostics> m_cachedAnalysisDiags;
 
     /// Analysis options for driver analysis (numThreads=1 to avoid persistent threads)
     slang::analysis::AnalysisOptions m_analysisOptions;

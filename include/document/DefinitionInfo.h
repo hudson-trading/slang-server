@@ -8,6 +8,7 @@
 #pragma once
 
 #include "Config.h"
+#include "document/ShallowAnalysis.h"
 #include "lsp/LspTypes.h"
 #include <string>
 #include <variant>
@@ -54,6 +55,10 @@ struct DefinitionInfo {
         /// Append the formatted code (with doc comments) for this syntax to `doc`.
         void renderCode(markup::Document& doc, const Config::HoverConfig& hovers) const;
 
+        void renderCode(markup::Document& doc,
+                        const Config::HoverConfig& hovers, 
+                        const syntax::SyntaxNode* extraDisplayNode) const;
+
         /// Append "Expanded from <text>" if this target is behind a macro expansion.
         void renderMacroExpansion(markup::Document& doc, const slang::SourceManager& sm) const;
 
@@ -71,7 +76,7 @@ struct DefinitionInfo {
             return syntax == other.syntax && symbol == other.symbol;
         }
 
-        lsp::MarkupContent getHover(const slang::SourceManager& sm, slang::BufferID docBuffer,
+        lsp::MarkupContent getHover(const slang::SourceManager& sm, const std::shared_ptr<ShallowAnalysis> analysis, slang::BufferID docBuffer,
                                     const Config::HoverConfig& hovers) const;
 
         std::vector<lsp::LocationLink> getDefinition(const slang::SourceManager& sm) const;
@@ -111,7 +116,7 @@ struct DefinitionInfo {
             return definition == other.definition && macroExpansionText == other.macroExpansionText;
         }
 
-        lsp::MarkupContent getHover(const slang::SourceManager& sm, slang::BufferID docBuffer,
+        lsp::MarkupContent getHover(const slang::SourceManager& sm, const std::shared_ptr<ShallowAnalysis> analysis, slang::BufferID docBuffer,
                                     const Config::HoverConfig& hovers) const;
 
         std::vector<lsp::LocationLink> getDefinition(const slang::SourceManager& sm) const;
@@ -129,7 +134,7 @@ struct DefinitionInfo {
                    isTask == other.isTask;
         }
 
-        lsp::MarkupContent getHover(const slang::SourceManager& sm, slang::BufferID docBuffer,
+        lsp::MarkupContent getHover(const slang::SourceManager& sm, const std::shared_ptr<ShallowAnalysis> analysis, slang::BufferID docBuffer,
                                     const Config::HoverConfig& hovers) const;
 
         std::vector<lsp::LocationLink> getDefinition(const slang::SourceManager& sm) const;
@@ -189,7 +194,7 @@ struct DefinitionInfo {
     bool operator!=(const DefinitionInfo& other) const { return !(*this == other); }
 
     /// Render the hover markup for this definition.
-    lsp::MarkupContent getHover(const slang::SourceManager& sm, slang::BufferID docBuffer,
+    lsp::MarkupContent getHover(const slang::SourceManager& sm, const std::shared_ptr<ShallowAnalysis> analysis, slang::BufferID docBuffer,
                                 const Config::HoverConfig& hovers) const;
 
     /// Resolve goto-definition links for this definition. May return multiple in the future
