@@ -8,12 +8,12 @@
 #pragma once
 
 #include "Config.h"
-#include "document/DefinitionInfo.h"
 #include "ServerDiagClient.h"
 #include "SlangLspClient.h"
 #include "ast/ServerCompilation.h"
 #include "codeactions/CodeActionDispatch.h"
 #include "completions/CompletionDispatch.h"
+#include "document/DefinitionInfo.h"
 #include "lsp/URI.h"
 #include <filesystem>
 #include <memory>
