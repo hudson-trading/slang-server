@@ -65,7 +65,7 @@ struct DefinitionInfo {
     struct SymbolTarget {
         SyntaxTarget syntax;
         const slang::ast::Symbol* symbol;
-        const std::shared_ptr<ShallowAnalysis> analysis;
+        std::shared_ptr<ShallowAnalysis> analysis;
 
         const slang::parsing::Token& nameToken() const { return syntax.nameToken; }
 
