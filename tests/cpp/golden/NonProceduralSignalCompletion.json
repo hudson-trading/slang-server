@@ -68,7 +68,7 @@
         "labelDetails": {
           "detail": " "
         },
-        "kind": "Variable",
+        "kind": "Property",
         "documentation": {
           "kind": "markdown",
           "value": "````systemverilog\nwire my_wire;\n````"

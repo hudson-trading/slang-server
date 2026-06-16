@@ -182,6 +182,70 @@
       {
         "range": {
           "start": {
+            "line": 48,
+            "character": 19
+          },
+          "end": {
+            "line": 48,
+            "character": 28
+          }
+        },
+        "severity": "Error",
+        "message": "cannot assign to input port 'mem_rdata'",
+        "relatedInformation": [
+          {
+            "location": {
+              "uri": "file://cpu.sv",
+              "range": {
+                "start": {
+                  "line": 12,
+                  "character": 35
+                },
+                "end": {
+                  "line": 12,
+                  "character": 35
+                }
+              }
+            },
+            "message": "declared here"
+          }
+        ]
+      },
+      {
+        "range": {
+          "start": {
+            "line": 51,
+            "character": 17
+          },
+          "end": {
+            "line": 51,
+            "character": 24
+          }
+        },
+        "severity": "Error",
+        "message": "cannot assign to input port 'mem_ack'",
+        "relatedInformation": [
+          {
+            "location": {
+              "uri": "file://cpu.sv",
+              "range": {
+                "start": {
+                  "line": 15,
+                  "character": 36
+                },
+                "end": {
+                  "line": 15,
+                  "character": 36
+                }
+              }
+            },
+            "message": "declared here"
+          }
+        ]
+      },
+      {
+        "range": {
+          "start": {
             "line": 54,
             "character": 27
           },
@@ -675,6 +739,70 @@
           "href": "https://sv-lang.com/warning-ref.html#unassigned-variable"
         },
         "message": "variable 'register_file' is never assigned a value"
+      },
+      {
+        "range": {
+          "start": {
+            "line": 48,
+            "character": 19
+          },
+          "end": {
+            "line": 48,
+            "character": 28
+          }
+        },
+        "severity": "Error",
+        "message": "cannot assign to input port 'mem_rdata'",
+        "relatedInformation": [
+          {
+            "location": {
+              "uri": "file://cpu.sv",
+              "range": {
+                "start": {
+                  "line": 12,
+                  "character": 35
+                },
+                "end": {
+                  "line": 12,
+                  "character": 35
+                }
+              }
+            },
+            "message": "declared here"
+          }
+        ]
+      },
+      {
+        "range": {
+          "start": {
+            "line": 51,
+            "character": 17
+          },
+          "end": {
+            "line": 51,
+            "character": 24
+          }
+        },
+        "severity": "Error",
+        "message": "cannot assign to input port 'mem_ack'",
+        "relatedInformation": [
+          {
+            "location": {
+              "uri": "file://cpu.sv",
+              "range": {
+                "start": {
+                  "line": 15,
+                  "character": 36
+                },
+                "end": {
+                  "line": 15,
+                  "character": 36
+                }
+              }
+            },
+            "message": "declared here"
+          }
+        ]
       },
       {
         "range": {
