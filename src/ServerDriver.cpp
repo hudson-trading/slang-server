@@ -644,15 +644,15 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
 
     auto makeTarget = [&]() -> DefinitionInfo::Target {
         if (symbol)
-            return DefinitionInfo::SymbolTarget{makeSyntaxTarget(), symbol};
+            return DefinitionInfo::SymbolTarget{makeSyntaxTarget(), symbol, analysis};
 
         DefinitionInfo::MacroTarget::Definition macroDefinition = makeSyntaxTarget();
 
-        auto defPath = sm.getFullPath(nameToken->location().buffer());
-        auto defPathStr = defPath.filename().string();
+        const auto defPath = sm.getFullPath(nameToken->location().buffer());
+        const auto defPathStr = defPath.filename().string();
         if (defPathStr.empty() || defPathStr[0] == '<') {
             std::string defineSourceFile;
-            auto srcIt = m_defineSources.find(std::string(nameToken->valueText()));
+            const auto srcIt = m_defineSources.find(std::string(nameToken->valueText()));
             if (srcIt != m_defineSources.end())
                 defineSourceFile = srcIt->second.string();
             macroDefinition = DefinitionInfo::CommandLineDefineTarget{*nameToken, defineSourceFile};
@@ -684,7 +684,7 @@ std::optional<lsp::Hover> ServerDriver::getDocHover(const URI& uri, const lsp::P
         return {};
     }
     const auto& info = *maybeInfo;
-    return lsp::Hover{.contents = info.getHover(sm, doc->getAnalysis(), doc->getBuffer(), m_config.hovers.value())};
+    return lsp::Hover{.contents = info.getHover(sm, doc->getBuffer(), m_config.hovers.value())};
 }
 
 std::vector<lsp::LocationLink> ServerDriver::getDocDefinition(const URI& uri,

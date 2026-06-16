@@ -35,7 +35,7 @@ using namespace slang;
 
 namespace {
 
-    /// Obtains the driver display node if available. Currently it only collects
+/// Obtains the driver display node if available. Currently it only collects
 /// continuous assignment drivers (ie: `assign`) since they are guaranteed to only have a single
 /// driver node (except for `tri` and maybe others).
 const syntax::SyntaxNode* getDriverDisplayNode(const ShallowAnalysis& analysis,
@@ -72,7 +72,8 @@ const syntax::SyntaxNode* getDriverDisplayNode(const ShallowAnalysis& analysis,
     return nullptr;
 }
 
-const syntax::SyntaxNode*  renderSymbolHeader(markup::Paragraph& infoPg, const ast::Symbol& symbol, const std::shared_ptr<ShallowAnalysis>& analysis) {
+const syntax::SyntaxNode* renderSymbolHeader(markup::Paragraph& infoPg, const ast::Symbol& symbol,
+                                             const std::shared_ptr<ShallowAnalysis>& analysis) {
     // <Kind/Type> <Name> in <Scope>
     infoPg.appendBold(toString(symbol.kind)).appendCode(symbol.name);
 
@@ -80,7 +81,7 @@ const syntax::SyntaxNode*  renderSymbolHeader(markup::Paragraph& infoPg, const a
     auto& parentSym = symbolScope->asSymbol();
     auto hierPath = parentSym.getLexicalPath();
 
-    const syntax::SyntaxNode*  extraDisplayNode = nullptr;
+    const syntax::SyntaxNode* extraDisplayNode = nullptr;
 
     // The typedef name needs to be appended; it's not attached to the type
     if (parentSym.kind == ast::SymbolKind::PackedStructType ||
@@ -109,49 +110,47 @@ const syntax::SyntaxNode*  renderSymbolHeader(markup::Paragraph& infoPg, const a
             infoPg.appendText("Width: ")
                 .appendCode(fmt::format("{}", type.getBitWidth()))
                 .newLine();
+        }
+
+        const auto drivers = analysis->getDrivers(valSym);
+        if (!drivers.empty()) {
+            const slang::analysis::ValueDriver* uniqueDriver = nullptr;
+
+            for (const auto* driver : drivers) {
+                if (!driver) {
+                    continue;
+                }
+
+                if (!uniqueDriver) {
+                    uniqueDriver = driver;
+                }
+
+                else if (driver->kind != uniqueDriver->kind ||
+                         driver->source != uniqueDriver->source) {
+                    uniqueDriver = nullptr;
+                    break;
+                }
             }
-            
-            const auto drivers = analysis->getDrivers(valSym);
-            if (!drivers.empty()) {
-                const slang::analysis::ValueDriver* uniqueDriver = nullptr;
 
-                for (const auto* driver : drivers) {
-                    if (!driver) {
-                        continue;
-                    }
+            if (uniqueDriver) {
+                const auto kind = uniqueDriver->kind;
+                const auto source = uniqueDriver->source;
 
-                    if (!uniqueDriver) {
-                        uniqueDriver = driver;
-                    }
+                const auto driverStr =
+                    (source == slang::analysis::DriverSource::Other ||
+                     source == slang::analysis::DriverSource::Subroutine)
+                        ? std::string(toString(kind))
+                        : fmt::format("{} ({})", toString(kind),
+                                      ast::SemanticFacts::getProcedureKindStr(
+                                          static_cast<slang::ast::ProceduralBlockKind>(source)));
 
-                    else if (driver->kind != uniqueDriver->kind ||
-                             driver->source != uniqueDriver->source) {
-                        uniqueDriver = nullptr;
-                        break;
-                    }
-                }
+                infoPg.appendText("Driver: ").appendCode(driverStr).newLine();
 
-                if (uniqueDriver) {
-                    const auto kind = uniqueDriver->kind;
-                    const auto source = uniqueDriver->source;
-
-                    const auto driverStr =
-                        (source == slang::analysis::DriverSource::Other ||
-                         source == slang::analysis::DriverSource::Subroutine)
-                            ? std::string(toString(kind))
-                            : fmt::format(
-                                  "{} ({})", toString(kind),
-                                  ast::SemanticFacts::getProcedureKindStr(
-                                      static_cast<slang::ast::ProceduralBlockKind>(source)));
-
-                    infoPg.appendText("Driver: ").appendCode(driverStr).newLine();
-
-                    extraDisplayNode = getDriverDisplayNode(*analysis, *uniqueDriver,
-                                                            drivers.size());
-                }
+                extraDisplayNode = getDriverDisplayNode(*analysis, *uniqueDriver, drivers.size());
             }
         }
-    
+    }
+
     else if (ast::InstanceSymbol::isKind(symbol.kind)) {
         auto& instSym = symbol.as<ast::InstanceSymbol>();
         auto typeStr = instSym.getDefinition().name;
@@ -239,7 +238,7 @@ void DefinitionInfo::SyntaxTarget::renderCode(markup::Document& doc,
 }
 
 void DefinitionInfo::SyntaxTarget::renderCode(markup::Document& doc,
-                                              const Config::HoverConfig& hovers, 
+                                              const Config::HoverConfig& hovers,
                                               const syntax::SyntaxNode* extraDisplayNode) const {
     const syntax::SyntaxNode& displayNode = selectDisplayNode(*node);
     const auto docCommentFormat = hovers.docCommentFormat.value();
@@ -266,7 +265,8 @@ void DefinitionInfo::SyntaxTarget::renderCode(markup::Document& doc,
             code += formatCode(*extraDisplayNode);
         }
 
-        doc.addParagraph().appendCodeBlock(code);    }
+        doc.addParagraph().appendCodeBlock(code);
+    }
 }
 
 void DefinitionInfo::SyntaxTarget::renderMacroExpansion(markup::Document& doc,
@@ -278,18 +278,17 @@ void DefinitionInfo::SyntaxTarget::renderMacroExpansion(markup::Document& doc,
 }
 
 lsp::MarkupContent DefinitionInfo::SymbolTarget::getHover(const SourceManager& sm,
-                                                          const std::shared_ptr<ShallowAnalysis> analysis,
                                                           BufferID /*docBuffer*/,
                                                           const Config::HoverConfig& hovers) const {
     markup::Document doc;
-    const syntax::SyntaxNode* extraDisplayNode = renderSymbolHeader(doc.addParagraph(), *symbol, analysis);
+    const syntax::SyntaxNode* extraDisplayNode = renderSymbolHeader(doc.addParagraph(), *symbol,
+                                                                    analysis);
     syntax.renderCode(doc, hovers, extraDisplayNode);
     syntax.renderMacroExpansion(doc, sm);
     return doc.build();
 }
 
 lsp::MarkupContent DefinitionInfo::MacroTarget::getHover(const SourceManager& sm,
-                                                         const std::shared_ptr<ShallowAnalysis> analysis,
                                                          BufferID docBuffer,
                                                          const Config::HoverConfig& hovers) const {
     markup::Document doc;
@@ -314,7 +313,7 @@ lsp::MarkupContent DefinitionInfo::MacroTarget::getHover(const SourceManager& sm
 }
 
 lsp::MarkupContent DefinitionInfo::SystemSubroutineTarget::getHover(
-    const SourceManager& /*sm*/, const std::shared_ptr<ShallowAnalysis> /*analysis*/, BufferID /*docBuffer*/,
+    const SourceManager& /*sm*/, BufferID /*docBuffer*/,
     const Config::HoverConfig& /*hovers*/) const {
     markup::Document md;
 
@@ -407,9 +406,9 @@ std::vector<lsp::LocationLink> DefinitionInfo::SystemSubroutineTarget::getDefini
     return {};
 }
 
-lsp::MarkupContent DefinitionInfo::getHover(const SourceManager& sm, const std::shared_ptr<ShallowAnalysis> analysis, BufferID docBuffer,
+lsp::MarkupContent DefinitionInfo::getHover(const SourceManager& sm, BufferID docBuffer,
                                             const Config::HoverConfig& hovers) const {
-    return std::visit([&](const auto& t) { return t.getHover(sm, analysis, docBuffer, hovers); }, target);
+    return std::visit([&](const auto& t) { return t.getHover(sm, docBuffer, hovers); }, target);
 }
 
 std::vector<lsp::LocationLink> DefinitionInfo::getDefinition(const SourceManager& sm) const {
