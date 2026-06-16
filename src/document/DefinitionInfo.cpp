@@ -35,53 +35,14 @@ using namespace slang;
 
 namespace {
 
-/// Obtains the driver display node if available. Currently it only collects
-/// continuous assignment drivers (ie: `assign`) since they are guaranteed to only have a single
-/// driver node (except for `tri` and maybe others).
-const syntax::SyntaxNode* getDriverDisplayNode(const ShallowAnalysis& analysis,
-                                               const slang::analysis::ValueDriver& driver,
-                                               const std::size_t driversCount) {
-    if (driver.kind != slang::analysis::DriverKind::Continuous) {
-        return nullptr;
-    }
-
-    if (driversCount > 1) {
-        // If there's more than one continuous assign driver, then there's an error
-        // in the code and we early exit
-        return nullptr;
-    }
-
-    const auto range = driver.getSourceRange();
-    if (range == SourceRange::NoLocation) {
-        return nullptr;
-    }
-
-    const auto loc = analysis.getSourceManager().getFullyOriginalLoc(range.start());
-    auto node = analysis.syntaxes.getSyntaxAt(loc);
-
-    for (auto cur = node; cur; cur = cur->parent) {
-        switch (cur->kind) {
-            case syntax::SyntaxKind::ContinuousAssign:
-                return &selectDisplayNode(*cur);
-
-            default:
-                break;
-        }
-    }
-
-    return nullptr;
-}
-
-const syntax::SyntaxNode* renderSymbolHeader(markup::Paragraph& infoPg, const ast::Symbol& symbol,
-                                             const std::shared_ptr<ShallowAnalysis>& analysis) {
+void renderSymbolHeader(markup::Paragraph& infoPg, const ast::Symbol& symbol,
+                        const std::shared_ptr<ShallowAnalysis>& analysis) {
     // <Kind/Type> <Name> in <Scope>
     infoPg.appendBold(toString(symbol.kind)).appendCode(symbol.name);
 
     auto symbolScope = symbol.getParentScope();
     auto& parentSym = symbolScope->asSymbol();
     auto hierPath = parentSym.getLexicalPath();
-
-    const syntax::SyntaxNode* extraDisplayNode = nullptr;
 
     // The typedef name needs to be appended; it's not attached to the type
     if (parentSym.kind == ast::SymbolKind::PackedStructType ||
@@ -145,8 +106,6 @@ const syntax::SyntaxNode* renderSymbolHeader(markup::Paragraph& infoPg, const as
                                           static_cast<slang::ast::ProceduralBlockKind>(source)));
 
                 infoPg.appendText("Driver: ").appendCode(driverStr).newLine();
-
-                extraDisplayNode = getDriverDisplayNode(*analysis, *uniqueDriver, drivers.size());
             }
         }
     }
@@ -184,7 +143,6 @@ const syntax::SyntaxNode* renderSymbolHeader(markup::Paragraph& infoPg, const as
             infoPg.appendText("Value: ").appendCode(value.toString()).newLine();
         }
     }
-    return extraDisplayNode;
 }
 
 void renderMacroHeader(markup::Paragraph& infoPg, const DefinitionInfo::MacroTarget& macro,
@@ -237,38 +195,6 @@ void DefinitionInfo::SyntaxTarget::renderCode(markup::Document& doc,
     }
 }
 
-void DefinitionInfo::SyntaxTarget::renderCode(markup::Document& doc,
-                                              const Config::HoverConfig& hovers,
-                                              const syntax::SyntaxNode* extraDisplayNode) const {
-    const syntax::SyntaxNode& displayNode = selectDisplayNode(*node);
-    const auto docCommentFormat = hovers.docCommentFormat.value();
-
-    if (docCommentFormat == Config::HoverConfig::DocCommentFormat::raw) {
-        // Print the node verbatim with its leading comments in a single code block
-        std::string code = formatCodeWithLeadingComments(displayNode);
-
-        if (extraDisplayNode) {
-            code += "\n";
-            code += formatCode(*extraDisplayNode);
-        }
-
-        doc.addParagraph().appendCodeBlock(code);
-    }
-    else {
-        const std::string docComments = getDocCommentForHover(displayNode, docCommentFormat);
-        if (!docComments.empty())
-            doc.addParagraph().appendText(docComments).newLine();
-        std::string code = formatCode(displayNode);
-
-        if (extraDisplayNode) {
-            code += "\n";
-            code += formatCode(*extraDisplayNode);
-        }
-
-        doc.addParagraph().appendCodeBlock(code);
-    }
-}
-
 void DefinitionInfo::SyntaxTarget::renderMacroExpansion(markup::Document& doc,
                                                         const SourceManager& sm) const {
     if (macroUsageRange == SourceRange::NoLocation)
@@ -281,9 +207,8 @@ lsp::MarkupContent DefinitionInfo::SymbolTarget::getHover(const SourceManager& s
                                                           BufferID /*docBuffer*/,
                                                           const Config::HoverConfig& hovers) const {
     markup::Document doc;
-    const syntax::SyntaxNode* extraDisplayNode = renderSymbolHeader(doc.addParagraph(), *symbol,
-                                                                    analysis);
-    syntax.renderCode(doc, hovers, extraDisplayNode);
+    renderSymbolHeader(doc.addParagraph(), *symbol, analysis);
+    syntax.renderCode(doc, hovers);
     syntax.renderMacroExpansion(doc, sm);
     return doc.build();
 }
