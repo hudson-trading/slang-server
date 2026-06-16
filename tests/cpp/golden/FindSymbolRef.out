@@ -115,14 +115,14 @@ module m2 #(
 )
 
     (input int a[], (* bar = "asdf" *) output logic b = 1, ref c,
-               ^ Sym a : Variable
+               ^ Sym a : Net
                                                     ^ Sym b : Variable
                                                                ^ Sym c : Variable
 
     input p::y2 d2,
           ^ Ref -> **Package** `p`  \n\\n\\n\---\n\\n\`package static p;`
              ^^ Ref -> **TypeAlias** `y2` in `p`  \n\Resolved Type: `y2` (aka `logic[2:0]`)  \n\Resolved Width: `3`  \n\\n\\n\---\n\\n\`parameter type y2 = logic[x2:0]`
-                ^^ Sym d2 : Variable
+                ^^ Sym d2 : Net
 
      interface.mod d, .e());
                    ^ Sym d : InterfacePort
@@ -217,7 +217,7 @@ macromodule m3;
       ^^^^^^^ Sym m2_inst : Instance
 
         .a({1, 2}),
-         ^ Ref -> **Variable** `a` in `m2`  \n\Type: `int$[]`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input int a[]`
+         ^ Ref -> **Net** `a` in `m2`  \n\Type: `int$[]`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input int a[]`
 
         .b(b),
          ^ Ref -> **Variable** `b` in `m2`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`(* bar = "asdf" *) output logic b = 1`
