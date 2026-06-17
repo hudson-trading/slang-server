@@ -53,6 +53,10 @@ static bool hasNameBoundaryAfter(std::string_view value, size_t pos) {
 }
 
 static std::string getSystemSubroutineInsertText(std::string_view label) {
+    // Strip the leading `$`: the editor's default word pattern excludes `$`, so the prefix
+    // sits outside the replacement range when accepting. Leaving it in produces `$$display(...)`.
+    if (!label.empty() && label.front() == '$')
+        label.remove_prefix(1);
     return std::string(label);
 }
 
@@ -388,7 +392,7 @@ lsp::CompletionItem getSystemSubroutineCompletion(parsing::KnownSystemName name,
             },
         .kind = lsp::CompletionItemKind::Function,
         .documentation = documentation,
-        .filterText = label,
+        .filterText = getSystemSubroutineInsertText(label),
         .insertText = getSystemSubroutineSnippet(label, doc),
         .insertTextFormat = lsp::InsertTextFormat::Snippet,
     };
