@@ -22,8 +22,7 @@ return {
   opts = {
     servers = {
       slang_server = {
-        -- Tell LazyVim that Mason isn't needed since this is a manual config
-        mason = false,
+        enabled = true
       },
     },
   },
