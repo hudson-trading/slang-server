@@ -12,26 +12,13 @@ Install from your editor, or download from the [OpenVSX Marketplace](https://ope
 
 `slang-server` is available in [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig) as `slang_server` (note the underscore) and in the [mason.nvim](https://github.com/mason-org/mason.nvim) package registry as `slang-server`, so no additional configuration is required in most cases. The default configuration shipped with nvim-lspconfig can be found [here](https://github.com/neovim/nvim-lspconfig/blob/master/lsp/slang_server.lua).
 
-Install the binary via `:MasonInstall slang-server` (or otherwise place it on `PATH`), then enable the server with `vim.lsp.enable("slang_server")`.
+Install the binary via `:MasonInstall slang-server` (or otherwise place it on `PATH`), then enable the server with `vim.lsp.enable("slang_server")`, or following your own Neovim configuration's convention for enabling servers.
 
-For users of lazy.nvim, natively enable the server by adding the following to `<runtimepath>/lua/plugins/slang_server.lua`:
+Restart and run `:LspInfo` to make sure the LSP was correctly installed.
 
-```lua
-return {
-  "neovim/nvim-lspconfig",
-  opts = {
-    servers = {
-      slang_server = {
-        enabled = true
-      },
-    },
-  },
-}
-```
+#### Enhanced features
 
-Optionally, run `:LspInfo` to make sure the LSP was correctly installed.
-
-Pointing at the binary is all you need for standard language features, however a plugin is provided to enable some client-side features which extend the LSP (e.g. the hierarchy view, waveform integration). The plugin can be found in `clients/neovim/` and is also mirrored in [slang-server.nvim](https://github.com/hudson-trading/slang-server.nvim) for ease of use with Neovim plugin managers.
+Once the language server is installed, it is recommended to install the [slang-server.nvim](https://github.com/hudson-trading/slang-server.nvim) plugin; this provides enhanced HDL specific features such as design hierarchy view and waveform integration.
 
 ### Other editors
 
