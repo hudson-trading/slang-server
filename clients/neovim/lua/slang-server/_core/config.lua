@@ -3,8 +3,6 @@ local M = {}
 ---@type slang-server.config.Configuration
 M.CONFIG = {}
 
-vim.g.loaded_slang_server = false
-
 ---@type slang-server.config.Configuration
 local default_config = {
    hierarchy = {
@@ -41,18 +39,14 @@ local default_config = {
    },
 }
 
-M.initialise = function()
-   if not vim.g.loaded_slang_server then
-      M.update(default_config)
-      M.update(vim.g.slang_server_config)
-
-      vim.g.loaded_slang_server = true
-   end
-end
-
 ---@param opts slang-server.config.Configuration?
 M.update = function(opts)
    M.CONFIG = vim.tbl_deep_extend("force", M.CONFIG, opts or {})
 end
+
+M.update(default_config)
+
+-- User config can be provided as a vim global, rather than an argument to setup()
+M.update(vim.g.slang_server_config)
 
 return M
