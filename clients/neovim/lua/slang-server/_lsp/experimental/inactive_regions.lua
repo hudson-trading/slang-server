@@ -2,19 +2,18 @@ local M = {}
 
 local ns = vim.api.nvim_create_namespace("SlangServerInactiveRegions")
 
-local files = {}
-
 vim.api.nvim_set_hl(0, "SlangServerInactiveRegion", {
    link = "Comment",
    default = true,
 })
 
-local function apply_highlights(uri)
-   local ranges = files[uri]
-   if not ranges then
-      return
-   end
+---@class slang-server.InactiveRegionsParams
+---@field uri string
+---@field regions lsp.Range[]
 
+---@param uri string
+---@param ranges lsp.Range[]
+local function apply_highlights(uri, ranges)
    local bufnr = vim.fn.bufnr(vim.uri_to_fname(uri), false)
    if bufnr == -1 then
       return
@@ -32,6 +31,8 @@ local function apply_highlights(uri)
    end
 end
 
+---@param err lsp.ResponseError?
+---@param params slang-server.InactiveRegionsParams?
 function M.handler(err, params, _, _)
    if err then
       return
@@ -45,8 +46,7 @@ function M.handler(err, params, _, _)
       return
    end
 
-   files[params.uri] = params.regions
-   apply_highlights(params.uri)
+   apply_highlights(params.uri, params.regions)
 end
 
 return M
