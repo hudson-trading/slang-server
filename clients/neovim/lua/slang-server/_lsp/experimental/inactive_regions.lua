@@ -7,10 +7,6 @@ vim.api.nvim_set_hl(0, "SlangServerInactiveRegion", {
    default = true,
 })
 
----@class slang-server.InactiveRegionsParams
----@field uri string
----@field regions lsp.Range[]
-
 ---@param uri string
 ---@param ranges lsp.Range[]
 local function apply_highlights(uri, ranges)

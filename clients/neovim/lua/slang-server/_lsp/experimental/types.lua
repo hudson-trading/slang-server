@@ -1,0 +1,3 @@
+---@class slang-server.InactiveRegionsParams
+---@field uri string
+---@field regions lsp.Range[]
