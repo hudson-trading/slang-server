@@ -1,5 +1,3 @@
--- lua/slang-server/_lsp/inactive_regions.lua
-
 local M = {}
 
 local ns = vim.api.nvim_create_namespace("SlangServerInactiveRegions")
