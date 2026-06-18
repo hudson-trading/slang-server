@@ -22,9 +22,8 @@ If installing with lazy.nvim, plugin dependencies are resolved automatically.
 
 ## Installation
 
-Clone and place the plugin directory in your Neovim runtimepath. It is lazily loaded by default on the first invocation of a `:SlangServer` command, so there's no need to rely on a plugin manager for lazy loading.
+You can use your favorite Neovim plugin manager to download and install the plugin. If you happen to use lazy.nvim you can install the plugin by adding, e.g., `~/.config/nvim/lua/plugins/slang-server.lua`:
 
-Alternatively, use your favorite Neovim plugin manager to download and install the plugin.  If you happen to use lazy.nvim you can [install the plugin](https://www.lazyvim.org/configuration/plugins) by adding, e.g., `~/.config/nvim/lua/plugins/slang-server.lua`:
 ```lua
 return {
   {
@@ -33,46 +32,11 @@ return {
 }
 ```
 
+The plugin is lazily loaded by default on the first invocation of a `:SlangServer` command, so there's no need to rely on a plugin manager for lazy loading. To install without a plugin manager, simply clone and place the plugin directory in your Neovim runtimepath.
+
 ## Configuration
 
-The default configuration is shown below. Override options can be defined in the global `vim.g.slang_server_config`, or passed to `opts = {...}` in the lazy.nvim plugin spec.
-
-```lua
-{
-   hierarchy = {
-      position = "left",
-      size = 40,
-   },
-   kinds = {
-      instance = { icon = "", hl = "SlangServerInstance" },
-      instancearray = { icon = "", hl = "SlangServerInstanceArray" },
-      scope = { icon = "󰅩", hl = "SlangServerScope" },
-      scopearray = { icon = "󰅩", hl = "SlangServerScopeArray" },
-      package = { icon = "📦", hl = "SlangServerPackage" },
-      port = {
-         input = { icon = "", hl = "SlangServerPortInput" },
-         output = { icon = "", hl = "SlangServerPortOutput" },
-         inout = { icon = "", hl = "SlangServerPortInout" },
-      },
-      param = { icon = "", hl = "SlangServerParam" },
-      logic = { icon = "󱒖", hl = "SlangServerLogic" },
-      reg = { icon = "", hl = "SlangServerReg" },
-   },
-   highlights = {
-      SlangServerInstance = { fg = "#efbd5d" },
-      SlangServerInstanceArray = { fg = "#efbd5d" },
-      SlangServerScope = { fg = "#41a7fc" },
-      SlangServerScopeArray = { fg = "#41a7fc" },
-      SlangServerPackage = { fg = "#f48fb1" },
-      SlangServerPortInput = { fg = "#8bcd5b" },
-      SlangServerPortOutput = { fg = "#f65866" },
-      SlangServerPortInout = { fg = "#34bfd0" },
-      SlangServerParam = { fg = "#c75ae8" },
-      SlangServerLogic = { fg = "#dd9046" },
-      SlangServerReg = { fg = "#dd9046" },
-   },
-}
-```
+The default configuration can be found in [config.lua](./lua/slang-server/_core/config.lua). Override options can be defined in the global `vim.g.slang_server_config`, or passed to `opts = {...}` in the lazy.nvim plugin spec.
 
 ## GitHub Repos
 
