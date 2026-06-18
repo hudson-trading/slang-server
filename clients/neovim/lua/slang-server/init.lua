@@ -13,7 +13,6 @@ M.setup = function(opts)
    config.update(opts)
 
    -- note: this config requires the slang_server to be explicitly named slang_server
-   -- so slang-server wouldn't work; idk the best practices here
    vim.lsp.config("slang_server", {
       capabilities = {
          experimental = {
