@@ -1,4 +1,4 @@
 return {
    { "MunifTanjim/nui.nvim", lazy = true },
-   { "hudson-trading/slang-server.nvim", opts = {} },
+   { "hudson-trading/slang-server.nvim" },
 }
