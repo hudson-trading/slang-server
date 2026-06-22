@@ -8,6 +8,7 @@
 #pragma once
 
 #include "Config.h"
+#include "document/ShallowAnalysis.h"
 #include "lsp/LspTypes.h"
 #include <string>
 #include <variant>
@@ -64,6 +65,7 @@ struct DefinitionInfo {
     struct SymbolTarget {
         SyntaxTarget syntax;
         const slang::ast::Symbol* symbol;
+        std::shared_ptr<ShallowAnalysis> analysis;
 
         const slang::parsing::Token& nameToken() const { return syntax.nameToken; }
 

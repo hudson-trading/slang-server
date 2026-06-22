@@ -363,20 +363,20 @@ module TestModule #(
                                 ^^^^^^^^ Ref -> **Parameter** `NUM_SUBS` in `TestModule`  \n\Type: `int`  \n\Value: `4`  \n\\n\\n\---\n\\n\`parameter int NUM_SUBS = 4`
 
         .clk(clk),
-         ^^^ Ref -> **Net** `clk` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
-             ^^^ Ref -> **Net** `clk` in `TestModule`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
+         ^^^ Ref -> **Net** `clk` in `Sub`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
+             ^^^ Ref -> **Net** `clk` in `TestModule`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
 
         .rst(rst),
-         ^^^ Ref -> **Net** `rst` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
-             ^^^ Ref -> **Net** `rst` in `TestModule`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
+         ^^^ Ref -> **Net** `rst` in `Sub`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
+             ^^^ Ref -> **Net** `rst` in `TestModule`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
 
         .data_in(sub_data_in),
-         ^^^^^^^ Ref -> **Net** `data_in` in `Sub`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+         ^^^^^^^ Ref -> **Net** `data_in` in `Sub`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
                  ^^^^^^^^^^^ Ref -> **Variable** `sub_data_in` in `TestModule`  \n\Type: `logic[15:0]$[4]`  \n\\n\\n\---\n\\n\Instance array that depends on NUM_SUBS parameter  \n\  \n\\n\\n\---\n\\n\`logic [15:0] sub_data_in [NUM_SUBS];`
 
         .data_out(sub_data_out)
-         ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
-                  ^^^^^^^^^^^^ Ref -> **Variable** `sub_data_out` in `TestModule`  \n\Type: `logic[15:0]$[4]`  \n\\n\\n\---\n\\n\`logic [15:0] sub_data_out [NUM_SUBS];`
+         ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+                  ^^^^^^^^^^^^ Ref -> **Variable** `sub_data_out` in `TestModule`  \n\Type: `logic[15:0]$[4]`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`logic [15:0] sub_data_out [NUM_SUBS];`
 
     );
 
@@ -388,37 +388,37 @@ module TestModule #(
                  ^^^^^^^^^^^^^^^ Sym inst_array_test : Variable
 
     assign inst_array_test = sub_inst[0].data_out + sub_inst[1].data_out;
-           ^^^^^^^^^^^^^^^ Ref -> **Variable** `inst_array_test` in `TestModule`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\\n\\n\---\n\\n\Test instance array access - goto on sub_inst[0] should go to sub_inst declaration  \n\  \n\\n\\n\---\n\\n\`logic [15:0] inst_array_test;`
+           ^^^^^^^^^^^^^^^ Ref -> **Variable** `inst_array_test` in `TestModule`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\Test instance array access - goto on sub_inst[0] should go to sub_inst declaration  \n\  \n\\n\\n\---\n\\n\`logic [15:0] inst_array_test;`
                              ^^^^^^^^ Ref -> **InstanceArray** `sub_inst` in `TestModule`  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(16)) sub_inst [NUM_SUBS] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(sub_data_in),\n\    .data_out(sub_data_out)\n\);`
-                                         ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+                                         ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
                                                     ^^^^^^^^ Ref -> **InstanceArray** `sub_inst` in `TestModule`  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(16)) sub_inst [NUM_SUBS] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(sub_data_in),\n\    .data_out(sub_data_out)\n\);`
                                                                 ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
 
 
 
     always_ff @(posedge clk) begin
-                        ^^^ Ref -> **Net** `clk` in `TestModule`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
+                        ^^^ Ref -> **Net** `clk` in `TestModule`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
 
         if (rst) begin
-            ^^^ Ref -> **Net** `rst` in `TestModule`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
+            ^^^ Ref -> **Net** `rst` in `TestModule`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
 
             state <= test_pkg::STATE_A;
-            ^^^^^ Ref -> **Variable** `state` in `TestModule`  \n\Type: Enum `state_t` (`logic[1:0]`)  \n\Width: `2`  \n\\n\\n\---\n\\n\`test_pkg::state_t state, state_next;`
+            ^^^^^ Ref -> **Variable** `state` in `TestModule`  \n\Type: Enum `state_t` (`logic[1:0]`)  \n\Width: `2`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`test_pkg::state_t state, state_next;`
                      ^^^^^^^^ Ref -> **Package** `test_pkg`  \n\\n\\n\---\n\\n\`package test_pkg;`
                                ^^^^^^^ Ref -> **EnumValue** `STATE_A` in `test_pkg::state_t`  \n\Value: `2'b0`  \n\\n\\n\---\n\\n\`typedef enum logic [1:0] {\n\    STATE_A,\n\    STATE_B,\n\    STATE_C\n\} state_t;`
 
             counter <= '0;
-            ^^^^^^^ Ref -> **Variable** `counter` in `TestModule`  \n\Type: `id_t` (aka `logic[31:0]`)  \n\Width: `32`  \n\\n\\n\---\n\\n\This comment is just here to test the multi line  \n\comment functionality.  \n\  \n\\n\\n\---\n\\n\`test_pkg::id_t counter;`
+            ^^^^^^^ Ref -> **Variable** `counter` in `TestModule`  \n\Type: `id_t` (aka `logic[31:0]`)  \n\Width: `32`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\This comment is just here to test the multi line  \n\comment functionality.  \n\  \n\\n\\n\---\n\\n\`test_pkg::id_t counter;`
 
         end else begin
 
             state <= state_next;
-            ^^^^^ Ref -> **Variable** `state` in `TestModule`  \n\Type: Enum `state_t` (`logic[1:0]`)  \n\Width: `2`  \n\\n\\n\---\n\\n\`test_pkg::state_t state, state_next;`
-                     ^^^^^^^^^^ Ref -> **Variable** `state_next` in `TestModule`  \n\Type: Enum `state_t` (`logic[1:0]`)  \n\Width: `2`  \n\\n\\n\---\n\\n\`test_pkg::state_t state, state_next;`
+            ^^^^^ Ref -> **Variable** `state` in `TestModule`  \n\Type: Enum `state_t` (`logic[1:0]`)  \n\Width: `2`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`test_pkg::state_t state, state_next;`
+                     ^^^^^^^^^^ Ref -> **Variable** `state_next` in `TestModule`  \n\Type: Enum `state_t` (`logic[1:0]`)  \n\Width: `2`  \n\Driver: `Procedural (always_comb)`  \n\\n\\n\---\n\\n\`test_pkg::state_t state, state_next;`
 
             counter <= counter + 1'b1;
-            ^^^^^^^ Ref -> **Variable** `counter` in `TestModule`  \n\Type: `id_t` (aka `logic[31:0]`)  \n\Width: `32`  \n\\n\\n\---\n\\n\This comment is just here to test the multi line  \n\comment functionality.  \n\  \n\\n\\n\---\n\\n\`test_pkg::id_t counter;`
-                       ^^^^^^^ Ref -> **Variable** `counter` in `TestModule`  \n\Type: `id_t` (aka `logic[31:0]`)  \n\Width: `32`  \n\\n\\n\---\n\\n\This comment is just here to test the multi line  \n\comment functionality.  \n\  \n\\n\\n\---\n\\n\`test_pkg::id_t counter;`
+            ^^^^^^^ Ref -> **Variable** `counter` in `TestModule`  \n\Type: `id_t` (aka `logic[31:0]`)  \n\Width: `32`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\This comment is just here to test the multi line  \n\comment functionality.  \n\  \n\\n\\n\---\n\\n\`test_pkg::id_t counter;`
+                       ^^^^^^^ Ref -> **Variable** `counter` in `TestModule`  \n\Type: `id_t` (aka `logic[31:0]`)  \n\Width: `32`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\This comment is just here to test the multi line  \n\comment functionality.  \n\  \n\\n\\n\---\n\\n\`test_pkg::id_t counter;`
 
         end
 
@@ -429,24 +429,24 @@ module TestModule #(
     always_comb begin
 
         case (state)
-              ^^^^^ Ref -> **Variable** `state` in `TestModule`  \n\Type: Enum `state_t` (`logic[1:0]`)  \n\Width: `2`  \n\\n\\n\---\n\\n\`test_pkg::state_t state, state_next;`
+              ^^^^^ Ref -> **Variable** `state` in `TestModule`  \n\Type: Enum `state_t` (`logic[1:0]`)  \n\Width: `2`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`test_pkg::state_t state, state_next;`
 
             test_pkg::STATE_A: state_next = test_pkg::STATE_B;
             ^^^^^^^^ Ref -> **Package** `test_pkg`  \n\\n\\n\---\n\\n\`package test_pkg;`
                       ^^^^^^^ Ref -> **EnumValue** `STATE_A` in `test_pkg::state_t`  \n\Value: `2'b0`  \n\\n\\n\---\n\\n\`typedef enum logic [1:0] {\n\    STATE_A,\n\    STATE_B,\n\    STATE_C\n\} state_t;`
-                               ^^^^^^^^^^ Ref -> **Variable** `state_next` in `TestModule`  \n\Type: Enum `state_t` (`logic[1:0]`)  \n\Width: `2`  \n\\n\\n\---\n\\n\`test_pkg::state_t state, state_next;`
+                               ^^^^^^^^^^ Ref -> **Variable** `state_next` in `TestModule`  \n\Type: Enum `state_t` (`logic[1:0]`)  \n\Width: `2`  \n\Driver: `Procedural (always_comb)`  \n\\n\\n\---\n\\n\`test_pkg::state_t state, state_next;`
                                             ^^^^^^^^ Ref -> **Package** `test_pkg`  \n\\n\\n\---\n\\n\`package test_pkg;`
                                                       ^^^^^^^ Ref -> **EnumValue** `STATE_B` in `test_pkg::state_t`  \n\Value: `2'b1`  \n\\n\\n\---\n\\n\`typedef enum logic [1:0] {\n\    STATE_A,\n\    STATE_B,\n\    STATE_C\n\} state_t;`
 
             test_pkg::STATE_B: state_next = test_pkg::STATE_C;
             ^^^^^^^^ Ref -> **Package** `test_pkg`  \n\\n\\n\---\n\\n\`package test_pkg;`
                       ^^^^^^^ Ref -> **EnumValue** `STATE_B` in `test_pkg::state_t`  \n\Value: `2'b1`  \n\\n\\n\---\n\\n\`typedef enum logic [1:0] {\n\    STATE_A,\n\    STATE_B,\n\    STATE_C\n\} state_t;`
-                               ^^^^^^^^^^ Ref -> **Variable** `state_next` in `TestModule`  \n\Type: Enum `state_t` (`logic[1:0]`)  \n\Width: `2`  \n\\n\\n\---\n\\n\`test_pkg::state_t state, state_next;`
+                               ^^^^^^^^^^ Ref -> **Variable** `state_next` in `TestModule`  \n\Type: Enum `state_t` (`logic[1:0]`)  \n\Width: `2`  \n\Driver: `Procedural (always_comb)`  \n\\n\\n\---\n\\n\`test_pkg::state_t state, state_next;`
                                             ^^^^^^^^ Ref -> **Package** `test_pkg`  \n\\n\\n\---\n\\n\`package test_pkg;`
                                                       ^^^^^^^ Ref -> **EnumValue** `STATE_C` in `test_pkg::state_t`  \n\Value: `2'b10`  \n\\n\\n\---\n\\n\`typedef enum logic [1:0] {\n\    STATE_A,\n\    STATE_B,\n\    STATE_C\n\} state_t;`
 
             default: state_next = test_pkg::STATE_A;
-                     ^^^^^^^^^^ Ref -> **Variable** `state_next` in `TestModule`  \n\Type: Enum `state_t` (`logic[1:0]`)  \n\Width: `2`  \n\\n\\n\---\n\\n\`test_pkg::state_t state, state_next;`
+                     ^^^^^^^^^^ Ref -> **Variable** `state_next` in `TestModule`  \n\Type: Enum `state_t` (`logic[1:0]`)  \n\Width: `2`  \n\Driver: `Procedural (always_comb)`  \n\\n\\n\---\n\\n\`test_pkg::state_t state, state_next;`
                                   ^^^^^^^^ Ref -> **Package** `test_pkg`  \n\\n\\n\---\n\\n\`package test_pkg;`
                                             ^^^^^^^ Ref -> **EnumValue** `STATE_A` in `test_pkg::state_t`  \n\Value: `2'b0`  \n\\n\\n\---\n\\n\`typedef enum logic [1:0] {\n\    STATE_A,\n\    STATE_B,\n\    STATE_C\n\} state_t;`
 
@@ -459,10 +459,10 @@ module TestModule #(
     // Use the bus interfaces
 
     always_ff @(posedge clk) begin
-                        ^^^ Ref -> **Net** `clk` in `TestModule`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
+                        ^^^ Ref -> **Net** `clk` in `TestModule`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
 
         if (rst) begin
-            ^^^ Ref -> **Net** `rst` in `TestModule`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
+            ^^^ Ref -> **Net** `rst` in `TestModule`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
 
             data_out <= '0;
             ^^^^^^^^ Ref -> **Variable** `data_out` in `TestModule`  \n\Type: `data_t` (aka `logic[7:0]`)  \n\Width: `8`  \n\\n\\n\---\n\\n\`output test_pkg::data_t data_out`
@@ -513,12 +513,12 @@ module TestModule #(
         bus_master.addr = width_port[0];
         ^^^^^^^^^^ Ref -> **InterfacePort** `bus_master` in `TestModule`  \n\\n\\n\---\n\\n\`bus_if.master bus_master`
                    ^^^^ Ref -> **ModportPort** `addr` in `bus_if.master`  \n\Type: `logic[31:0]`  \n\Width: `32`  \n\\n\\n\---\n\\n\`output valid, addr, data, write_enable`
-                          ^^^^^^^^^^ Ref -> **Net** `width_port` in `TestModule`  \n\Type: `logic[31:0]`  \n\Width: `32`  \n\\n\\n\---\n\\n\some useful info  \n\  \n\\n\\n\---\n\\n\`input logic [test_pkg::WIDTH-1:0] width_port`
+                          ^^^^^^^^^^ Ref -> **Net** `width_port` in `TestModule`  \n\Type: `logic[31:0]`  \n\Width: `32`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\some useful info  \n\  \n\\n\\n\---\n\\n\`input logic [test_pkg::WIDTH-1:0] width_port`
 
         bus_master.data <= state;
         ^^^^^^^^^^ Ref -> **InterfacePort** `bus_master` in `TestModule`  \n\\n\\n\---\n\\n\`bus_if.master bus_master`
                    ^^^^ Ref -> **ModportPort** `data` in `bus_if.master`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output valid, addr, data, write_enable`
-                           ^^^^^ Ref -> **Variable** `state` in `TestModule`  \n\Type: Enum `state_t` (`logic[1:0]`)  \n\Width: `2`  \n\\n\\n\---\n\\n\`test_pkg::state_t state, state_next;`
+                           ^^^^^ Ref -> **Variable** `state` in `TestModule`  \n\Type: Enum `state_t` (`logic[1:0]`)  \n\Width: `2`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`test_pkg::state_t state, state_next;`
 
 
 
@@ -575,16 +575,16 @@ module NoDefaults #(
       ^^^^^^^^ Sym sub_inst : Instance
 
         .clk(clk),
-         ^^^ Ref -> **Net** `clk` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
-             ^^^ Ref -> **Net** `clk` in `NoDefaults`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
+         ^^^ Ref -> **Net** `clk` in `Sub`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
+             ^^^ Ref -> **Net** `clk` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
 
         .rst(rst),
-         ^^^ Ref -> **Net** `rst` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
-             ^^^ Ref -> **Net** `rst` in `NoDefaults`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
+         ^^^ Ref -> **Net** `rst` in `Sub`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
+             ^^^ Ref -> **Net** `rst` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
 
         .data_in(data_in),
-         ^^^^^^^ Ref -> **Net** `data_in` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
-                 ^^^^^^^ Ref -> **Net** `data_in` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+         ^^^^^^^ Ref -> **Net** `data_in` in `Sub`  \n\Type: Incomplete type  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+                 ^^^^^^^ Ref -> **Net** `data_in` in `NoDefaults`  \n\Type: Incomplete type  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
 
         .data_out(data_out)
          ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
@@ -604,15 +604,15 @@ module NoDefaults #(
 
         .clk(clk),
          ^^^ Ref -> **Net** `clk` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
-             ^^^ Ref -> **Net** `clk` in `NoDefaults`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
+             ^^^ Ref -> **Net** `clk` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
 
         .rst(rst),
          ^^^ Ref -> **Net** `rst` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
-             ^^^ Ref -> **Net** `rst` in `NoDefaults`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
+             ^^^ Ref -> **Net** `rst` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
 
         .data_in(data_in),
          ^^^^^^^ Ref -> **Net** `data_in` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
-                 ^^^^^^^ Ref -> **Net** `data_in` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+                 ^^^^^^^ Ref -> **Net** `data_in` in `NoDefaults`  \n\Type: Incomplete type  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
 
         .data_out()
          ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
@@ -652,15 +652,15 @@ module NoDefaults #(
 
             .clk(clk),
              ^^^ Ref -> **Net** `clk` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
-                 ^^^ Ref -> **Net** `clk` in `NoDefaults`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
+                 ^^^ Ref -> **Net** `clk` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
 
             .rst(rst),
              ^^^ Ref -> **Net** `rst` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
-                 ^^^ Ref -> **Net** `rst` in `NoDefaults`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
+                 ^^^ Ref -> **Net** `rst` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
 
             .data_in(data_in),
              ^^^^^^^ Ref -> **Net** `data_in` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
-                     ^^^^^^^ Ref -> **Net** `data_in` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+                     ^^^^^^^ Ref -> **Net** `data_in` in `NoDefaults`  \n\Type: Incomplete type  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
 
             .data_out()
              ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
@@ -706,15 +706,15 @@ module NoDefaults #(
 
             .clk(clk),
              ^^^ Ref -> **Net** `clk` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
-                 ^^^ Ref -> **Net** `clk` in `NoDefaults`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
+                 ^^^ Ref -> **Net** `clk` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
 
             .rst(rst),
              ^^^ Ref -> **Net** `rst` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
-                 ^^^ Ref -> **Net** `rst` in `NoDefaults`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
+                 ^^^ Ref -> **Net** `rst` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
 
             .data_in(data_in),
              ^^^^^^^ Ref -> **Net** `data_in` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
-                     ^^^^^^^ Ref -> **Net** `data_in` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+                     ^^^^^^^ Ref -> **Net** `data_in` in `NoDefaults`  \n\Type: Incomplete type  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
 
             .data_out(data_out)
              ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
@@ -742,15 +742,15 @@ module NoDefaults #(
 
             .clk(clk),
              ^^^ Ref -> **Net** `clk` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
-                 ^^^ Ref -> **Net** `clk` in `NoDefaults`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
+                 ^^^ Ref -> **Net** `clk` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
 
             .rst(rst),
              ^^^ Ref -> **Net** `rst` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
-                 ^^^ Ref -> **Net** `rst` in `NoDefaults`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
+                 ^^^ Ref -> **Net** `rst` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
 
             .data_in(data_in),
              ^^^^^^^ Ref -> **Net** `data_in` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
-                     ^^^^^^^ Ref -> **Net** `data_in` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+                     ^^^^^^^ Ref -> **Net** `data_in` in `NoDefaults`  \n\Type: Incomplete type  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
 
             .data_out(data_out)
              ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
@@ -773,15 +773,15 @@ module NoDefaults #(
 
             .clk(clk),
              ^^^ Ref -> **Net** `clk` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
-                 ^^^ Ref -> **Net** `clk` in `NoDefaults`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
+                 ^^^ Ref -> **Net** `clk` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
 
             .rst(rst),
              ^^^ Ref -> **Net** `rst` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
-                 ^^^ Ref -> **Net** `rst` in `NoDefaults`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
+                 ^^^ Ref -> **Net** `rst` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
 
             .data_in(data_in),
              ^^^^^^^ Ref -> **Net** `data_in` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
-                     ^^^^^^^ Ref -> **Net** `data_in` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+                     ^^^^^^^ Ref -> **Net** `data_in` in `NoDefaults`  \n\Type: Incomplete type  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
 
             .data_out(data_out)
              ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
@@ -887,10 +887,10 @@ module StructAssignmentTest (
 
 
     always_ff @(posedge clk) begin
-                        ^^^ Ref -> **Net** `clk` in `StructAssignmentTest`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
+                        ^^^ Ref -> **Net** `clk` in `StructAssignmentTest`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
 
         if (rst) begin
-            ^^^ Ref -> **Net** `rst` in `StructAssignmentTest`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
+            ^^^ Ref -> **Net** `rst` in `StructAssignmentTest`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
 
             // Basic struct member assignment
 
@@ -928,14 +928,14 @@ module StructAssignmentTest (
 
             struct_array[index].addr <= 8'hCC;
             ^^^^^^^^^^^^ Ref -> **Variable** `struct_array` in `StructAssignmentTest`  \n\Type: `simple_struct_t$[4]`  \n\\n\\n\---\n\\n\`simple_struct_t struct_array[4];`
-                         ^^^^^ Ref -> **Variable** `index` in `StructAssignmentTest`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`logic [1:0] index;`
+                         ^^^^^ Ref -> **Variable** `index` in `StructAssignmentTest`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`logic [1:0] index;`
                                 ^^^^ Ref -> **Field** `addr` in `StructAssignmentTest::simple_struct_t`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`logic [7:0] addr;`
 
             struct_array[index].data <= data_val;
             ^^^^^^^^^^^^ Ref -> **Variable** `struct_array` in `StructAssignmentTest`  \n\Type: `simple_struct_t$[4]`  \n\\n\\n\---\n\\n\`simple_struct_t struct_array[4];`
-                         ^^^^^ Ref -> **Variable** `index` in `StructAssignmentTest`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`logic [1:0] index;`
+                         ^^^^^ Ref -> **Variable** `index` in `StructAssignmentTest`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`logic [1:0] index;`
                                 ^^^^ Ref -> **Field** `data` in `StructAssignmentTest::simple_struct_t`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\\n\\n\---\n\\n\`logic [15:0] data;`
-                                        ^^^^^^^^ Ref -> **Variable** `data_val` in `StructAssignmentTest`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\\n\\n\---\n\\n\`logic [15:0] data_val;`
+                                        ^^^^^^^^ Ref -> **Variable** `data_val` in `StructAssignmentTest`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`logic [15:0] data_val;`
 
 
 
@@ -980,7 +980,7 @@ module StructAssignmentTest (
 
             nested_array[index].tag <= 4'h7;
             ^^^^^^^^^^^^ Ref -> **Variable** `nested_array` in `StructAssignmentTest`  \n\Type: `nested_struct_t$[2]`  \n\\n\\n\---\n\\n\`nested_struct_t nested_array[2];`
-                         ^^^^^ Ref -> **Variable** `index` in `StructAssignmentTest`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`logic [1:0] index;`
+                         ^^^^^ Ref -> **Variable** `index` in `StructAssignmentTest`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`logic [1:0] index;`
                                 ^^^ Ref -> **Field** `tag` in `StructAssignmentTest::nested_struct_t`  \n\Type: `logic[3:0]`  \n\Width: `4`  \n\\n\\n\---\n\\n\`logic [3:0] tag;`
 
 
@@ -988,11 +988,11 @@ module StructAssignmentTest (
             // Package struct member assignment
 
             pkg_struct.id <= 32'h123;
-            ^^^^^^^^^^ Ref -> **Variable** `pkg_struct` in `StructAssignmentTest`  \n\Type: PackedStruct `packet_t` (`logic[47:0]`)  \n\Width: `48`  \n\\n\\n\---\n\\n\`test_pkg::packet_t pkg_struct;`
+            ^^^^^^^^^^ Ref -> **Variable** `pkg_struct` in `StructAssignmentTest`  \n\Type: PackedStruct `packet_t` (`logic[47:0]`)  \n\Width: `48`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`test_pkg::packet_t pkg_struct;`
                        ^^ Ref -> **Field** `id` in `test_pkg::packet_t`  \n\Type: `id_t` (aka `logic[31:0]`)  \n\Width: `32`  \n\\n\\n\---\n\\n\`id_t id;`
 
             pkg_struct.data <= 16'h5678;
-            ^^^^^^^^^^ Ref -> **Variable** `pkg_struct` in `StructAssignmentTest`  \n\Type: PackedStruct `packet_t` (`logic[47:0]`)  \n\Width: `48`  \n\\n\\n\---\n\\n\`test_pkg::packet_t pkg_struct;`
+            ^^^^^^^^^^ Ref -> **Variable** `pkg_struct` in `StructAssignmentTest`  \n\Type: PackedStruct `packet_t` (`logic[47:0]`)  \n\Width: `48`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`test_pkg::packet_t pkg_struct;`
                        ^^^^ Ref -> **Field** `data` in `test_pkg::packet_t`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\\n\\n\---\n\\n\`logic [15:0] data;`
 
 
@@ -1009,20 +1009,20 @@ module StructAssignmentTest (
 
             pkg_array[index].id <= {24'h0, addr_val};
             ^^^^^^^^^ Ref -> **Variable** `pkg_array` in `StructAssignmentTest`  \n\Type: `packet_t$[3]`  \n\\n\\n\---\n\\n\`test_pkg::packet_t pkg_array[3];`
-                      ^^^^^ Ref -> **Variable** `index` in `StructAssignmentTest`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`logic [1:0] index;`
+                      ^^^^^ Ref -> **Variable** `index` in `StructAssignmentTest`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`logic [1:0] index;`
                              ^^ Ref -> **Field** `id` in `test_pkg::packet_t`  \n\Type: `id_t` (aka `logic[31:0]`)  \n\Width: `32`  \n\\n\\n\---\n\\n\`id_t id;`
-                                           ^^^^^^^^ Ref -> **Variable** `addr_val` in `StructAssignmentTest`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`logic [7:0] addr_val;`
+                                           ^^^^^^^^ Ref -> **Variable** `addr_val` in `StructAssignmentTest`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`logic [7:0] addr_val;`
 
 
 
             index <= 2'b00;
-            ^^^^^ Ref -> **Variable** `index` in `StructAssignmentTest`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`logic [1:0] index;`
+            ^^^^^ Ref -> **Variable** `index` in `StructAssignmentTest`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`logic [1:0] index;`
 
             addr_val <= 8'h11;
-            ^^^^^^^^ Ref -> **Variable** `addr_val` in `StructAssignmentTest`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`logic [7:0] addr_val;`
+            ^^^^^^^^ Ref -> **Variable** `addr_val` in `StructAssignmentTest`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`logic [7:0] addr_val;`
 
             data_val <= 16'h2222;
-            ^^^^^^^^ Ref -> **Variable** `data_val` in `StructAssignmentTest`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\\n\\n\---\n\\n\`logic [15:0] data_val;`
+            ^^^^^^^^ Ref -> **Variable** `data_val` in `StructAssignmentTest`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`logic [15:0] data_val;`
 
         end else begin
 
@@ -1031,12 +1031,12 @@ module StructAssignmentTest (
             single_struct.addr <= addr_val + 8'h10;
             ^^^^^^^^^^^^^ Ref -> **Variable** `single_struct` in `StructAssignmentTest`  \n\Type: PackedStruct `simple_struct_t` (`logic[24:0]`)  \n\Width: `25`  \n\\n\\n\---\n\\n\Variables for testing  \n\  \n\\n\\n\---\n\\n\`simple_struct_t single_struct;`
                           ^^^^ Ref -> **Field** `addr` in `StructAssignmentTest::simple_struct_t`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`logic [7:0] addr;`
-                                  ^^^^^^^^ Ref -> **Variable** `addr_val` in `StructAssignmentTest`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`logic [7:0] addr_val;`
+                                  ^^^^^^^^ Ref -> **Variable** `addr_val` in `StructAssignmentTest`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`logic [7:0] addr_val;`
 
             single_struct.data <= data_val << 1;
             ^^^^^^^^^^^^^ Ref -> **Variable** `single_struct` in `StructAssignmentTest`  \n\Type: PackedStruct `simple_struct_t` (`logic[24:0]`)  \n\Width: `25`  \n\\n\\n\---\n\\n\Variables for testing  \n\  \n\\n\\n\---\n\\n\`simple_struct_t single_struct;`
                           ^^^^ Ref -> **Field** `data` in `StructAssignmentTest::simple_struct_t`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\\n\\n\---\n\\n\`logic [15:0] data;`
-                                  ^^^^^^^^ Ref -> **Variable** `data_val` in `StructAssignmentTest`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\\n\\n\---\n\\n\`logic [15:0] data_val;`
+                                  ^^^^^^^^ Ref -> **Variable** `data_val` in `StructAssignmentTest`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`logic [15:0] data_val;`
 
             single_struct.valid <= ~single_struct.valid;
             ^^^^^^^^^^^^^ Ref -> **Variable** `single_struct` in `StructAssignmentTest`  \n\Type: PackedStruct `simple_struct_t` (`logic[24:0]`)  \n\Width: `25`  \n\\n\\n\---\n\\n\Variables for testing  \n\  \n\\n\\n\---\n\\n\`simple_struct_t single_struct;`
@@ -1050,14 +1050,14 @@ module StructAssignmentTest (
 
             struct_array[index + 1].addr <= single_struct.addr;
             ^^^^^^^^^^^^ Ref -> **Variable** `struct_array` in `StructAssignmentTest`  \n\Type: `simple_struct_t$[4]`  \n\\n\\n\---\n\\n\`simple_struct_t struct_array[4];`
-                         ^^^^^ Ref -> **Variable** `index` in `StructAssignmentTest`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`logic [1:0] index;`
+                         ^^^^^ Ref -> **Variable** `index` in `StructAssignmentTest`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`logic [1:0] index;`
                                     ^^^^ Ref -> **Field** `addr` in `StructAssignmentTest::simple_struct_t`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`logic [7:0] addr;`
                                             ^^^^^^^^^^^^^ Ref -> **Variable** `single_struct` in `StructAssignmentTest`  \n\Type: PackedStruct `simple_struct_t` (`logic[24:0]`)  \n\Width: `25`  \n\\n\\n\---\n\\n\Variables for testing  \n\  \n\\n\\n\---\n\\n\`simple_struct_t single_struct;`
                                                           ^^^^ Ref -> **Field** `addr` in `StructAssignmentTest::simple_struct_t`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`logic [7:0] addr;`
 
             struct_array[addr_val[1:0]].data <= nested_struct.inner.data;
             ^^^^^^^^^^^^ Ref -> **Variable** `struct_array` in `StructAssignmentTest`  \n\Type: `simple_struct_t$[4]`  \n\\n\\n\---\n\\n\`simple_struct_t struct_array[4];`
-                         ^^^^^^^^ Ref -> **Variable** `addr_val` in `StructAssignmentTest`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`logic [7:0] addr_val;`
+                         ^^^^^^^^ Ref -> **Variable** `addr_val` in `StructAssignmentTest`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`logic [7:0] addr_val;`
                                         ^^^^ Ref -> **Field** `data` in `StructAssignmentTest::simple_struct_t`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\\n\\n\---\n\\n\`logic [15:0] data;`
                                                 ^^^^^^^^^^^^^ Ref -> **Variable** `nested_struct` in `StructAssignmentTest`  \n\Type: PackedStruct `nested_struct_t` (`logic[29:0]`)  \n\Width: `30`  \n\\n\\n\---\n\\n\`nested_struct_t nested_struct;`
                                                               ^^^^^ Ref -> **Field** `inner` in `StructAssignmentTest::nested_struct_t`  \n\Type: PackedStruct `simple_struct_t` (`logic[24:0]`)  \n\Width: `25`  \n\\n\\n\---\n\\n\`simple_struct_t inner;`
@@ -1078,7 +1078,7 @@ module StructAssignmentTest (
             ^^^^^^^^^^^^^ Ref -> **Variable** `nested_struct` in `StructAssignmentTest`  \n\Type: PackedStruct `nested_struct_t` (`logic[29:0]`)  \n\Width: `30`  \n\\n\\n\---\n\\n\`nested_struct_t nested_struct;`
                           ^^^^^ Ref -> **Field** `inner` in `StructAssignmentTest::nested_struct_t`  \n\Type: PackedStruct `simple_struct_t` (`logic[24:0]`)  \n\Width: `25`  \n\\n\\n\---\n\\n\`simple_struct_t inner;`
                                 ^^^^ Ref -> **Field** `data` in `StructAssignmentTest::simple_struct_t`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\\n\\n\---\n\\n\`logic [15:0] data;`
-                                        ^^^^^^^^^^ Ref -> **Variable** `pkg_struct` in `StructAssignmentTest`  \n\Type: PackedStruct `packet_t` (`logic[47:0]`)  \n\Width: `48`  \n\\n\\n\---\n\\n\`test_pkg::packet_t pkg_struct;`
+                                        ^^^^^^^^^^ Ref -> **Variable** `pkg_struct` in `StructAssignmentTest`  \n\Type: PackedStruct `packet_t` (`logic[47:0]`)  \n\Width: `48`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`test_pkg::packet_t pkg_struct;`
                                                    ^^^^ Ref -> **Field** `data` in `test_pkg::packet_t`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\\n\\n\---\n\\n\`logic [15:0] data;`
 
             nested_struct.inner.valid <= pkg_array[index].id[0];
@@ -1086,7 +1086,7 @@ module StructAssignmentTest (
                           ^^^^^ Ref -> **Field** `inner` in `StructAssignmentTest::nested_struct_t`  \n\Type: PackedStruct `simple_struct_t` (`logic[24:0]`)  \n\Width: `25`  \n\\n\\n\---\n\\n\`simple_struct_t inner;`
                                 ^^^^^ Ref -> **Field** `valid` in `StructAssignmentTest::simple_struct_t`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic valid;`
                                          ^^^^^^^^^ Ref -> **Variable** `pkg_array` in `StructAssignmentTest`  \n\Type: `packet_t$[3]`  \n\\n\\n\---\n\\n\`test_pkg::packet_t pkg_array[3];`
-                                                   ^^^^^ Ref -> **Variable** `index` in `StructAssignmentTest`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`logic [1:0] index;`
+                                                   ^^^^^ Ref -> **Variable** `index` in `StructAssignmentTest`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`logic [1:0] index;`
                                                           ^^ Ref -> **Field** `id` in `test_pkg::packet_t`  \n\Type: `id_t` (aka `logic[31:0]`)  \n\Width: `32`  \n\\n\\n\---\n\\n\`id_t id;`
 
 
@@ -1095,20 +1095,20 @@ module StructAssignmentTest (
 
             nested_array[index].inner.addr <= struct_array[addr_val[1:0]].addr;
             ^^^^^^^^^^^^ Ref -> **Variable** `nested_array` in `StructAssignmentTest`  \n\Type: `nested_struct_t$[2]`  \n\\n\\n\---\n\\n\`nested_struct_t nested_array[2];`
-                         ^^^^^ Ref -> **Variable** `index` in `StructAssignmentTest`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`logic [1:0] index;`
+                         ^^^^^ Ref -> **Variable** `index` in `StructAssignmentTest`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`logic [1:0] index;`
                                 ^^^^^ Ref -> **Field** `inner` in `StructAssignmentTest::nested_struct_t`  \n\Type: PackedStruct `simple_struct_t` (`logic[24:0]`)  \n\Width: `25`  \n\\n\\n\---\n\\n\`simple_struct_t inner;`
                                       ^^^^ Ref -> **Field** `addr` in `StructAssignmentTest::simple_struct_t`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`logic [7:0] addr;`
                                               ^^^^^^^^^^^^ Ref -> **Variable** `struct_array` in `StructAssignmentTest`  \n\Type: `simple_struct_t$[4]`  \n\\n\\n\---\n\\n\`simple_struct_t struct_array[4];`
-                                                           ^^^^^^^^ Ref -> **Variable** `addr_val` in `StructAssignmentTest`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`logic [7:0] addr_val;`
+                                                           ^^^^^^^^ Ref -> **Variable** `addr_val` in `StructAssignmentTest`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`logic [7:0] addr_val;`
                                                                           ^^^^ Ref -> **Field** `addr` in `StructAssignmentTest::simple_struct_t`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`logic [7:0] addr;`
 
             nested_array[~index].inner.data <= pkg_array[index + 1].data;
             ^^^^^^^^^^^^ Ref -> **Variable** `nested_array` in `StructAssignmentTest`  \n\Type: `nested_struct_t$[2]`  \n\\n\\n\---\n\\n\`nested_struct_t nested_array[2];`
-                          ^^^^^ Ref -> **Variable** `index` in `StructAssignmentTest`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`logic [1:0] index;`
+                          ^^^^^ Ref -> **Variable** `index` in `StructAssignmentTest`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`logic [1:0] index;`
                                  ^^^^^ Ref -> **Field** `inner` in `StructAssignmentTest::nested_struct_t`  \n\Type: PackedStruct `simple_struct_t` (`logic[24:0]`)  \n\Width: `25`  \n\\n\\n\---\n\\n\`simple_struct_t inner;`
                                        ^^^^ Ref -> **Field** `data` in `StructAssignmentTest::simple_struct_t`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\\n\\n\---\n\\n\`logic [15:0] data;`
                                                ^^^^^^^^^ Ref -> **Variable** `pkg_array` in `StructAssignmentTest`  \n\Type: `packet_t$[3]`  \n\\n\\n\---\n\\n\`test_pkg::packet_t pkg_array[3];`
-                                                         ^^^^^ Ref -> **Variable** `index` in `StructAssignmentTest`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`logic [1:0] index;`
+                                                         ^^^^^ Ref -> **Variable** `index` in `StructAssignmentTest`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`logic [1:0] index;`
                                                                     ^^^^ Ref -> **Field** `data` in `test_pkg::packet_t`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\\n\\n\---\n\\n\`logic [15:0] data;`
 
 
@@ -1116,14 +1116,14 @@ module StructAssignmentTest (
             // Expression-based assignments
 
             pkg_struct.id <= {16'h0, addr_val, data_val[7:0]};
-            ^^^^^^^^^^ Ref -> **Variable** `pkg_struct` in `StructAssignmentTest`  \n\Type: PackedStruct `packet_t` (`logic[47:0]`)  \n\Width: `48`  \n\\n\\n\---\n\\n\`test_pkg::packet_t pkg_struct;`
+            ^^^^^^^^^^ Ref -> **Variable** `pkg_struct` in `StructAssignmentTest`  \n\Type: PackedStruct `packet_t` (`logic[47:0]`)  \n\Width: `48`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`test_pkg::packet_t pkg_struct;`
                        ^^ Ref -> **Field** `id` in `test_pkg::packet_t`  \n\Type: `id_t` (aka `logic[31:0]`)  \n\Width: `32`  \n\\n\\n\---\n\\n\`id_t id;`
-                                     ^^^^^^^^ Ref -> **Variable** `addr_val` in `StructAssignmentTest`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`logic [7:0] addr_val;`
-                                               ^^^^^^^^ Ref -> **Variable** `data_val` in `StructAssignmentTest`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\\n\\n\---\n\\n\`logic [15:0] data_val;`
+                                     ^^^^^^^^ Ref -> **Variable** `addr_val` in `StructAssignmentTest`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`logic [7:0] addr_val;`
+                                               ^^^^^^^^ Ref -> **Variable** `data_val` in `StructAssignmentTest`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`logic [15:0] data_val;`
 
             pkg_array[index].data <= single_struct.data ^ nested_struct.inner.data;
             ^^^^^^^^^ Ref -> **Variable** `pkg_array` in `StructAssignmentTest`  \n\Type: `packet_t$[3]`  \n\\n\\n\---\n\\n\`test_pkg::packet_t pkg_array[3];`
-                      ^^^^^ Ref -> **Variable** `index` in `StructAssignmentTest`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`logic [1:0] index;`
+                      ^^^^^ Ref -> **Variable** `index` in `StructAssignmentTest`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`logic [1:0] index;`
                              ^^^^ Ref -> **Field** `data` in `test_pkg::packet_t`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\\n\\n\---\n\\n\`logic [15:0] data;`
                                      ^^^^^^^^^^^^^ Ref -> **Variable** `single_struct` in `StructAssignmentTest`  \n\Type: PackedStruct `simple_struct_t` (`logic[24:0]`)  \n\Width: `25`  \n\\n\\n\---\n\\n\Variables for testing  \n\  \n\\n\\n\---\n\\n\`simple_struct_t single_struct;`
                                                    ^^^^ Ref -> **Field** `data` in `StructAssignmentTest::simple_struct_t`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\\n\\n\---\n\\n\`logic [15:0] data;`
@@ -1136,16 +1136,16 @@ module StructAssignmentTest (
             // Increment index for next cycle
 
             index <= index + 1;
-            ^^^^^ Ref -> **Variable** `index` in `StructAssignmentTest`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`logic [1:0] index;`
-                     ^^^^^ Ref -> **Variable** `index` in `StructAssignmentTest`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`logic [1:0] index;`
+            ^^^^^ Ref -> **Variable** `index` in `StructAssignmentTest`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`logic [1:0] index;`
+                     ^^^^^ Ref -> **Variable** `index` in `StructAssignmentTest`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`logic [1:0] index;`
 
             addr_val <= addr_val + 8'h01;
-            ^^^^^^^^ Ref -> **Variable** `addr_val` in `StructAssignmentTest`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`logic [7:0] addr_val;`
-                        ^^^^^^^^ Ref -> **Variable** `addr_val` in `StructAssignmentTest`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`logic [7:0] addr_val;`
+            ^^^^^^^^ Ref -> **Variable** `addr_val` in `StructAssignmentTest`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`logic [7:0] addr_val;`
+                        ^^^^^^^^ Ref -> **Variable** `addr_val` in `StructAssignmentTest`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`logic [7:0] addr_val;`
 
             data_val <= data_val + 16'h0011;
-            ^^^^^^^^ Ref -> **Variable** `data_val` in `StructAssignmentTest`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\\n\\n\---\n\\n\`logic [15:0] data_val;`
-                        ^^^^^^^^ Ref -> **Variable** `data_val` in `StructAssignmentTest`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\\n\\n\---\n\\n\`logic [15:0] data_val;`
+            ^^^^^^^^ Ref -> **Variable** `data_val` in `StructAssignmentTest`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`logic [15:0] data_val;`
+                        ^^^^^^^^ Ref -> **Variable** `data_val` in `StructAssignmentTest`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`logic [15:0] data_val;`
 
         end
 
@@ -1172,7 +1172,7 @@ module StructAssignmentTest (
             nested_struct.enable = |pkg_struct.id;
             ^^^^^^^^^^^^^ Ref -> **Variable** `nested_struct` in `StructAssignmentTest`  \n\Type: PackedStruct `nested_struct_t` (`logic[29:0]`)  \n\Width: `30`  \n\\n\\n\---\n\\n\`nested_struct_t nested_struct;`
                           ^^^^^^ Ref -> **Field** `enable` in `StructAssignmentTest::nested_struct_t`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic enable;`
-                                    ^^^^^^^^^^ Ref -> **Variable** `pkg_struct` in `StructAssignmentTest`  \n\Type: PackedStruct `packet_t` (`logic[47:0]`)  \n\Width: `48`  \n\\n\\n\---\n\\n\`test_pkg::packet_t pkg_struct;`
+                                    ^^^^^^^^^^ Ref -> **Variable** `pkg_struct` in `StructAssignmentTest`  \n\Type: PackedStruct `packet_t` (`logic[47:0]`)  \n\Width: `48`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`test_pkg::packet_t pkg_struct;`
                                                ^^ Ref -> **Field** `id` in `test_pkg::packet_t`  \n\Type: `id_t` (aka `logic[31:0]`)  \n\Width: `32`  \n\\n\\n\---\n\\n\`id_t id;`
 
         end else begin

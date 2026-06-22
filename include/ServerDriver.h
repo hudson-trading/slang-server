@@ -13,7 +13,7 @@
 #include "ast/ServerCompilation.h"
 #include "codeactions/CodeActionDispatch.h"
 #include "completions/CompletionDispatch.h"
-#include "document/ShallowAnalysis.h"
+#include "document/DefinitionInfo.h"
 #include "lsp/URI.h"
 #include <filesystem>
 #include <memory>

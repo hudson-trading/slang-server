@@ -8,12 +8,14 @@
 #include "document/DefinitionInfo.h"
 
 #include "SystemTaskDocs.h"
+#include "document/ShallowAnalysis.h"
 #include "lsp/URI.h"
 #include "util/Converters.h"
 #include "util/Formatting.h"
 #include "util/Markdown.h"
 #include <filesystem>
 
+#include "slang/analysis/ValueDriver.h"
 #include "slang/ast/symbols/CompilationUnitSymbols.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
 #include "slang/ast/symbols/ParameterSymbols.h"
@@ -33,7 +35,8 @@ using namespace slang;
 
 namespace {
 
-void renderSymbolHeader(markup::Paragraph& infoPg, const ast::Symbol& symbol) {
+void renderSymbolHeader(markup::Paragraph& infoPg, const ast::Symbol& symbol,
+                        const std::shared_ptr<ShallowAnalysis>& analysis) {
     // <Kind/Type> <Name> in <Scope>
     infoPg.appendBold(toString(symbol.kind)).appendCode(symbol.name);
 
@@ -59,9 +62,9 @@ void renderSymbolHeader(markup::Paragraph& infoPg, const ast::Symbol& symbol) {
 
     // Type info for value symbols and instance symbols
     if (ast::ValueSymbol::isKind(symbol.kind) && symbol.kind != ast::SymbolKind::EnumValue) {
-        auto& valSym = symbol.as<ast::ValueSymbol>();
-        auto& type = valSym.getType();
-        auto typeStr = getHoverTypeString(type);
+        const auto& valSym = symbol.as<ast::ValueSymbol>();
+        const auto& type = valSym.getType();
+        const auto typeStr = getHoverTypeString(type);
         infoPg.appendText("Type: ").appendText(typeStr).newLine();
         if (!ast::ParameterSymbol::isKind(symbol.kind) && !type.isError() &&
             type.getBitWidth() > 1) {
@@ -69,7 +72,44 @@ void renderSymbolHeader(markup::Paragraph& infoPg, const ast::Symbol& symbol) {
                 .appendCode(fmt::format("{}", type.getBitWidth()))
                 .newLine();
         }
+
+        const auto drivers = analysis->getDrivers(valSym);
+        if (!drivers.empty()) {
+            const slang::analysis::ValueDriver* uniqueDriver = nullptr;
+
+            for (const auto* driver : drivers) {
+                if (!driver) {
+                    continue;
+                }
+
+                if (!uniqueDriver) {
+                    uniqueDriver = driver;
+                }
+
+                else if (driver->kind != uniqueDriver->kind ||
+                         driver->source != uniqueDriver->source) {
+                    uniqueDriver = nullptr;
+                    break;
+                }
+            }
+
+            if (uniqueDriver) {
+                const auto kind = uniqueDriver->kind;
+                const auto source = uniqueDriver->source;
+
+                const auto driverStr =
+                    (source == slang::analysis::DriverSource::Other ||
+                     source == slang::analysis::DriverSource::Subroutine)
+                        ? std::string(toString(kind))
+                        : fmt::format("{} ({})", toString(kind),
+                                      ast::SemanticFacts::getProcedureKindStr(
+                                          static_cast<slang::ast::ProceduralBlockKind>(source)));
+
+                infoPg.appendText("Driver: ").appendCode(driverStr).newLine();
+            }
+        }
     }
+
     else if (ast::InstanceSymbol::isKind(symbol.kind)) {
         auto& instSym = symbol.as<ast::InstanceSymbol>();
         auto typeStr = instSym.getDefinition().name;
@@ -140,18 +180,18 @@ void renderMacroHeader(markup::Paragraph& infoPg, const DefinitionInfo::MacroTar
 
 void DefinitionInfo::SyntaxTarget::renderCode(markup::Document& doc,
                                               const Config::HoverConfig& hovers) const {
-    const syntax::SyntaxNode& display_node = selectDisplayNode(*node);
+    const syntax::SyntaxNode& displayNode = selectDisplayNode(*node);
     const auto docCommentFormat = hovers.docCommentFormat.value();
 
     if (docCommentFormat == Config::HoverConfig::DocCommentFormat::raw) {
         // Print the node verbatim with its leading comments in a single code block
-        doc.addParagraph().appendCodeBlock(formatCodeWithLeadingComments(display_node));
+        doc.addParagraph().appendCodeBlock(formatCodeWithLeadingComments(displayNode));
     }
     else {
-        const std::string docComments = getDocCommentForHover(display_node, docCommentFormat);
+        const std::string docComments = getDocCommentForHover(displayNode, docCommentFormat);
         if (!docComments.empty())
             doc.addParagraph().appendText(docComments).newLine();
-        doc.addParagraph().appendCodeBlock(formatCode(display_node));
+        doc.addParagraph().appendCodeBlock(formatCode(displayNode));
     }
 }
 
@@ -167,7 +207,7 @@ lsp::MarkupContent DefinitionInfo::SymbolTarget::getHover(const SourceManager& s
                                                           BufferID /*docBuffer*/,
                                                           const Config::HoverConfig& hovers) const {
     markup::Document doc;
-    renderSymbolHeader(doc.addParagraph(), *symbol);
+    renderSymbolHeader(doc.addParagraph(), *symbol, analysis);
     syntax.renderCode(doc, hovers);
     syntax.renderMacroExpansion(doc, sm);
     return doc.build();
