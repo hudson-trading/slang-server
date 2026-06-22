@@ -82,6 +82,20 @@
         "insertTextFormat": "Snippet"
       },
       {
+        "label": "interface_consumer",
+        "labelDetails": {
+          "detail": " Module"
+        },
+        "kind": "Module",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nmodule interface_consumer (\n    transitive_if.consumer_mp bus\n);\n````"
+        },
+        "filterText": "interface_consumer",
+        "insertText": "interface_consumer ${1:interface_consumer} (\n    .bus(${2:bus})\n);",
+        "insertTextFormat": "Snippet"
+      },
+      {
         "label": "logic",
         "kind": "Keyword",
         "filterText": "logic"
@@ -116,6 +130,34 @@
         "filterText": "tb",
         "insertText": "tb ${1:tb} ();",
         "insertTextFormat": "Snippet"
+      },
+      {
+        "label": "transitive_if",
+        "labelDetails": {
+          "detail": " Interface"
+        },
+        "kind": "Module",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\ninterface transitive_if;\n````"
+        },
+        "filterText": "transitive_if",
+        "insertText": "transitive_if ${1:transitive_if} ();",
+        "insertTextFormat": "Snippet"
+      },
+      {
+        "label": "transitive_pkg",
+        "labelDetails": {
+          "detail": " Package"
+        },
+        "kind": "Module",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\npackage transitive_pkg;\n````"
+        },
+        "filterText": "transitive_pkg",
+        "insertText": "transitive_pkg",
+        "insertTextFormat": "PlainText"
       },
       {
         "label": "util_pkg",
@@ -352,6 +394,33 @@
           "value": "````systemverilog\ntypedef enum logic [1:0] {\n    IDLE = 2'b00,\n    ACTIVE = 2'b01,\n    WAIT = 2'b10\n} state_t;\n````"
         },
         "filterText": "state_t"
+      },
+      {
+        "label": "transitive_if",
+        "labelDetails": {
+          "detail": " Interface"
+        },
+        "kind": "Module",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\ninterface transitive_if;\n````"
+        },
+        "filterText": "transitive_if",
+        "insertText": "transitive_if"
+      },
+      {
+        "label": "transitive_pkg",
+        "labelDetails": {
+          "detail": " Package"
+        },
+        "kind": "Module",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\npackage transitive_pkg;\n````"
+        },
+        "filterText": "transitive_pkg",
+        "insertText": "transitive_pkg",
+        "insertTextFormat": "PlainText"
       },
       {
         "label": "u_sub",

@@ -76,6 +76,33 @@
         "filterText": "my_wire"
       },
       {
+        "label": "transitive_if",
+        "labelDetails": {
+          "detail": " Interface"
+        },
+        "kind": "Module",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\ninterface transitive_if;\n````"
+        },
+        "filterText": "transitive_if",
+        "insertText": "transitive_if"
+      },
+      {
+        "label": "transitive_pkg",
+        "labelDetails": {
+          "detail": " Package"
+        },
+        "kind": "Module",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\npackage transitive_pkg;\n````"
+        },
+        "filterText": "transitive_pkg",
+        "insertText": "transitive_pkg",
+        "insertTextFormat": "PlainText"
+      },
+      {
         "label": "util_pkg",
         "labelDetails": {
           "detail": " Package"
