@@ -388,7 +388,7 @@ module TestModule #(
                  ^^^^^^^^^^^^^^^ Sym inst_array_test : Variable
 
     assign inst_array_test = sub_inst[0].data_out + sub_inst[1].data_out;
-           ^^^^^^^^^^^^^^^ Ref -> **Variable** `inst_array_test` in `TestModule`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\Test instance array access - goto on sub_inst[0] should go to sub_inst declaration  \n\  \n\\n\\n\---\n\\n\`logic [15:0] inst_array_test;`
+           ^^^^^^^^^^^^^^^ Ref -> **Variable** `inst_array_test` in `TestModule`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\Test instance array access - goto on sub_inst[0] should go to sub_inst declaration  \n\  \n\\n\\n\---\n\\n\`logic [15:0] inst_array_test;\n\assign inst_array_test = sub_inst[0].data_out + sub_inst[1].data_out;`
                              ^^^^^^^^ Ref -> **InstanceArray** `sub_inst` in `TestModule`  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(16)) sub_inst [NUM_SUBS] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(sub_data_in),\n\    .data_out(sub_data_out)\n\);`
                                          ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
                                                     ^^^^^^^^ Ref -> **InstanceArray** `sub_inst` in `TestModule`  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(16)) sub_inst [NUM_SUBS] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(sub_data_in),\n\    .data_out(sub_data_out)\n\);`
