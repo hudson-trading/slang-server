@@ -14,19 +14,29 @@ More information on plugin features can be [found here](https://hudson-trading.g
 * `slang-server` configured as a Neovim language server
 * [Nerd Font](https://www.nerdfonts.com/) is recommended
 
+### Plugin dependencies
+
+If installing with lazy.nvim, plugin dependencies are resolved automatically.
+
+* [nui.nvim](https://github.com/MunifTanjim/nui.nvim)
+
 ## Installation
-Use your favorite Neovim plugin manager to download and install the plugin.  If you happen to use lazy.nvim you can [install the plugin](https://www.lazyvim.org/configuration/plugins) by adding `~/.config/nvim/lua/plugins/slang-server.lua`:
+
+You can use your favorite Neovim plugin manager to download and install the plugin. If you happen to use lazy.nvim you can install the plugin by adding, e.g., `~/.config/nvim/lua/plugins/slang-server.lua`:
+
 ```lua
 return {
   {
     "hudson-trading/slang-server.nvim",
-    dependencies = {
-      "MunifTanjim/nui.nvim",
-    },
-    opts = {},
   },
 }
 ```
+
+The plugin is lazily loaded by default on the first invocation of a `:SlangServer` command, so there's no need to rely on a plugin manager for lazy loading. To install without a plugin manager, simply clone and place the plugin directory in your Neovim runtimepath.
+
+## Configuration
+
+The default configuration can be found in [config.lua](./lua/slang-server/_core/config.lua). Override options can be defined in the global `vim.g.slang_server_config`, or passed to `opts = {...}` in the lazy.nvim plugin spec.
 
 ## GitHub Repos
 

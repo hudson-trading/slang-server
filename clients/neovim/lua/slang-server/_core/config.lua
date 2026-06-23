@@ -3,14 +3,14 @@ local M = {}
 ---@type slang-server.config.Configuration
 M.CONFIG = {}
 
-vim.g.loaded_slang_server = false
-
 ---@type slang-server.config.Configuration
 local default_config = {
+   -- Hierarchy split window layout
    hierarchy = {
       position = "left",
       size = 40,
    },
+   -- Icon and highlight group for each element kind show in the hierarchy view
    kinds = {
       instance = { icon = "", hl = "SlangServerInstance" },
       instancearray = { icon = "", hl = "SlangServerInstanceArray" },
@@ -26,6 +26,7 @@ local default_config = {
       logic = { icon = "󱒖", hl = "SlangServerLogic" },
       reg = { icon = "", hl = "SlangServerReg" },
    },
+   -- Default colors for the highlight groups; can be overridden by your colorscheme
    highlights = {
       SlangServerInstance = { fg = "#efbd5d" },
       SlangServerInstanceArray = { fg = "#efbd5d" },
@@ -41,18 +42,14 @@ local default_config = {
    },
 }
 
-M.initialise = function()
-   if not vim.g.loaded_slang_server then
-      M.update(default_config)
-      M.update(vim.g.slang_server_config)
-
-      vim.g.loaded_slang_server = true
-   end
-end
-
 ---@param opts slang-server.config.Configuration?
 M.update = function(opts)
    M.CONFIG = vim.tbl_deep_extend("force", M.CONFIG, opts or {})
 end
+
+M.update(default_config)
+
+-- User config can be provided as a vim global, rather than an argument to setup()
+M.update(vim.g.slang_server_config)
 
 return M

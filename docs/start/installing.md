@@ -10,83 +10,15 @@ Install from your editor, or download from the [OpenVSX Marketplace](https://ope
 
 ### Neovim
 
-> `slang-server` will eventually be added to [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig) and [mason.nvim](https://github.com/mason-org/mason.nvim) so that no additional configuration will be required. Until then, follow one of the methods below to manually add the server configuration.
+`slang-server` is available in [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig) as `slang_server` (note the underscore) and in the [mason.nvim](https://github.com/mason-org/mason.nvim) package registry as `slang-server`, so no additional configuration is required in most cases. The default configuration shipped with nvim-lspconfig can be found [here](https://github.com/neovim/nvim-lspconfig/blob/master/lsp/slang_server.lua).
 
-For newer versions of Neovim (≥ v0.11), the new [vim.lsp API](<https://neovim.io/doc/user/lsp.html#vim.lsp.start()>) is the preferred, simpler way to configure language servers:
+Install the binary via `:MasonInstall slang-server` (or otherwise place it on `PATH`), then enable the server with `vim.lsp.enable("slang_server")`, or follow your own Neovim configuration's convention for enabling servers.
 
-```lua
-vim.lsp.config("slang-server", {
-  cmd = { "slang-server" },
-  root_markers = { ".git", ".slang" },
-  filetypes = {
-    "systemverilog",
-    "verilog",
-  },
-})
+Restart and run `:LspInfo` to make sure the LSP was correctly installed.
 
-vim.lsp.enable("slang-server")
-```
+#### Enhanced features
 
-Alternatively, adding the below to `<runtimepath>/lsp/slang_server.lua` will automatically be picked up by `vim.lsp`:
-
-```lua
----@type vim.lsp.Config
-return {
-  cmd = { "slang-server" },
-  root_markers = { ".git", ".slang" },
-  filetypes = {
-    "systemverilog",
-    "verilog",
-  },
-}
-```
-
-For older versions of Neovim (< v0.11) with `nvim-lspconfig`, the server can be configured with:
-
-```lua
-local configs = require("lspconfig.configs")
-local util = require("lspconfig.util")
-
-if not configs.slang_server then
-  configs.slang_server = {
-    default_config = {
-      cmd = {
-        "slang-server",
-      },
-      filetypes = {
-        "systemverilog",
-        "verilog",
-      },
-      single_file_support = true,
-      root_dir = function(fname)
-        return util.root_pattern(".git", ".slang")(fname)
-      end,
-    },
-  }
-end
-```
-
-For users of lazy.nvim, natively enable the server by adding the following to `<runtimepath>/lua/plugins/slang_server.lua`:
-
-```lua
-return {
-  "neovim/nvim-lspconfig",
-  opts = {
-    servers = {
-      slang_server = {
-        -- Tell LazyVim that Mason isn't needed since this is a manual config
-        mason = false,
-      },
-    },
-  },
-}
-```
-
-The above assumes that a slang-server config has been added to `vim.lsp.config` or `nvim-lspconfig` using one of the preceding steps.
-
-Optionally, run `:LspInfo` to make sure the LSP was correctly installed.
-
-Pointing at the binary is all you need for standard language features, however a plugin is provided to enable some client-side features which extend the LSP (e.g. the hierarchy view, waveform integration). The plugin can be found in `clients/neovim/` and is also mirrored in [slang-server.nvim](https://github.com/hudson-trading/slang-server.nvim) for ease of use with Neovim plugin managers.
+Once the language server is installed, it is recommended to install the [slang-server.nvim](https://github.com/hudson-trading/slang-server.nvim) plugin; this provides enhanced HDL specific features such as design hierarchy view and waveform integration.
 
 ### Other editors
 

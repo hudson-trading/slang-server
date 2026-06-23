@@ -1,10 +1,8 @@
 rockspec_format = "3.0"
 package = "slang-server.nvim"
 version = "scm-1"
--- NOCOMMIT -- don't point at fork, also what does this do?
 source = {
-   -- TODO: Update this URL
-   url = "git+https://github.com/toddstrader/slang-server.nvim",
+   url = "git+https://github.com/hudson-trading/slang-server.nvim",
 }
 dependencies = {
    -- Add runtime dependencies here

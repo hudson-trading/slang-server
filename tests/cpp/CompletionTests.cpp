@@ -56,8 +56,8 @@ TEST_CASE("SystemTaskCompletion") {
 
     auto display = findByLabel("$display");
     REQUIRE(display != comps.end());
-    CHECK(display->m_item.filterText == "$display");
-    CHECK(display->m_item.insertText == "\\$display(\"${1:format}\", $0)");
+    CHECK(display->m_item.filterText == "display");
+    CHECK(display->m_item.insertText == "display(\"${1:format}\", $0)");
     CHECK(display->m_item.insertTextFormat == lsp::InsertTextFormat::Snippet);
     REQUIRE(display->m_item.labelDetails);
     CHECK(display->m_item.labelDetails->detail == " task $display(string format = \"\", ...)");
@@ -65,48 +65,48 @@ TEST_CASE("SystemTaskCompletion") {
 
     auto fdisplay = findByLabel("$fdisplay");
     REQUIRE(fdisplay != comps.end());
-    CHECK(fdisplay->m_item.filterText == "$fdisplay");
-    CHECK(fdisplay->m_item.insertText == "\\$fdisplay(${1:fd}, \"${2:format}\", $0)");
+    CHECK(fdisplay->m_item.filterText == "fdisplay");
+    CHECK(fdisplay->m_item.insertText == "fdisplay(${1:fd}, \"${2:format}\", $0)");
     CHECK(fdisplay->m_item.insertTextFormat == lsp::InsertTextFormat::Snippet);
 
     auto fatal = findByLabel("$fatal");
     REQUIRE(fatal != comps.end());
-    CHECK(fatal->m_item.insertText == "\\$fatal()");
+    CHECK(fatal->m_item.insertText == "fatal()");
     REQUIRE(fatal->m_item.labelDetails);
     CHECK(fatal->m_item.labelDetails->detail ==
           " task $fatal(int finish_number = 1, string format = \"\", ...)");
 
     auto clog2 = findByLabel("$clog2");
     REQUIRE(clog2 != comps.end());
-    CHECK(clog2->m_item.filterText == "$clog2");
-    CHECK(clog2->m_item.insertText == "\\$clog2(${1:integer_value})");
+    CHECK(clog2->m_item.filterText == "clog2");
+    CHECK(clog2->m_item.insertText == "clog2(${1:integer_value})");
     CHECK(clog2->m_item.insertTextFormat == lsp::InsertTextFormat::Snippet);
     REQUIRE(clog2->m_item.labelDetails);
     CHECK(clog2->m_item.labelDetails->detail == " function int $clog2(integer_value)");
 
     auto testPlusArgs = findByLabel("$test$plusargs");
     REQUIRE(testPlusArgs != comps.end());
-    CHECK(testPlusArgs->m_item.filterText == "$test$plusargs");
-    CHECK(testPlusArgs->m_item.insertText == "\\$test\\$plusargs(${1:user_string})");
+    CHECK(testPlusArgs->m_item.filterText == "test$plusargs");
+    CHECK(testPlusArgs->m_item.insertText == "test\\$plusargs(${1:user_string})");
     CHECK(testPlusArgs->m_item.insertTextFormat == lsp::InsertTextFormat::Snippet);
 
     auto fopen = findByLabel("$fopen");
     REQUIRE(fopen != comps.end());
-    CHECK(fopen->m_item.insertText == "\\$fopen(${1:filename})");
+    CHECK(fopen->m_item.insertText == "fopen(${1:filename})");
     REQUIRE(fopen->m_item.labelDetails);
     CHECK(fopen->m_item.labelDetails->detail ==
           " function int $fopen(string filename[, string type])");
 
     auto urandomRange = findByLabel("$urandom_range");
     REQUIRE(urandomRange != comps.end());
-    CHECK(urandomRange->m_item.insertText == "\\$urandom_range(${1:maxval})");
+    CHECK(urandomRange->m_item.insertText == "urandom_range(${1:maxval})");
     REQUIRE(urandomRange->m_item.labelDetails);
     CHECK(urandomRange->m_item.labelDetails->detail ==
           " function bit [31:0] $urandom_range(bit [31:0] maxval[, bit [31:0] minval])");
 
     auto fflush = findByLabel("$fflush");
     REQUIRE(fflush != comps.end());
-    CHECK(fflush->m_item.insertText == "\\$fflush()");
+    CHECK(fflush->m_item.insertText == "fflush()");
 
     CHECK(findByLabel("randomize") == comps.end());
 }
