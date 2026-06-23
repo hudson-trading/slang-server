@@ -116,6 +116,23 @@ void renderSymbolHeader(markup::Paragraph& infoPg, const ast::Symbol& symbol,
         infoPg.appendText("Type: ").appendText(typeStr).newLine();
     }
 
+    auto appendTypeParameterValue = [&](const ast::Type& type) {
+        if (!type.isError()) {
+            infoPg.appendText("Value: ").appendText(getHoverTypeString(type)).newLine();
+        }
+    };
+
+    if (auto* typeParam = symbol.as_if<ast::TypeParameterSymbol>()) {
+        appendTypeParameterValue(typeParam->targetType.getType());
+    }
+    else if (auto* typeAlias = symbol.as_if<ast::TypeAliasType>()) {
+        auto* syntax = typeAlias->getSyntax();
+        if (syntax && syntax->parent &&
+            syntax->parent->kind == syntax::SyntaxKind::TypeParameterDeclaration) {
+            appendTypeParameterValue(typeAlias->targetType.getType());
+        }
+    }
+
     // Values for elab-known values like parameters, type aliases, and enum values
     if (ast::ParameterSymbol::isKind(symbol.kind)) {
         auto& param = symbol.as<ast::ParameterSymbol>();
