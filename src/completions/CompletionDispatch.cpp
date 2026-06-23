@@ -163,7 +163,12 @@ void CompletionDispatch::getCompletions(std::vector<lsp::CompletionItem>& result
         m_lastScope = scope ? scope->asSymbol().getHierarchicalPath() : "";
         INFO("Getting hier completions for symbol {} in scope {}", sym->name,
              sym->getHierarchicalPath());
+        std::string_view prevLabel;
         for (auto& member : scope->members()) {
+            if (member.name.empty() || member.name == prevLabel) {
+                continue;
+            }
+            prevLabel = member.name;
             results.push_back(completions::getHierarchicalCompletion(*sym, member));
         }
     }

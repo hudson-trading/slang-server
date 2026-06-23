@@ -8,6 +8,7 @@
 #define CATCH_CONFIG_RUNNER
 #include "ServerHarness.h"
 #include <fstream>
+#include <unordered_set>
 
 DocumentHandle ServerHarness::openFile(std::string fileName) {
     auto root = m_workspaceFolder ? (m_workspaceFolder->uri.getPath()) : findSlangRoot();
@@ -401,8 +402,14 @@ std::vector<lsp::CompletionItem> Cursor::getResolvedCompletions(
     auto completions = getCompletions(triggerChar);
     std::vector<lsp::CompletionItem> resolvedItems;
     resolvedItems.reserve(completions.size());
+    std::unordered_set<std::string> rawLabels;
 
     for (auto& completion : completions) {
+        // No empty labels
+        REQUIRE(!completion.m_item.label.empty());
+        CAPTURE(completion.m_item.label);
+        // Unique labels
+        REQUIRE(rawLabels.insert(completion.m_item.label).second);
         completion.resolve();
         resolvedItems.push_back(completion.m_item);
     }

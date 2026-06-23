@@ -293,6 +293,79 @@ lsp::CompletionItemKind getCompletionKind(const slang::ast::Symbol& symbol) {
     }
 };
 
+std::string getMemberCompletionDetail(const slang::ast::Symbol& symbol) {
+    // Detail str is shown in the dropdown next to the names; show brief type information, fall back
+    // to kind. The kind is already revealed in the icon (completionKind above), so we don't need to
+    // repeat this.
+    std::string detailStr;
+
+    if (slang::ast::SubroutineSymbol::isKind(symbol.kind)) {
+        auto& subroutine = symbol.as<slang::ast::SubroutineSymbol>();
+        detailStr = subroutineString(subroutine.subroutineKind);
+    }
+    else if (symbol.kind == slang::ast::SymbolKind::TypeAlias) {
+        auto& typeAlias = symbol.as<slang::ast::TypeAliasType>();
+        auto& unwrapped = typeAlias.getCanonicalType();
+        if (unwrapped.kind != ast::SymbolKind::ErrorType) {
+            detailStr = toString(unwrapped.kind);
+        }
+        else {
+            detailStr = "TypeAlias";
+        }
+    }
+    else if (slang::ast::InterfacePortSymbol::isKind(symbol.kind)) {
+        auto& port = symbol.as<slang::ast::InterfacePortSymbol>();
+        detailStr = port.interfaceDef ? std::string{port.interfaceDef->name} : "interface";
+        if (!port.modport.empty()) {
+            detailStr += ".";
+            detailStr += port.modport;
+        }
+    }
+    else if (slang::ast::PortSymbol::isKind(symbol.kind)) {
+        auto& port = symbol.as<slang::ast::PortSymbol>();
+        detailStr = portString(port.direction) + " " + port.getType().toString();
+    }
+    else if (slang::ast::InstanceSymbol::isKind(symbol.kind)) {
+        auto& defName = symbol.as<slang::ast::InstanceSymbol>().getDefinition().name;
+        detailStr = std::string{defName};
+    }
+    else if (slang::ast::InstanceArraySymbol::isKind(symbol.kind)) {
+        auto& arr = symbol.as<slang::ast::InstanceArraySymbol>();
+        if (arr.elements.empty()) {
+            detailStr = toString(symbol.kind);
+        }
+        else {
+            auto& defName =
+                arr.elements.front()->as<slang::ast::InstanceSymbol>().getDefinition().name;
+            detailStr = fmt::format("{}[{}]", defName, arr.elements.size());
+        }
+    }
+    else {
+        bool supportsDeclaredTypeDetail = slang::ast::ValueSymbol::isKind(symbol.kind) ||
+                                          slang::ast::ParameterSymbol::isKind(symbol.kind) ||
+                                          slang::ast::TypeParameterSymbol::isKind(symbol.kind);
+        auto declType = symbol.getDeclaredType();
+        // For value symbols, unwrap their type to see in the dropdown, and go one layer up for
+        // the syntax to include the type
+        if (supportsDeclaredTypeDetail && declType && declType->getTypeSyntax()) {
+            auto typeSyntax = declType->getTypeSyntax();
+            if (typeSyntax) {
+                detailStr = slang::syntax::SyntaxPrinter()
+                                .setIncludeComments(false)
+                                .print(*typeSyntax)
+                                .str();
+            }
+        }
+        else if (supportsDeclaredTypeDetail) {
+            detailStr = toString(symbol.kind);
+        }
+    }
+
+    ltrim(detailStr);
+    squashSpaces(detailStr);
+    return detailStr;
+}
+
 lsp::CompletionItem getHierarchicalCompletion(const slang::ast::Symbol& parentSymbol,
                                               const slang::ast::Symbol& symbol) {
 
@@ -321,64 +394,9 @@ lsp::CompletionItem getHierarchicalCompletion(const slang::ast::Symbol& parentSy
 lsp::CompletionItem getMemberCompletion(const slang::ast::Symbol& symbol,
                                         const slang::ast::Scope* currentScope) {
 
-    // Detail str is shown in the dropdown next to the names; show brief type information, fall back
-    // to kind. The kind is already revealed in the icon (completionKind above), so we don't need to
-    // repeat this.
-    std::string detailStr;
+    auto detailStr = getMemberCompletionDetail(symbol);
 
-    if (slang::ast::SubroutineSymbol::isKind(symbol.kind)) {
-        auto& subroutine = symbol.as<slang::ast::SubroutineSymbol>();
-        detailStr = subroutineString(subroutine.subroutineKind);
-    }
-    else if (symbol.kind == slang::ast::SymbolKind::TypeAlias) {
-        auto& typeAlias = symbol.as<slang::ast::TypeAliasType>();
-        auto& unwrapped = typeAlias.getCanonicalType();
-        if (unwrapped.kind != ast::SymbolKind::ErrorType) {
-            detailStr = toString(unwrapped.kind);
-        }
-        else {
-            detailStr = "TypeAlias";
-        }
-    }
-    else if (slang::ast::ValueSymbol::isKind(symbol.kind) ||
-             slang::ast::PortSymbol::isKind(symbol.kind) ||
-             slang::ast::ParameterSymbol::isKind(symbol.kind) ||
-             slang::ast::TypeParameterSymbol::isKind(symbol.kind) ||
-             slang::ast::InterfacePortSymbol::isKind(symbol.kind)) {
-
-        auto declType = symbol.getDeclaredType();
-        // For value symbols, unwrap their type to see in the dropdown, and go one layer up for the
-        // syntax to include the type
-        if (declType && declType->getTypeSyntax()) {
-            auto typeSyntax = declType->getTypeSyntax();
-            if (typeSyntax) {
-                detailStr = slang::syntax::SyntaxPrinter()
-                                .setIncludeComments(false)
-                                .print(*typeSyntax)
-                                .str();
-            }
-        }
-        else if (slang::ast::PortSymbol::isKind(symbol.kind)) {
-            auto& port = symbol.as<slang::ast::PortSymbol>();
-            detailStr = portString(port.direction) + " " + port.getType().toString();
-        }
-        else if (slang::ast::InterfacePortSymbol::isKind(symbol.kind)) {
-            auto ifaceConn = symbol.as<slang::ast::InterfacePortSymbol>().getConnection();
-            detailStr = fmt::format("{}.{}", ifaceConn.first ? ifaceConn.first->name : "<generic>",
-                                    ifaceConn.second ? ifaceConn.second->name : "<generic>");
-        }
-        else {
-            detailStr = toString(symbol.kind);
-        }
-    }
-    else if (slang::ast::InstanceSymbol::isKind(symbol.kind)) {
-        auto& defName = symbol.as<slang::ast::InstanceSymbol>().getDefinition().name;
-        detailStr = std::string{defName};
-    }
-    ltrim(detailStr);
-    squashSpaces(detailStr);
-
-    // Check if symbol is from a different scope and add hierarchical path
+    // Check if symbol is from a different scope and add lexical path
     std::optional<std::string> descriptionStr;
     if (currentScope == nullptr ||
         (symbol.getParentScope() && symbol.getParentScope() != currentScope)) {

@@ -341,10 +341,16 @@ TEST_CASE("ModuleMemberCompletion") {
     JsonGoldenTest golden;
 
     auto doc = server.openFile("module_test.sv", R"(
+    interface bus_if;
+        logic valid;
+        modport master(output valid);
+    endinterface
+
     module test_module (
         input  logic        clk,
         input  logic        rst,
-        output logic [7:0]  data_out
+        output logic [7:0]  data_out,
+        bus_if.master       bus_port
     );
         // Local variables of different types
         logic internal_signal;
