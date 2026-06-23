@@ -642,15 +642,4 @@ std::vector<const slang::analysis::ValueDriver*> ShallowAnalysis::getDrivers(
 
     return manager->getDrivers(symbol);
 }
-
-std::vector<const slang::analysis::ValueDriver*> ShallowAnalysis::getDrivers(
-    const slang::ast::ValueSymbol& symbol) {
-    auto* manager = getAnalysisManager();
-    if (!manager) {
-        return {};
-    }
-
-    return manager->getDrivers(symbol);
-}
-
 } // namespace server
