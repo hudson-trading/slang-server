@@ -43,6 +43,10 @@ bool isExpressionContext(SyntaxKind kind) {
 
         // Value initializers
         case SyntaxKind::EqualsValueClause:
+        // Macro arguments are unparsed source text from the caller. Treat them like expression
+        // positions so value completions remain available inside macro usages.
+        case SyntaxKind::MacroActualArgument:
+        case SyntaxKind::MacroActualArgumentList:
             return true;
         default:
             return false;
