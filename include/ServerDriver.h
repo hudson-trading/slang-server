@@ -8,7 +8,6 @@
 #pragma once
 
 #include "Config.h"
-#include "document/DefinitionInfo.h"
 #include "ServerDiagClient.h"
 #include "SlangLspClient.h"
 #include "ast/ServerCompilation.h"
