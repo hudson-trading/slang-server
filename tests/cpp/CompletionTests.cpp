@@ -35,6 +35,27 @@ TEST_CASE("MacroCompletion") {
     CHECK(doc2.begin().getCompletions("`").size() == 2);
 }
 
+TEST_CASE("MacroArgumentCompletion") {
+    ServerHarness server("repo1");
+
+    auto doc = server.openFile("macro_arg_completion.sv", R"(
+    `define ASSIGN(lhs, rhs) assign lhs = rhs
+
+    module top;
+        logic source_signal;
+        logic target_signal;
+
+        `ASSIGN(target_signal, sour)
+    endmodule
+    )");
+
+    auto comps = doc.after("`ASSIGN(target_signal, sour").getCompletions();
+    auto it = std::find_if(comps.begin(), comps.end(), [](const CompletionHandle& item) {
+        return item.m_item.label == "source_signal";
+    });
+    REQUIRE(it != comps.end());
+}
+
 TEST_CASE("SystemTaskCompletion") {
     ServerHarness server("repo1");
 
