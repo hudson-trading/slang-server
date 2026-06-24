@@ -643,7 +643,12 @@ std::vector<const slang::analysis::ValueDriver*> ShallowAnalysis::getDrivers(
     return manager->getDrivers(symbol);
 }
 
-lsp::SemanticTokens ShallowAnalysis::getSemanticTokens(bool inactiveRegionsSupported) {
+lsp::SemanticTokens ShallowAnalysis::getSemanticTokens(const bool inactiveRegionsSupported,
+                                                       const Config::SemanticTokensConfig& cfg) {
+    if (!cfg.enabled.value()) {
+        return lsp::SemanticTokens{.data = {}};
+    }
+
     struct SemanticTokenInfo {
         lsp::uint line;
         lsp::uint character;
@@ -654,7 +659,17 @@ lsp::SemanticTokens ShallowAnalysis::getSemanticTokens(bool inactiveRegionsSuppo
 
     std::vector<SemanticTokenInfo> tokens;
 
-    if (!inactiveRegionsSupported) {
+    // In the future if/when more semantic tokens are added then this can be made a lot more
+    // efficient
+    bool inactiveDisabled = inactiveRegionsSupported;
+    for (auto kind : cfg.disabledKinds.value()) {
+        if (kind == Config::SemanticTokensConfig::SemanticTokenKind::InactiveCode) {
+            inactiveDisabled = true;
+            break;
+        }
+    }
+
+    if (!inactiveDisabled) {
         for (const auto& region : syntaxes.disabledRegions) {
             const auto range = toRange(region, m_sourceManager);
 

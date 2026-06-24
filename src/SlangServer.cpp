@@ -863,7 +863,8 @@ std::optional<lsp::SemanticTokens> SlangServer::getDocSemanticTokensFull(
         };
     }
 
-    return analysis->getSemanticTokens(m_client.experimentalCapabilities.inactiveRegionsSupported);
+    return analysis->getSemanticTokens(m_client.experimentalCapabilities.inactiveRegionsSupported,
+                                       m_config.semanticTokens.value());
 }
 
 SourceManager& SlangServer::sourceManager() {

@@ -100,6 +100,10 @@
           "items": {
             "$ref": "#/$defs/Config__Build"
           }
+        },
+        "semanticTokens": {
+          "$ref": "#/$defs/Config__SemanticTokensConfig",
+          "description": "Configure semantic highlighting."
         }
       },
       "required": []
@@ -201,6 +205,26 @@
         "macroArgNames": {
           "type": "integer",
           "description": "Macro argument hints: 0=off, N=only calls with >=N args"
+        }
+      },
+      "required": []
+    },
+    "Config__SemanticTokensConfig": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Whether semantic tokens should be provided by the server.",
+          "type": "boolean"
+        },
+        "disabledKinds": {
+          "type": "array",
+          "description": "Specify semantic token kinds that slang-server should not send to client.",
+          "items": {
+            "type": "string",
+            "enum": [
+              "InactiveCode"
+            ]
+          }
         }
       },
       "required": []
