@@ -122,7 +122,8 @@ public:
 
     /// @brief Gets semantic tokens for the document
     /// @param inactiveRegionsSupported If inactive regions aren't supported, include them as tokens
-    lsp::SemanticTokens getSemanticTokens(bool inactiveRegionsSupported);
+    lsp::SemanticTokens getSemanticTokens(const bool inactiveRegionsSupported,
+                                          const Config::SemanticTokensConfig& cfg);
 
     /// Syntax finder for location->syntax mapping
     SyntaxIndexer syntaxes;
