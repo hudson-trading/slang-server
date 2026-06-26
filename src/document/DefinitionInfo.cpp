@@ -47,7 +47,7 @@ const syntax::SyntaxNode* getDriverDisplayNode(const ShallowAnalysis& analysis,
 
     if (driversCount > 1) {
         // If there's more than one continuous assign driver, then there's an error
-        // in the code and we early exit
+        // in the code and we early exit.
         return nullptr;
     }
 
@@ -60,12 +60,8 @@ const syntax::SyntaxNode* getDriverDisplayNode(const ShallowAnalysis& analysis,
     auto node = analysis.syntaxes.getSyntaxAt(loc);
 
     for (auto cur = node; cur; cur = cur->parent) {
-        switch (cur->kind) {
-            case syntax::SyntaxKind::ContinuousAssign:
-                return &selectDisplayNode(*cur);
-
-            default:
-                break;
+        if (cur->kind == syntax::SyntaxKind::ContinuousAssign) {
+            return &selectDisplayNode(*cur);
         }
     }
 
