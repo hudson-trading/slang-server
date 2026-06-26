@@ -643,6 +643,8 @@ std::vector<const slang::analysis::ValueDriver*> ShallowAnalysis::getDrivers(
     return manager->getDrivers(symbol);
 }
 
+/// TODO: When more tokens are added we need to ensure that they aren't overlapping unless the
+/// client supports `overlappingTokenSupport`
 lsp::SemanticTokens ShallowAnalysis::getSemanticTokens(const bool inactiveRegionsSupported,
                                                        const Config::SemanticTokensConfig& cfg) {
     if (!cfg.enabled.value()) {
