@@ -221,52 +221,35 @@ void renderMacroHeader(markup::Paragraph& infoPg, const DefinitionInfo::MacroTar
 } // namespace
 
 void DefinitionInfo::SyntaxTarget::renderCode(markup::Document& doc,
-                                              const Config::HoverConfig& hovers) const {
-    const syntax::SyntaxNode& displayNode = selectDisplayNode(*node);
-    const auto docCommentFormat = hovers.docCommentFormat.value();
-
-    if (docCommentFormat == Config::HoverConfig::DocCommentFormat::raw) {
-        // Print the node verbatim with its leading comments in a single code block
-        doc.addParagraph().appendCodeBlock(formatCodeWithLeadingComments(displayNode));
-    }
-    else {
-        const std::string docComments = getDocCommentForHover(displayNode, docCommentFormat);
-        if (!docComments.empty())
-            doc.addParagraph().appendText(docComments).newLine();
-        doc.addParagraph().appendCodeBlock(formatCode(displayNode));
-    }
-}
-
-void DefinitionInfo::SyntaxTarget::renderCode(markup::Document& doc,
                                               const Config::HoverConfig& hovers,
                                               const syntax::SyntaxNode* extraDisplayNode) const {
+
     const syntax::SyntaxNode& displayNode = selectDisplayNode(*node);
     const auto docCommentFormat = hovers.docCommentFormat.value();
 
+    auto appendExtraDisplayNode = [&](std::string& code) {
+        if (extraDisplayNode) {
+            code += "\n";
+            code += formatCode(*extraDisplayNode);
+        }
+    };
+
     if (docCommentFormat == Config::HoverConfig::DocCommentFormat::raw) {
-        // Print the node verbatim with its leading comments in a single code block
+        // Print the node verbatim with its leading comments in a single code block.
         std::string code = formatCodeWithLeadingComments(displayNode);
-
-        if (extraDisplayNode) {
-            code += "\n";
-            code += formatCode(*extraDisplayNode);
-        }
-
+        appendExtraDisplayNode(code);
         doc.addParagraph().appendCodeBlock(code);
+        return;
     }
-    else {
-        const std::string docComments = getDocCommentForHover(displayNode, docCommentFormat);
-        if (!docComments.empty())
-            doc.addParagraph().appendText(docComments).newLine();
-        std::string code = formatCode(displayNode);
 
-        if (extraDisplayNode) {
-            code += "\n";
-            code += formatCode(*extraDisplayNode);
-        }
-
-        doc.addParagraph().appendCodeBlock(code);
+    const std::string docComments = getDocCommentForHover(displayNode, docCommentFormat);
+    if (!docComments.empty()) {
+        doc.addParagraph().appendText(docComments).newLine();
     }
+
+    std::string code = formatCode(displayNode);
+    appendExtraDisplayNode(code);
+    doc.addParagraph().appendCodeBlock(code);
 }
 
 void DefinitionInfo::SyntaxTarget::renderMacroExpansion(markup::Document& doc,
