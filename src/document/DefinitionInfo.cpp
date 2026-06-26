@@ -35,39 +35,6 @@ using namespace slang;
 
 namespace {
 
-/// Obtains the driver display node if available. Currently it only collects
-/// continuous assignment drivers (ie: `assign`) since they are guaranteed to only have a single
-/// driver node (except for `tri` and maybe others).
-const syntax::SyntaxNode* getDriverDisplayNode(const ShallowAnalysis& analysis,
-                                               const slang::analysis::ValueDriver& driver,
-                                               const std::size_t driversCount) {
-    if (driver.kind != slang::analysis::DriverKind::Continuous) {
-        return nullptr;
-    }
-
-    if (driversCount > 1) {
-        // If there's more than one continuous assign driver, then there's an error
-        // in the code and we early exit.
-        return nullptr;
-    }
-
-    const auto range = driver.getSourceRange();
-    if (range == SourceRange::NoLocation) {
-        return nullptr;
-    }
-
-    const auto loc = analysis.getSourceManager().getFullyOriginalLoc(range.start());
-    const auto node = analysis.syntaxes.getSyntaxAt(loc);
-
-    for (auto cur = node; cur; cur = cur->parent) {
-        if (cur->kind == syntax::SyntaxKind::ContinuousAssign) {
-            return &selectDisplayNode(*cur);
-        }
-    }
-
-    return nullptr;
-}
-
 const syntax::SyntaxNode* renderSymbolHeader(markup::Paragraph& infoPg, const ast::Symbol& symbol,
                                              const std::shared_ptr<ShallowAnalysis>& analysis) {
     // <Kind/Type> <Name> in <Scope>
@@ -142,7 +109,30 @@ const syntax::SyntaxNode* renderSymbolHeader(markup::Paragraph& infoPg, const as
 
                 infoPg.appendText("Driver: ").appendCode(driverStr).newLine();
 
-                extraDisplayNode = getDriverDisplayNode(*analysis, *uniqueDriver, drivers.size());
+                if (uniqueDriver->kind != slang::analysis::DriverKind::Continuous) {
+                    return nullptr;
+                }
+
+                // Currently it only collects continuous assignment drivers (ie: `assign`) since
+                // they are guaranteed to only have a single driver node (except for `tri` and maybe
+                // others).
+                if (drivers.size() > 1) {
+                    return nullptr;
+                }
+
+                const auto range = uniqueDriver->getSourceRange();
+                if (range == SourceRange::NoLocation) {
+                    return nullptr;
+                }
+
+                const auto loc = analysis->getSourceManager().getFullyOriginalLoc(range.start());
+                const auto node = analysis->syntaxes.getSyntaxAt(loc);
+
+                for (auto cur = node; cur; cur = cur->parent) {
+                    if (cur->kind == syntax::SyntaxKind::ContinuousAssign) {
+                        extraDisplayNode = &selectDisplayNode(*cur);
+                    }
+                }
             }
         }
     }
@@ -226,7 +216,14 @@ void DefinitionInfo::SyntaxTarget::renderCode(markup::Document& doc,
     auto appendExtraDisplayNode = [&](std::string& code) {
         if (extraDisplayNode) {
             code += "\n";
-            code += formatCode(*extraDisplayNode);
+
+            const auto formattedCode = formatCode(*extraDisplayNode);
+
+            // Catches when people have long if/else (?/:) chains
+            // 300 is completely arbitrary and could probably be made into a config option or
+            // a compile time constant
+            if (formattedCode.size() <= 300)
+                code += formattedCode;
         }
     };
 
