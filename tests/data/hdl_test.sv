@@ -124,6 +124,10 @@ module TestModule #(
     logic thing;
     assign thing = inst_array_test[0] ? 1'b1 : 1'b0;
 
+    `define MY_MACRO_SIGNAL_MACRO 1'b1
+    logic my_macro_signal;
+    assign my_macro_signal = `MY_MACRO_SIGNAL_MACRO;
+
     always_ff @(posedge clk) begin
         if (rst) begin
             state   <= test_pkg::STATE_A;

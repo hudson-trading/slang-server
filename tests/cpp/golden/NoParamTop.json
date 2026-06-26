@@ -3,11 +3,11 @@
     {
       "range": {
         "start": {
-          "line": 166,
+          "line": 170,
           "character": 26
         },
         "end": {
-          "line": 166,
+          "line": 170,
           "character": 39
         }
       },
@@ -21,11 +21,11 @@
     {
       "range": {
         "start": {
-          "line": 199,
+          "line": 203,
           "character": 9
         },
         "end": {
-          "line": 199,
+          "line": 203,
           "character": 17
         }
       },
@@ -39,11 +39,11 @@
     {
       "range": {
         "start": {
-          "line": 212,
+          "line": 216,
           "character": 13
         },
         "end": {
-          "line": 212,
+          "line": 216,
           "character": 21
         }
       },
@@ -135,11 +135,29 @@
     {
       "range": {
         "start": {
-          "line": 141,
+          "line": 127,
+          "character": 10
+        },
+        "end": {
+          "line": 127,
+          "character": 25
+        }
+      },
+      "severity": "Warning",
+      "code": "unused-but-set-variable",
+      "codeDescription": {
+        "href": "https://sv-lang.com/warning-ref.html#unused-but-set-variable"
+      },
+      "message": "variable 'my_macro_signal' is assigned but its value is never used"
+    },
+    {
+      "range": {
+        "start": {
+          "line": 145,
           "character": 14
         },
         "end": {
-          "line": 141,
+          "line": 145,
           "character": 19
         }
       },
@@ -153,11 +171,11 @@
     {
       "range": {
         "start": {
-          "line": 276,
+          "line": 280,
           "character": 20
         },
         "end": {
-          "line": 276,
+          "line": 280,
           "character": 32
         }
       },
@@ -171,11 +189,11 @@
     {
       "range": {
         "start": {
-          "line": 287,
+          "line": 291,
           "character": 12
         },
         "end": {
-          "line": 287,
+          "line": 291,
           "character": 30
         }
       },
@@ -191,11 +209,11 @@
             "uri": "file://hdl_test.sv",
             "range": {
               "start": {
-                "line": 368,
+                "line": 372,
                 "character": 8
               },
               "end": {
-                "line": 368,
+                "line": 372,
                 "character": 8
               }
             }
@@ -207,11 +225,11 @@
     {
       "range": {
         "start": {
-          "line": 288,
+          "line": 292,
           "character": 12
         },
         "end": {
-          "line": 288,
+          "line": 292,
           "character": 30
         }
       },
@@ -227,11 +245,11 @@
             "uri": "file://hdl_test.sv",
             "range": {
               "start": {
-                "line": 369,
+                "line": 373,
                 "character": 8
               },
               "end": {
-                "line": 369,
+                "line": 373,
                 "character": 8
               }
             }
@@ -243,11 +261,11 @@
     {
       "range": {
         "start": {
-          "line": 289,
+          "line": 293,
           "character": 12
         },
         "end": {
-          "line": 289,
+          "line": 293,
           "character": 31
         }
       },
@@ -263,11 +281,11 @@
             "uri": "file://hdl_test.sv",
             "range": {
               "start": {
-                "line": 370,
+                "line": 374,
                 "character": 8
               },
               "end": {
-                "line": 370,
+                "line": 374,
                 "character": 8
               }
             }
@@ -279,11 +297,11 @@
     {
       "range": {
         "start": {
-          "line": 297,
+          "line": 301,
           "character": 12
         },
         "end": {
-          "line": 297,
+          "line": 301,
           "character": 24
         }
       },
@@ -299,11 +317,11 @@
             "uri": "file://hdl_test.sv",
             "range": {
               "start": {
-                "line": 374,
+                "line": 378,
                 "character": 8
               },
               "end": {
-                "line": 374,
+                "line": 378,
                 "character": 8
               }
             }
@@ -315,11 +333,11 @@
     {
       "range": {
         "start": {
-          "line": 310,
+          "line": 314,
           "character": 12
         },
         "end": {
-          "line": 310,
+          "line": 314,
           "character": 24
         }
       },
@@ -335,11 +353,11 @@
             "uri": "file://hdl_test.sv",
             "range": {
               "start": {
-                "line": 378,
+                "line": 382,
                 "character": 8
               },
               "end": {
-                "line": 378,
+                "line": 382,
                 "character": 8
               }
             }
@@ -351,11 +369,11 @@
     {
       "range": {
         "start": {
-          "line": 319,
+          "line": 323,
           "character": 12
         },
         "end": {
-          "line": 319,
+          "line": 323,
           "character": 21
         }
       },
@@ -371,11 +389,11 @@
             "uri": "file://hdl_test.sv",
             "range": {
               "start": {
-                "line": 381,
+                "line": 385,
                 "character": 8
               },
               "end": {
-                "line": 381,
+                "line": 385,
                 "character": 8
               }
             }
@@ -387,11 +405,11 @@
     {
       "range": {
         "start": {
-          "line": 358,
+          "line": 362,
           "character": 12
         },
         "end": {
-          "line": 358,
+          "line": 362,
           "character": 29
         }
       },
@@ -407,11 +425,11 @@
             "uri": "file://hdl_test.sv",
             "range": {
               "start": {
-                "line": 304,
+                "line": 308,
                 "character": 12
               },
               "end": {
-                "line": 304,
+                "line": 308,
                 "character": 12
               }
             }
@@ -423,11 +441,11 @@
     {
       "range": {
         "start": {
-          "line": 359,
+          "line": 363,
           "character": 12
         },
         "end": {
-          "line": 359,
+          "line": 363,
           "character": 32
         }
       },
@@ -443,11 +461,11 @@
             "uri": "file://hdl_test.sv",
             "range": {
               "start": {
-                "line": 305,
+                "line": 309,
                 "character": 12
               },
               "end": {
-                "line": 305,
+                "line": 309,
                 "character": 12
               }
             }

@@ -405,6 +405,17 @@ module TestModule #(
 
 
 
+    `define MY_MACRO_SIGNAL_MACRO 1'b1
+
+    logic my_macro_signal;
+          ^^^^^^^^^^^^^^^ Sym my_macro_signal : Variable
+
+    assign my_macro_signal = `MY_MACRO_SIGNAL_MACRO;
+           ^^^^^^^^^^^^^^^ Ref -> **Variable** `my_macro_signal` in `TestModule`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`logic my_macro_signal;\n\assign my_macro_signal = 1'b1;`
+                             ^^^^^^^^^^^^^^^^^^^^^^ Ref -> DefineDirective MY_MACRO_SIGNAL_MACRO  \n\\n\\n\---\n\\n\``define MY_MACRO_SIGNAL_MACRO 1'b1`\n\\n\---\n\\n\Expands to   \n\`1'b1`
+
+
+
     always_ff @(posedge clk) begin
                         ^^^ Ref -> **Net** `clk` in `TestModule`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
 
