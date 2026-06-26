@@ -57,7 +57,7 @@ const syntax::SyntaxNode* getDriverDisplayNode(const ShallowAnalysis& analysis,
     }
 
     const auto loc = analysis.getSourceManager().getFullyOriginalLoc(range.start());
-    auto node = analysis.syntaxes.getSyntaxAt(loc);
+    const auto node = analysis.syntaxes.getSyntaxAt(loc);
 
     for (auto cur = node; cur; cur = cur->parent) {
         if (cur->kind == syntax::SyntaxKind::ContinuousAssign) {
