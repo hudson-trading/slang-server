@@ -1,0 +1,12 @@
+[
+  [
+    {
+      "line": 3,
+      "startChar": 4,
+      "length": 66,
+      "tokenType": 0,
+      "tokenModifiers": 0,
+      "text": "logic[2:0] inactive_a;\n    logic inactive_b;\n    int inactive_c;\n`"
+    }
+  ]
+]

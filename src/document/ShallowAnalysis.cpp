@@ -712,6 +712,10 @@ lsp::SemanticTokens ShallowAnalysis::getSemanticTokens(const bool inactiveRegion
                     if (endChar > startChar) {
                         length += endChar - startChar;
                     }
+
+                    if (line != range.end.line) {
+                        length += 1; // account for '\n'
+                    }
                 }
 
                 if (length > 0) {
