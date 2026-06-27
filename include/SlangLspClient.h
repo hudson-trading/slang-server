@@ -22,7 +22,7 @@ public:
         struct {
             bool inactiveRegionsSupported = false;
         } experimental;
-    } clientCapabilities;
+    } capabilities;
 
     void setConfig(const Config& params) {
         lsp::sendNotification("slang/setConfig", rfl::to_generic(params));
