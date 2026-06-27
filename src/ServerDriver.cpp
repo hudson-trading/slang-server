@@ -979,7 +979,7 @@ std::optional<lsp::WorkspaceEdit> ServerDriver::getDocRename(const URI& uri,
 }
 
 void ServerDriver::publishInactiveRegions(SlangDoc& doc) {
-    if (!client.experimentalCapabilities.inactiveRegionsSupported)
+    if (!client.clientCapabilities.experimental.inactiveRegionsSupported)
         return;
 
     auto regions = doc.getInactiveRegions();

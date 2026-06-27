@@ -646,7 +646,8 @@ std::vector<const slang::analysis::ValueDriver*> ShallowAnalysis::getDrivers(
 /// TODO: When more tokens are added we need to ensure that they aren't overlapping unless the
 /// client supports `overlappingTokenSupport`
 lsp::SemanticTokens ShallowAnalysis::getSemanticTokens(const bool inactiveRegionsSupported,
-                                                       const Config::SemanticTokensConfig& cfg) {
+                                                       const Config::SemanticTokensConfig& cfg,
+                                                       const bool multilineTokenSupport) {
     if (!cfg.enabled.value()) {
         return lsp::SemanticTokens{.data = {}};
     }
@@ -674,6 +675,41 @@ lsp::SemanticTokens ShallowAnalysis::getSemanticTokens(const bool inactiveRegion
     if (!inactiveDisabled) {
         for (const auto& region : syntaxes.disabledRegions) {
             const auto range = toRange(region, m_sourceManager);
+
+            if (multilineTokenSupport) {
+                lsp::uint length = 0;
+
+                for (lsp::uint line = range.start.line; line <= range.end.line; line++) {
+                    const lsp::uint startChar = line == range.start.line ? range.start.character
+                                                                         : 0;
+
+                    lsp::uint endChar;
+                    if (line == range.end.line) {
+                        endChar = range.end.character;
+                    }
+
+                    else {
+                        endChar = static_cast<lsp::uint>(
+                            m_sourceManager.getLine(m_buffer, line + 1).size());
+                    }
+
+                    if (endChar > startChar) {
+                        length += endChar - startChar;
+                    }
+                }
+
+                if (length > 0) {
+                    tokens.push_back({
+                        range.start.line,
+                        range.start.character,
+                        length,
+                        0,
+                        0,
+                    });
+                }
+
+                continue;
+            }
 
             for (lsp::uint line = range.start.line; line <= range.end.line; line++) {
                 const lsp::uint startChar = line == range.start.line ? range.start.character : 0;

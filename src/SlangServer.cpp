@@ -167,12 +167,17 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
 
     loadConfig();
 
+    if (params.capabilities.textDocument && params.capabilities.textDocument->semanticTokens) {
+        m_client.clientCapabilities.semanticTokens.multilineTokenSupport =
+            params.capabilities.textDocument->semanticTokens->multilineTokenSupport.value_or(false);
+    }
+
     if (params.capabilities.experimental) {
-        auto exp = rfl::from_generic<lsp::ExperimentalClientCapabilities>(
+        const auto exp = rfl::from_generic<lsp::ExperimentalClientCapabilities>(
             *params.capabilities.experimental);
 
         if (exp && exp->inactiveRegions && exp->inactiveRegions->inactiveRegions.value_or(false)) {
-            m_client.experimentalCapabilities.inactiveRegionsSupported = true;
+            m_client.clientCapabilities.experimental.inactiveRegionsSupported = true;
         }
     }
 
@@ -863,8 +868,10 @@ std::optional<lsp::SemanticTokens> SlangServer::getDocSemanticTokensFull(
         };
     }
 
-    return analysis->getSemanticTokens(m_client.experimentalCapabilities.inactiveRegionsSupported,
-                                       m_config.semanticTokens.value());
+    return analysis->getSemanticTokens(
+        m_client.clientCapabilities.experimental.inactiveRegionsSupported,
+        m_config.semanticTokens.value(),
+        m_client.clientCapabilities.semanticTokens.multilineTokenSupport);
 }
 
 SourceManager& SlangServer::sourceManager() {
