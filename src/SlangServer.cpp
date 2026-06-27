@@ -868,10 +868,9 @@ std::optional<lsp::SemanticTokens> SlangServer::getDocSemanticTokensFull(
         };
     }
 
-    return analysis->getSemanticTokens(
-        m_client.capabilities.experimental.inactiveRegionsSupported,
-        m_config.semanticTokens.value(),
-        m_client.capabilities.semanticTokens.multilineTokenSupport);
+    return analysis->getSemanticTokens(m_client.capabilities.experimental.inactiveRegionsSupported,
+                                       m_config.semanticTokens.value(),
+                                       m_client.capabilities.semanticTokens.multilineTokenSupport);
 }
 
 SourceManager& SlangServer::sourceManager() {
