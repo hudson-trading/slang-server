@@ -116,11 +116,9 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
         "slang.getDrivers");
     registerCommand<std::string, std::vector<std::string>, &SlangServer::getLoads>(
         "slang.getLoads");
-    registerCommand<std::string,
-                    std::optional<std::vector<lsp::CallHierarchyIncomingCall>>,
+    registerCommand<std::string, std::optional<std::vector<server::ConeEntry>>,
                     &SlangServer::getDriversWithLocation>("slang.getDriversWithLocation");
-    registerCommand<std::string,
-                    std::optional<std::vector<lsp::CallHierarchyOutgoingCall>>,
+    registerCommand<std::string, std::optional<std::vector<server::ConeEntry>>,
                     &SlangServer::getLoadsWithLocation>("slang.getLoadsWithLocation");
 
     // Hierarchy View (sidebar)
@@ -490,8 +488,13 @@ std::optional<std::vector<lsp::CallHierarchyIncomingCall>> SlangServer::
         ERROR("No compilation available, cannot trace cones");
         return std::nullopt;
     }
-    return m_driver->comp->getCallHierarchyCalls<lsp::CallHierarchyIncomingCallsParams,
-                                                 lsp::CallHierarchyIncomingCall>(params);
+    // Drivers are presented as "incoming calls" in the call hierarchy view.
+    std::vector<lsp::CallHierarchyIncomingCall> result;
+    for (const auto& entry : m_driver->comp->getConeLocations<true>(params.item.name)) {
+        result.push_back({.from = {.name = entry.path, .uri = entry.location.uri},
+                          .fromRanges = {entry.location.range}});
+    }
+    return result;
 }
 
 std::optional<std::vector<lsp::CallHierarchyOutgoingCall>> SlangServer::
@@ -500,8 +503,13 @@ std::optional<std::vector<lsp::CallHierarchyOutgoingCall>> SlangServer::
         ERROR("No compilation available, cannot trace cones");
         return std::nullopt;
     }
-    return m_driver->comp->getCallHierarchyCalls<lsp::CallHierarchyOutgoingCallsParams,
-                                                 lsp::CallHierarchyOutgoingCall>(params);
+    // Loads are presented as "outgoing calls" in the call hierarchy view.
+    std::vector<lsp::CallHierarchyOutgoingCall> result;
+    for (const auto& entry : m_driver->comp->getConeLocations<false>(params.item.name)) {
+        result.push_back({.to = {.name = entry.path, .uri = entry.location.uri},
+                          .fromRanges = {entry.location.range}});
+    }
+    return result;
 }
 
 std::vector<std::string> SlangServer::getDrivers(const std::string& path) {
@@ -520,44 +528,22 @@ std::vector<std::string> SlangServer::getLoads(const std::string& path) {
     return m_driver->comp->getConePaths<false>(path);
 }
 
-std::optional<std::vector<lsp::CallHierarchyIncomingCall>>
+std::optional<std::vector<server::ConeEntry>>
 SlangServer::getDriversWithLocation(const std::string& hierPath) {
     if (!m_driver->comp) {
         ERROR("No compilation available, cannot trace cones");
         return std::nullopt;
     }
-    // Get URI if available for the CallHierarchyItem
-    URI uri;
-    auto docParams = m_driver->comp->getHierDocParams(hierPath);
-    if (docParams) {
-        uri = docParams->uri;
-    }
-    // Create minimal CallHierarchyItem with just name (and URI if available)
-    // The template only uses params.item.name, so other fields can be default-initialized
-    lsp::CallHierarchyItem item{.name = hierPath, .uri = uri};
-    lsp::CallHierarchyIncomingCallsParams params{.item = item};
-    return m_driver->comp->getCallHierarchyCalls<lsp::CallHierarchyIncomingCallsParams,
-                                                  lsp::CallHierarchyIncomingCall>(params);
+    return m_driver->comp->getConeLocations<true>(hierPath);
 }
 
-std::optional<std::vector<lsp::CallHierarchyOutgoingCall>>
+std::optional<std::vector<server::ConeEntry>>
 SlangServer::getLoadsWithLocation(const std::string& hierPath) {
     if (!m_driver->comp) {
         ERROR("No compilation available, cannot trace cones");
         return std::nullopt;
     }
-    // Get URI if available for the CallHierarchyItem
-    URI uri;
-    auto docParams = m_driver->comp->getHierDocParams(hierPath);
-    if (docParams) {
-        uri = docParams->uri;
-    }
-    // Create minimal CallHierarchyItem with just name (and URI if available)
-    // The template only uses params.item.name, so other fields can be default-initialized
-    lsp::CallHierarchyItem item{.name = hierPath, .uri = uri};
-    lsp::CallHierarchyOutgoingCallsParams params{.item = item};
-    return m_driver->comp->getCallHierarchyCalls<lsp::CallHierarchyOutgoingCallsParams,
-                                                  lsp::CallHierarchyOutgoingCall>(params);
+    return m_driver->comp->getConeLocations<false>(hierPath);
 }
 
 void SlangServer::loadConfig(const Config& config, bool forceIndexing) {

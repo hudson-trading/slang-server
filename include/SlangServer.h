@@ -251,13 +251,11 @@ public:
     /// Get a list of RTL paths of the loads of a given RTL path
     std::vector<std::string> getLoads(const std::string&) final;
 
-    /// Get drivers (incoming calls) of a given RTL path with full location info
-    std::optional<std::vector<lsp::CallHierarchyIncomingCall>> getDriversWithLocation(
-        const std::string&);
+    /// Get the drivers of a given RTL path, each with its RTL path and source location
+    std::optional<std::vector<ConeEntry>> getDriversWithLocation(const std::string&);
 
-    /// Get loads (outgoing calls) of a given RTL path with full location info
-    std::optional<std::vector<lsp::CallHierarchyOutgoingCall>> getLoadsWithLocation(
-        const std::string&);
+    /// Get the loads of a given RTL path, each with its RTL path and source location
+    std::optional<std::vector<ConeEntry>> getLoadsWithLocation(const std::string&);
 
     /// Get the mutex to prevent collisions between LSP and WCP message handling
     std::mutex& getMutex() final { return mutex; };
