@@ -642,5 +642,4 @@ std::vector<const slang::analysis::ValueDriver*> ShallowAnalysis::getDrivers(
 
     return manager->getDrivers(symbol);
 }
-
 } // namespace server
