@@ -1,0 +1,44 @@
+[
+  [
+    {
+      "line": 3,
+      "startChar": 4,
+      "length": 13,
+      "tokenType": 0,
+      "tokenModifiers": 0,
+      "text": "logic[2:0] a;"
+    },
+    {
+      "line": 12,
+      "startChar": 4,
+      "length": 15,
+      "tokenType": 0,
+      "tokenModifiers": 0,
+      "text": "bit[2:0] c[13];"
+    },
+    {
+      "line": 16,
+      "startChar": 4,
+      "length": 6,
+      "tokenType": 0,
+      "tokenModifiers": 0,
+      "text": "int e;"
+    },
+    {
+      "line": 20,
+      "startChar": 9,
+      "length": 10,
+      "tokenType": 0,
+      "tokenModifiers": 0,
+      "text": "logic foo;"
+    },
+    {
+      "line": 27,
+      "startChar": 4,
+      "length": 16,
+      "tokenType": 0,
+      "tokenModifiers": 0,
+      "text": "logic[7:0] bart;"
+    }
+  ]
+]

@@ -15,8 +15,14 @@ class SlangLspClient : public lsp::LspClient {
 
 public:
     struct {
-        bool inactiveRegionsSupported = false;
-    } experimentalCapabilities;
+        struct {
+            bool multilineTokenSupport = false;
+        } semanticTokens;
+
+        struct {
+            bool inactiveRegionsSupported = false;
+        } experimental;
+    } capabilities;
 
     void setConfig(const Config& params) {
         lsp::sendNotification("slang/setConfig", rfl::to_generic(params));

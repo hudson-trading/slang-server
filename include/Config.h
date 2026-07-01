@@ -148,6 +148,20 @@ struct Config {
 
     /// Per-file flags with correct precedence. Skipped during serialization.
     rfl::Skip<std::vector<FlagSource>> flagsByFile;
+
+    struct SemanticTokensConfig {
+        enum class SemanticTokenKind { InactiveCode };
+
+        rfl::Description<"Whether semantic tokens should be provided by the server.", bool>
+            enabled = false;
+
+        rfl::Description<
+            "Specify semantic token kinds that slang-server should not send to client.",
+            std::vector<SemanticTokenKind>>
+            disabledKinds{};
+    };
+
+    rfl::Description<"Configure semantic highlighting.", SemanticTokensConfig> semanticTokens{};
 };
 
 template<>

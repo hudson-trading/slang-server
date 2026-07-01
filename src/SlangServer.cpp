@@ -10,6 +10,7 @@
 #include "SlangServer.h"
 
 #include "Config.h"
+#include "SemanticToken.hpp"
 #include "ast/WcpClient.h"
 #include "completions/CompletionContext.h"
 #include "completions/CompletionDispatch.h"
@@ -83,6 +84,8 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     registerDocReferences();
     registerDocRename();
     registerDocCodeAction();
+
+    registerDocSemanticTokensFull();
 
     // Cone tracing (drivers/loads)
     registerDocPrepareCallHierarchy();
@@ -164,12 +167,17 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
 
     loadConfig();
 
+    if (params.capabilities.textDocument && params.capabilities.textDocument->semanticTokens) {
+        m_client.capabilities.semanticTokens.multilineTokenSupport =
+            params.capabilities.textDocument->semanticTokens->multilineTokenSupport.value_or(false);
+    }
+
     if (params.capabilities.experimental) {
-        auto exp = rfl::from_generic<lsp::ExperimentalClientCapabilities>(
+        const auto exp = rfl::from_generic<lsp::ExperimentalClientCapabilities>(
             *params.capabilities.experimental);
 
         if (exp && exp->inactiveRegions && exp->inactiveRegions->inactiveRegions.value_or(false)) {
-            m_client.experimentalCapabilities.inactiveRegionsSupported = true;
+            m_client.capabilities.experimental.inactiveRegionsSupported = true;
         }
     }
 
@@ -221,6 +229,9 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
                             .commands = getCommandList(),
                         },
                     .callHierarchyProvider = true,
+                    .semanticTokensProvider =
+                        lsp::SemanticTokensOptions{.legend = SemanticTokensLegendConfig,
+                                                   .full = true},
                     .inlayHintProvider =
                         lsp::InlayHintOptions{
                             .resolveProvider = false,
@@ -838,6 +849,28 @@ std::optional<std::vector<lsp::Location>> SlangServer::getDocReferences(
 
 std::optional<lsp::WorkspaceEdit> SlangServer::getDocRename(const lsp::RenameParams& params) {
     return m_driver->getDocRename(params.textDocument.uri, params.position, params.newName);
+}
+
+std::optional<lsp::SemanticTokens> SlangServer::getDocSemanticTokensFull(
+    const lsp::SemanticTokensParams& params) {
+
+    const auto doc = m_driver->getDocument(params.textDocument.uri);
+    if (!doc) {
+        return lsp::SemanticTokens{
+            .data = {},
+        };
+    }
+
+    const auto analysis = doc->getAnalysis();
+    if (!analysis) {
+        return lsp::SemanticTokens{
+            .data = {},
+        };
+    }
+
+    return analysis->getSemanticTokens(m_client.capabilities.experimental.inactiveRegionsSupported,
+                                       m_config.semanticTokens.value(),
+                                       m_client.capabilities.semanticTokens.multilineTokenSupport);
 }
 
 SourceManager& SlangServer::sourceManager() {
