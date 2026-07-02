@@ -20,6 +20,13 @@
 namespace server {
 using namespace slang;
 
+/// @brief A single endpoint of a driver/load cone: the hierarchical RTL path of the
+/// driver/load and the source location where it appears.
+struct ConeEntry {
+    std::string path;
+    lsp::Location location;
+};
+
 /// @brief A server compilation that is set via top level or a .f file.
 /// Manages the specification of the compilation, as well as the analysis state that gets refreshed
 /// on file saves.
@@ -69,33 +76,24 @@ public:
     /// Issue all semantic diagnostics from the compilation to the diagnostic engine
     void issueDiagnosticsTo(slang::DiagnosticEngine& diagEngine);
 
-    /// Populate incoming / outgoing (drivers / loads) call hierarchy LSP responses
-    template<typename P, typename R>
-    std::optional<std::vector<R>> getCallHierarchyCalls(const P& params) {
-        static constexpr bool isDriver =
-            std::is_same<P, lsp::CallHierarchyIncomingCallsParams>::value;
-        auto cone = m_analysis->getCone<isDriver>(params.item.name);
-
-        std::vector<R> result;
+    /// Return the drivers (isDrivers=true) or loads (isDrivers=false) of the signal at the
+    /// given path, each with the source location where it appears. Endpoints without a valid
+    /// source location are omitted.
+    template<bool isDrivers>
+    std::vector<ConeEntry> getConeLocations(const std::string& path) {
+        auto cone = m_analysis->getCone<isDrivers>(path);
+        std::vector<ConeEntry> result;
         for (const auto leaf : cone) {
-            std::string hier = leaf.getHierarchicalPath();
             auto range = leaf.getSourceRange();
             if (range.start().valid()) {
                 auto fullPath = std::filesystem::absolute(
                     m_sourceManager.getFileName(range.start()));
-                // only different by to / from field name . . . sigh
-                if constexpr (std::is_same_v<lsp::CallHierarchyIncomingCallsParams, P>) {
-                    result.push_back({.from = {.name = hier, .uri = URI::fromFile(fullPath)},
-                                      .fromRanges = {{toRange(range, m_sourceManager)}}});
-                }
-                else {
-                    result.push_back({.to = {.name = hier, .uri = URI::fromFile(fullPath)},
-                                      .fromRanges = {{toRange(range, m_sourceManager)}}});
-                }
+                result.push_back({.path = leaf.getHierarchicalPath(),
+                                  .location = {.uri = URI::fromFile(fullPath),
+                                               .range = toRange(range, m_sourceManager)}});
             }
         }
-
-        return std::optional(result);
+        return result;
     }
 
     /// Return list of RTL paths for a driver or load cone
