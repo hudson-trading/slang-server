@@ -274,7 +274,8 @@ enum class CompletionItemTag : uint8_t {
 /// so clients can advertise and request extension kinds outside this predefined set.
 using CodeActionKindOptions = rfl::Literal<"", "quickfix", "refactor", "refactor.extract",
                                            "refactor.inline", "refactor.rewrite", "source",
-                                           "source.organizeImports", "source.fixAll", "notebook">;
+                                           "source.organizeImports", "source.fixAll", "notebook",
+                                           "*">;
 using CodeActionKind = std::string;
 
 /// A document filter denotes a document by different properties like
