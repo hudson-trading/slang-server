@@ -615,7 +615,8 @@ using LanguageKindOptions =
                  "objective-c", "objective-cpp", "perl", "perl6", "php", "powershell", "jade",
                  "python", "r", "razor", "ruby", "rust", "scss", "sass", "scala", "shaderlab",
                  "shellscript", "sql", "swift", "systemverilog", "systemverilogheader", "verilog",
-                 "typescript", "typescriptreact", "tex", "vb", "xml", "xsl", "yaml">;
+                 "typescript", "typescriptreact", "tex", "vb", "xml", "xsl", "yaml",
+                 "">;
 using LanguageKind = std::string;
 
 /// A filter to describe in which file operation requests or notifications
