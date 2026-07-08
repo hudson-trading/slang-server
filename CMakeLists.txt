@@ -232,34 +232,39 @@ set(SLANG_INCLUDE_TESTS
     OFF
     CACHE BOOL "Don't build slang tests" FORCE)
 
-# Set up Catch2 for testing
-set(find_pkg_args "")
+if(SLANG_SERVER_INCLUDE_TESTS)
+  # Set up Catch2 for testing
+  set(find_pkg_args "")
 
-if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.24.0")
-  set(find_pkg_args "FIND_PACKAGE_ARGS" "${catch2_min_version}")
-endif()
+  if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
+    set(find_pkg_args "FIND_PACKAGE_ARGS" "${catch2_min_version}")
+  endif()
 
-FetchContent_Declare(
-  Catch2
-  GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-  GIT_TAG v3.10.0
-  GIT_SHALLOW ON
-  ${find_pkg_args})
-FetchContent_MakeAvailable(Catch2)
+  FetchContent_Declare(
+    Catch2
+    GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+    GIT_TAG v3.10.0
+    GIT_SHALLOW ON
+    ${find_pkg_args})
+  FetchContent_MakeAvailable(Catch2)
 
-if(NOT TARGET Catch2::Catch2)
-  message(
-    FATAL_ERROR
-      "Could not find Catch2 package, min version: ${catch2_min_version}")
-endif()
+  if(NOT TARGET Catch2::Catch2)
+    message(
+      FATAL_ERROR
+        "Could not find Catch2 package, min version: ${catch2_min_version}")
+  endif()
 
-if(Catch2_FOUND)
-  get_target_property(Catch2_INCLUDE_DIR Catch2::Catch2
-                      INTERFACE_INCLUDE_DIRECTORIES)
-  message(STATUS "Found system Catch2 version: ${Catch2_VERSION}")
-  message(STATUS "Using system Catch2 include: ${Catch2_INCLUDE_DIR}")
-else()
-  message(STATUS "Using remote Catch2 library")
+  if(Catch2_FOUND)
+    get_target_property(Catch2_INCLUDE_DIR Catch2::Catch2
+                        INTERFACE_INCLUDE_DIRECTORIES)
+    message(STATUS "Found system Catch2 version: ${Catch2_VERSION}")
+    message(STATUS "Using system Catch2 include: ${Catch2_INCLUDE_DIR}")
+  else()
+    message(STATUS "Using remote Catch2 library")
+  endif()
+
+  enable_testing()
+  add_subdirectory(tests/cpp)
 endif()
 
 add_subdirectory(external/slang)
@@ -360,9 +365,4 @@ endif()
 
 if(SLANG_SERVER_INCLUDE_INSTALL)
   install(TARGETS slang_server RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-endif()
-
-if(SLANG_SERVER_INCLUDE_TESTS)
-  enable_testing()
-  add_subdirectory(tests/cpp)
 endif()
