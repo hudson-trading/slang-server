@@ -53,7 +53,8 @@ struct DefinitionInfo {
         }
 
         /// Append the formatted code (with doc comments) for this syntax to `doc`.
-        void renderCode(markup::Document& doc, const Config::HoverConfig& hovers) const;
+        void renderCode(markup::Document& doc, const Config::HoverConfig& hovers,
+                        const syntax::SyntaxNode* extraDisplayNode = nullptr) const;
 
         /// Append "Expanded from <text>" if this target is behind a macro expansion.
         void renderMacroExpansion(markup::Document& doc, const slang::SourceManager& sm) const;

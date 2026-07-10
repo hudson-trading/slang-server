@@ -388,11 +388,31 @@ module TestModule #(
                  ^^^^^^^^^^^^^^^ Sym inst_array_test : Variable
 
     assign inst_array_test = sub_inst[0].data_out + sub_inst[1].data_out;
-           ^^^^^^^^^^^^^^^ Ref -> **Variable** `inst_array_test` in `TestModule`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\Test instance array access - goto on sub_inst[0] should go to sub_inst declaration  \n\  \n\\n\\n\---\n\\n\`logic [15:0] inst_array_test;`
+           ^^^^^^^^^^^^^^^ Ref -> **Variable** `inst_array_test` in `TestModule`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\Test instance array access - goto on sub_inst[0] should go to sub_inst declaration  \n\  \n\\n\\n\---\n\\n\`logic [15:0] inst_array_test;\n\assign inst_array_test = sub_inst[0].data_out + sub_inst[1].data_out;`
                              ^^^^^^^^ Ref -> **InstanceArray** `sub_inst` in `TestModule`  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(16)) sub_inst [NUM_SUBS] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(sub_data_in),\n\    .data_out(sub_data_out)\n\);`
                                          ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
                                                     ^^^^^^^^ Ref -> **InstanceArray** `sub_inst` in `TestModule`  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(16)) sub_inst [NUM_SUBS] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(sub_data_in),\n\    .data_out(sub_data_out)\n\);`
                                                                 ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+
+
+
+    logic thing;
+          ^^^^^ Sym thing : Variable
+
+    assign thing = inst_array_test[0] ? 1'b1 : 1'b0;
+           ^^^^^ Ref -> **Variable** `thing` in `TestModule`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`logic thing;\n\assign thing = inst_array_test[0] ? 1'b1 : 1'b0;`
+                   ^^^^^^^^^^^^^^^ Ref -> **Variable** `inst_array_test` in `TestModule`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\Test instance array access - goto on sub_inst[0] should go to sub_inst declaration  \n\  \n\\n\\n\---\n\\n\`logic [15:0] inst_array_test;\n\assign inst_array_test = sub_inst[0].data_out + sub_inst[1].data_out;`
+
+
+
+    `define MY_MACRO_SIGNAL_MACRO 1'b1
+
+    logic my_macro_signal;
+          ^^^^^^^^^^^^^^^ Sym my_macro_signal : Variable
+
+    assign my_macro_signal = `MY_MACRO_SIGNAL_MACRO;
+           ^^^^^^^^^^^^^^^ Ref -> **Variable** `my_macro_signal` in `TestModule`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`logic my_macro_signal;\n\assign my_macro_signal = 1'b1;`
+                             ^^^^^^^^^^^^^^^^^^^^^^ Ref -> DefineDirective MY_MACRO_SIGNAL_MACRO  \n\\n\\n\---\n\\n\``define MY_MACRO_SIGNAL_MACRO 1'b1`\n\\n\---\n\\n\Expands to   \n\`1'b1`
 
 
 
@@ -402,23 +422,33 @@ module TestModule #(
         if (rst) begin
             ^^^ Ref -> **Net** `rst` in `TestModule`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
 
-            state <= test_pkg::STATE_A;
+            state   <= test_pkg::STATE_A;
             ^^^^^ Ref -> **Variable** `state` in `TestModule`  \n\Type: Enum `state_t` (`logic[1:0]`)  \n\Width: `2`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`test_pkg::state_t state, state_next;`
-                     ^^^^^^^^ Ref -> **Package** `test_pkg`  \n\\n\\n\---\n\\n\`package test_pkg;`
-                               ^^^^^^^ Ref -> **EnumValue** `STATE_A` in `test_pkg::state_t`  \n\Value: `2'b0`  \n\\n\\n\---\n\\n\`typedef enum logic [1:0] {\n\    STATE_A,\n\    STATE_B,\n\    STATE_C\n\} state_t;`
+                       ^^^^^^^^ Ref -> **Package** `test_pkg`  \n\\n\\n\---\n\\n\`package test_pkg;`
+                                 ^^^^^^^ Ref -> **EnumValue** `STATE_A` in `test_pkg::state_t`  \n\Value: `2'b0`  \n\\n\\n\---\n\\n\`typedef enum logic [1:0] {\n\    STATE_A,\n\    STATE_B,\n\    STATE_C\n\} state_t;`
 
             counter <= '0;
             ^^^^^^^ Ref -> **Variable** `counter` in `TestModule`  \n\Type: `id_t` (aka `logic[31:0]`)  \n\Width: `32`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\This comment is just here to test the multi line  \n\comment functionality.  \n\  \n\\n\\n\---\n\\n\`test_pkg::id_t counter;`
 
         end else begin
 
-            state <= state_next;
+            state   <= state_next;
             ^^^^^ Ref -> **Variable** `state` in `TestModule`  \n\Type: Enum `state_t` (`logic[1:0]`)  \n\Width: `2`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`test_pkg::state_t state, state_next;`
-                     ^^^^^^^^^^ Ref -> **Variable** `state_next` in `TestModule`  \n\Type: Enum `state_t` (`logic[1:0]`)  \n\Width: `2`  \n\Driver: `Procedural (always_comb)`  \n\\n\\n\---\n\\n\`test_pkg::state_t state, state_next;`
+                       ^^^^^^^^^^ Ref -> **Variable** `state_next` in `TestModule`  \n\Type: Enum `state_t` (`logic[1:0]`)  \n\Width: `2`  \n\Driver: `Procedural (always_comb)`  \n\\n\\n\---\n\\n\`test_pkg::state_t state, state_next;`
 
             counter <= counter + 1'b1;
             ^^^^^^^ Ref -> **Variable** `counter` in `TestModule`  \n\Type: `id_t` (aka `logic[31:0]`)  \n\Width: `32`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\This comment is just here to test the multi line  \n\comment functionality.  \n\  \n\\n\\n\---\n\\n\`test_pkg::id_t counter;`
                        ^^^^^^^ Ref -> **Variable** `counter` in `TestModule`  \n\Type: `id_t` (aka `logic[31:0]`)  \n\Width: `32`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\This comment is just here to test the multi line  \n\comment functionality.  \n\  \n\\n\\n\---\n\\n\`test_pkg::id_t counter;`
+
+
+
+            if (thing) begin
+                ^^^^^ Ref -> **Variable** `thing` in `TestModule`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`logic thing;\n\assign thing = inst_array_test[0] ? 1'b1 : 1'b0;`
+
+                $display("Do this thing");
+                ^^^^^^^^ Sym $display : SystemName
+
+            end
 
         end
 
