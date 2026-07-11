@@ -26,12 +26,13 @@ extern bool g_updateGoldenFlag;
 class GoldenTestBase {
 
 public:
-    GoldenTestBase(std::string ext) : m_updateGolden(g_updateGoldenFlag) {
+    GoldenTestBase(std::string ext) :
+        GoldenTestBase(
+            findSlangRoot() / "tests" / "cpp" / "golden" /
+            (Catch::getCurrentContext().getResultCapture()->getCurrentTestName() + ext)) {}
 
-        m_goldenFilePath = findSlangRoot() / "tests" / "cpp" / "golden" /
-                           (Catch::getCurrentContext().getResultCapture()->getCurrentTestName() +
-                            ext);
-
+    explicit GoldenTestBase(std::filesystem::path goldenFilePath) :
+        m_goldenFilePath(std::move(goldenFilePath)), m_updateGolden(g_updateGoldenFlag) {
         std::ifstream ifs(m_goldenFilePath);
 
         if (ifs.is_open()) {
@@ -57,6 +58,7 @@ public:
 
         if (m_updateGolden) {
             // Overwrite golden file with new content
+            std::filesystem::create_directories(m_goldenFilePath.parent_path());
             std::ofstream ofs(m_goldenFilePath);
             if (ofs.is_open()) {
                 ofs << actual_str;
@@ -115,7 +117,9 @@ protected:
 
 class GoldenTest : public GoldenTestBase {
 public:
-    GoldenTest() : GoldenTestBase(".out") {}
+    GoldenTest() : GoldenTestBase(std::string{".out"}) {}
+    explicit GoldenTest(std::filesystem::path goldenFilePath) :
+        GoldenTestBase(std::move(goldenFilePath)) {}
     // We set actual output in the test
     void record(const std::string_view actual) { m_actual << actual; }
 };
@@ -127,7 +131,7 @@ public:
     bool m_relativeUris;
 
     JsonGoldenTest(bool relativeUris = true) :
-        GoldenTestBase(".json"), m_relativeUris(relativeUris) {}
+        GoldenTestBase(std::string{".json"}), m_relativeUris(relativeUris) {}
 
     template<typename T>
     void record(const T& some_struct) {

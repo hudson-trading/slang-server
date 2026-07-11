@@ -30,6 +30,23 @@ namespace ast = slang::ast;
 
 namespace server {
 
+namespace completions {
+
+const std::vector<std::string>& completionTriggerCharacters() {
+    static const std::vector<std::string> triggerCharacters{
+        "`", // macros
+        "#", // hierarchical instantiation: modules and interfaces
+        ".", // hierarchical references
+        "(", // function calls
+        ":", // package scope (::), wire width
+        "[", // wire width, array indexing
+        "$", // system tasks and functions
+    };
+    return triggerCharacters;
+}
+
+} // namespace completions
+
 CompletionDispatch::CompletionDispatch(ServerDriver& driver, const Indexer& indexer,
                                        SourceManager& sourceManager, slang::Bag& options) :
     m_driver(driver), m_indexer(indexer), m_sourceManager(sourceManager), m_options(options) {
