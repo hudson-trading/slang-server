@@ -300,7 +300,7 @@ module TestModule #(
                             ^^^^^^^^ Sym data_out : Variable
 
     bus_if.master bus_master,
-    ^^^^^^ Ref -> **Definition** `bus_if`  \n\\n\\n\---\n\\n\`interface bus_if #(\n\    parameter type data_t,\n\    parameter int ADDR_WIDTH = 32\n\)(\n\    input logic clk,\n\    input logic rst\n\);`
+    ^^^^^^ Ref -> **Interface** `bus_if`  \n\\n\\n\---\n\\n\`interface bus_if #(\n\    parameter type data_t,\n\    parameter int ADDR_WIDTH = 32\n\)(\n\    input logic clk,\n\    input logic rst\n\);`
            ^ Ref -> **Modport** `master` in `bus_if`  \n\\n\\n\---\n\\n\Modport for master  \n\  \n\\n\\n\---\n\\n\`modport master (\n\    input clk, rst, ready,\n\    output valid, addr, data, write_enable\n\);`
             ^ Ref -> **Modport** `master` in `bus_if`  \n\\n\\n\---\n\\n\Modport for master  \n\  \n\\n\\n\---\n\\n\`modport master (\n\    input clk, rst, ready,\n\    output valid, addr, data, write_enable\n\);`
              ^ Ref -> **Modport** `master` in `bus_if`  \n\\n\\n\---\n\\n\Modport for master  \n\  \n\\n\\n\---\n\\n\`modport master (\n\    input clk, rst, ready,\n\    output valid, addr, data, write_enable\n\);`
@@ -310,7 +310,7 @@ module TestModule #(
                   ^^^^^^^^^^ Sym bus_master : InterfacePort
 
     bus_if.follower bus_follower
-    ^^^^^^ Ref -> **Definition** `bus_if`  \n\\n\\n\---\n\\n\`interface bus_if #(\n\    parameter type data_t,\n\    parameter int ADDR_WIDTH = 32\n\)(\n\    input logic clk,\n\    input logic rst\n\);`
+    ^^^^^^ Ref -> **Interface** `bus_if`  \n\\n\\n\---\n\\n\`interface bus_if #(\n\    parameter type data_t,\n\    parameter int ADDR_WIDTH = 32\n\)(\n\    input logic clk,\n\    input logic rst\n\);`
            ^ Ref -> **Modport** `follower` in `bus_if`  \n\\n\\n\---\n\\n\Modport for follower  \n\  \n\\n\\n\---\n\\n\`modport follower (\n\    input clk, rst, valid, addr, data, write_enable,\n\    output ready\n\);`
             ^ Ref -> **Modport** `follower` in `bus_if`  \n\\n\\n\---\n\\n\Modport for follower  \n\  \n\\n\\n\---\n\\n\`modport follower (\n\    input clk, rst, valid, addr, data, write_enable,\n\    output ready\n\);`
              ^ Ref -> **Modport** `follower` in `bus_if`  \n\\n\\n\---\n\\n\Modport for follower  \n\  \n\\n\\n\---\n\\n\`modport follower (\n\    input clk, rst, valid, addr, data, write_enable,\n\    output ready\n\);`
@@ -357,7 +357,7 @@ module TestModule #(
 
 
     Sub #(.WIDTH(16)) sub_inst [NUM_SUBS] (
-    ^^^ Ref -> **Definition** `Sub`  \n\\n\\n\---\n\\n\`module Sub #(\n\    parameter int WIDTH = 16\n\)(\n\    input logic clk,\n\    input logic rst,\n\    input logic [WIDTH-1:0] data_in,\n\    output logic [WIDTH-1:0] data_out\n\);`
+    ^^^ Ref -> **Module** `Sub`  \n\\n\\n\---\n\\n\`module Sub #(\n\    parameter int WIDTH = 16\n\)(\n\    input logic clk,\n\    input logic rst,\n\    input logic [WIDTH-1:0] data_in,\n\    output logic [WIDTH-1:0] data_out\n\);`
            ^^^^^ Ref -> **Parameter** `WIDTH` in `Sub`  \n\Type: `int`  \n\Value: `16`  \n\\n\\n\---\n\\n\`parameter int WIDTH = 16`
                       ^^^^^^^^ Sym sub_inst : InstanceArray
                                 ^^^^^^^^ Ref -> **Parameter** `NUM_SUBS` in `TestModule`  \n\Type: `int`  \n\Value: `4`  \n\\n\\n\---\n\\n\`parameter int NUM_SUBS = 4`
@@ -389,9 +389,9 @@ module TestModule #(
 
     assign inst_array_test = sub_inst[0].data_out + sub_inst[1].data_out;
            ^^^^^^^^^^^^^^^ Ref -> **Variable** `inst_array_test` in `TestModule`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\Test instance array access - goto on sub_inst[0] should go to sub_inst declaration  \n\  \n\\n\\n\---\n\\n\`logic [15:0] inst_array_test;`
-                             ^^^^^^^^ Ref -> **InstanceArray** `sub_inst` in `TestModule`  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(16)) sub_inst [NUM_SUBS] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(sub_data_in),\n\    .data_out(sub_data_out)\n\);`
+                             ^^^^^^^^ Ref -> `Sub[4]` `sub_inst` in `TestModule`  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(16)) sub_inst [NUM_SUBS] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(sub_data_in),\n\    .data_out(sub_data_out)\n\);`
                                          ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
-                                                    ^^^^^^^^ Ref -> **InstanceArray** `sub_inst` in `TestModule`  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(16)) sub_inst [NUM_SUBS] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(sub_data_in),\n\    .data_out(sub_data_out)\n\);`
+                                                    ^^^^^^^^ Ref -> `Sub[4]` `sub_inst` in `TestModule`  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(16)) sub_inst [NUM_SUBS] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(sub_data_in),\n\    .data_out(sub_data_out)\n\);`
                                                                 ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
 
 
@@ -565,7 +565,7 @@ module NoDefaults #(
 
 
     Sub #(
-    ^^^ Ref -> **Definition** `Sub`  \n\\n\\n\---\n\\n\`module Sub #(\n\    parameter int WIDTH = 16\n\)(\n\    input logic clk,\n\    input logic rst,\n\    input logic [WIDTH-1:0] data_in,\n\    output logic [WIDTH-1:0] data_out\n\);`
+    ^^^ Ref -> **Module** `Sub`  \n\\n\\n\---\n\\n\`module Sub #(\n\    parameter int WIDTH = 16\n\)(\n\    input logic clk,\n\    input logic rst,\n\    input logic [WIDTH-1:0] data_in,\n\    output logic [WIDTH-1:0] data_out\n\);`
 
         .WIDTH(WIDTH)
          ^^^^^ Ref -> **Parameter** `WIDTH` in `Sub`  \n\Type: `int`  \n\\n\\n\---\n\\n\`parameter int WIDTH = 16`
@@ -597,7 +597,7 @@ module NoDefaults #(
     // 2D instance array
 
     Sub #(.WIDTH(WIDTH)) sub_2d [2][3] (
-    ^^^ Ref -> **Definition** `Sub`  \n\\n\\n\---\n\\n\`module Sub #(\n\    parameter int WIDTH = 16\n\)(\n\    input logic clk,\n\    input logic rst,\n\    input logic [WIDTH-1:0] data_in,\n\    output logic [WIDTH-1:0] data_out\n\);`
+    ^^^ Ref -> **Module** `Sub`  \n\\n\\n\---\n\\n\`module Sub #(\n\    parameter int WIDTH = 16\n\)(\n\    input logic clk,\n\    input logic rst,\n\    input logic [WIDTH-1:0] data_in,\n\    output logic [WIDTH-1:0] data_out\n\);`
            ^^^^^ Ref -> **Parameter** `WIDTH` in `Sub`  \n\Type: `int`  \n\\n\\n\---\n\\n\`parameter int WIDTH = 16`
                  ^^^^^ Ref -> **Parameter** `WIDTH` in `NoDefaults`  \n\Type: `int`  \n\\n\\n\---\n\\n\`parameter int WIDTH`
                          ^^^^^^ Sym sub_2d : InstanceArray
@@ -629,9 +629,9 @@ module NoDefaults #(
 
     assign test_2d_access = sub_2d[0][1].data_out + sub_2d[1][2].data_out;
            ^^^^^^^^^^^^^^ Ref -> **Variable** `test_2d_access` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\Test 2D instance array access  \n\  \n\\n\\n\---\n\\n\`logic [WIDTH-1:0] test_2d_access;`
-                            ^^^^^^ Ref -> **InstanceArray** `sub_2d` in `NoDefaults`  \n\\n\\n\---\n\\n\2D instance array  \n\  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(WIDTH)) sub_2d [2][3] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(data_in),\n\    .data_out()\n\);`
+                            ^^^^^^ Ref -> `Sub[2][3]` `sub_2d` in `NoDefaults`  \n\\n\\n\---\n\\n\2D instance array  \n\  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(WIDTH)) sub_2d [2][3] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(data_in),\n\    .data_out()\n\);`
                                          ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
-                                                    ^^^^^^ Ref -> **InstanceArray** `sub_2d` in `NoDefaults`  \n\\n\\n\---\n\\n\2D instance array  \n\  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(WIDTH)) sub_2d [2][3] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(data_in),\n\    .data_out()\n\);`
+                                                    ^^^^^^ Ref -> `Sub[2][3]` `sub_2d` in `NoDefaults`  \n\\n\\n\---\n\\n\2D instance array  \n\  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(WIDTH)) sub_2d [2][3] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(data_in),\n\    .data_out()\n\);`
                                                                  ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
 
 
@@ -645,7 +645,7 @@ module NoDefaults #(
                                    ^^^^^^^^^^ Sym gen_loop_2 : GenerateBlockArray
 
         Sub #(.WIDTH(WIDTH)) gen_sub_array [4] (
-        ^^^ Ref -> **Definition** `Sub`  \n\\n\\n\---\n\\n\`module Sub #(\n\    parameter int WIDTH = 16\n\)(\n\    input logic clk,\n\    input logic rst,\n\    input logic [WIDTH-1:0] data_in,\n\    output logic [WIDTH-1:0] data_out\n\);`
+        ^^^ Ref -> **Module** `Sub`  \n\\n\\n\---\n\\n\`module Sub #(\n\    parameter int WIDTH = 16\n\)(\n\    input logic clk,\n\    input logic rst,\n\    input logic [WIDTH-1:0] data_in,\n\    output logic [WIDTH-1:0] data_out\n\);`
                ^^^^^ Ref -> **Parameter** `WIDTH` in `Sub`  \n\Type: `int`  \n\\n\\n\---\n\\n\`parameter int WIDTH = 16`
                      ^^^^^ Ref -> **Parameter** `WIDTH` in `NoDefaults`  \n\Type: `int`  \n\\n\\n\---\n\\n\`parameter int WIDTH`
                              ^^^^^^^^^^^^^ Sym gen_sub_array : InstanceArray
@@ -680,7 +680,7 @@ module NoDefaults #(
     assign test_gen_array_access = gen_loop_2[0].gen_sub_array[2].data_out;
            ^^^^^^^^^^^^^^^^^^^^^ Ref -> **Variable** `test_gen_array_access` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\Test instance array inside generate scope access  \n\  \n\\n\\n\---\n\\n\`logic [WIDTH-1:0] test_gen_array_access;`
                                    ^^^^^^^^^^ Ref -> **GenerateBlockArray** `gen_loop_2` in `NoDefaults`  \n\\n\\n\---\n\\n\`for(j = 0; j < 3; j++) begin : gen_loop_2\n\    Sub #(.WIDTH(WIDTH)) gen_sub_array [4] (\n\        .clk(clk),\n\        .rst(rst),\n\        .data_in(data_in),\n\        .data_out()\n\    );\n\end`
-                                                 ^^^^^^^^^^^^^ Ref -> **InstanceArray** `gen_sub_array` in `NoDefaults.gen_loop_2`  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(WIDTH)) gen_sub_array [4] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(data_in),\n\    .data_out()\n\);`
+                                                 ^^^^^^^^^^^^^ Ref -> `Sub[4]` `gen_sub_array` in `NoDefaults.gen_loop_2`  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(WIDTH)) gen_sub_array [4] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(data_in),\n\    .data_out()\n\);`
                                                                   ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
 
 
@@ -695,7 +695,7 @@ module NoDefaults #(
                                          ^^^^^^^^ Sym gen_loop : GenerateBlockArray
 
         Sub #(
-        ^^^ Ref -> **Definition** `Sub`  \n\\n\\n\---\n\\n\`module Sub #(\n\    parameter int WIDTH = 16\n\)(\n\    input logic clk,\n\    input logic rst,\n\    input logic [WIDTH-1:0] data_in,\n\    output logic [WIDTH-1:0] data_out\n\);`
+        ^^^ Ref -> **Module** `Sub`  \n\\n\\n\---\n\\n\`module Sub #(\n\    parameter int WIDTH = 16\n\)(\n\    input logic clk,\n\    input logic rst,\n\    input logic [WIDTH-1:0] data_in,\n\    output logic [WIDTH-1:0] data_out\n\);`
 
             .WIDTH(WIDTH)
              ^^^^^ Ref -> **Parameter** `WIDTH` in `Sub`  \n\Type: `int`  \n\\n\\n\---\n\\n\`parameter int WIDTH = 16`
@@ -731,7 +731,7 @@ module NoDefaults #(
                             ^^^^^^^^^^^^^^^^ Sym gen_branch_block : GenerateBlock
 
         Sub #(
-        ^^^ Ref -> **Definition** `Sub`  \n\\n\\n\---\n\\n\`module Sub #(\n\    parameter int WIDTH = 16\n\)(\n\    input logic clk,\n\    input logic rst,\n\    input logic [WIDTH-1:0] data_in,\n\    output logic [WIDTH-1:0] data_out\n\);`
+        ^^^ Ref -> **Module** `Sub`  \n\\n\\n\---\n\\n\`module Sub #(\n\    parameter int WIDTH = 16\n\)(\n\    input logic clk,\n\    input logic rst,\n\    input logic [WIDTH-1:0] data_in,\n\    output logic [WIDTH-1:0] data_out\n\);`
 
             .WIDTH(WIDTH)
              ^^^^^ Ref -> **Parameter** `WIDTH` in `Sub`  \n\Type: `int`  \n\\n\\n\---\n\\n\`parameter int WIDTH = 16`
@@ -762,7 +762,7 @@ module NoDefaults #(
                      ^^^^^^^^^^^^^^^^^^^ Sym gen_no_branch_block : GenerateBlock
 
         Sub #(
-        ^^^ Ref -> **Definition** `Sub`  \n\\n\\n\---\n\\n\`module Sub #(\n\    parameter int WIDTH = 16\n\)(\n\    input logic clk,\n\    input logic rst,\n\    input logic [WIDTH-1:0] data_in,\n\    output logic [WIDTH-1:0] data_out\n\);`
+        ^^^ Ref -> **Module** `Sub`  \n\\n\\n\---\n\\n\`module Sub #(\n\    parameter int WIDTH = 16\n\)(\n\    input logic clk,\n\    input logic rst,\n\    input logic [WIDTH-1:0] data_in,\n\    output logic [WIDTH-1:0] data_out\n\);`
 
             .WIDTH(WIDTH)
              ^^^^^ Ref -> **Parameter** `WIDTH` in `Sub`  \n\Type: `int`  \n\\n\\n\---\n\\n\`parameter int WIDTH = 16`

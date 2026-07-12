@@ -35,10 +35,62 @@ using namespace slang;
 
 namespace {
 
+const ast::InstanceSymbol* getFirstInstanceElement(const ast::InstanceArraySymbol& array) {
+    auto* current = &array;
+    while (current && !current->elements.empty()) {
+        auto* element = current->elements.front();
+        if (auto* instance = element->as_if<ast::InstanceSymbol>())
+            return instance;
+
+        current = element->as_if<ast::InstanceArraySymbol>();
+    }
+
+    return nullptr;
+}
+
+std::string getInstanceArrayShape(const ast::InstanceArraySymbol& array) {
+    std::string shape;
+    auto* current = &array;
+    while (current) {
+        shape += fmt::format("[{}]", current->range.fullWidth());
+        if (current->elements.empty())
+            break;
+
+        current = current->elements.front()->as_if<ast::InstanceArraySymbol>();
+    }
+
+    return shape;
+}
+
+void renderSymbolHeaderName(markup::Paragraph& infoPg, const ast::Symbol& symbol) {
+    if (auto* definition = symbol.as_if<ast::DefinitionSymbol>()) {
+        infoPg.appendBold(toString(definition->definitionKind)).appendCode(symbol.name);
+        return;
+    }
+
+    if (auto* instance = symbol.as_if<ast::InstanceSymbol>()) {
+        infoPg.appendCode(instance->getDefinition().name).appendText(" ").appendCode(symbol.name);
+        return;
+    }
+
+    if (auto* array = symbol.as_if<ast::InstanceArraySymbol>()) {
+        if (auto* instance = getFirstInstanceElement(*array)) {
+            infoPg
+                .appendCode(fmt::format("{}{}", instance->getDefinition().name,
+                                        getInstanceArrayShape(*array)))
+                .appendText(" ")
+                .appendCode(symbol.name);
+            return;
+        }
+    }
+
+    infoPg.appendBold(toString(symbol.kind)).appendCode(symbol.name);
+}
+
 void renderSymbolHeader(markup::Paragraph& infoPg, const ast::Symbol& symbol,
                         const std::shared_ptr<ShallowAnalysis>& analysis) {
     // <Kind/Type> <Name> in <Scope>
-    infoPg.appendBold(toString(symbol.kind)).appendCode(symbol.name);
+    renderSymbolHeaderName(infoPg, symbol);
 
     auto symbolScope = symbol.getParentScope();
     auto& parentSym = symbolScope->asSymbol();
@@ -108,12 +160,6 @@ void renderSymbolHeader(markup::Paragraph& infoPg, const ast::Symbol& symbol,
                 infoPg.appendText("Driver: ").appendCode(driverStr).newLine();
             }
         }
-    }
-
-    else if (ast::InstanceSymbol::isKind(symbol.kind)) {
-        auto& instSym = symbol.as<ast::InstanceSymbol>();
-        auto typeStr = instSym.getDefinition().name;
-        infoPg.appendText("Type: ").appendText(typeStr).newLine();
     }
 
     auto appendTypeParameterValue = [&](const ast::Type& type) {
