@@ -296,7 +296,7 @@ module TestModule #(
 
     output test_pkg::data_t data_out,
            ^^^^^^^^ Ref -> **Package** `test_pkg`  \n\\n\\n\---\n\\n\`package test_pkg;`
-                     ^^^^^^ Ref -> **TypeAlias** `data_t` in `test_pkg`  \n\Resolved Type: `data_t` (aka `logic[7:0]`)  \n\Resolved Width: `8`  \n\\n\\n\---\n\\n\`parameter type data_t = logic [7:0]`
+                     ^^^^^^ Ref -> **TypeAlias** `data_t` in `test_pkg`  \n\Value: `logic[7:0]`  \n\Resolved Type: `data_t` (aka `logic[7:0]`)  \n\Resolved Width: `8`  \n\\n\\n\---\n\\n\`parameter type data_t = logic [7:0]`
                             ^^^^^^^^ Sym data_out : Variable
 
     bus_if.master bus_master,

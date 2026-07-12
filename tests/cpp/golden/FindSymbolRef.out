@@ -92,7 +92,7 @@ module automatic m1 import p::*; #(int i = 1)
 
     localparam p::y d = {1'b0, 1'b1};
                ^ Ref -> **Package** `p`  \n\\n\\n\---\n\\n\`package static p;`
-                  ^ Ref -> **TypeAlias** `y` in `p`  \n\Resolved Type: `y` (aka `logic[1:0]`)  \n\Resolved Width: `2`  \n\\n\\n\---\n\\n\`parameter type y = logic[x:0]`
+                  ^ Ref -> **TypeAlias** `y` in `p`  \n\Value: `logic[1:0]`  \n\Resolved Type: `y` (aka `logic[1:0]`)  \n\Resolved Width: `2`  \n\\n\\n\---\n\\n\`parameter type y = logic[x:0]`
                     ^ Sym d : Parameter
 
 endmodule
@@ -121,7 +121,7 @@ module m2 #(
 
     input p::y2 d2,
           ^ Ref -> **Package** `p`  \n\\n\\n\---\n\\n\`package static p;`
-             ^^ Ref -> **TypeAlias** `y2` in `p`  \n\Resolved Type: `y2` (aka `logic[2:0]`)  \n\Resolved Width: `3`  \n\\n\\n\---\n\\n\`parameter type y2 = logic[x2:0]`
+             ^^ Ref -> **TypeAlias** `y2` in `p`  \n\Value: `logic[2:0]`  \n\Resolved Type: `y2` (aka `logic[2:0]`)  \n\Resolved Width: `3`  \n\\n\\n\---\n\\n\`parameter type y2 = logic[x2:0]`
                 ^^ Sym d2 : Net
 
      interface.mod d, .e());
@@ -174,7 +174,7 @@ macromodule m3;
 
     typedef p::y_t y_t;
             ^ Ref -> **Package** `p`  \n\\n\\n\---\n\\n\`package static p;`
-               ^^^ Ref -> **TypeAlias** `y_t` in `p`  \n\Resolved Type: `y_t` (aka `logic[1:0]`)  \n\Resolved Width: `2`  \n\\n\\n\---\n\\n\`parameter type y_t = logic[x:0]`
+               ^^^ Ref -> **TypeAlias** `y_t` in `p`  \n\Value: `logic[1:0]`  \n\Resolved Type: `y_t` (aka `logic[1:0]`)  \n\Resolved Width: `2`  \n\\n\\n\---\n\\n\`parameter type y_t = logic[x:0]`
                    ^^^ Sym y_t : TypeAlias
 
 
@@ -183,7 +183,7 @@ macromodule m3;
     ^^ Ref -> **Definition** `m2`  \n\\n\\n\---\n\\n\`module m2 #(\n\    parameter i = 1,\n\    localparam j = i,\n\    parameter type x_t = bit\n\)\n\    (input int a[], (* bar = "asdf" *) output logic b = 1, ref c,\n\    input p::y2 d2,\n\     interface.mod d, .e());`
 
         .x_t(y_t)
-         ^^^ Ref -> **TypeAlias** `x_t` in `m2`  \n\Resolved Type: `x_t` (aka `logic[1:0]`)  \n\Resolved Width: `2`  \n\\n\\n\---\n\\n\`parameter type x_t = bit`
+         ^^^ Ref -> **TypeAlias** `x_t` in `m2`  \n\Value: `y_t` (aka `logic[1:0]`)  \n\Resolved Type: `x_t` (aka `logic[1:0]`)  \n\Resolved Width: `2`  \n\\n\\n\---\n\\n\`parameter type x_t = bit`
              ^^^ Ref -> **TypeAlias** `y_t` in `m3`  \n\Resolved Type: `y_t` (aka `logic[1:0]`)  \n\Resolved Width: `2`  \n\\n\\n\---\n\\n\`typedef p::y_t y_t;`
 
     ) m (, b, c, d, );
@@ -198,7 +198,7 @@ macromodule m3;
 
     typedef p::y2 y2;
             ^ Ref -> **Package** `p`  \n\\n\\n\---\n\\n\`package static p;`
-               ^^ Ref -> **TypeAlias** `y2` in `p`  \n\Resolved Type: `y2` (aka `logic[2:0]`)  \n\Resolved Width: `3`  \n\\n\\n\---\n\\n\`parameter type y2 = logic[x2:0]`
+               ^^ Ref -> **TypeAlias** `y2` in `p`  \n\Value: `logic[2:0]`  \n\Resolved Type: `y2` (aka `logic[2:0]`)  \n\Resolved Width: `3`  \n\\n\\n\---\n\\n\`parameter type y2 = logic[x2:0]`
                   ^^ Sym y2 : TypeAlias
 
 
@@ -210,7 +210,7 @@ macromodule m3;
          ^ Ref -> **Parameter** `i` in `m2`  \n\Type: `logic signed[31:0]`  \n\Value: `1`  \n\\n\\n\---\n\\n\`parameter i = 1`
 
         .x_t(y2)
-         ^^^ Ref -> **TypeAlias** `x_t` in `m2`  \n\Resolved Type: `x_t` (aka `logic[2:0]`)  \n\Resolved Width: `3`  \n\\n\\n\---\n\\n\`parameter type x_t = bit`
+         ^^^ Ref -> **TypeAlias** `x_t` in `m2`  \n\Value: `y2` (aka `logic[2:0]`)  \n\Resolved Type: `x_t` (aka `logic[2:0]`)  \n\Resolved Width: `3`  \n\\n\\n\---\n\\n\`parameter type x_t = bit`
              ^^ Ref -> **TypeAlias** `y2` in `m3`  \n\Resolved Type: `y2` (aka `logic[2:0]`)  \n\Resolved Width: `3`  \n\\n\\n\---\n\\n\`typedef p::y2 y2;`
 
     ) m2_inst (
