@@ -89,7 +89,7 @@ ShallowAnalysis::ShallowAnalysis(SourceManager& sourceManager, slang::BufferID b
     // Set up options for shallow compilation
     auto cOptions = options.getOrDefault<ast::CompilationOptions>();
     cOptions.flags |= ast::CompilationFlags::AllowTopLevelIfacePorts;
-    cOptions.flags |= ast::CompilationFlags::UntakenGenerateChecks;
+    cOptions.flags |= ast::CompilationFlags::CheckUninstantiated;
     cOptions.flags |= ast::CompilationFlags::AllowInvalidTop;
 
     // Add definitions from this tree (even if they aren't valid tops)

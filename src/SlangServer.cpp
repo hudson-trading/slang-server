@@ -48,12 +48,7 @@ namespace fs = std::filesystem;
 
 namespace server {
 
-SlangServer::SlangServer(SlangLspClient& client) :
-    m_client(client), guard(OS::captureOutput([this](std::string_view text, bool isStdout) {
-        driverPrintCb(text, isStdout);
-    })),
-    m_config(Config()) // This routes messages from the slang driver to lsp notifications
-{
+SlangServer::SlangServer(SlangLspClient& client) : m_client(client), m_config(Config()) {
 
     /// Keep this short to get server started quickly
     registerInitialize();

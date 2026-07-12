@@ -29,7 +29,7 @@ public:
         });
     }
 
-    void showWarning(const std::string& message) {
+    virtual void showWarning(const std::string& message) {
         std::cerr << "Warning Notif: " << message << '\n';
         onWindowShowMessage(lsp::ShowMessageParams{
             .type = lsp::MessageType::Warning,
