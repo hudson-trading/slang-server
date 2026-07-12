@@ -70,6 +70,33 @@ TEST_CASE("GetScopeBranches") {
     golden.record("children", children);
 }
 
+TEST_CASE("GetScopeTypeParameterOverride") {
+    ServerHarness server;
+
+    auto hdl = server.openFile("type_param_override.sv", R"(
+module child #(parameter type T = logic) ();
+endmodule
+
+module top;
+    child #(.T(int)) u();
+endmodule
+)");
+
+    server.setTopLevel(std::string{hdl.m_uri.getPath()});
+
+    auto children = server.getScope("top.u");
+    auto found = std::ranges::find_if(children, [](const hier::HierItem_t& item) {
+        return rfl::holds_alternative<hier::Var>(item) && rfl::get<hier::Var>(item).instName == "T";
+    });
+
+    REQUIRE(found != children.end());
+    auto& typeParam = rfl::get<hier::Var>(*found);
+    CHECK(typeParam.kind == hier::SlangKind::Param);
+    CHECK(typeParam.type == "type");
+    REQUIRE(typeParam.value);
+    CHECK(*typeParam.value == "int");
+}
+
 TEST_CASE("GetScopesByModule") {
     ServerHarness server("comp_repo");
     JsonGoldenTest golden;
