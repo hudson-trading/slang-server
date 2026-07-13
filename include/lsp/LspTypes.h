@@ -271,7 +271,8 @@ enum class CompletionItemTag : uint8_t {
 /// A set of predefined code action kinds
 using CodeActionKind = rfl::Literal<"", "quickfix", "refactor", "refactor.extract",
                                     "refactor.inline", "refactor.rewrite", "source",
-                                    "source.organizeImports", "source.fixAll", "notebook">;
+                                    "source.organizeImports", "source.fixAll", "notebook",
+                                    "*">;
 
 /// A document filter denotes a document by different properties like
 /// the {@link TextDocument.languageId language}, the {@link Uri.scheme scheme} of
@@ -606,7 +607,8 @@ using LanguageKind =
                  "objective-c", "objective-cpp", "perl", "perl6", "php", "powershell", "jade",
                  "python", "r", "razor", "ruby", "rust", "scss", "sass", "scala", "shaderlab",
                  "shellscript", "sql", "swift", "systemverilog", "systemverilogheader", "verilog",
-                 "typescript", "typescriptreact", "tex", "vb", "xml", "xsl", "yaml">;
+                 "typescript", "typescriptreact", "tex", "vb", "xml", "xsl", "yaml",
+                 "">;
 
 /// A filter to describe in which file operation requests or notifications
 /// the server is interested in receiving.

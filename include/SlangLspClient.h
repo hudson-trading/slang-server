@@ -17,6 +17,7 @@ public:
     struct {
         bool inactiveRegionsSupported = false;
     } experimentalCapabilities;
+    bool linkSupport = false;
 
     void setConfig(const Config& params) {
         lsp::sendNotification("slang/setConfig", rfl::to_generic(params));
