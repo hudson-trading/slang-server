@@ -133,7 +133,7 @@ endmodule
 
 
 extern interface I(input a, output b);
-                 ^ Ref -> **Definition** `I`  \n\\n\\n\---\n\\n\`interface I(.*);`
+                 ^ Ref -> **Interface** `I`  \n\\n\\n\---\n\\n\`interface I(.*);`
                          ^ Sym a : Net
                                    ^ Sym b : Net
 
@@ -151,7 +151,7 @@ endinterface
 
 
 extern macromodule m3;
-                   ^^ Ref -> **Definition** `m3`  \n\\n\\n\---\n\\n\`macromodule m3;`
+                   ^^ Ref -> **Module** `m3`  \n\\n\\n\---\n\\n\`macromodule m3;`
 
 
 
@@ -165,7 +165,7 @@ macromodule m3;
           ^ Sym c : Variable
 
     I d(.a(), .b());
-    ^ Ref -> **Definition** `I`  \n\\n\\n\---\n\\n\`interface I(.*);`
+    ^ Ref -> **Interface** `I`  \n\\n\\n\---\n\\n\`interface I(.*);`
       ^ Sym d : Instance
          ^ Ref -> **Net** `a` in `I`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input a`
                ^ Ref -> **Net** `b` in `I`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`output b`
@@ -180,7 +180,7 @@ macromodule m3;
 
 
     m2 #(
-    ^^ Ref -> **Definition** `m2`  \n\\n\\n\---\n\\n\`module m2 #(\n\    parameter i = 1,\n\    localparam j = i,\n\    parameter type x_t = bit\n\)\n\    (input int a[], (* bar = "asdf" *) output logic b = 1, ref c,\n\    input p::y2 d2,\n\     interface.mod d, .e());`
+    ^^ Ref -> **Module** `m2`  \n\\n\\n\---\n\\n\`module m2 #(\n\    parameter i = 1,\n\    localparam j = i,\n\    parameter type x_t = bit\n\)\n\    (input int a[], (* bar = "asdf" *) output logic b = 1, ref c,\n\    input p::y2 d2,\n\     interface.mod d, .e());`
 
         .x_t(y_t)
          ^^^ Ref -> **TypeAlias** `x_t` in `m2`  \n\Value: `y_t` (aka `logic[1:0]`)  \n\Resolved Type: `x_t` (aka `logic[1:0]`)  \n\Resolved Width: `2`  \n\\n\\n\---\n\\n\`parameter type x_t = bit`
@@ -190,7 +190,7 @@ macromodule m3;
       ^ Sym m : Instance
            ^ Ref -> **Net** `b` in `m3`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`wire b;`
               ^ Ref -> **Variable** `c` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic c;`
-                 ^ Ref -> **Instance** `d` in `m3`  \n\Type: I  \n\\n\\n\---\n\\n\`I d(.a(), .b());`
+                 ^ Ref -> `I` `d` in `m3`  \n\\n\\n\---\n\\n\`I d(.a(), .b());`
 
 
 
@@ -204,7 +204,7 @@ macromodule m3;
 
 
     m2 #(
-    ^^ Ref -> **Definition** `m2`  \n\\n\\n\---\n\\n\`module m2 #(\n\    parameter i = 1,\n\    localparam j = i,\n\    parameter type x_t = bit\n\)\n\    (input int a[], (* bar = "asdf" *) output logic b = 1, ref c,\n\    input p::y2 d2,\n\     interface.mod d, .e());`
+    ^^ Ref -> **Module** `m2`  \n\\n\\n\---\n\\n\`module m2 #(\n\    parameter i = 1,\n\    localparam j = i,\n\    parameter type x_t = bit\n\)\n\    (input int a[], (* bar = "asdf" *) output logic b = 1, ref c,\n\    input p::y2 d2,\n\     interface.mod d, .e());`
 
         .i(1),
          ^ Ref -> **Parameter** `i` in `m2`  \n\Type: `logic signed[31:0]`  \n\Value: `1`  \n\\n\\n\---\n\\n\`parameter i = 1`
@@ -228,7 +228,7 @@ macromodule m3;
 
         .d(d),
          ^ Ref -> **InterfacePort** `d` in `m2`  \n\\n\\n\---\n\\n\`interface.mod d`
-           ^ Ref -> **Instance** `d` in `m3`  \n\Type: I  \n\\n\\n\---\n\\n\`I d(.a(), .b());`
+           ^ Ref -> `I` `d` in `m3`  \n\\n\\n\---\n\\n\`I d(.a(), .b());`
 
         .e()
          ^ Ref -> **Port** `e` in `m2`  \n\\n\\n\---\n\\n\`.e()`
@@ -658,7 +658,7 @@ macromodule m3;
 
 
     defparam m3.m.i = 1:1:1;
-                ^ Ref -> **Instance** `m` in `m3`  \n\Type: m2  \n\\n\\n\---\n\\n\`m2 #(\n\    .x_t(y_t)\n\) m (, b, c, d, );`
+                ^ Ref -> `m2` `m` in `m3`  \n\\n\\n\---\n\\n\`m2 #(\n\    .x_t(y_t)\n\) m (, b, c, d, );`
                   ^ Ref -> **Parameter** `i` in `m2`  \n\Type: `logic signed[31:0]`  \n\Value: `1`  \n\\n\\n\---\n\\n\`parameter i = 1`
 
 
@@ -691,12 +691,12 @@ macromodule m3;
 
 
 endmodule : m3
-            ^^ Ref -> **Definition** `m3`  \n\\n\\n\---\n\\n\`macromodule m3;`
+            ^^ Ref -> **Module** `m3`  \n\\n\\n\---\n\\n\`macromodule m3;`
 
 
 
 extern program p(a, b);
-               ^ Ref -> **Definition** `p`  \n\\n\\n\---\n\\n\`program p(a, b);`
+               ^ Ref -> **Program** `p`  \n\\n\\n\---\n\\n\`program p(a, b);`
 
 
 
@@ -710,7 +710,7 @@ program p(a, b);
              ^ Sym b : Net
 
 endprogram : p
-             ^ Ref -> **Definition** `p`  \n\\n\\n\---\n\\n\`program p(a, b);`
+             ^ Ref -> **Program** `p`  \n\\n\\n\---\n\\n\`program p(a, b);`
 
 
 
@@ -737,8 +737,8 @@ endprimitive
 
 
 (* attr = 3.14 *) bind m3.m m1 #(1) bound('x, , , );
-                          ^ Ref -> **Instance** `m` in `m3`  \n\Type: m2  \n\\n\\n\---\n\\n\`m2 #(\n\    .x_t(y_t)\n\) m (, b, c, d, );`
-                            ^^ Ref -> **Definition** `m1`  \n\\n\\n\---\n\\n\`module automatic m1 import p::*; #(int i = 1)\n\(a, b, , .c({a, b[0]}));`
+                          ^ Ref -> `m2` `m` in `m3`  \n\\n\\n\---\n\\n\`m2 #(\n\    .x_t(y_t)\n\) m (, b, c, d, );`
+                            ^^ Ref -> **Module** `m1`  \n\\n\\n\---\n\\n\`module automatic m1 import p::*; #(int i = 1)\n\(a, b, , .c({a, b[0]}));`
                                     ^^^^^ Sym bound : Instance
 
 
@@ -750,13 +750,13 @@ config cfg;
                ^ Sym i : Parameter
 
     design work.m3;
-                ^^ Ref -> **Definition** `m3`  \n\\n\\n\---\n\\n\`macromodule m3;`
+                ^^ Ref -> **Module** `m3`  \n\\n\\n\---\n\\n\`macromodule m3;`
 
     default liblist a b;
 
     cell m3 use work.m3;
-         ^^ Ref -> **Definition** `m3`  \n\\n\\n\---\n\\n\`macromodule m3;`
-                     ^^ Ref -> **Definition** `m3`  \n\\n\\n\---\n\\n\`macromodule m3;`
+         ^^ Ref -> **Module** `m3`  \n\\n\\n\---\n\\n\`macromodule m3;`
+                     ^^ Ref -> **Module** `m3`  \n\\n\\n\---\n\\n\`macromodule m3;`
 
 endconfig
 
@@ -848,7 +848,7 @@ endinterface
 
 module n(Iface.m a);
        ^ Sym n : Definition
-         ^^^^^ Ref -> **Definition** `Iface`  \n\\n\\n\---\n\\n\`interface Iface;`
+         ^^^^^ Ref -> **Interface** `Iface`  \n\\n\\n\---\n\\n\`interface Iface;`
                ^ Ref -> **Modport** `m` in `Iface`  \n\\n\\n\---\n\\n\`modport m(export foo, function void bar(int, logic), task baz, export func);`
                  ^ Sym a : InterfacePort
 
@@ -898,24 +898,24 @@ module m4;
        ^^ Sym m4 : Definition
 
     Iface i1();
-    ^^^^^ Ref -> **Definition** `Iface`  \n\\n\\n\---\n\\n\`interface Iface;`
+    ^^^^^ Ref -> **Interface** `Iface`  \n\\n\\n\---\n\\n\`interface Iface;`
           ^^ Sym i1 : Instance
 
     n n1(i1);
-    ^ Ref -> **Definition** `n`  \n\\n\\n\---\n\\n\`module n(Iface.m a);`
+    ^ Ref -> **Module** `n`  \n\\n\\n\---\n\\n\`module n(Iface.m a);`
       ^^ Sym n1 : Instance
-         ^^ Ref -> **Instance** `i1` in `m4`  \n\Type: Iface  \n\\n\\n\---\n\\n\`Iface i1();`
+         ^^ Ref -> `Iface` `i1` in `m4`  \n\\n\\n\---\n\\n\`Iface i1();`
 
 
 
     Iface i2();
-    ^^^^^ Ref -> **Definition** `Iface`  \n\\n\\n\---\n\\n\`interface Iface;`
+    ^^^^^ Ref -> **Interface** `Iface`  \n\\n\\n\---\n\\n\`interface Iface;`
           ^^ Sym i2 : Instance
 
     n n2(i2.m);
-    ^ Ref -> **Definition** `n`  \n\\n\\n\---\n\\n\`module n(Iface.m a);`
+    ^ Ref -> **Module** `n`  \n\\n\\n\---\n\\n\`module n(Iface.m a);`
       ^^ Sym n2 : Instance
-         ^^ Ref -> **Instance** `i2` in `m4`  \n\Type: Iface  \n\\n\\n\---\n\\n\`Iface i2();`
+         ^^ Ref -> `Iface` `i2` in `m4`  \n\\n\\n\---\n\\n\`Iface i2();`
             ^ Ref -> **Modport** `m` in `Iface`  \n\\n\\n\---\n\\n\`modport m(export foo, function void bar(int, logic), task baz, export func);`
 
 
@@ -924,7 +924,7 @@ module m4;
                    ^^^ Sym baz : Parameter
 
     task i1.t2;
-         ^^ Ref -> **Instance** `i1` in `m4`  \n\Type: Iface  \n\\n\\n\---\n\\n\`Iface i1();`
+         ^^ Ref -> `Iface` `i1` in `m4`  \n\\n\\n\---\n\\n\`Iface i1();`
             ^^ Ref -> **Subroutine** `t2` in `Iface`  \n\\n\\n\---\n\\n\`task t2`
 
         static int i = baz;
@@ -935,7 +935,7 @@ module m4;
 
 
     task i2.t2;
-         ^^ Ref -> **Instance** `i2` in `m4`  \n\Type: Iface  \n\\n\\n\---\n\\n\`Iface i2();`
+         ^^ Ref -> `Iface` `i2` in `m4`  \n\\n\\n\---\n\\n\`Iface i2();`
             ^^ Ref -> **Subroutine** `t2` in `Iface`  \n\\n\\n\---\n\\n\`task t2`
 
         static int i = baz;
@@ -1280,7 +1280,7 @@ endfunction
 
 class H #(int p);
       ^ Sym H : GenericClassDef
-              ^ Ref -> **Definition** `p`  \n\\n\\n\---\n\\n\`program p(a, b);`
+              ^ Ref -> **Program** `p`  \n\\n\\n\---\n\\n\`program p(a, b);`
 
     extern function int foo;
 
