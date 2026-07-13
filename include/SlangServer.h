@@ -47,9 +47,6 @@ protected:
     /// The diag client
     std::shared_ptr<ServerDiagClient> m_diagClient;
 
-    /// Guard to get error prints from driver
-    decltype(OS::captureOutput()) guard;
-
     /// The build file, if set. Requires the top level to already be set
     std::optional<std::string> m_buildfile;
 
@@ -86,15 +83,6 @@ public:
 
     /// @brief Configure the driver with flags from the config file
     void configureDriver(slang::driver::Driver& driver);
-
-    void driverPrintCb(std::string_view text, bool isStdout) {
-        if (isStdout) {
-            m_client.showWarning(std::string(text));
-        }
-        else {
-            m_client.showError(std::string(text));
-        }
-    }
 
     std::shared_ptr<SlangDoc> getDoc(const URI& path);
 

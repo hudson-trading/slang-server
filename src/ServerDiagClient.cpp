@@ -22,6 +22,7 @@
 #include "slang/diagnostics/CompilationDiags.h"
 #include "slang/diagnostics/DiagnosticEngine.h"
 #include "slang/diagnostics/Diagnostics.h"
+#include "slang/diagnostics/DriverDiags.h"
 #include "slang/text/SourceLocation.h"
 #include "slang/text/SourceManager.h"
 namespace server {
@@ -79,6 +80,16 @@ void ServerDiagClient::report(const slang::ReportedDiagnostic& diag) {
 
     // Notes are processed as relatedInformation from the parent diagnostic
     if (diag.severity == slang::DiagnosticSeverity::Note) {
+        return;
+    }
+
+    if (diag.originalDiagnostic.code == slang::diag::CommandLineWarning) {
+        m_client.showWarning(std::string(diag.formattedMessage));
+        return;
+    }
+
+    if (diag.originalDiagnostic.code == slang::diag::CommandLineError) {
+        m_client.showError(std::string(diag.formattedMessage));
         return;
     }
 

@@ -70,7 +70,7 @@ endmodule
     golden.record("afterSave", doc.getDiagnostics());
 }
 
-TEST_CASE("UntakenGenerateChecks") {
+TEST_CASE("CheckUninstantiated") {
     ServerHarness server;
 
     JsonGoldenTest golden;
@@ -133,6 +133,103 @@ TEST_CASE("PartialElaboration") {
         )");
     auto diags = doc.getDiagnostics();
     golden.record(diags);
+}
+
+TEST_CASE("IfacePortStaticAssertParamOverride") {
+    // When a top-level module has an interface port (shallow / AllowTopLevelIfacePorts),
+    // a `$static_assert(port.PARAM == const)` in the module body should override the value
+    // of PARAM in the default-instantiated interface, even past the interface's own default.
+    ServerHarness server;
+
+    SECTION("Value param: override widens the interface so the access is in range") {
+        auto doc = server.openFile("test.sv", R"(
+interface my_if #(
+    parameter int MY_PARAM = 1
+);
+    logic [MY_PARAM-1:0] data;
+endinterface : my_if
+
+module test_module (
+    my_if my_if,
+    output logic out
+);
+    $static_assert(my_if.MY_PARAM == 2);
+    assign out = my_if.data[1];
+endmodule : test_module
+)");
+        // With MY_PARAM overridden to 2, `data` is 2 bits wide so `data[1]` is in range.
+        CHECK(doc.getDiagnostics().empty());
+    }
+
+    SECTION("Type param: override sets the interface type so the access is in range") {
+        auto doc = server.openFile("test.sv", R"(
+package pkg;
+    typedef logic [7:0] my_t;
+endpackage
+
+interface my_if #(
+    parameter type DT = logic
+);
+    DT data;
+endinterface : my_if
+
+module test_module (
+    my_if my_if,
+    output logic out
+);
+    $static_assert(type(my_if.DT) == type(pkg::my_t));
+    assign out = my_if.data[7];
+endmodule : test_module
+)");
+        // With DT overridden to pkg::my_t (8 bits), `data[7]` is in range.
+        CHECK(doc.getDiagnostics().empty());
+    }
+
+    SECTION("Type param: override operand can use a module wildcard import") {
+        auto doc = server.openFile("test.sv", R"(
+package p0;
+    typedef logic [7:0] word_t;
+endpackage
+
+interface stream_if #(
+    parameter type ElemT
+);
+    ElemT beat;
+    modport tx(output beat);
+endinterface : stream_if
+
+module wrapper
+    import p0::*;
+   (
+    stream_if.tx chan,
+    output word_t out
+);
+    $static_assert(type(chan.ElemT) == type(word_t));
+    assign out = chan.beat;
+endmodule : wrapper
+)");
+        // The override resolver needs the module body scope so the wildcard import is visible.
+        CHECK(doc.getDiagnostics().empty());
+    }
+
+    SECTION("Without a matching assert the default leaves the access out of range") {
+        auto doc = server.openFile("test.sv", R"(
+interface my_if #(
+    parameter int MY_PARAM = 1
+);
+    logic [MY_PARAM-1:0] data;
+endinterface : my_if
+
+module test_module (
+    my_if my_if,
+    output logic out
+);
+    assign out = my_if.data[1];
+endmodule : test_module
+)");
+        // MY_PARAM stays at its default of 1, so `data` is 1 bit and `data[1]` is out of range.
+        CHECK(!doc.getDiagnostics().empty());
+    }
 }
 
 TEST_CASE("RecursiveModuleRegression") {

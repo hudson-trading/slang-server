@@ -321,7 +321,7 @@ target_include_directories(slang_server_obj_lib SYSTEM
 target_precompile_headers(slang_server_obj_lib PRIVATE
                           "${PROJECT_SOURCE_DIR}/include/lsp/LspTypes.h")
 
-target_link_libraries(slang_server_obj_lib PUBLIC slang::slang ctre)
+target_link_libraries(slang_server_obj_lib PUBLIC slang::slang fmt::fmt ctre)
 
 # Apply pedantic warnings only to slang-server code, not external libraries
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")

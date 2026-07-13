@@ -33,6 +33,7 @@
 #include "slang/ast/types/Type.h"
 #include "slang/diagnostics/DiagnosticEngine.h"
 #include "slang/diagnostics/Diagnostics.h"
+#include "slang/diagnostics/TextDiagnosticClient.h"
 #include "slang/driver/Driver.h"
 #include "slang/driver/SourceLoader.h"
 #include "slang/parsing/ParserMetadata.h"
@@ -62,6 +63,8 @@ ServerDriver::ServerDriver(Indexer& indexer, SlangLspClient& client, const Confi
 
 void ServerDriver::parseAndLoadSources(const std::vector<std::string>& buildfiles) {
     driver.addStandardArgs();
+    diagEngine.removeClient(driver.textDiagClient);
+    diagEngine.addClient(diagClient);
 
     slang::CommandLine::ParseOptions parseOpts;
     parseOpts.expandEnvVars = true;
@@ -102,10 +105,11 @@ void ServerDriver::parseAndLoadSources(const std::vector<std::string>& buildfile
         }
     }
 
-    // Configure diagnostic engine
+    // Configure diagnostic engine. The LSP server reports warnings as editor
+    // diagnostics by default; user-provided -Wno-* mappings still suppress
+    // specific warnings via the severity table populated by processOptions().
     diagEngine.setIgnoreAllWarnings(false);
     diagEngine.setIgnoreAllNotes(false);
-    diagEngine.addClient(diagClient);
 
     options = driver.createOptionBag();
     options.set(driver.getAnalysisOptions());

@@ -220,7 +220,7 @@ macromodule m3;
          ^ Ref -> **Net** `a` in `m2`  \n\Type: `int$[]`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input int a[]`
 
         .b(b),
-         ^ Ref -> **Variable** `b` in `m2`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`(* bar = "asdf" *) output logic b = 1`
+         ^ Ref -> **Variable** `b` in `m2`  \n\Type: `logic`  \n\Driver: `Procedural`  \n\\n\\n\---\n\\n\`(* bar = "asdf" *) output logic b = 1`
            ^ Ref -> **Net** `b` in `m3`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`wire b;`
 
         .c(),
