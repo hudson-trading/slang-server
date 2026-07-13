@@ -16,6 +16,44 @@ static std::optional<lsp::CodeAction> getCodeActionAt(ServerHarness& server, Doc
     return rfl::get<lsp::CodeAction>(result->front());
 }
 
+TEST_CASE("LspExtensibleStringEnums_AllowExtensionKinds") {
+    auto params = rfl::json::read<lsp::InitializeParams>(R"(
+{
+  "capabilities": {
+    "textDocument": {
+      "codeAction": {
+        "codeActionLiteralSupport": {
+          "codeActionKind": {
+            "valueSet": ["quickfix", "refactor.move"]
+          }
+        }
+      },
+      "foldingRange": {
+        "foldingRangeKind": {
+          "valueSet": ["comment", "custom.region"]
+        }
+      }
+    }
+  }
+}
+)");
+
+    REQUIRE(params);
+
+    const auto& valueSet = params.value()
+                               .capabilities.textDocument->codeAction->codeActionLiteralSupport
+                               ->codeActionKind.valueSet;
+    REQUIRE(valueSet.size() == 2);
+    CHECK(valueSet[0] == lsp::CodeActionKindOptions::from_name<"quickfix">().str());
+    CHECK(valueSet[1] == "refactor.move");
+
+    const auto& foldingValueSet =
+        params.value().capabilities.textDocument->foldingRange->foldingRangeKind->valueSet.value();
+    REQUIRE(foldingValueSet.size() == 2);
+    CHECK(foldingValueSet[0] == lsp::FoldingRangeKindOptions::from_name<"comment">().str());
+    CHECK(foldingValueSet[1] == "custom.region");
+}
+
 TEST_CASE("CodeAction_ExpandSimpleMacro") {
     ServerHarness server;
 
@@ -100,7 +138,7 @@ TEST_CASE("CodeAction_AddDefine_UndefinedMacro") {
     auto action = getCodeActionAt(server, doc, doc.after("`ifdef ").m_offset);
     REQUIRE(action.has_value());
     CHECK(action->title == "Add define 'UNDEFINED_MACRO' to local flags");
-    CHECK(action->kind == lsp::CodeActionKind::from_name<"quickfix">());
+    CHECK(action->kind == lsp::CodeActionKindOptions::from_name<"quickfix">().str());
     REQUIRE(action->command.has_value());
     CHECK(action->command->command == "slang.addDefine");
 }

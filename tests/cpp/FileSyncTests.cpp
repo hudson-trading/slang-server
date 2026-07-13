@@ -234,12 +234,12 @@ endmodule
                                    std::istreambuf_iterator<char>());
     }
 
-    server.onDocDidOpen(
-        lsp::DidOpenTextDocumentParams{.textDocument = lsp::TextDocumentItem{
-                                           .uri = uri,
-                                           .languageId = lsp::LanguageKind::make<"systemverilog">(),
-                                           .version = 1,
-                                           .text = originalText}});
+    server.onDocDidOpen(lsp::DidOpenTextDocumentParams{
+        .textDocument = lsp::TextDocumentItem{
+            .uri = uri,
+            .languageId = lsp::LanguageKindOptions::from_name<"systemverilog">().str(),
+            .version = 1,
+            .text = originalText}});
 
     // Verify initial content
     auto doc = server.getDoc(uri);
@@ -300,12 +300,12 @@ endmodule
         text = std::string((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
     }
 
-    server.onDocDidOpen(
-        lsp::DidOpenTextDocumentParams{.textDocument = lsp::TextDocumentItem{
-                                           .uri = uri,
-                                           .languageId = lsp::LanguageKind::make<"systemverilog">(),
-                                           .version = 1,
-                                           .text = text}});
+    server.onDocDidOpen(lsp::DidOpenTextDocumentParams{
+        .textDocument = lsp::TextDocumentItem{
+            .uri = uri,
+            .languageId = lsp::LanguageKindOptions::from_name<"systemverilog">().str(),
+            .version = 1,
+            .text = text}});
 
     // Should have diagnostics for undefined signal
     auto initialDiags = server.client.getDiagnostics(uri);
@@ -363,12 +363,12 @@ endmodule
         text = std::string((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
     }
 
-    server.onDocDidOpen(
-        lsp::DidOpenTextDocumentParams{.textDocument = lsp::TextDocumentItem{
-                                           .uri = uri,
-                                           .languageId = lsp::LanguageKind::make<"systemverilog">(),
-                                           .version = 1,
-                                           .text = text}});
+    server.onDocDidOpen(lsp::DidOpenTextDocumentParams{
+        .textDocument = lsp::TextDocumentItem{
+            .uri = uri,
+            .languageId = lsp::LanguageKindOptions::from_name<"systemverilog">().str(),
+            .version = 1,
+            .text = text}});
 
     // Get initial symbols
     auto doc = server.getDoc(uri);
@@ -446,19 +446,19 @@ endmodule
         return std::string((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
     };
 
-    server.onDocDidOpen(
-        lsp::DidOpenTextDocumentParams{.textDocument = lsp::TextDocumentItem{
-                                           .uri = childUri,
-                                           .languageId = lsp::LanguageKind::make<"systemverilog">(),
-                                           .version = 1,
-                                           .text = readFile(childFile)}});
+    server.onDocDidOpen(lsp::DidOpenTextDocumentParams{
+        .textDocument = lsp::TextDocumentItem{
+            .uri = childUri,
+            .languageId = lsp::LanguageKindOptions::from_name<"systemverilog">().str(),
+            .version = 1,
+            .text = readFile(childFile)}});
 
-    server.onDocDidOpen(
-        lsp::DidOpenTextDocumentParams{.textDocument = lsp::TextDocumentItem{
-                                           .uri = parentUri,
-                                           .languageId = lsp::LanguageKind::make<"systemverilog">(),
-                                           .version = 1,
-                                           .text = readFile(parentFile)}});
+    server.onDocDidOpen(lsp::DidOpenTextDocumentParams{
+        .textDocument = lsp::TextDocumentItem{
+            .uri = parentUri,
+            .languageId = lsp::LanguageKindOptions::from_name<"systemverilog">().str(),
+            .version = 1,
+            .text = readFile(parentFile)}});
 
     // Verify both files are loaded correctly and no errors
     auto childDoc = server.getDoc(childUri);

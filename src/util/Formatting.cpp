@@ -347,7 +347,7 @@ std::string svCodeBlockString(std::string_view code) {
 }
 
 lsp::MarkupContent svCodeBlock(const std::string_view code) {
-    return lsp::MarkupContent{.kind = lsp::MarkupKind::make<"markdown">(),
+    return lsp::MarkupContent{.kind = lsp::MarkupKindOptions::from_name<"markdown">().str(),
                               .value = svCodeBlockString(code)};
 }
 
@@ -422,7 +422,7 @@ std::string svCodeBlockString(const syntax::SyntaxNode& node) {
 }
 
 lsp::MarkupContent svCodeBlock(const syntax::SyntaxNode& node) {
-    return lsp::MarkupContent{.kind = lsp::MarkupKind::make<"markdown">(),
+    return lsp::MarkupContent{.kind = lsp::MarkupKindOptions::from_name<"markdown">().str(),
                               .value = svCodeBlockString(node)};
 }
 
