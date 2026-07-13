@@ -30,12 +30,12 @@ DocumentHandle ServerHarness::openFile(std::string fileName) {
     }
 
     auto uri = URI::fromFile(root / fileName);
-    onDocDidOpen(
-        lsp::DidOpenTextDocumentParams{.textDocument = lsp::TextDocumentItem{
-                                           .uri = uri,
-                                           .languageId = lsp::LanguageKind::make<"systemverilog">(),
-                                           .version = 1,
-                                           .text = text}});
+    onDocDidOpen(lsp::DidOpenTextDocumentParams{
+        .textDocument = lsp::TextDocumentItem{
+            .uri = uri,
+            .languageId = lsp::LanguageKindOptions::from_name<"systemverilog">().str(),
+            .version = 1,
+            .text = text}});
 
     auto tree = getDocDocumentSymbol(
         lsp::DocumentSymbolParams{.textDocument = lsp::TextDocumentIdentifier{.uri = uri}});
@@ -49,12 +49,12 @@ DocumentHandle ServerHarness::openFile(std::string fileName, std::string text) {
     auto root = m_workspaceFolder ? (m_workspaceFolder->uri.getPath()) : findSlangRoot();
     auto uri = URI::fromFile(root / fileName);
 
-    onDocDidOpen(
-        lsp::DidOpenTextDocumentParams{.textDocument = lsp::TextDocumentItem{
-                                           .uri = uri,
-                                           .languageId = lsp::LanguageKind::make<"systemverilog">(),
-                                           .version = 1,
-                                           .text = text}});
+    onDocDidOpen(lsp::DidOpenTextDocumentParams{
+        .textDocument = lsp::TextDocumentItem{
+            .uri = uri,
+            .languageId = lsp::LanguageKindOptions::from_name<"systemverilog">().str(),
+            .version = 1,
+            .text = text}});
 
     return DocumentHandle(*this, uri, text);
 }
@@ -325,12 +325,12 @@ void DocumentHandle::close() {
 void DocumentHandle::open() {
     CHECK(state == DocState::Closed);
 
-    m_server.onDocDidOpen(
-        lsp::DidOpenTextDocumentParams{.textDocument = lsp::TextDocumentItem{
-                                           .uri = m_uri,
-                                           .languageId = lsp::LanguageKind::make<"systemverilog">(),
-                                           .version = 1,
-                                           .text = m_text}});
+    m_server.onDocDidOpen(lsp::DidOpenTextDocumentParams{
+        .textDocument = lsp::TextDocumentItem{
+            .uri = m_uri,
+            .languageId = lsp::LanguageKindOptions::from_name<"systemverilog">().str(),
+            .version = 1,
+            .text = m_text}});
     state = DocState::Open;
 }
 

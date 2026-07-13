@@ -118,7 +118,8 @@ lsp::SymbolKind toSymbolKind(const syntax::SyntaxKind& kind) {
 }
 
 lsp::MarkupContent markdown(std::string& md) {
-    return lsp::MarkupContent{.kind = lsp::MarkupKind::make<"markdown">(), .value = md};
+    return lsp::MarkupContent{.kind = lsp::MarkupKindOptions::from_name<"markdown">().str(),
+                              .value = md};
 }
 
 std::string subroutineString(ast::SubroutineKind kind) {
