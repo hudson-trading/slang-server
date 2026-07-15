@@ -227,6 +227,22 @@ const ast::Scope* ShallowAnalysis::getScopeFromSym(const ast::Symbol* symbol) {
     else if (ast::InstanceSymbol::isKind(symbol->kind)) {
         return &symbol->as<ast::InstanceSymbol>().body.as<ast::Scope>();
     }
+    else if (ast::InterfacePortSymbol::isKind(symbol->kind)) {
+        auto& port = symbol->as<ast::InterfacePortSymbol>();
+        auto [connSym, modport] = port.getConnection();
+        auto scope = getScopeFromSym(connSym);
+        if (!modport) {
+            return scope;
+        }
+
+        if (scope) {
+            auto realModport = scope->find(modport->name);
+            if (realModport && realModport->kind == ast::SymbolKind::Modport) {
+                return &realModport->as<ast::Scope>();
+            }
+        }
+        return modport;
+    }
 
     return nullptr;
 }
