@@ -262,7 +262,7 @@ void DefinitionInfo::SyntaxTarget::renderMacroExpansion(markup::Document& doc,
                                                         const SourceManager& sm) const {
     if (macroUsageRange == SourceRange::NoLocation)
         return;
-    auto text = sm.getText(macroUsageRange);
+    auto text = sm.getSourceText(macroUsageRange);
     doc.addParagraph().appendText("Expanded from ").newLine().appendCodeBlock(text);
 }
 

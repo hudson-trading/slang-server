@@ -27,11 +27,11 @@ using namespace slang;
 static SourceLocation getArgumentHintLoc(const ArgumentSyntax& syntax,
                                          const ShallowAnalysis& analysis) {
     auto& sourceManager = analysis.getSourceManager();
-    if (auto info = sourceManager.getMacroInfo(syntax.getFirstToken().location())) {
-        return sourceManager.getFullyOriginalLoc(info->expansionRange.start());
-    }
+    auto loc = syntax.sourceRange().start();
+    if (sourceManager.isMacroLoc(loc))
+        return sourceManager.getFullyExpandedLoc(loc);
 
-    return sourceManager.getFullyOriginalLoc(syntax.sourceRange().start());
+    return sourceManager.getFullyOriginalLoc(loc);
 }
 
 InlayHintCollector::InlayHintCollector(const ShallowAnalysis& analysis, lsp::Range range,
@@ -359,13 +359,10 @@ void InlayHintCollector::handle(const ClassNameSyntax& syntax) {
 
 void InlayHintCollector::collectHints() {
 
-    auto slangStart = m_analysis.m_sourceManager.getSourceLocation(m_analysis.m_buffer,
-                                                                   m_range.start.line,
-                                                                   m_range.start.character);
+    auto slangStart = toSourceLocation(m_analysis.m_buffer, m_range.start,
+                                       m_analysis.m_sourceManager);
 
-    auto slangEnd = m_analysis.m_sourceManager.getSourceLocation(m_analysis.m_buffer,
-                                                                 m_range.end.line,
-                                                                 m_range.end.character);
+    auto slangEnd = toSourceLocation(m_analysis.m_buffer, m_range.end, m_analysis.m_sourceManager);
     if (!slangStart || !slangEnd) {
         ERROR("Invalid range for inlay hints");
         return;

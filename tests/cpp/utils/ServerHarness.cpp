@@ -474,7 +474,7 @@ std::vector<lsp::DocumentHighlight> Cursor::getHighlights() {
 }
 
 std::optional<slang::SourceLocation> DocumentHandle::getLocation(lsp::uint offset) {
-    return doc->getSourceManager().getSourceLocation(doc->getBuffer(), offset);
+    return slang::SourceLocation(doc->getBuffer(), offset);
 }
 
 std::optional<lsp::Position> DocumentHandle::getLspLocation(lsp::uint offset) {
