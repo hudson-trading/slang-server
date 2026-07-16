@@ -83,9 +83,10 @@ lsp::Location toLocation(const SourceRange& range, const SourceManager& sourceMa
 }
 
 lsp::Location toLocation(const SourceLocation& loc, const SourceManager& sourceManager) {
-    return lsp::Location{.uri = URI::fromFile(sourceManager.getFullPath(loc.buffer())),
-                         .range = lsp::Range{.start = toPosition(loc, sourceManager),
-                                             .end = toPosition(loc, sourceManager)}};
+    auto actualLoc = sourceManager.getFullyExpandedLoc(loc);
+    return lsp::Location{.uri = URI::fromFile(sourceManager.getFullPath(actualLoc.buffer())),
+                         .range = lsp::Range{.start = toPosition(actualLoc, sourceManager),
+                                             .end = toPosition(actualLoc, sourceManager)}};
 }
 
 lsp::SymbolKind toSymbolKind(const syntax::SyntaxKind& kind) {

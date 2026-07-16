@@ -204,13 +204,16 @@ void ServerDiagClient::report(const slang::ReportedDiagnostic& diag) {
                     .message = engine->formatMessage(note),
                 });
             }
-            continue;
+            else {
+                WARN("Diagnostic note has no location: {}", engine->formatMessage(note));
+            }
         }
-        auto noteLoc = toLocation(note.location, m_sourceManager);
-        related.emplace_back(lsp::DiagnosticRelatedInformation{
-            .location = noteLoc,
-            .message = engine->formatMessage(note),
-        });
+        else {
+            related.emplace_back(lsp::DiagnosticRelatedInformation{
+                .location = toLocation(note.location, m_sourceManager),
+                .message = engine->formatMessage(note),
+            });
+        }
     }
 
     m_diagnostics[uri].push_back(lsp::Diagnostic{
