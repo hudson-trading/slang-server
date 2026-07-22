@@ -37,6 +37,22 @@ endmodule
     golden.record(doc.getDiagnostics());
 }
 
+TEST_CASE("MacroNoteSourceLocations") {
+    ServerHarness server;
+
+    JsonGoldenTest golden;
+    auto doc = server.openFile("macro_note.sv", R"(
+`define DRIVE(sig, val) assign sig = val;
+
+module top(output logic out);
+    `DRIVE(out, 1'b0)
+    `DRIVE(out, 1'b1)
+endmodule
+)");
+
+    golden.record(doc.getDiagnostics());
+}
+
 TEST_CASE("DiagsPublishedOnOpenCachedDoc") {
     ServerHarness server("cached_dep");
 
