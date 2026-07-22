@@ -491,6 +491,47 @@ TEST_CASE("HierarchicalInstanceCompletion") {
     golden.record("instance_completions", instCompletions);
 }
 
+TEST_CASE("HierarchicalInterfacePortCompletion") {
+    ServerHarness server("repo1");
+
+    auto doc = server.openFile("iface_port_completion.sv", R"(
+    interface test_if;
+        logic valid;
+        logic ready;
+        logic hidden;
+
+        modport producer(output valid, input ready);
+    endinterface
+
+    module iface_port_completion (
+        test_if raw_if,
+        test_if.producer producer_if
+    );
+        initial begin
+            raw_if.;
+            producer_if.;
+        end
+    endmodule
+    )");
+
+    auto hasCompletion = [](const std::vector<CompletionHandle>& items, std::string_view label) {
+        return std::any_of(items.begin(), items.end(), [&](const CompletionHandle& item) {
+            return item.m_item.label == label;
+        });
+    };
+
+    auto rawCompletions = doc.after("raw_if.").getCompletions(".");
+    CHECK(hasCompletion(rawCompletions, "valid"));
+    CHECK(hasCompletion(rawCompletions, "ready"));
+    CHECK(hasCompletion(rawCompletions, "hidden"));
+    CHECK(hasCompletion(rawCompletions, "producer"));
+
+    auto producerCompletions = doc.after("producer_if.").getCompletions(".");
+    CHECK(hasCompletion(producerCompletions, "valid"));
+    CHECK(hasCompletion(producerCompletions, "ready"));
+    CHECK(!hasCompletion(producerCompletions, "hidden"));
+}
+
 TEST_CASE("HierarchicalStructCompletion") {
     ServerHarness server("repo1");
     JsonGoldenTest golden;
