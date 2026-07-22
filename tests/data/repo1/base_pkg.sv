@@ -15,6 +15,7 @@ package base_pkg;
     export util_pkg::result_t;
     export util_pkg::SUCCESS;
     export util_pkg::ERROR_CODE;
+    import util_pkg::create_config;
     export util_pkg::create_config;
 
     function automatic config_t get_default_config();

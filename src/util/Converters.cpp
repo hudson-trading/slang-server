@@ -45,14 +45,14 @@ lsp::Position toPosition(const SourceLocation& loc, const SourceManager& sourceM
                          .character = static_cast<lsp::uint>(character > 0 ? character - 1 : 0)};
 }
 
+std::optional<SourceLocation> toSourceLocation(BufferID buffer, const lsp::Position& position,
+                                               const SourceManager& sourceManager) {
+    return sourceManager.getSourceLocation(buffer, position.line + 1, position.character + 1);
+}
+
 lsp::Range toRange(const SourceRange& range, const SourceManager& sourceManager) {
     return lsp::Range{.start = toPosition(range.start(), sourceManager),
                       .end = toPosition(range.end(), sourceManager)};
-}
-
-lsp::Range toOriginalRange(const SourceRange& range, const SourceManager& sourceManager) {
-    auto origRange = sourceManager.getFullyOriginalRange(range);
-    return toRange(origRange, sourceManager);
 }
 
 lsp::Location toOriginalLocation(const SourceRange& range, const SourceManager& sourceManager) {
@@ -75,16 +75,7 @@ lsp::Range toRange(const SourceLocation& loc, const SourceManager& sourceManager
 }
 
 lsp::Location toLocation(const SourceRange& range, const SourceManager& sourceManager) {
-    // TODO: make this logic just one function in source manager
-    auto declRange = range;
-
-    // Get location of `MACRO_USAGE if from a macro expansion
-    auto locs = sourceManager.getMacroExpansions(range.start());
-    if (locs.size()) {
-        auto macroInfo = sourceManager.getMacroInfo(locs.back());
-        declRange = macroInfo ? macroInfo->expansionRange
-                              : sourceManager.getFullyOriginalRange(range);
-    }
+    auto declRange = sourceManager.getFullyExpandedRange(range);
 
     return lsp::Location{.uri = URI::fromFile(
                              sourceManager.getFullPath(declRange.start().buffer())),

@@ -11,6 +11,7 @@
 #include "ServerDriver.h"
 #include "codeactions/AddDefine.h"
 #include "codeactions/ExpandMacro.h"
+#include "util/Converters.h"
 #include <rfl/Variant.hpp>
 
 namespace server {
@@ -32,8 +33,7 @@ std::vector<rfl::Variant<lsp::Command, lsp::CodeAction>> CodeActionDispatch::get
     const parsing::Token* token = nullptr;
     const syntax::SyntaxNode* syntax = nullptr;
 
-    auto loc = m_sourceManager.getSourceLocation(doc->getBuffer(), params.range.start.line,
-                                                 params.range.start.character);
+    auto loc = toSourceLocation(doc->getBuffer(), params.range.start, m_sourceManager);
     if (loc) {
         token = analysis->syntaxes.getWordTokenAt(*loc);
         if (token)

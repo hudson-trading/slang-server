@@ -282,7 +282,7 @@ const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declT
         auto lastToken = macroArgSyntax.getLastToken();
         size_t startOffset = firstToken.location().offset();
         size_t endOffset = lastToken.location().offset() + lastToken.rawText().size();
-        auto macroArgText = m_sourceManager.getText(SourceRange{
+        auto macroArgText = m_sourceManager.getSourceText(SourceRange{
             SourceLocation(m_buffer, startOffset), SourceLocation(m_buffer, endOffset)});
 
         // These will overwrite the same assigned source, but it's ok since they are temporary,

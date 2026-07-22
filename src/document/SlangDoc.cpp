@@ -11,6 +11,7 @@
 #include "ServerDriver.h"
 #include "document/ShallowAnalysis.h"
 #include "lsp/URI.h"
+#include "util/Converters.h"
 #include "util/Logging.h"
 #include "util/SlangExtensions.h"
 #include <fmt/format.h>
@@ -34,6 +35,10 @@ using namespace slang;
 SlangDoc::SlangDoc(ServerDriver& driver, URI uri, SourceBuffer buffer) :
     m_driver(driver), m_sourceManager(driver.sm), m_options(driver.options), m_uri(uri),
     m_buffer(buffer) {
+}
+
+std::optional<SourceLocation> SlangDoc::getLocation(const lsp::Position& position) {
+    return toSourceLocation(m_buffer.id, position, m_sourceManager);
 }
 
 std::shared_ptr<SlangDoc> SlangDoc::fromTree(ServerDriver& driver,
@@ -121,8 +126,13 @@ std::shared_ptr<ShallowAnalysis> SlangDoc::getAnalysis(bool refreshDependencies)
 }
 
 std::string SlangDoc::getPrevText(const lsp::Position& position) {
-    return std::string(
-        m_sourceManager.getLine(m_buffer.id, position.line + 1).substr(0, position.character));
+    auto start = m_sourceManager.getSourceLocation(m_buffer.id, position.line + 1, 1);
+    auto end = m_sourceManager.getSourceLocation(m_buffer.id, position.line + 1,
+                                                 position.character + 1);
+    if (!start || !end)
+        return "";
+
+    return std::string(m_sourceManager.getSourceText(SourceRange(*start, *end)));
 }
 
 bool SlangDoc::textMatches(std::string_view text) {
@@ -170,12 +180,12 @@ void SlangDoc::onChange(const std::vector<lsp::TextDocumentContentChangeEvent>& 
         SourceManager::computeLineOffsets(textView, lineOffsets);
         auto& start = range.start;
         auto& end = range.end;
-        auto startOffset = lineOffsets[start.line] + start.character;
-        auto endOffset = lineOffsets[end.line] + end.character;
         if (start.line >= lineOffsets.size() || end.line >= lineOffsets.size()) {
             throw std::runtime_error(fmt::format("Range out of bounds: {},{} / {}", start.line,
                                                  end.line, lineOffsets.size()));
         }
+        auto startOffset = lineOffsets[start.line] + start.character;
+        auto endOffset = lineOffsets[end.line] + end.character;
         return std::make_pair(startOffset, endOffset);
     };
 
