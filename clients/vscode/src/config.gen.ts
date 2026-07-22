@@ -38,6 +38,8 @@ export interface Config {
   inlayHints?: Config__InlayHints
   /** Builds for direct .f selection or command-based .f generation */
   builds?: Config__Build[]
+  /** Configure semantic highlighting. */
+  semanticTokens?: Config__SemanticTokensConfig
 }
 
 export interface Config__Build {
@@ -72,4 +74,11 @@ export interface Config__InlayHints {
   funcArgNames?: number
   /** Macro argument hints: 0=off, N=only calls with >=N args */
   macroArgNames?: number
+}
+
+export interface Config__SemanticTokensConfig {
+  /** Whether semantic tokens should be provided by the server. */
+  enabled?: boolean
+  /** Specify semantic token kinds that slang-server should not send to client. */
+  disabledKinds?: "InactiveCode"[]
 }
