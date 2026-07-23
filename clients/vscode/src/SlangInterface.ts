@@ -137,6 +137,31 @@ export async function getModulesInFile(fsPath: string): Promise<string[]> {
   return await vscode.commands.executeCommand('slang.getModulesInFile', fsPath)
 }
 
+export async function getDrivers(hierPath: string): Promise<string[]> {
+  return await vscode.commands.executeCommand('slang.getDrivers', hierPath)
+}
+
+export async function getLoads(hierPath: string): Promise<string[]> {
+  return await vscode.commands.executeCommand('slang.getLoads', hierPath)
+}
+
+/// A single endpoint of a driver/load cone: the RTL path of the driver/load and
+/// where it appears in source.
+export interface ConeEntry {
+  path: string
+  location: Location
+}
+
+/// Cone tracing: Get the drivers of a given RTL path, each with its RTL path and source location.
+export async function getDriversWithLocation(hierPath: string): Promise<ConeEntry[] | undefined> {
+  return await vscode.commands.executeCommand('slang.getDriversWithLocation', hierPath)
+}
+
+/// Cone tracing: Get the loads of a given RTL path, each with its RTL path and source location.
+export async function getLoadsWithLocation(hierPath: string): Promise<ConeEntry[] | undefined> {
+  return await vscode.commands.executeCommand('slang.getLoadsWithLocation', hierPath)
+}
+
 interface ExpandMacroArgs {
   dst: string
   src: string
