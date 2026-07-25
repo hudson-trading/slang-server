@@ -123,6 +123,10 @@ static void handleBlockScope(std::vector<HierItem_t>& result,
 static void handleBlockScope(std::vector<HierItem_t>& result,
                              const slang::ast::GenerateBlockSymbol& block,
                              const SourceManager& sm) {
+    if (block.isUninstantiated) {
+        // Don't return uninstantiated blocks
+        return;
+    }
     handleBlockScope(result, block, sm, block.getExternalName());
 }
 
@@ -242,6 +246,25 @@ static void handleParameter(std::vector<HierItem_t>& result,
     }));
 }
 
+static void handleTypeParameter(std::vector<HierItem_t>& result,
+                                const slang::ast::TypeParameterSymbol& param,
+                                const SourceManager& sm) {
+    auto* syntax = param.getSyntax();
+    std::optional<std::string> value;
+    auto& type = param.targetType.getType();
+    if (!type.isError()) {
+        value = getTypeString(type);
+    }
+
+    result.push_back(HierItem_t(Var{
+        .kind = SlangKind::Param,
+        .instName = std::string(param.name),
+        .instLoc = syntax ? toLocation(syntax->sourceRange(), sm) : toLocation(param.location, sm),
+        .type = "type",
+        .value = std::move(value),
+    }));
+}
+
 // Includes ports
 static void handleValue(std::vector<HierItem_t>& result, const slang::ast::ValueSymbol& val,
                         const SourceManager& sm) {
@@ -258,13 +281,14 @@ static std::vector<HierItem_t> getScopeChildren(const slang::ast::Scope& scope,
                                                 const SourceManager& sm) {
     std::vector<HierItem_t> result;
     for (auto& sym : scope.members()) {
-        if (!sym.isInstantiated())
-            continue;
         if (auto inst = sym.as_if<slang::ast::InstanceSymbol>()) {
             handleInstance(result, *inst, sm);
         }
         else if (auto param = sym.as_if<slang::ast::ParameterSymbol>()) {
             handleParameter(result, *param, sm);
+        }
+        else if (auto typeParam = sym.as_if<slang::ast::TypeParameterSymbol>()) {
+            handleTypeParameter(result, *typeParam, sm);
         }
         else if (auto val = sym.as_if<slang::ast::ValueSymbol>()) {
             handleValue(result, *val, sm);

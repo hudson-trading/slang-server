@@ -26,9 +26,10 @@ std::optional<const parsing::Token> findNameToken(const syntax::SyntaxNode* node
 
 lsp::Position toPosition(const SourceLocation& loc, const SourceManager& sourceManager);
 
-lsp::Range toRange(const SourceRange& range, const SourceManager& sourceManager);
+std::optional<SourceLocation> toSourceLocation(BufferID buffer, const lsp::Position& position,
+                                               const SourceManager& sourceManager);
 
-lsp::Range toOriginalRange(const SourceRange& range, const SourceManager& sourceManager);
+lsp::Range toRange(const SourceRange& range, const SourceManager& sourceManager);
 
 lsp::Location toOriginalLocation(const SourceRange& range, const SourceManager& sourceManager);
 

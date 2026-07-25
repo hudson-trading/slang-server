@@ -150,9 +150,7 @@ public:
     // TODO: should this use the shallow compilation instead of syntax tree?
     std::vector<lsp::DocumentSymbol> getSymbols() { return getAnalysis()->getDocSymbols(); }
 
-    std::optional<slang::SourceLocation> getLocation(const lsp::Position& position) {
-        return m_sourceManager.getSourceLocation(m_buffer.id, position.line, position.character);
-    }
+    std::optional<slang::SourceLocation> getLocation(const lsp::Position& position);
 
     // Previous text on and before a position
     std::string getPrevText(const lsp::Position& position);

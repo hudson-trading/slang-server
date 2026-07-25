@@ -70,7 +70,7 @@ void addExpandMacroAction(std::vector<rfl::Variant<lsp::Command, lsp::CodeAction
 
     results.push_back(lsp::CodeAction{
         .title = "Expand macro",
-        .kind = lsp::CodeActionKind::from_name<"refactor">(),
+        .kind = lsp::CodeActionKindOptions::from_name<"refactor">().str(),
         .edit = lsp::WorkspaceEdit{.changes = std::move(changes)},
     });
 }

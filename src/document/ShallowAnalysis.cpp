@@ -89,7 +89,7 @@ ShallowAnalysis::ShallowAnalysis(SourceManager& sourceManager, slang::BufferID b
     // Set up options for shallow compilation
     auto cOptions = options.getOrDefault<ast::CompilationOptions>();
     cOptions.flags |= ast::CompilationFlags::AllowTopLevelIfacePorts;
-    cOptions.flags |= ast::CompilationFlags::UntakenGenerateChecks;
+    cOptions.flags |= ast::CompilationFlags::CheckUninstantiated;
     cOptions.flags |= ast::CompilationFlags::AllowInvalidTop;
 
     // Add definitions from this tree (even if they aren't valid tops)
@@ -227,6 +227,22 @@ const ast::Scope* ShallowAnalysis::getScopeFromSym(const ast::Symbol* symbol) {
     else if (ast::InstanceSymbol::isKind(symbol->kind)) {
         return &symbol->as<ast::InstanceSymbol>().body.as<ast::Scope>();
     }
+    else if (ast::InterfacePortSymbol::isKind(symbol->kind)) {
+        auto& port = symbol->as<ast::InterfacePortSymbol>();
+        auto [connSym, modport] = port.getConnection();
+        auto scope = getScopeFromSym(connSym);
+        if (!modport) {
+            return scope;
+        }
+
+        if (scope) {
+            auto realModport = scope->find(modport->name);
+            if (realModport && realModport->kind == ast::SymbolKind::Modport) {
+                return &realModport->as<ast::Scope>();
+            }
+        }
+        return modport;
+    }
 
     return nullptr;
 }
@@ -282,7 +298,7 @@ const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declT
         auto lastToken = macroArgSyntax.getLastToken();
         size_t startOffset = firstToken.location().offset();
         size_t endOffset = lastToken.location().offset() + lastToken.rawText().size();
-        auto macroArgText = m_sourceManager.getText(SourceRange{
+        auto macroArgText = m_sourceManager.getSourceText(SourceRange{
             SourceLocation(m_buffer, startOffset), SourceLocation(m_buffer, endOffset)});
 
         // These will overwrite the same assigned source, but it's ok since they are temporary,

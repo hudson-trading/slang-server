@@ -33,6 +33,7 @@
 #include "slang/ast/types/Type.h"
 #include "slang/diagnostics/DiagnosticEngine.h"
 #include "slang/diagnostics/Diagnostics.h"
+#include "slang/diagnostics/TextDiagnosticClient.h"
 #include "slang/driver/Driver.h"
 #include "slang/driver/SourceLoader.h"
 #include "slang/parsing/ParserMetadata.h"
@@ -62,6 +63,8 @@ ServerDriver::ServerDriver(Indexer& indexer, SlangLspClient& client, const Confi
 
 void ServerDriver::parseAndLoadSources(const std::vector<std::string>& buildfiles) {
     driver.addStandardArgs();
+    diagEngine.removeClient(driver.textDiagClient);
+    diagEngine.addClient(diagClient);
 
     slang::CommandLine::ParseOptions parseOpts;
     parseOpts.expandEnvVars = true;
@@ -102,10 +105,11 @@ void ServerDriver::parseAndLoadSources(const std::vector<std::string>& buildfile
         }
     }
 
-    // Configure diagnostic engine
+    // Configure diagnostic engine. The LSP server reports warnings as editor
+    // diagnostics by default; user-provided -Wno-* mappings still suppress
+    // specific warnings via the severity table populated by processOptions().
     diagEngine.setIgnoreAllWarnings(false);
     diagEngine.setIgnoreAllNotes(false);
-    diagEngine.addClient(diagClient);
 
     options = driver.createOptionBag();
     options.set(driver.getAnalysisOptions());
@@ -490,7 +494,7 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
     auto analysis = doc->getAnalysis();
 
     // Get location, token, and syntax node at position
-    auto loc = sm.getSourceLocation(doc->getBuffer(), position.line, position.character);
+    auto loc = toSourceLocation(doc->getBuffer(), position, sm);
     if (!loc) {
         return {};
     }
@@ -621,15 +625,15 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
 
     auto macroUsageRange = SourceRange::NoLocation;
     if (nameToken && sm.isMacroLoc(nameToken->location())) {
-        auto locs = sm.getMacroExpansions(nameToken->location());
-        // TODO: maybe include more expansion infos?
-        auto macroInfo = sm.getMacroInfo(locs.back());
-        auto text = macroInfo ? sm.getText(macroInfo->expansionRange) : "";
+        auto tokenRange = SourceRange(nameToken->location(),
+                                      nameToken->location() + nameToken->rawText().length());
+        auto expansionRange = sm.getFullyExpandedRange(tokenRange);
+        auto text = sm.getSourceText(expansionRange);
         if (text.empty()) {
             ERROR("Couldn't get original range for symbol {}", nameToken->valueText());
         }
         else {
-            macroUsageRange = macroInfo->expansionRange;
+            macroUsageRange = expansionRange;
         }
     }
 
@@ -670,7 +674,7 @@ std::optional<lsp::Hover> ServerDriver::getDocHover(const URI& uri, const lsp::P
     if (!doc) {
         return {};
     }
-    auto loc = sm.getSourceLocation(doc->getBuffer(), position.line, position.character);
+    auto loc = toSourceLocation(doc->getBuffer(), position, sm);
     if (!loc) {
         return {};
     }
@@ -706,7 +710,7 @@ std::optional<std::vector<lsp::DocumentHighlight>> ServerDriver::getDocDocumentH
     auto analysis = doc->getAnalysis();
 
     // Get the symbol at the position
-    auto loc = sm.getSourceLocation(doc->getBuffer(), position.line, position.character);
+    auto loc = toSourceLocation(doc->getBuffer(), position, sm);
     if (!loc) {
         return std::nullopt;
     }
@@ -804,7 +808,7 @@ std::optional<std::vector<lsp::Location>> ServerDriver::getDocReferences(
     // Get the symbol at the position. Hold the analysis via shared_ptr so that
     // targetSymbol remains valid even if getAnalysis() is called on this doc again.
     auto analysis = doc->getAnalysis();
-    auto loc = sm.getSourceLocation(doc->getBuffer(), position.line, position.character);
+    auto loc = toSourceLocation(doc->getBuffer(), position, sm);
     if (!loc) {
         return std::nullopt;
     }

@@ -139,9 +139,25 @@ public:
     void open();
 
     /// @brief Get the line at a given line number
-    /// @param line The line number (0-based / Slang lines)
+    /// @param line The 1-based slang line number. Returns empty for line 0.
     std::string_view getLine(lsp::uint line) {
-        return m_server.sourceManager().getLine(doc->getBuffer(), line);
+        auto text = doc->getText();
+        if (line == 0 || text.empty())
+            return {};
+
+        std::vector<size_t> lineOffsets;
+        SourceManager::computeLineOffsets(text, lineOffsets);
+
+        size_t lineIndex = line - 1;
+        if (lineIndex >= lineOffsets.size())
+            return {};
+
+        size_t start = lineOffsets[lineIndex];
+        size_t end = lineIndex + 1 < lineOffsets.size() ? lineOffsets[lineIndex + 1] : text.size();
+        if (end > start && text[end - 1] == '\0')
+            end--;
+
+        return text.substr(start, end - start);
     }
 
     lsp::Position getPosition(lsp::uint offset);

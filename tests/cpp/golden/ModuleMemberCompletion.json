@@ -218,6 +218,18 @@
         "insertTextFormat": "PlainText"
       },
       {
+        "label": "bus_port",
+        "labelDetails": {
+          "detail": " bus_if.master"
+        },
+        "kind": "Interface",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nbus_if.master bus_port\n````"
+        },
+        "filterText": "bus_port"
+      },
+      {
         "label": "bus_transaction_t",
         "labelDetails": {
           "detail": " UnpackedStructType"

@@ -28,7 +28,7 @@ void addAddDefineAction(std::vector<rfl::Variant<lsp::Command, lsp::CodeAction>>
 
     results.push_back(lsp::CodeAction{
         .title = fmt::format("Add define '{}' to local flags", macroName),
-        .kind = lsp::CodeActionKind::from_name<"quickfix">(),
+        .kind = lsp::CodeActionKindOptions::from_name<"quickfix">().str(),
         .command =
             lsp::Command{
                 .title = "Add define",

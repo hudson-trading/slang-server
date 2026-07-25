@@ -107,6 +107,28 @@ endmodule
     CHECK(!json.empty());
 }
 
+TEST_CASE("HoverTypeParameterValue") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+module leaf #(parameter type T = logic) ();
+endmodule
+
+module top;
+    leaf #(.T(byte)) u();
+endmodule
+)");
+
+    auto cursor = doc.before("T(byte)");
+    auto hover = doc.getHoverAt(cursor.m_offset);
+    REQUIRE(hover.has_value());
+
+    auto content = rfl::get<lsp::MarkupContent>(hover->contents);
+    CAPTURE(content.value);
+    CHECK(content.value.find("**TypeAlias** `T`") != std::string::npos);
+    CHECK(content.value.find("Value: `byte`") != std::string::npos);
+}
+
 TEST_CASE("HoverPlaintextDocComments") {
     ServerHarness server;
 

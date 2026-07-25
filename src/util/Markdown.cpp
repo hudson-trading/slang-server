@@ -133,7 +133,8 @@ lsp::MarkupContent Document::build() const {
         first = false;
     }
 
-    return lsp::MarkupContent{.kind = lsp::MarkupKind::make<"markdown">(), .value = result.str()};
+    return lsp::MarkupContent{.kind = lsp::MarkupKindOptions::from_name<"markdown">().str(),
+                              .value = result.str()};
 }
 
 namespace {

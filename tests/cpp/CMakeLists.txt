@@ -20,7 +20,8 @@ target_link_libraries(server_unittests PRIVATE slang::slang Catch2::Catch2)
 target_include_directories(
   server_unittests PRIVATE ${PROJECT_SOURCE_DIR}/external/slang/tests/unittests)
 
-add_test(NAME server_unittests COMMAND server_unittests)
+include(Catch)
+catch_discover_tests(server_unittests)
 
 add_custom_command(
   TARGET server_unittests

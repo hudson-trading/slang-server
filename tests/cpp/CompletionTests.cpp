@@ -35,6 +35,27 @@ TEST_CASE("MacroCompletion") {
     CHECK(doc2.begin().getCompletions("`").size() == 2);
 }
 
+TEST_CASE("MacroArgumentCompletion") {
+    ServerHarness server("repo1");
+
+    auto doc = server.openFile("macro_arg_completion.sv", R"(
+    `define ASSIGN(lhs, rhs) assign lhs = rhs
+
+    module top;
+        logic source_signal;
+        logic target_signal;
+
+        `ASSIGN(target_signal, sour)
+    endmodule
+    )");
+
+    auto comps = doc.after("`ASSIGN(target_signal, sour").getCompletions();
+    auto it = std::find_if(comps.begin(), comps.end(), [](const CompletionHandle& item) {
+        return item.m_item.label == "source_signal";
+    });
+    REQUIRE(it != comps.end());
+}
+
 TEST_CASE("SystemTaskCompletion") {
     ServerHarness server("repo1");
 
@@ -320,10 +341,16 @@ TEST_CASE("ModuleMemberCompletion") {
     JsonGoldenTest golden;
 
     auto doc = server.openFile("module_test.sv", R"(
+    interface bus_if;
+        logic valid;
+        modport master(output valid);
+    endinterface
+
     module test_module (
         input  logic        clk,
         input  logic        rst,
-        output logic [7:0]  data_out
+        output logic [7:0]  data_out,
+        bus_if.master       bus_port
     );
         // Local variables of different types
         logic internal_signal;
@@ -462,6 +489,47 @@ TEST_CASE("HierarchicalInstanceCompletion") {
     // Test completions after "inst."
     auto instCompletions = doc.after("inst.").getResolvedCompletions(".");
     golden.record("instance_completions", instCompletions);
+}
+
+TEST_CASE("HierarchicalInterfacePortCompletion") {
+    ServerHarness server("repo1");
+
+    auto doc = server.openFile("iface_port_completion.sv", R"(
+    interface test_if;
+        logic valid;
+        logic ready;
+        logic hidden;
+
+        modport producer(output valid, input ready);
+    endinterface
+
+    module iface_port_completion (
+        test_if raw_if,
+        test_if.producer producer_if
+    );
+        initial begin
+            raw_if.;
+            producer_if.;
+        end
+    endmodule
+    )");
+
+    auto hasCompletion = [](const std::vector<CompletionHandle>& items, std::string_view label) {
+        return std::any_of(items.begin(), items.end(), [&](const CompletionHandle& item) {
+            return item.m_item.label == label;
+        });
+    };
+
+    auto rawCompletions = doc.after("raw_if.").getCompletions(".");
+    CHECK(hasCompletion(rawCompletions, "valid"));
+    CHECK(hasCompletion(rawCompletions, "ready"));
+    CHECK(hasCompletion(rawCompletions, "hidden"));
+    CHECK(hasCompletion(rawCompletions, "producer"));
+
+    auto producerCompletions = doc.after("producer_if.").getCompletions(".");
+    CHECK(hasCompletion(producerCompletions, "valid"));
+    CHECK(hasCompletion(producerCompletions, "ready"));
+    CHECK(!hasCompletion(producerCompletions, "hidden"));
 }
 
 TEST_CASE("HierarchicalStructCompletion") {

@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <optional>
 #include <rfl/json.hpp>
+#include <string>
 #include <variant>
 #include <vector>
 
@@ -250,7 +251,8 @@ struct FileOperationPatternOptions {
 /// both.
 ///
 /// @since 3.16.0
-using FileOperationPatternKind = rfl::Literal<"file", "folder">;
+using FileOperationPatternKindOptions = rfl::Literal<"file", "folder">;
+using FileOperationPatternKind = std::string;
 
 /// The diagnostic tags.
 ///
@@ -268,10 +270,12 @@ enum class CompletionItemTag : uint8_t {
     Deprecated = 1,
 };
 
-/// A set of predefined code action kinds
-using CodeActionKind = rfl::Literal<"", "quickfix", "refactor", "refactor.extract",
-                                    "refactor.inline", "refactor.rewrite", "source",
-                                    "source.organizeImports", "source.fixAll", "notebook">;
+/// A set of predefined code action kinds. The LSP code action kind namespace is open ended,
+/// so clients can advertise and request extension kinds outside this predefined set.
+using CodeActionKindOptions = rfl::Literal<"", "quickfix", "refactor", "refactor.extract",
+                                           "refactor.inline", "refactor.rewrite", "source",
+                                           "source.organizeImports", "source.fixAll", "notebook">;
+using CodeActionKind = std::string;
 
 /// A document filter denotes a document by different properties like
 /// the {@link TextDocument.languageId language}, the {@link Uri.scheme scheme} of
@@ -365,7 +369,8 @@ enum class NotebookCellKind : uint8_t {
 ///
 /// Please note that `MarkupKinds` must not start with a `$`. This kinds
 /// are reserved for internal usage.
-using MarkupKind = rfl::Literal<"plaintext", "markdown">;
+using MarkupKindOptions = rfl::Literal<"plaintext", "markdown">;
+using MarkupKind = std::string;
 
 /// Represents a location inside a resource, such as a line
 /// inside a text file.
@@ -376,7 +381,8 @@ struct Location {
 };
 
 /// A set of predefined range kinds.
-using FoldingRangeKind = rfl::Literal<"comment", "imports", "region">;
+using FoldingRangeKindOptions = rfl::Literal<"comment", "imports", "region">;
+using FoldingRangeKind = std::string;
 
 /// A pattern to describe in which file operation requests or notifications
 /// the server is interested in receiving.
@@ -499,7 +505,8 @@ struct ClientCodeActionKindOptions {
     std::vector<CodeActionKind> valueSet;
 };
 
-using TokenFormat = rfl::Literal<"relative">;
+using TokenFormatOptions = rfl::Literal<"relative">;
+using TokenFormat = std::string;
 
 /// A literal to identify a text document in the client.
 struct TextDocumentIdentifier {
@@ -527,7 +534,8 @@ struct TextDocumentContentChangePartial {
     std::string text;
 };
 
-using ResourceOperationKind = rfl::Literal<"create", "rename", "delete">;
+using ResourceOperationKindOptions = rfl::Literal<"create", "rename", "delete">;
+using ResourceOperationKind = std::string;
 
 using RegularExpressionEngineKind = std::string;
 
@@ -598,7 +606,7 @@ struct MarkupContent {
 /// Predefined Language kinds
 /// @since 3.18.0
 /// @proposed
-using LanguageKind =
+using LanguageKindOptions =
     rfl::Literal<"abap", "bat", "bibtex", "clojure", "coffeescript", "c", "cpp", "csharp", "css",
                  "diff", "dart", "dockerfile", "elixir", "erlang", "fsharp", "git-commit", "rebase",
                  "go", "groovy", "handlebars", "haskell", "html", "ini", "java", "javascript",
@@ -607,6 +615,7 @@ using LanguageKind =
                  "python", "r", "razor", "ruby", "rust", "scss", "sass", "scala", "shaderlab",
                  "shellscript", "sql", "swift", "systemverilog", "systemverilogheader", "verilog",
                  "typescript", "typescriptreact", "tex", "vb", "xml", "xsl", "yaml">;
+using LanguageKind = std::string;
 
 /// A filter to describe in which file operation requests or notifications
 /// the server is interested in receiving.
@@ -620,7 +629,9 @@ struct FileOperationFilter {
     FileOperationPattern pattern;
 };
 
-using FailureHandlingKind = rfl::Literal<"abort", "transactional", "textOnlyTransactional", "undo">;
+using FailureHandlingKindOptions =
+    rfl::Literal<"abort", "transactional", "textOnlyTransactional", "undo">;
+using FailureHandlingKind = std::string;
 
 /// A document filter describes a top level text document or
 /// a notebook cell document.
@@ -1323,7 +1334,8 @@ struct PublishDiagnosticsClientCapabilities {
 /// A set of predefined position encoding kinds.
 ///
 /// @since 3.17.0
-using PositionEncodingKind = rfl::Literal<"utf-8", "utf-16", "utf-32">;
+using PositionEncodingKindOptions = rfl::Literal<"utf-8", "utf-16", "utf-32">;
+using PositionEncodingKind = std::string;
 
 /// Represents a parameter of a callable-signature. A parameter can
 /// have a label and a doc-comment.
@@ -2786,7 +2798,8 @@ struct TypeDefinitionRegistrationOptions {
     std::optional<std::string> id;
 };
 
-using TraceValue = rfl::Literal<"off", "messages", "verbose">;
+using TraceValueOptions = rfl::Literal<"off", "messages", "verbose">;
+using TraceValue = std::string;
 
 struct TextDocumentSyncOptions {
     /// Open and close notifications are sent to the server. If omitted open close notification
@@ -3708,7 +3721,8 @@ struct Unregistration {
 /// Moniker uniqueness level to define scope of the moniker.
 ///
 /// @since 3.16.0
-using UniquenessLevel = rfl::Literal<"document", "project", "group", "scheme", "global">;
+using UniquenessLevelOptions = rfl::Literal<"document", "project", "group", "scheme", "global">;
+using UniquenessLevel = std::string;
 
 /// @since 3.17.0
 struct TypeHierarchyItem {
@@ -4129,7 +4143,8 @@ struct NotebookDocument {
 /// The moniker kind.
 ///
 /// @since 3.16.0
-using MonikerKind = rfl::Literal<"import", "export", "local">;
+using MonikerKindOptions = rfl::Literal<"import", "export", "local">;
+using MonikerKind = std::string;
 
 /// The message type
 enum class MessageType : uint8_t {
@@ -6624,20 +6639,22 @@ struct SignatureHelpRegistrationOptions {
 /// corresponding client capabilities.
 ///
 /// @since 3.16.0
-using SemanticTokenTypes =
+using SemanticTokenTypesOptions =
     rfl::Literal<"namespace", "type", "class", "enum", "interface", "struct", "typeParameter",
                  "parameter", "variable", "property", "enumMember", "event", "function", "method",
                  "macro", "keyword", "modifier", "comment", "string", "number", "regexp",
                  "operator", "decorator", "label">;
+using SemanticTokenTypes = std::string;
 
 /// A set of predefined token modifiers. This set is not fixed
 /// an clients can specify additional token types via the
 /// corresponding client capabilities.
 ///
 /// @since 3.16.0
-using SemanticTokenModifiers =
+using SemanticTokenModifiersOptions =
     rfl::Literal<"declaration", "definition", "readonly", "static", "deprecated", "abstract",
                  "async", "modification", "documentation", "defaultLibrary">;
+using SemanticTokenModifiers = std::string;
 
 /// Registration options for a {@link RenameRequest}.
 struct RenameRegistrationOptions {
@@ -6827,7 +6844,8 @@ struct DocumentFormattingRegistrationOptions {
 /// The document diagnostic report kinds.
 ///
 /// @since 3.17.0
-using DocumentDiagnosticReportKind = rfl::Literal<"full", "unchanged">;
+using DocumentDiagnosticReportKindOptions = rfl::Literal<"full", "unchanged">;
+using DocumentDiagnosticReportKind = std::string;
 
 /// Describe options to be used when registered for text document change events.
 struct DidChangeWatchedFilesRegistrationOptions {

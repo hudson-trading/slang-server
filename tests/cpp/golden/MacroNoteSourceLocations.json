@@ -1,0 +1,40 @@
+[
+  [
+    {
+      "range": {
+        "start": {
+          "line": 5,
+          "character": 11
+        },
+        "end": {
+          "line": 5,
+          "character": 14
+        }
+      },
+      "severity": "Error",
+      "code": "multiple-cont-assigns",
+      "codeDescription": {
+        "href": "https://sv-lang.com/warning-ref.html#multiple-cont-assigns"
+      },
+      "message": "cannot have multiple continuous assignments to variable 'out'",
+      "relatedInformation": [
+        {
+          "location": {
+            "uri": "file://macro_note.sv",
+            "range": {
+              "start": {
+                "line": 4,
+                "character": 4
+              },
+              "end": {
+                "line": 4,
+                "character": 4
+              }
+            }
+          },
+          "message": "also assigned here"
+        }
+      ]
+    }
+  ]
+]
