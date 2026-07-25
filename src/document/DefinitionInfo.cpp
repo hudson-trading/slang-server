@@ -35,34 +35,7 @@ using namespace slang;
 
 namespace {
 
-const syntax::SyntaxNode* renderSymbolHeader(markup::Paragraph& infoPg, const ast::Symbol& symbol,
-                                             const std::shared_ptr<ShallowAnalysis>& analysis) {
-    // <Kind/Type> <Name> in <Scope>
-    infoPg.appendBold(toString(symbol.kind)).appendCode(symbol.name);
-
-    auto symbolScope = symbol.getParentScope();
-    auto& parentSym = symbolScope->asSymbol();
-    auto hierPath = parentSym.getLexicalPath();
-
-    const syntax::SyntaxNode* extraDisplayNode = nullptr;
-
-    // The typedef name needs to be appended; it's not attached to the type
-    if (parentSym.kind == ast::SymbolKind::PackedStructType ||
-        parentSym.kind == ast::SymbolKind::UnpackedStructType) {
-        auto syntax = parentSym.getSyntax();
-        if (syntax && syntax->parent &&
-            syntax->parent->kind == syntax::SyntaxKind::TypedefDeclaration) {
-            hierPath += "::";
-            hierPath += syntax->parent->as<syntax::TypedefDeclarationSyntax>().name.valueText();
-        }
-    }
-
-    if (!hierPath.empty()) {
-        infoPg.appendText(" in ").appendCode(hierPath);
-    }
-    infoPg.newLine();
-
-    // Type info for value symbols and instance symbols
+void renderSymbolType(markup::Paragraph& infoPg, const ast::Symbol& symbol) {
     if (ast::ValueSymbol::isKind(symbol.kind) && symbol.kind != ast::SymbolKind::EnumValue) {
         const auto& valSym = symbol.as<ast::ValueSymbol>();
         const auto& type = valSym.getType();
@@ -74,76 +47,15 @@ const syntax::SyntaxNode* renderSymbolHeader(markup::Paragraph& infoPg, const as
                 .appendCode(fmt::format("{}", type.getBitWidth()))
                 .newLine();
         }
-
-        const auto drivers = analysis->getDrivers(valSym);
-        if (!drivers.empty()) {
-            const slang::analysis::ValueDriver* uniqueDriver = nullptr;
-
-            for (const auto* driver : drivers) {
-                if (!driver) {
-                    continue;
-                }
-
-                if (!uniqueDriver) {
-                    uniqueDriver = driver;
-                }
-
-                else if (driver->kind != uniqueDriver->kind ||
-                         driver->source != uniqueDriver->source) {
-                    uniqueDriver = nullptr;
-                    break;
-                }
-            }
-
-            if (uniqueDriver) {
-                const auto kind = uniqueDriver->kind;
-                const auto source = uniqueDriver->source;
-
-                const auto driverStr =
-                    (source == slang::analysis::DriverSource::Other ||
-                     source == slang::analysis::DriverSource::Subroutine)
-                        ? std::string(toString(kind))
-                        : fmt::format("{} ({})", toString(kind),
-                                      ast::SemanticFacts::getProcedureKindStr(
-                                          static_cast<slang::ast::ProceduralBlockKind>(source)));
-
-                infoPg.appendText("Driver: ").appendCode(driverStr).newLine();
-
-                if (uniqueDriver->kind != slang::analysis::DriverKind::Continuous) {
-                    return nullptr;
-                }
-
-                // Currently it only collects continuous assignment drivers (ie: `assign`) since
-                // they are guaranteed to only have a single driver node (except for `tri` and maybe
-                // others).
-                if (drivers.size() > 1) {
-                    return nullptr;
-                }
-
-                const auto range = uniqueDriver->getSourceRange();
-                if (range == SourceRange::NoLocation) {
-                    return nullptr;
-                }
-
-                const auto loc = analysis->getSourceManager().getFullyOriginalLoc(range.start());
-                const auto node = analysis->syntaxes.getSyntaxAt(loc);
-
-                for (auto cur = node; cur; cur = cur->parent) {
-                    if (cur->kind == syntax::SyntaxKind::ContinuousAssign) {
-                        extraDisplayNode = &selectDisplayNode(*cur);
-                    }
-                }
-            }
-        }
     }
-
     else if (ast::InstanceSymbol::isKind(symbol.kind)) {
         auto& instSym = symbol.as<ast::InstanceSymbol>();
         auto typeStr = instSym.getDefinition().name;
         infoPg.appendText("Type: ").appendText(typeStr).newLine();
     }
+}
 
-    // Values for elab-known values like parameters, type aliases, and enum values
+void renderSymbolValue(markup::Paragraph& infoPg, const ast::Symbol& symbol) {
     if (ast::ParameterSymbol::isKind(symbol.kind)) {
         auto& param = symbol.as<ast::ParameterSymbol>();
         const auto& value = param.getValue();
@@ -170,7 +82,6 @@ const syntax::SyntaxNode* renderSymbolHeader(markup::Paragraph& infoPg, const as
             infoPg.appendText("Value: ").appendCode(value.toString()).newLine();
         }
     }
-    return extraDisplayNode;
 }
 
 void renderMacroHeader(markup::Paragraph& infoPg, const DefinitionInfo::MacroTarget& macro,
@@ -257,8 +168,104 @@ lsp::MarkupContent DefinitionInfo::SymbolTarget::getHover(const SourceManager& s
                                                           BufferID /*docBuffer*/,
                                                           const Config::HoverConfig& hovers) const {
     markup::Document doc;
-    const syntax::SyntaxNode* extraDisplayNode = renderSymbolHeader(doc.addParagraph(), *symbol,
-                                                                    analysis);
+    auto& infoPg = doc.addParagraph();
+
+    // <Kind/Type> <Name> in <Scope>
+    infoPg.appendBold(toString(symbol->kind)).appendCode(symbol->name);
+
+    auto symbolScope = symbol->getParentScope();
+    auto& parentSym = symbolScope->asSymbol();
+    auto hierPath = parentSym.getLexicalPath();
+
+    const syntax::SyntaxNode* extraDisplayNode = nullptr;
+
+    // The typedef name needs to be appended; it's not attached to the type
+    if (parentSym.kind == ast::SymbolKind::PackedStructType ||
+        parentSym.kind == ast::SymbolKind::UnpackedStructType) {
+        auto syntax = parentSym.getSyntax();
+        if (syntax && syntax->parent &&
+            syntax->parent->kind == syntax::SyntaxKind::TypedefDeclaration) {
+            hierPath += "::";
+            hierPath += syntax->parent->as<syntax::TypedefDeclarationSyntax>().name.valueText();
+        }
+    }
+
+    if (!hierPath.empty()) {
+        infoPg.appendText(" in ").appendCode(hierPath);
+    }
+    infoPg.newLine();
+
+    renderSymbolType(infoPg, *symbol);
+
+    bool renderValue = true;
+    if (ast::ValueSymbol::isKind(symbol->kind) && symbol->kind != ast::SymbolKind::EnumValue) {
+        const auto& valSym = symbol->as<ast::ValueSymbol>();
+        const auto drivers = analysis->getDrivers(valSym);
+        if (!drivers.empty()) {
+            const slang::analysis::ValueDriver* uniqueDriver = nullptr;
+
+            for (const auto* driver : drivers) {
+                if (!driver) {
+                    continue;
+                }
+
+                if (!uniqueDriver) {
+                    uniqueDriver = driver;
+                }
+
+                else if (driver->kind != uniqueDriver->kind ||
+                         driver->source != uniqueDriver->source) {
+                    uniqueDriver = nullptr;
+                    break;
+                }
+            }
+
+            if (uniqueDriver) {
+                const auto kind = uniqueDriver->kind;
+                const auto source = uniqueDriver->source;
+
+                const auto driverStr =
+                    (source == slang::analysis::DriverSource::Other ||
+                     source == slang::analysis::DriverSource::Subroutine)
+                        ? std::string(toString(kind))
+                        : fmt::format("{} ({})", toString(kind),
+                                      ast::SemanticFacts::getProcedureKindStr(
+                                          static_cast<slang::ast::ProceduralBlockKind>(source)));
+
+                infoPg.appendText("Driver: ").appendCode(driverStr).newLine();
+
+                // Currently it only collects continuous assignment drivers (ie: `assign`) since
+                // they are guaranteed to only have a single driver node (except for `tri` and maybe
+                // others).
+                if (uniqueDriver->kind != slang::analysis::DriverKind::Continuous ||
+                    drivers.size() > 1) {
+                    renderValue = false;
+                }
+                else {
+                    const auto range = uniqueDriver->getSourceRange();
+                    if (range == SourceRange::NoLocation) {
+                        renderValue = false;
+                    }
+                    else {
+                        const auto loc = analysis->getSourceManager().getFullyOriginalLoc(
+                            range.start());
+                        const auto node = analysis->syntaxes.getSyntaxAt(loc);
+
+                        for (auto cur = node; cur; cur = cur->parent) {
+                            if (cur->kind == syntax::SyntaxKind::ContinuousAssign) {
+                                extraDisplayNode = &selectDisplayNode(*cur);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (renderValue) {
+        renderSymbolValue(infoPg, *symbol);
+    }
+
     syntax.renderCode(doc, hovers, extraDisplayNode);
     syntax.renderMacroExpansion(doc, sm);
     return doc.build();
