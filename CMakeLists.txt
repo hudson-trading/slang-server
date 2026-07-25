@@ -267,7 +267,8 @@ endif()
 
 set(SLANG_USE_SYSTEM_FMT
     ${SLANG_SERVER_USE_SYSTEM_FMT}
-    CACHE BOOL "Use a system-installed fmt library instead of FetchContent" FORCE)
+    CACHE BOOL "Use a system-installed fmt library instead of FetchContent"
+          FORCE)
 add_subdirectory(external/slang)
 if(SLANG_SERVER_USE_SYSTEM_FMT AND NOT TARGET fmt::fmt)
   find_package(fmt REQUIRED)
