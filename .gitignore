@@ -31,3 +31,5 @@ CMakeUserPresets.json
 
 # Claude and Slang
 *.local.json
+
+.envrc
