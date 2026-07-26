@@ -16,25 +16,25 @@ on:
         default: ''
   push:
     branches: [main, ci-test]
-  #   paths-ignore:
-  #     - 'docs/**'
-  #     - 'clients/vscode/**'
-  #     - '*.md'
-  #     - 'mkdocs.yaml'
-  #     - 'pyproject.toml'
-  #     - 'uv.lock'
+    paths-ignore:
+      - 'docs/**'
+      - 'clients/vscode/**'
+      - '*.md'
+      - 'mkdocs.yaml'
+      - 'pyproject.toml'
+      - 'uv.lock'
   pull_request:
-  #   paths-ignore:
-  #     - 'docs/**'
-  #     - 'clients/vscode/**'
-  #     - '*.md'
-  #     - 'mkdocs.yaml'
-  #     - 'pyproject.toml'
-  #     - 'uv.lock'
+    paths-ignore:
+      - 'docs/**'
+      - 'clients/vscode/**'
+      - '*.md'
+      - 'mkdocs.yaml'
+      - 'pyproject.toml'
+      - 'uv.lock'
 
-# concurrency:
-#   group: ${{ github.workflow }}-${{ github.ref }}
-#   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
