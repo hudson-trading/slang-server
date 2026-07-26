@@ -126,12 +126,13 @@ void renderSymbolValue(markup::Paragraph& infoPg, const ast::Symbol& symbol) {
             infoPg.appendText("Value: ").appendCode(formatConstantValue(value)).newLine();
         }
     }
-    else if (ast::Type::isKind(symbol.kind)) {
+
+    if (ast::Type::isKind(symbol.kind)) {
         auto& type = symbol.as<ast::Type>();
         if (!type.isError()) {
             auto typeString = getHoverTypeString(type);
             infoPg.appendText("Resolved Type: ").appendText(typeString).newLine();
-            if (!type.isError() && type.getBitWidth() > 0) {
+            if (type.getBitWidth() > 0) {
                 infoPg.appendText("Resolved Width: ")
                     .appendCode(fmt::format("{}", type.getBitWidth()))
                     .newLine();
@@ -223,7 +224,7 @@ void DefinitionInfo::SyntaxTarget::renderMacroExpansion(markup::Document& doc,
                                                         const SourceManager& sm) const {
     if (macroUsageRange == SourceRange::NoLocation)
         return;
-    auto text = sm.getText(macroUsageRange);
+    auto text = sm.getSourceText(macroUsageRange);
     doc.addParagraph().appendText("Expanded from ").newLine().appendCodeBlock(text);
 }
 
