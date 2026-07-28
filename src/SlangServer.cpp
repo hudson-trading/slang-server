@@ -159,11 +159,7 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
 
     loadConfig();
 
-    if (const auto& tDoc = params.capabilities.textDocument) {
-        if (const auto& tDef = tDoc->definition) {
-            m_client.linkSupport = tDef->linkSupport.value_or(false);
-        }
-    }
+    m_client.capabilities = params.capabilities;
 
     if (params.capabilities.experimental) {
         auto exp = rfl::from_generic<lsp::ExperimentalClientCapabilities>(
@@ -623,18 +619,27 @@ std::monostate SlangServer::addDefine(const std::string& macroName) {
 rfl::Variant<lsp::Definition, std::vector<lsp::DefinitionLink>, std::monostate> SlangServer::
     getDocDefinition(const lsp::DefinitionParams& params) {
     auto lls(m_driver->getDocDefinition(params.textDocument.uri, params.position));
-    if (!m_client.linkSupport) {
-        // translate LocationLink to old fashioned Location
-        std::vector<lsp::Location> ls;
-        for (const auto& ll : lls) {
-            ls.emplace_back(
-                ll.targetUri,
-                ll.targetRange
-            );
+
+    bool linkSupport = false;
+    if (const auto& tDoc = m_client.capabilities.textDocument) {
+        if (const auto& tDef = tDoc->definition) {
+            linkSupport = tDef->linkSupport.value_or(false);
         }
-        return lsp::Definition(ls);
     }
-    return lls;
+
+    if (linkSupport) {
+        return lls;
+    }
+
+    // translate LocationLink to old fashioned Location
+    std::vector<lsp::Location> ls;
+    for (const auto& ll : lls) {
+        ls.emplace_back(
+            ll.targetUri,
+            ll.targetRange
+        );
+    }
+    return lsp::Definition(ls);
 }
 
 std::optional<lsp::Hover> SlangServer::getDocHover(const lsp::HoverParams& params) {
