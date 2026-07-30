@@ -78,10 +78,8 @@ if(SLANG_SERVER_MASTER_PROJECT)
   set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 endif()
 
-# Use slang's bundled fmt library for consistent version across environments
-if(SLANG_SERVER_MASTER_PROJECT AND NOT DEFINED CMAKE_DISABLE_FIND_PACKAGE_fmt)
-  set(CMAKE_DISABLE_FIND_PACKAGE_fmt TRUE)
-endif()
+option(SLANG_SERVER_USE_SYSTEM_FMT
+       "Use a system-installed fmt library instead of slang's bundled fmt" OFF)
 
 if(CMAKE_SYSTEM_NAME MATCHES "Darwin")
   # This ensures that *all* targets (including slang and reflect-cpp) use the
@@ -267,7 +265,14 @@ if(SLANG_SERVER_INCLUDE_TESTS)
   add_subdirectory(tests/cpp)
 endif()
 
+set(SLANG_USE_SYSTEM_FMT
+    ${SLANG_SERVER_USE_SYSTEM_FMT}
+    CACHE BOOL "Use a system-installed fmt library instead of FetchContent"
+          FORCE)
 add_subdirectory(external/slang)
+if(SLANG_SERVER_USE_SYSTEM_FMT AND NOT TARGET fmt::fmt)
+  find_package(fmt REQUIRED)
+endif()
 add_subdirectory(external/reflect-cpp)
 add_subdirectory(external/ctre)
 
