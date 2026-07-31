@@ -50,13 +50,11 @@ jobs:
             os: ubuntu-24.04
             container: quay.io/pypa/manylinux_2_28_x86_64
             cmake_args: -DCMAKE_CXX_COMPILER=/opt/rh/gcc-toolset-14/root/usr/bin/g++
-            shell: bash
           - name: linux-arm64
             preset: gcc-release
             os: ubuntu-24.04-arm
             container: quay.io/pypa/manylinux_2_28_aarch64
             cmake_args: -DCMAKE_CXX_COMPILER=/opt/rh/gcc-toolset-14/root/usr/bin/g++
-            shell: bash
           - name: linux-x64-musl
             preset: gcc-release
             os: ubuntu-24.04
@@ -71,42 +69,35 @@ jobs:
             preset: clang-release
             os: ubuntu-24.04
             skip_upload: true
-            shell: bash
           - name: linux-arm64-ubuntu-24.04-clang
             preset: clang-release
             os: ubuntu-24.04-arm
             skip_upload: true
-            shell: bash
           - name: linux-x64-ubuntu-24.04-clang-debug
             preset: clang-debug
             os: ubuntu-24.04
             skip_pytests: true
             skip_neovim_tests: true
             skip_upload: true
-            shell: bash
           - name: linux-x64-ubuntu-24.04-gcc
             preset: gcc-release
             os: ubuntu-24.04
             skip_upload: true
-            shell: bash
           - name: macos
             preset: macos-release
             os: macos-15
-            shell: bash
           - name: windows-x64
             preset: win64-release
             os: windows-latest
-            shell: pwsh
           - name: windows-arm64
             preset: winarm64-release
             os: windows-11-arm
-            shell: pwsh
 
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     defaults:
       run:
-        shell: ${{ matrix.shell }}
+        shell: ${{ matrix.shell || (startsWith(matrix.os, 'windows') && 'pwsh' || 'bash') }}
     env:
       SLANG_SERVER_ARTIFACT_NAME: slang-server-${{ matrix.name }}
     steps:
