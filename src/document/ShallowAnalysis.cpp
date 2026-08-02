@@ -39,11 +39,12 @@
 namespace server {
 using namespace slang;
 
+namespace {
 // Helper to check if two symbols represent the same semantic entity.
 // After normalization in getSymbolAtToken, most symbols should have pointer equality.
 // This fallback handles edge cases where different instance bodies create different
 // symbol objects for the same source-level declaration (e.g., parameters).
-static bool symbolsMatch(const ast::Symbol* a, const ast::Symbol* b) {
+bool symbolsMatch(const ast::Symbol* a, const ast::Symbol* b) {
     if (!a || !b) {
         return false;
     }
@@ -56,6 +57,37 @@ static bool symbolsMatch(const ast::Symbol* a, const ast::Symbol* b) {
     }
     return false;
 }
+
+/// Returns the raw buffer offset where an inactive-code token should end
+size_t inactiveRegionEndOffset(const SourceManager& sourceManager, const SourceRange region,
+                               const bool includeNextDirective) {
+    if (!includeNextDirective) {
+        return region.end().offset();
+    }
+
+    const auto text = sourceManager.getSourceText(region.end().buffer());
+    auto offset = region.end().offset();
+    if (offset >= text.size()) {
+        return offset;
+    }
+
+    auto endOffset = offset;
+    if (text[offset] == '\r') {
+        endOffset++;
+        offset++;
+    }
+    if (offset < text.size() && text[offset] == '\n') {
+        endOffset++;
+        offset++;
+    }
+
+    if (endOffset != region.end().offset() && offset < text.size() && text[offset] == '`') {
+        return offset + 1;
+    }
+    return region.end().offset();
+}
+} // namespace
+
 ShallowAnalysis::ShallowAnalysis(SourceManager& sourceManager, slang::BufferID buffer,
                                  std::shared_ptr<SyntaxTree> tree, slang::Bag options,
                                  const std::vector<std::shared_ptr<SyntaxTree>>& allTrees) :
@@ -691,64 +723,57 @@ lsp::SemanticTokens ShallowAnalysis::getSemanticTokens(const bool inactiveRegion
     if (!inactiveDisabled) {
         for (const auto& region : syntaxes.disabledRegions) {
             const auto range = toRange(region, m_sourceManager);
+            const auto text = m_sourceManager.getSourceText(region.start().buffer());
+            const auto startOffset = region.start().offset();
+            const auto endOffset = inactiveRegionEndOffset(m_sourceManager, region,
+                                                           multilineTokenSupport);
 
-            if (multilineTokenSupport) {
-                lsp::uint length = 0;
-
-                for (lsp::uint line = range.start.line; line <= range.end.line; line++) {
-                    const lsp::uint startChar = line == range.start.line ? range.start.character
-                                                                         : 0;
-
-                    lsp::uint endChar;
-                    if (line == range.end.line) {
-                        endChar = range.end.character;
-                    }
-
-                    else {
-                        endChar = static_cast<lsp::uint>(
-                            m_sourceManager.getLine(m_buffer, line + 1).size());
-                    }
-
-                    if (endChar > startChar) {
-                        length += endChar - startChar;
-                    }
-
-                    if (line != range.end.line) {
-                        length += 1; // account for '\n'
-                    }
-                }
-
-                if (length > 0) {
-                    tokens.push_back({
-                        range.start.line,
-                        range.start.character,
-                        length,
-                        0,
-                        0,
-                    });
-                }
-
+            if (endOffset <= startOffset || startOffset >= text.size()) {
                 continue;
             }
 
-            for (lsp::uint line = range.start.line; line <= range.end.line; line++) {
-                const lsp::uint startChar = line == range.start.line ? range.start.character : 0;
-                lsp::uint endChar = range.end.character;
+            if (multilineTokenSupport) {
+                tokens.push_back({
+                    range.start.line,
+                    range.start.character,
+                    static_cast<lsp::uint>(endOffset - startOffset),
+                    0,
+                    0,
+                });
+                continue;
+            }
 
-                if (line != range.end.line) {
-                    const auto text = m_sourceManager.getLine(m_buffer, line + 1);
-                    endChar = static_cast<lsp::uint>(text.size());
+            auto offset = startOffset;
+            auto line = range.start.line;
+            auto startChar = range.start.character;
+            while (offset < endOffset) {
+                auto lineEnd = text.find('\n', offset);
+                if (lineEnd == std::string_view::npos || lineEnd > endOffset) {
+                    lineEnd = endOffset;
                 }
 
-                if (endChar > startChar) {
+                auto tokenEnd = lineEnd;
+                if (tokenEnd > offset && text[tokenEnd - 1] == '\r') {
+                    tokenEnd--;
+                }
+
+                if (tokenEnd > offset) {
                     tokens.push_back({
                         line,
                         startChar,
-                        endChar - startChar,
+                        static_cast<lsp::uint>(tokenEnd - offset),
                         0,
                         0,
                     });
                 }
+
+                if (lineEnd >= endOffset || lineEnd >= text.size() || text[lineEnd] != '\n') {
+                    break;
+                }
+
+                offset = lineEnd + 1;
+                line++;
+                startChar = 0;
             }
         }
     }

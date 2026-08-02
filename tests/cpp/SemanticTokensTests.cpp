@@ -134,10 +134,19 @@ module top;
     logic[2:0] inactive_a;
     logic inactive_b;
     int inactive_c;
+    logic inactive_d;
 `else
     logic active;
 `endif
+
+`ifdef FOO
+    logic[2:0] a;
+`else
+    logic b;
+`endif
 endmodule
+
+`ifdef A logic foo; `else logic bar; `endif
 )";
 
     auto doc = server.openFile("test.sv", source);
