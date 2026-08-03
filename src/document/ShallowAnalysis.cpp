@@ -58,7 +58,7 @@ bool symbolsMatch(const ast::Symbol* a, const ast::Symbol* b) {
     return false;
 }
 
-/// Returns the raw buffer offset where an inactive-code token should end
+// Returns the raw buffer offset where an inactive-code token should end.
 size_t inactiveRegionEndOffset(const SourceManager& sourceManager, const SourceRange region,
                                const bool includeNextDirective) {
     if (!includeNextDirective) {
