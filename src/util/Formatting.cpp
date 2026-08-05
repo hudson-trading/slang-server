@@ -352,6 +352,12 @@ lsp::MarkupContent svCodeBlock(const std::string_view code) {
 }
 
 const syntax::SyntaxNode& selectDisplayNode(const syntax::SyntaxNode& node) {
+    // Directives live as trivia on the following token, so their syntax parent is the
+    // next declaration in the file — not a semantic parent. Promoting to a following
+    // TypedefDeclaration would show the wrong node on macro hover.
+    if (node.kind == syntax::SyntaxKind::DefineDirective)
+        return node;
+
     const syntax::SyntaxNode* fmtNode = &node;
     switch (node.kind) {
         // Adjust these to just be the header
