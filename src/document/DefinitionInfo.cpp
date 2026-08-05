@@ -87,32 +87,7 @@ void renderSymbolHeaderName(markup::Paragraph& infoPg, const ast::Symbol& symbol
     infoPg.appendBold(toString(symbol.kind)).appendCode(symbol.name);
 }
 
-void renderSymbolHeader(markup::Paragraph& infoPg, const ast::Symbol& symbol,
-                        const std::shared_ptr<ShallowAnalysis>& analysis) {
-    // <Kind/Type> <Name> in <Scope>
-    renderSymbolHeaderName(infoPg, symbol);
-
-    auto symbolScope = symbol.getParentScope();
-    auto& parentSym = symbolScope->asSymbol();
-    auto hierPath = parentSym.getLexicalPath();
-
-    // The typedef name needs to be appended; it's not attached to the type
-    if (parentSym.kind == ast::SymbolKind::PackedStructType ||
-        parentSym.kind == ast::SymbolKind::UnpackedStructType) {
-        auto syntax = parentSym.getSyntax();
-        if (syntax && syntax->parent &&
-            syntax->parent->kind == syntax::SyntaxKind::TypedefDeclaration) {
-            hierPath += "::";
-            hierPath += syntax->parent->as<syntax::TypedefDeclarationSyntax>().name.valueText();
-        }
-    }
-
-    if (!hierPath.empty()) {
-        infoPg.appendText(" in ").appendCode(hierPath);
-    }
-    infoPg.newLine();
-
-    // Type info for value symbols and instance symbols
+void renderSymbolType(markup::Paragraph& infoPg, const ast::Symbol& symbol) {
     if (ast::ValueSymbol::isKind(symbol.kind) && symbol.kind != ast::SymbolKind::EnumValue) {
         const auto& valSym = symbol.as<ast::ValueSymbol>();
         const auto& type = valSym.getType();
@@ -124,44 +99,49 @@ void renderSymbolHeader(markup::Paragraph& infoPg, const ast::Symbol& symbol,
                 .appendCode(fmt::format("{}", type.getBitWidth()))
                 .newLine();
         }
+    }
+}
 
-        const auto drivers = analysis->getDrivers(valSym);
-        if (!drivers.empty()) {
-            const slang::analysis::ValueDriver* uniqueDriver = nullptr;
+void renderSymbolDriverSummary(markup::Paragraph& infoPg, const ast::Symbol& symbol,
+                               const std::shared_ptr<ShallowAnalysis>& analysis) {
+    if (!ast::ValueSymbol::isKind(symbol.kind) || symbol.kind == ast::SymbolKind::EnumValue)
+        return;
 
-            for (const auto* driver : drivers) {
-                if (!driver) {
-                    continue;
-                }
+    const auto drivers = analysis->getDrivers(symbol.as<ast::ValueSymbol>());
+    if (drivers.empty())
+        return;
 
-                if (!uniqueDriver) {
-                    uniqueDriver = driver;
-                }
+    const slang::analysis::ValueDriver* uniqueDriver = nullptr;
+    for (const auto* driver : drivers) {
+        if (!driver)
+            continue;
 
-                else if (driver->kind != uniqueDriver->kind ||
-                         driver->source != uniqueDriver->source) {
-                    uniqueDriver = nullptr;
-                    break;
-                }
-            }
-
-            if (uniqueDriver) {
-                const auto kind = uniqueDriver->kind;
-                const auto source = uniqueDriver->source;
-
-                const auto driverStr =
-                    (source == slang::analysis::DriverSource::Other ||
-                     source == slang::analysis::DriverSource::Subroutine)
-                        ? std::string(toString(kind))
-                        : fmt::format("{} ({})", toString(kind),
-                                      ast::SemanticFacts::getProcedureKindStr(
-                                          static_cast<slang::ast::ProceduralBlockKind>(source)));
-
-                infoPg.appendText("Driver: ").appendCode(driverStr).newLine();
-            }
+        if (!uniqueDriver) {
+            uniqueDriver = driver;
+        }
+        else if (driver->kind != uniqueDriver->kind || driver->source != uniqueDriver->source) {
+            uniqueDriver = nullptr;
+            break;
         }
     }
 
+    if (uniqueDriver) {
+        const auto kind = uniqueDriver->kind;
+        const auto source = uniqueDriver->source;
+
+        const auto driverStr =
+            (source == slang::analysis::DriverSource::Other ||
+             source == slang::analysis::DriverSource::Subroutine)
+                ? std::string(toString(kind))
+                : fmt::format("{} ({})", toString(kind),
+                              ast::SemanticFacts::getProcedureKindStr(
+                                  static_cast<slang::ast::ProceduralBlockKind>(source)));
+
+        infoPg.appendText("Driver: ").appendCode(driverStr).newLine();
+    }
+}
+
+void renderSymbolValue(markup::Paragraph& infoPg, const ast::Symbol& symbol) {
     auto appendTypeParameterValue = [&](const ast::Type& type) {
         if (!type.isError()) {
             infoPg.appendText("Value: ").appendText(getHoverTypeString(type)).newLine();
@@ -192,7 +172,7 @@ void renderSymbolHeader(markup::Paragraph& infoPg, const ast::Symbol& symbol,
         if (!type.isError()) {
             auto typeString = getHoverTypeString(type);
             infoPg.appendText("Resolved Type: ").appendText(typeString).newLine();
-            if (!type.isError() && type.getBitWidth() > 0) {
+            if (type.getBitWidth() > 0) {
                 infoPg.appendText("Resolved Width: ")
                     .appendCode(fmt::format("{}", type.getBitWidth()))
                     .newLine();
@@ -206,6 +186,33 @@ void renderSymbolHeader(markup::Paragraph& infoPg, const ast::Symbol& symbol,
             infoPg.appendText("Value: ").appendCode(value.toString()).newLine();
         }
     }
+}
+
+void renderSymbolHeader(markup::Paragraph& infoPg, const ast::Symbol& symbol,
+                        const std::shared_ptr<ShallowAnalysis>& analysis) {
+    // <Kind/Type> <Name> in <Scope>
+    renderSymbolHeaderName(infoPg, symbol);
+
+    auto& parentSym = symbol.getParentScope()->asSymbol();
+    auto lexicalPath = parentSym.getLexicalPath();
+
+    // The typedef name needs to be appended; it's not attached to the type
+    auto parentSyntax = parentSym.getSyntax();
+    if (parentSyntax && parentSyntax->parent &&
+        parentSyntax->parent->kind == syntax::SyntaxKind::TypedefDeclaration &&
+        parentSym.kind != ast::SymbolKind::EnumType) {
+        lexicalPath += "::";
+        lexicalPath +=
+            parentSyntax->parent->as<syntax::TypedefDeclarationSyntax>().name.valueText();
+    }
+
+    if (!lexicalPath.empty())
+        infoPg.appendText(" in ").appendCode(lexicalPath);
+    infoPg.newLine();
+
+    renderSymbolType(infoPg, symbol);
+    renderSymbolDriverSummary(infoPg, symbol, analysis);
+    renderSymbolValue(infoPg, symbol);
 }
 
 void renderMacroHeader(markup::Paragraph& infoPg, const DefinitionInfo::MacroTarget& macro,
@@ -241,7 +248,7 @@ void renderMacroHeader(markup::Paragraph& infoPg, const DefinitionInfo::MacroTar
 
 } // namespace
 
-void DefinitionInfo::SyntaxTarget::renderCode(markup::Document& doc,
+void DefinitionInfo::SyntaxTarget::renderCode(markup::Document& doc, const SourceManager& sm,
                                               const Config::HoverConfig& hovers) const {
     const syntax::SyntaxNode& displayNode = selectDisplayNode(*node);
     const auto docCommentFormat = hovers.docCommentFormat.value();
@@ -252,18 +259,17 @@ void DefinitionInfo::SyntaxTarget::renderCode(markup::Document& doc,
     }
     else {
         const std::string docComments = getDocCommentForHover(displayNode, docCommentFormat);
-        if (!docComments.empty())
+        if (!docComments.empty()) {
             doc.addParagraph().appendText(docComments).newLine();
+        }
+
         doc.addParagraph().appendCodeBlock(formatCode(displayNode));
     }
-}
 
-void DefinitionInfo::SyntaxTarget::renderMacroExpansion(markup::Document& doc,
-                                                        const SourceManager& sm) const {
-    if (macroUsageRange == SourceRange::NoLocation)
-        return;
-    auto text = sm.getSourceText(macroUsageRange);
-    doc.addParagraph().appendText("Expanded from ").newLine().appendCodeBlock(text);
+    if (macroUsageRange != SourceRange::NoLocation) {
+        auto text = sm.getSourceText(macroUsageRange);
+        doc.addParagraph().appendText("Expanded from ").newLine().appendCodeBlock(text);
+    }
 }
 
 lsp::MarkupContent DefinitionInfo::SymbolTarget::getHover(const SourceManager& sm,
@@ -271,8 +277,7 @@ lsp::MarkupContent DefinitionInfo::SymbolTarget::getHover(const SourceManager& s
                                                           const Config::HoverConfig& hovers) const {
     markup::Document doc;
     renderSymbolHeader(doc.addParagraph(), *symbol, analysis);
-    syntax.renderCode(doc, hovers);
-    syntax.renderMacroExpansion(doc, sm);
+    syntax.renderCode(doc, sm, hovers);
     return doc.build();
 }
 
@@ -284,7 +289,7 @@ lsp::MarkupContent DefinitionInfo::MacroTarget::getHover(const SourceManager& sm
 
     const auto* syntax = syntaxTarget();
     if (syntax)
-        syntax->renderCode(doc, hovers);
+        syntax->renderCode(doc, sm, hovers);
 
     if (!macroExpansionText.empty()) {
         // Macro usage: show the expanded text at this call site
@@ -293,9 +298,6 @@ lsp::MarkupContent DefinitionInfo::MacroTarget::getHover(const SourceManager& sm
             .newLine()
             .appendText(svCodeBlockString(macroExpansionText));
     }
-
-    if (syntax)
-        syntax->renderMacroExpansion(doc, sm);
 
     return doc.build();
 }

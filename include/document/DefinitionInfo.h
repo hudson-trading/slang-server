@@ -52,11 +52,9 @@ struct DefinitionInfo {
                    macroUsageRange == other.macroUsageRange;
         }
 
-        /// Append the formatted code (with doc comments) for this syntax to `doc`.
-        void renderCode(markup::Document& doc, const Config::HoverConfig& hovers) const;
-
-        /// Append "Expanded from <text>" if this target is behind a macro expansion.
-        void renderMacroExpansion(markup::Document& doc, const slang::SourceManager& sm) const;
+        /// Append the formatted code (with doc comments and macro usage) for this syntax to `doc`.
+        void renderCode(markup::Document& doc, const slang::SourceManager& sm,
+                        const Config::HoverConfig& hovers) const;
 
         /// Goto-definition link pointing at the name token (or macro usage range, if applicable).
         std::vector<lsp::LocationLink> getDefinition(const slang::SourceManager& sm) const;
