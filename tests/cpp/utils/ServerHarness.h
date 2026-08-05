@@ -405,6 +405,7 @@ protected:
             };
             replace(hoverText, "````systemverilog\n", "`");
             replace(hoverText, "\n````", "`");
+            replace(hoverText, URI::fromFile(findSlangRoot()).str(), "file://");
             std::string singleLine;
             for (char c : hoverText) {
                 if (c == '\n' || c == '\r') {

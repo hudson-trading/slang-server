@@ -76,7 +76,7 @@ module automatic m1 import p::*; #(int i = 1)
                                        ^ Sym i : Parameter
 
     (a, b, , .c({a, b[0]}));
-     ^ Ref -> **Input Net** `a` in `m1`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input a;`
+     ^ Ref -> **Input Net** `a` in `m1`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input a;`
         ^ Ref -> **Output Net** `b` in `m1`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`output [1:0] b;`
 
     input a;
@@ -167,7 +167,7 @@ macromodule m3;
     I d(.a(), .b());
     ^ Ref -> **Interface** `I`  \n\\n\\n\---\n\\n\`interface I(.*);`
       ^ Sym d : Instance
-         ^ Ref -> **Input Net** `a` in `I`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input a`
+         ^ Ref -> **Input Net** `a` in `I`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input a`
                ^ Ref -> **Output Net** `b` in `I`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`output b`
 
 
@@ -188,7 +188,7 @@ macromodule m3;
 
     ) m (, b, c, d, );
       ^ Sym m : Instance
-           ^ Ref -> **Net** `b` in `m3`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`wire b;`
+           ^ Ref -> **Net** `b` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wire b;`\n\\n\---\n\\n\Driven via port from `m2 m2_inst` at [all.sv:72:9](<file:///tests/data/all.sv#L72,9>)  \n\`.b(b)`\n\\n\---\n\\n\Driven via port from `m2 m` at [all.sv:62:12](<file:///tests/data/all.sv#L62,12>)  \n\`b`
               ^ Ref -> **Variable** `c` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic c;`
                  ^ Ref -> `I` `d` in `m3`  \n\\n\\n\---\n\\n\`I d(.a(), .b());`
 
@@ -217,11 +217,11 @@ macromodule m3;
       ^^^^^^^ Sym m2_inst : Instance
 
         .a({1, 2}),
-         ^ Ref -> **Input Net** `a` in `m2`  \n\Type: `int$[]`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input int a[]`
+         ^ Ref -> **Input Net** `a` in `m2`  \n\Type: `int$[]`  \n\\n\\n\---\n\\n\`input int a[]`
 
         .b(b),
-         ^ Ref -> **Output Variable** `b` in `m2`  \n\Type: `logic`  \n\Driver: `Procedural`  \n\\n\\n\---\n\\n\`(* bar = "asdf" *) output logic b = 1`
-           ^ Ref -> **Net** `b` in `m3`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`wire b;`
+         ^ Ref -> **Output Variable** `b` in `m2`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`(* bar = "asdf" *) output logic b = 1`\n\\n\---\n\\n\Driven by initializer at [all.sv:40:21](<file:///tests/data/all.sv#L40,21>)  \n\`(* bar = "asdf" *) output logic b = 1`
+           ^ Ref -> **Net** `b` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wire b;`\n\\n\---\n\\n\Driven via port from `m2 m2_inst` at [all.sv:72:9](<file:///tests/data/all.sv#L72,9>)  \n\`.b(b)`\n\\n\---\n\\n\Driven via port from `m2 m` at [all.sv:62:12](<file:///tests/data/all.sv#L62,12>)  \n\`b`
 
         .c(),
          ^ Ref -> **Ref Variable** `c` in `m2`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`ref c`
@@ -246,7 +246,7 @@ macromodule m3;
               ^ Sym w : Net
 
     assign (supply0, weak1) #(1:0:1, 2:1:0) w = 2;
-                                            ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
+                                            ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`\n\\n\---\n\\n\Driven by continuous assignment at [all.sv:81:5](<file:///tests/data/all.sv#L81,5>)  \n\`assign (supply0, weak1) #(1:0:1, 2:1:0) w = 2;`\n\\n\---\n\\n\Driven by initializer at [all.sv:80:5](<file:///tests/data/all.sv#L80,5>)  \n\`wor [1:0] w = 1;`
 
 
 
@@ -257,7 +257,7 @@ macromodule m3;
     alias {u,v} = w;
            ^ Ref -> **Net** `u` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wor u,v;`
              ^ Ref -> **Net** `v` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wor u,v;`
-                  ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
+                  ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`\n\\n\---\n\\n\Driven by continuous assignment at [all.sv:81:5](<file:///tests/data/all.sv#L81,5>)  \n\`assign (supply0, weak1) #(1:0:1, 2:1:0) w = 2;`\n\\n\---\n\\n\Driven by initializer at [all.sv:80:5](<file:///tests/data/all.sv#L80,5>)  \n\`wor [1:0] w = 1;`
 
 
 
@@ -271,18 +271,18 @@ macromodule m3;
     initial begin
 
         repeat (3) @(negedge b) f = #2 1;
-                             ^ Ref -> **Net** `b` in `m3`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`wire b;`
-                                ^ Ref -> **Variable** `f` in `m3`  \n\Type: `logic`  \n\Driver: `Procedural (initial)`  \n\\n\\n\---\n\\n\`logic f, z;`
+                             ^ Ref -> **Net** `b` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wire b;`\n\\n\---\n\\n\Driven via port from `m2 m2_inst` at [all.sv:72:9](<file:///tests/data/all.sv#L72,9>)  \n\`.b(b)`\n\\n\---\n\\n\Driven via port from `m2 m` at [all.sv:62:12](<file:///tests/data/all.sv#L62,12>)  \n\`b`
+                                ^ Ref -> **Variable** `f` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic f, z;`\n\\n\---\n\\n\Driven by initial at [all.sv:88:5](<file:///tests/data/all.sv#L88,5>)  \n\`initial begin\n\    repeat (3) @(negedge b) f = #2 1;\n\    wait (f) ++f;\n\    wait fork;\n\    wait_order (m3.ev) f++;\n\    fork : fkb\n\        static int i = 1;\n\        disable fork;\n\    join_none\n\    disable m3.foo;\n\    assign z = 1;\n\    deassign z;\n\    if (1) begin end else begin end\n\    unique0 casex (w)\n\        0, 1: ;\n\        default ;\n\    endcase\n\    case (w) inside\n\        [0: 3]: ;\n\    endcase\n\end`
 
         wait (f) ++f;
-              ^ Ref -> **Variable** `f` in `m3`  \n\Type: `logic`  \n\Driver: `Procedural (initial)`  \n\\n\\n\---\n\\n\`logic f, z;`
-                   ^ Ref -> **Variable** `f` in `m3`  \n\Type: `logic`  \n\Driver: `Procedural (initial)`  \n\\n\\n\---\n\\n\`logic f, z;`
+              ^ Ref -> **Variable** `f` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic f, z;`\n\\n\---\n\\n\Driven by initial at [all.sv:88:5](<file:///tests/data/all.sv#L88,5>)  \n\`initial begin\n\    repeat (3) @(negedge b) f = #2 1;\n\    wait (f) ++f;\n\    wait fork;\n\    wait_order (m3.ev) f++;\n\    fork : fkb\n\        static int i = 1;\n\        disable fork;\n\    join_none\n\    disable m3.foo;\n\    assign z = 1;\n\    deassign z;\n\    if (1) begin end else begin end\n\    unique0 casex (w)\n\        0, 1: ;\n\        default ;\n\    endcase\n\    case (w) inside\n\        [0: 3]: ;\n\    endcase\n\end`
+                   ^ Ref -> **Variable** `f` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic f, z;`\n\\n\---\n\\n\Driven by initial at [all.sv:88:5](<file:///tests/data/all.sv#L88,5>)  \n\`initial begin\n\    repeat (3) @(negedge b) f = #2 1;\n\    wait (f) ++f;\n\    wait fork;\n\    wait_order (m3.ev) f++;\n\    fork : fkb\n\        static int i = 1;\n\        disable fork;\n\    join_none\n\    disable m3.foo;\n\    assign z = 1;\n\    deassign z;\n\    if (1) begin end else begin end\n\    unique0 casex (w)\n\        0, 1: ;\n\        default ;\n\    endcase\n\    case (w) inside\n\        [0: 3]: ;\n\    endcase\n\end`
 
         wait fork;
 
         wait_order (m3.ev) f++;
                        ^^ Ref -> **Variable** `ev` in `m3`  \n\Type: `event`  \n\\n\\n\---\n\\n\`event ev;`
-                           ^ Ref -> **Variable** `f` in `m3`  \n\Type: `logic`  \n\Driver: `Procedural (initial)`  \n\\n\\n\---\n\\n\`logic f, z;`
+                           ^ Ref -> **Variable** `f` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic f, z;`\n\\n\---\n\\n\Driven by initial at [all.sv:88:5](<file:///tests/data/all.sv#L88,5>)  \n\`initial begin\n\    repeat (3) @(negedge b) f = #2 1;\n\    wait (f) ++f;\n\    wait fork;\n\    wait_order (m3.ev) f++;\n\    fork : fkb\n\        static int i = 1;\n\        disable fork;\n\    join_none\n\    disable m3.foo;\n\    assign z = 1;\n\    deassign z;\n\    if (1) begin end else begin end\n\    unique0 casex (w)\n\        0, 1: ;\n\        default ;\n\    endcase\n\    case (w) inside\n\        [0: 3]: ;\n\    endcase\n\end`
 
 
 
@@ -304,10 +304,10 @@ macromodule m3;
 
 
         assign z = 1;
-               ^ Ref -> **Variable** `z` in `m3`  \n\Type: `logic`  \n\Driver: `Procedural (initial)`  \n\\n\\n\---\n\\n\`logic f, z;`
+               ^ Ref -> **Variable** `z` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic f, z;`\n\\n\---\n\\n\Driven by initial at [all.sv:88:5](<file:///tests/data/all.sv#L88,5>)  \n\`initial begin\n\    repeat (3) @(negedge b) f = #2 1;\n\    wait (f) ++f;\n\    wait fork;\n\    wait_order (m3.ev) f++;\n\    fork : fkb\n\        static int i = 1;\n\        disable fork;\n\    join_none\n\    disable m3.foo;\n\    assign z = 1;\n\    deassign z;\n\    if (1) begin end else begin end\n\    unique0 casex (w)\n\        0, 1: ;\n\        default ;\n\    endcase\n\    case (w) inside\n\        [0: 3]: ;\n\    endcase\n\end`
 
         deassign z;
-                 ^ Ref -> **Variable** `z` in `m3`  \n\Type: `logic`  \n\Driver: `Procedural (initial)`  \n\\n\\n\---\n\\n\`logic f, z;`
+                 ^ Ref -> **Variable** `z` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic f, z;`\n\\n\---\n\\n\Driven by initial at [all.sv:88:5](<file:///tests/data/all.sv#L88,5>)  \n\`initial begin\n\    repeat (3) @(negedge b) f = #2 1;\n\    wait (f) ++f;\n\    wait fork;\n\    wait_order (m3.ev) f++;\n\    fork : fkb\n\        static int i = 1;\n\        disable fork;\n\    join_none\n\    disable m3.foo;\n\    assign z = 1;\n\    deassign z;\n\    if (1) begin end else begin end\n\    unique0 casex (w)\n\        0, 1: ;\n\        default ;\n\    endcase\n\    case (w) inside\n\        [0: 3]: ;\n\    endcase\n\end`
 
 
 
@@ -316,7 +316,7 @@ macromodule m3;
 
 
         unique0 casex (w)
-                       ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
+                       ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`\n\\n\---\n\\n\Driven by continuous assignment at [all.sv:81:5](<file:///tests/data/all.sv#L81,5>)  \n\`assign (supply0, weak1) #(1:0:1, 2:1:0) w = 2;`\n\\n\---\n\\n\Driven by initializer at [all.sv:80:5](<file:///tests/data/all.sv#L80,5>)  \n\`wor [1:0] w = 1;`
 
             0, 1: ;
 
@@ -327,7 +327,7 @@ macromodule m3;
 
 
         case (w) inside
-              ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
+              ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`\n\\n\---\n\\n\Driven by continuous assignment at [all.sv:81:5](<file:///tests/data/all.sv#L81,5>)  \n\`assign (supply0, weak1) #(1:0:1, 2:1:0) w = 2;`\n\\n\---\n\\n\Driven by initializer at [all.sv:80:5](<file:///tests/data/all.sv#L80,5>)  \n\`wor [1:0] w = 1;`
 
             [0: 3]: ;
 
@@ -338,13 +338,13 @@ macromodule m3;
 
 
     always_ff @(posedge b iff f == 1) begin
-                        ^ Ref -> **Net** `b` in `m3`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`wire b;`
-                              ^ Ref -> **Variable** `f` in `m3`  \n\Type: `logic`  \n\Driver: `Procedural (initial)`  \n\\n\\n\---\n\\n\`logic f, z;`
+                        ^ Ref -> **Net** `b` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wire b;`\n\\n\---\n\\n\Driven via port from `m2 m2_inst` at [all.sv:72:9](<file:///tests/data/all.sv#L72,9>)  \n\`.b(b)`\n\\n\---\n\\n\Driven via port from `m2 m` at [all.sv:62:12](<file:///tests/data/all.sv#L62,12>)  \n\`b`
+                              ^ Ref -> **Variable** `f` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic f, z;`\n\\n\---\n\\n\Driven by initial at [all.sv:88:5](<file:///tests/data/all.sv#L88,5>)  \n\`initial begin\n\    repeat (3) @(negedge b) f = #2 1;\n\    wait (f) ++f;\n\    wait fork;\n\    wait_order (m3.ev) f++;\n\    fork : fkb\n\        static int i = 1;\n\        disable fork;\n\    join_none\n\    disable m3.foo;\n\    assign z = 1;\n\    deassign z;\n\    if (1) begin end else begin end\n\    unique0 casex (w)\n\        0, 1: ;\n\        default ;\n\    endcase\n\    case (w) inside\n\        [0: 3]: ;\n\    endcase\n\end`
 
         forever break;
 
         repeat (f + 2) continue;
-                ^ Ref -> **Variable** `f` in `m3`  \n\Type: `logic`  \n\Driver: `Procedural (initial)`  \n\\n\\n\---\n\\n\`logic f, z;`
+                ^ Ref -> **Variable** `f` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic f, z;`\n\\n\---\n\\n\Driven by initial at [all.sv:88:5](<file:///tests/data/all.sv#L88,5>)  \n\`initial begin\n\    repeat (3) @(negedge b) f = #2 1;\n\    wait (f) ++f;\n\    wait fork;\n\    wait_order (m3.ev) f++;\n\    fork : fkb\n\        static int i = 1;\n\        disable fork;\n\    join_none\n\    disable m3.foo;\n\    assign z = 1;\n\    deassign z;\n\    if (1) begin end else begin end\n\    unique0 casex (w)\n\        0, 1: ;\n\        default ;\n\    endcase\n\    case (w) inside\n\        [0: 3]: ;\n\    endcase\n\end`
 
         while (1)
 
@@ -360,7 +360,7 @@ macromodule m3;
                                                     ^ Ref -> **Variable** `i` in `m3`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int i = 0`
 
         foreach (w[q]) begin end
-                 ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
+                 ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`\n\\n\---\n\\n\Driven by continuous assignment at [all.sv:81:5](<file:///tests/data/all.sv#L81,5>)  \n\`assign (supply0, weak1) #(1:0:1, 2:1:0) w = 2;`\n\\n\---\n\\n\Driven by initializer at [all.sv:80:5](<file:///tests/data/all.sv#L80,5>)  \n\`wor [1:0] w = 1;`
 
     end
 
@@ -438,7 +438,7 @@ macromodule m3;
               ^ Ref -> **Variable** `v` in `m3`  \n\Type: UnpackedUnion `VInt`  \n\\n\\n\---\n\\n\`VInt v;`
 
             tagged Invalid &&& ~w : $display ("v is Invalid");
-                                ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
+                                ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`\n\\n\---\n\\n\Driven by continuous assignment at [all.sv:81:5](<file:///tests/data/all.sv#L81,5>)  \n\`assign (supply0, weak1) #(1:0:1, 2:1:0) w = 2;`\n\\n\---\n\\n\Driven by initializer at [all.sv:80:5](<file:///tests/data/all.sv#L80,5>)  \n\`wor [1:0] w = 1;`
                                     ^^^^^^^^ Sym $display : SystemName
 
             tagged Valid .n : $display ("v is Valid with value %d", n);
@@ -478,8 +478,8 @@ macromodule m3;
 
                             tagged JmpU .a : pc = pc + a;
                                          ^ Sym a : PatternVar
-                                             ^^ Ref -> **Variable** `pc` in `m3`  \n\Type: `longint`  \n\Width: `64`  \n\\n\\n\---\n\\n\`static longint pc = 'x;`
-                                                  ^^ Ref -> **Variable** `pc` in `m3`  \n\Type: `longint`  \n\Width: `64`  \n\\n\\n\---\n\\n\`static longint pc = 'x;`
+                                             ^^ Ref -> **Variable** `pc` in `m3`  \n\Type: `longint`  \n\Width: `64`  \n\\n\\n\---\n\\n\`static longint pc = 'x;`\n\\n\---\n\\n\Driven by always_comb at [all.sv:128:5](<file:///tests/data/all.sv#L128,5>)  \n\`always_comb begin\n\    typedef union tagged {\n\        void Invalid;\n\        int Valid;\n\    } VInt;\n\    typedef union tagged {\n\        struct {\n\            bit [4:0] reg1, reg2, regd;\n\        } Add;\n\        union tagged {\n\            bit [9:0] JmpU;\n\            struct {\n\                bit [1:0] cc;\n\                bit [9:0] addr;\n\            } JmpC;\n\        } Jmp;\n\    } Instr;\n\    VInt v;\n\    Instr instr;\n\    automatic int rf[] = new [3];\n\    static longint pc = 'x;\n\    case (v) matches\n\        tagged Invalid &&& ~w : $display ("v is Invalid");\n\        tagged Valid .n : $display ("v is Valid with value %d", n);\n\    endcase\n\    case (instr) matches\n\        tagged Add .s: case (s) matches\n\                        '{.*, .*, 0} : ; // no op\n\                        '{.r1, .r2, .rd} : rf[rd] = rf[r1] + rf[r2];\n\                      endcase\n\        tagged Jmp .j: case (j) matches\n\                        tagged JmpU .a : pc = pc + a;\n\                        tagged JmpC '{.c, .a} : if (rf[c]) pc = a;\n\                       endcase\n\    endcase\n\    if (instr matches (tagged Jmp .j) &&&\n\        j matches (tagged JmpC '{cc:.c,addr:.a})) begin\n\        pc = c[0] & a[0];\n\        pc = instr matches (tagged Jmp .j) &&&\n\              j matches (tagged JmpC '{cc:.c,addr:.a}) ? c[0] & a[0] : 0;\n\    end\n\    else begin\n\    end\n\end`\n\\n\---\n\\n\Driven by initializer at [all.sv:150:9](<file:///tests/data/all.sv#L150,9>)  \n\`static longint pc = 'x;`
+                                                  ^^ Ref -> **Variable** `pc` in `m3`  \n\Type: `longint`  \n\Width: `64`  \n\\n\\n\---\n\\n\`static longint pc = 'x;`\n\\n\---\n\\n\Driven by always_comb at [all.sv:128:5](<file:///tests/data/all.sv#L128,5>)  \n\`always_comb begin\n\    typedef union tagged {\n\        void Invalid;\n\        int Valid;\n\    } VInt;\n\    typedef union tagged {\n\        struct {\n\            bit [4:0] reg1, reg2, regd;\n\        } Add;\n\        union tagged {\n\            bit [9:0] JmpU;\n\            struct {\n\                bit [1:0] cc;\n\                bit [9:0] addr;\n\            } JmpC;\n\        } Jmp;\n\    } Instr;\n\    VInt v;\n\    Instr instr;\n\    automatic int rf[] = new [3];\n\    static longint pc = 'x;\n\    case (v) matches\n\        tagged Invalid &&& ~w : $display ("v is Invalid");\n\        tagged Valid .n : $display ("v is Valid with value %d", n);\n\    endcase\n\    case (instr) matches\n\        tagged Add .s: case (s) matches\n\                        '{.*, .*, 0} : ; // no op\n\                        '{.r1, .r2, .rd} : rf[rd] = rf[r1] + rf[r2];\n\                      endcase\n\        tagged Jmp .j: case (j) matches\n\                        tagged JmpU .a : pc = pc + a;\n\                        tagged JmpC '{.c, .a} : if (rf[c]) pc = a;\n\                       endcase\n\    endcase\n\    if (instr matches (tagged Jmp .j) &&&\n\        j matches (tagged JmpC '{cc:.c,addr:.a})) begin\n\        pc = c[0] & a[0];\n\        pc = instr matches (tagged Jmp .j) &&&\n\              j matches (tagged JmpC '{cc:.c,addr:.a}) ? c[0] & a[0] : 0;\n\    end\n\    else begin\n\    end\n\end`\n\\n\---\n\\n\Driven by initializer at [all.sv:150:9](<file:///tests/data/all.sv#L150,9>)  \n\`static longint pc = 'x;`
                                                        ^ Ref -> **PatternVar** `a` in `m3`  \n\Type: `bit[9:0]`  \n\Width: `10`  \n\\n\\n\---\n\\n\`.a`
 
                             tagged JmpC '{.c, .a} : if (rf[c]) pc = a;
@@ -487,7 +487,7 @@ macromodule m3;
                                                ^ Sym a : PatternVar
                                                         ^^ Ref -> **Variable** `rf` in `m3`  \n\Type: `int$[]`  \n\\n\\n\---\n\\n\`automatic int rf[] = new [3];`
                                                            ^ Ref -> **PatternVar** `c` in `m3`  \n\Type: `bit[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`.c`
-                                                               ^^ Ref -> **Variable** `pc` in `m3`  \n\Type: `longint`  \n\Width: `64`  \n\\n\\n\---\n\\n\`static longint pc = 'x;`
+                                                               ^^ Ref -> **Variable** `pc` in `m3`  \n\Type: `longint`  \n\Width: `64`  \n\\n\\n\---\n\\n\`static longint pc = 'x;`\n\\n\---\n\\n\Driven by always_comb at [all.sv:128:5](<file:///tests/data/all.sv#L128,5>)  \n\`always_comb begin\n\    typedef union tagged {\n\        void Invalid;\n\        int Valid;\n\    } VInt;\n\    typedef union tagged {\n\        struct {\n\            bit [4:0] reg1, reg2, regd;\n\        } Add;\n\        union tagged {\n\            bit [9:0] JmpU;\n\            struct {\n\                bit [1:0] cc;\n\                bit [9:0] addr;\n\            } JmpC;\n\        } Jmp;\n\    } Instr;\n\    VInt v;\n\    Instr instr;\n\    automatic int rf[] = new [3];\n\    static longint pc = 'x;\n\    case (v) matches\n\        tagged Invalid &&& ~w : $display ("v is Invalid");\n\        tagged Valid .n : $display ("v is Valid with value %d", n);\n\    endcase\n\    case (instr) matches\n\        tagged Add .s: case (s) matches\n\                        '{.*, .*, 0} : ; // no op\n\                        '{.r1, .r2, .rd} : rf[rd] = rf[r1] + rf[r2];\n\                      endcase\n\        tagged Jmp .j: case (j) matches\n\                        tagged JmpU .a : pc = pc + a;\n\                        tagged JmpC '{.c, .a} : if (rf[c]) pc = a;\n\                       endcase\n\    endcase\n\    if (instr matches (tagged Jmp .j) &&&\n\        j matches (tagged JmpC '{cc:.c,addr:.a})) begin\n\        pc = c[0] & a[0];\n\        pc = instr matches (tagged Jmp .j) &&&\n\              j matches (tagged JmpC '{cc:.c,addr:.a}) ? c[0] & a[0] : 0;\n\    end\n\    else begin\n\    end\n\end`\n\\n\---\n\\n\Driven by initializer at [all.sv:150:9](<file:///tests/data/all.sv#L150,9>)  \n\`static longint pc = 'x;`
                                                                     ^ Ref -> **PatternVar** `a` in `m3`  \n\Type: `bit[9:0]`  \n\Width: `10`  \n\\n\\n\---\n\\n\`.a`
 
                            endcase
@@ -506,12 +506,12 @@ macromodule m3;
                                                  ^ Sym a : PatternVar
 
             pc = c[0] & a[0];
-            ^^ Ref -> **Variable** `pc` in `m3`  \n\Type: `longint`  \n\Width: `64`  \n\\n\\n\---\n\\n\`static longint pc = 'x;`
+            ^^ Ref -> **Variable** `pc` in `m3`  \n\Type: `longint`  \n\Width: `64`  \n\\n\\n\---\n\\n\`static longint pc = 'x;`\n\\n\---\n\\n\Driven by always_comb at [all.sv:128:5](<file:///tests/data/all.sv#L128,5>)  \n\`always_comb begin\n\    typedef union tagged {\n\        void Invalid;\n\        int Valid;\n\    } VInt;\n\    typedef union tagged {\n\        struct {\n\            bit [4:0] reg1, reg2, regd;\n\        } Add;\n\        union tagged {\n\            bit [9:0] JmpU;\n\            struct {\n\                bit [1:0] cc;\n\                bit [9:0] addr;\n\            } JmpC;\n\        } Jmp;\n\    } Instr;\n\    VInt v;\n\    Instr instr;\n\    automatic int rf[] = new [3];\n\    static longint pc = 'x;\n\    case (v) matches\n\        tagged Invalid &&& ~w : $display ("v is Invalid");\n\        tagged Valid .n : $display ("v is Valid with value %d", n);\n\    endcase\n\    case (instr) matches\n\        tagged Add .s: case (s) matches\n\                        '{.*, .*, 0} : ; // no op\n\                        '{.r1, .r2, .rd} : rf[rd] = rf[r1] + rf[r2];\n\                      endcase\n\        tagged Jmp .j: case (j) matches\n\                        tagged JmpU .a : pc = pc + a;\n\                        tagged JmpC '{.c, .a} : if (rf[c]) pc = a;\n\                       endcase\n\    endcase\n\    if (instr matches (tagged Jmp .j) &&&\n\        j matches (tagged JmpC '{cc:.c,addr:.a})) begin\n\        pc = c[0] & a[0];\n\        pc = instr matches (tagged Jmp .j) &&&\n\              j matches (tagged JmpC '{cc:.c,addr:.a}) ? c[0] & a[0] : 0;\n\    end\n\    else begin\n\    end\n\end`\n\\n\---\n\\n\Driven by initializer at [all.sv:150:9](<file:///tests/data/all.sv#L150,9>)  \n\`static longint pc = 'x;`
                  ^ Ref -> **PatternVar** `c` in `m3`  \n\Type: `bit[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`.c`
                         ^ Ref -> **PatternVar** `a` in `m3`  \n\Type: `bit[9:0]`  \n\Width: `10`  \n\\n\\n\---\n\\n\`.a`
 
             pc = instr matches (tagged Jmp .j) &&&
-            ^^ Ref -> **Variable** `pc` in `m3`  \n\Type: `longint`  \n\Width: `64`  \n\\n\\n\---\n\\n\`static longint pc = 'x;`
+            ^^ Ref -> **Variable** `pc` in `m3`  \n\Type: `longint`  \n\Width: `64`  \n\\n\\n\---\n\\n\`static longint pc = 'x;`\n\\n\---\n\\n\Driven by always_comb at [all.sv:128:5](<file:///tests/data/all.sv#L128,5>)  \n\`always_comb begin\n\    typedef union tagged {\n\        void Invalid;\n\        int Valid;\n\    } VInt;\n\    typedef union tagged {\n\        struct {\n\            bit [4:0] reg1, reg2, regd;\n\        } Add;\n\        union tagged {\n\            bit [9:0] JmpU;\n\            struct {\n\                bit [1:0] cc;\n\                bit [9:0] addr;\n\            } JmpC;\n\        } Jmp;\n\    } Instr;\n\    VInt v;\n\    Instr instr;\n\    automatic int rf[] = new [3];\n\    static longint pc = 'x;\n\    case (v) matches\n\        tagged Invalid &&& ~w : $display ("v is Invalid");\n\        tagged Valid .n : $display ("v is Valid with value %d", n);\n\    endcase\n\    case (instr) matches\n\        tagged Add .s: case (s) matches\n\                        '{.*, .*, 0} : ; // no op\n\                        '{.r1, .r2, .rd} : rf[rd] = rf[r1] + rf[r2];\n\                      endcase\n\        tagged Jmp .j: case (j) matches\n\                        tagged JmpU .a : pc = pc + a;\n\                        tagged JmpC '{.c, .a} : if (rf[c]) pc = a;\n\                       endcase\n\    endcase\n\    if (instr matches (tagged Jmp .j) &&&\n\        j matches (tagged JmpC '{cc:.c,addr:.a})) begin\n\        pc = c[0] & a[0];\n\        pc = instr matches (tagged Jmp .j) &&&\n\              j matches (tagged JmpC '{cc:.c,addr:.a}) ? c[0] & a[0] : 0;\n\    end\n\    else begin\n\    end\n\end`\n\\n\---\n\\n\Driven by initializer at [all.sv:150:9](<file:///tests/data/all.sv#L150,9>)  \n\`static longint pc = 'x;`
                  ^^^^^ Ref -> **Variable** `instr` in `m3`  \n\Type: UnpackedUnion `Instr`  \n\\n\\n\---\n\\n\`Instr instr;`
 
                   j matches (tagged JmpC '{cc:.c,addr:.a}) ? c[0] & a[0] : 0;
@@ -557,7 +557,7 @@ macromodule m3;
 
         case ($bits(w))
               ^^^^^ Sym $bits : SystemName
-                    ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`
+                    ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`\n\\n\---\n\\n\Driven by continuous assignment at [all.sv:81:5](<file:///tests/data/all.sv#L81,5>)  \n\`assign (supply0, weak1) #(1:0:1, 2:1:0) w = 2;`\n\\n\---\n\\n\Driven by initializer at [all.sv:80:5](<file:///tests/data/all.sv#L80,5>)  \n\`wor [1:0] w = 1;`
 
             0, 1: begin end
 
@@ -650,7 +650,7 @@ macromodule m3;
                       ^ Sym r : Net
 
     rcmos #1step (q, r, s, t);
-                  ^ Ref -> **Net** `q` in `m3`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`q`
+                  ^ Ref -> **Net** `q` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`q`\n\\n\---\n\\n\Driven by continuous assignment at [all.sv:219:19](<file:///tests/data/all.sv#L219,19>)  \n\`q`\n\\n\---\n\\n\Driven by continuous assignment at [all.sv:218:20](<file:///tests/data/all.sv#L218,20>)  \n\`q`
                      ^ Ref -> **Net** `r` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`r`
                         ^ Sym s : Net
                            ^ Sym t : Net
@@ -702,8 +702,8 @@ extern program p(a, b);
 
 program p(a, b);
         ^ Sym p : Definition
-          ^ Ref -> **Input Net** `a` in `p`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input a, b;`
-             ^ Ref -> **Input Net** `b` in `p`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input a, b;`
+          ^ Ref -> **Input Net** `a` in `p`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input a, b;`
+             ^ Ref -> **Input Net** `b` in `p`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input a, b;`
 
     input a, b;
           ^ Sym a : Net
@@ -765,9 +765,9 @@ endconfig
 module ALU (o1, i1, i2, opcode);
        ^^^ Sym ALU : Definition
             ^^ Ref -> **Output Net** `o1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`output [7:0] o1;`
-                ^^ Ref -> **Input Net** `i1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
-                    ^^ Ref -> **Input Net** `i2` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
-                        ^^^^^^ Ref -> **Input Net** `opcode` in `ALU`  \n\Type: `logic[2:1]`  \n\Width: `2`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input [2:1] opcode;`
+                ^^ Ref -> **Input Net** `i1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
+                    ^^ Ref -> **Input Net** `i2` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
+                        ^^^^^^ Ref -> **Input Net** `opcode` in `ALU`  \n\Type: `logic[2:1]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`input [2:1] opcode;`
 
     input [7:0] i1, i2;
                 ^^ Sym i1 : Net
@@ -787,24 +787,24 @@ module ALU (o1, i1, i2, opcode);
                   ^^ Sym s1 : Specparam
 
         if (opcode == 2'b00) (i1,i2 *> o1) = (25.0, 25.0);
-            ^^^^^^ Ref -> **Input Net** `opcode` in `ALU`  \n\Type: `logic[2:1]`  \n\Width: `2`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input [2:1] opcode;`
-                              ^^ Ref -> **Input Net** `i1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
-                                 ^^ Ref -> **Input Net** `i2` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
+            ^^^^^^ Ref -> **Input Net** `opcode` in `ALU`  \n\Type: `logic[2:1]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`input [2:1] opcode;`
+                              ^^ Ref -> **Input Net** `i1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
+                                 ^^ Ref -> **Input Net** `i2` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
                                        ^^ Ref -> **Output Net** `o1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`output [7:0] o1;`
 
         if (opcode == 2'b01) (i1 => o1) = (5.6, 8.0);
-            ^^^^^^ Ref -> **Input Net** `opcode` in `ALU`  \n\Type: `logic[2:1]`  \n\Width: `2`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input [2:1] opcode;`
-                              ^^ Ref -> **Input Net** `i1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
+            ^^^^^^ Ref -> **Input Net** `opcode` in `ALU`  \n\Type: `logic[2:1]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`input [2:1] opcode;`
+                              ^^ Ref -> **Input Net** `i1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
                                     ^^ Ref -> **Output Net** `o1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`output [7:0] o1;`
 
         if (opcode == s1) (i2 => o1) = (5.6, 8.0);
-            ^^^^^^ Ref -> **Input Net** `opcode` in `ALU`  \n\Type: `logic[2:1]`  \n\Width: `2`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input [2:1] opcode;`
+            ^^^^^^ Ref -> **Input Net** `opcode` in `ALU`  \n\Type: `logic[2:1]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`input [2:1] opcode;`
                       ^^ Ref -> **Specparam** `s1` in `ALU`  \n\Type: `logic signed[31:0]`  \n\Width: `32`  \n\\n\\n\---\n\\n\`s1 = 2`
-                           ^^ Ref -> **Input Net** `i2` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
+                           ^^ Ref -> **Input Net** `i2` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`input [7:0] i1, i2;`
                                  ^^ Ref -> **Output Net** `o1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`output [7:0] o1;`
 
         (opcode *> o1) = (6.1, 6.5);
-         ^^^^^^ Ref -> **Input Net** `opcode` in `ALU`  \n\Type: `logic[2:1]`  \n\Width: `2`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input [2:1] opcode;`
+         ^^^^^^ Ref -> **Input Net** `opcode` in `ALU`  \n\Type: `logic[2:1]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`input [2:1] opcode;`
                    ^^ Ref -> **Output Net** `o1` in `ALU`  \n\Type: `logic[7:0]`  \n\Width: `8`  \n\\n\\n\---\n\\n\`output [7:0] o1;`
 
     endspecify
@@ -1018,24 +1018,24 @@ checker assert_window1 (
 
         if (reset || window && end_event)
             ^^^^^ Ref -> **AssertionPort** `reset` in `assert_window1`  \n\\n\\n\---\n\\n\`logic reset = $inferred_disable`
-                     ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+                     ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`\n\\n\---\n\\n\Driven by always_ff at [all.sv:345:5](<file:///tests/data/all.sv#L345,5>)  \n\`always_ff @clock\n\window <= next_window;`\n\\n\---\n\\n\Driven by initializer at [all.sv:333:5](<file:///tests/data/all.sv#L333,5>)  \n\`bit window = 1'b0, next_window = 1'b1;`
                                ^^^^^^^^^ Ref -> **AssertionPort** `end_event` in `assert_window1`  \n\\n\\n\---\n\\n\`untyped end_event`
 
             next_window = 1'b0;
-            ^^^^^^^^^^^ Ref -> **Variable** `next_window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+            ^^^^^^^^^^^ Ref -> **Variable** `next_window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`\n\\n\---\n\\n\Driven by always_comb at [all.sv:336:5](<file:///tests/data/all.sv#L336,5>)  \n\`always_comb begin\n\    if (reset || window && end_event)\n\        next_window = 1'b0;\n\    else if (!window && start_event)\n\        next_window = 1'b1;\n\    else\n\        next_window = window;\n\end`\n\\n\---\n\\n\Driven by initializer at [all.sv:333:5](<file:///tests/data/all.sv#L333,5>)  \n\`bit window = 1'b0, next_window = 1'b1;`
 
         else if (!window && start_event)
-                  ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+                  ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`\n\\n\---\n\\n\Driven by always_ff at [all.sv:345:5](<file:///tests/data/all.sv#L345,5>)  \n\`always_ff @clock\n\window <= next_window;`\n\\n\---\n\\n\Driven by initializer at [all.sv:333:5](<file:///tests/data/all.sv#L333,5>)  \n\`bit window = 1'b0, next_window = 1'b1;`
                             ^^^^^^^^^^^ Ref -> **AssertionPort** `start_event` in `assert_window1`  \n\\n\\n\---\n\\n\`untyped start_event`
 
             next_window = 1'b1;
-            ^^^^^^^^^^^ Ref -> **Variable** `next_window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+            ^^^^^^^^^^^ Ref -> **Variable** `next_window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`\n\\n\---\n\\n\Driven by always_comb at [all.sv:336:5](<file:///tests/data/all.sv#L336,5>)  \n\`always_comb begin\n\    if (reset || window && end_event)\n\        next_window = 1'b0;\n\    else if (!window && start_event)\n\        next_window = 1'b1;\n\    else\n\        next_window = window;\n\end`\n\\n\---\n\\n\Driven by initializer at [all.sv:333:5](<file:///tests/data/all.sv#L333,5>)  \n\`bit window = 1'b0, next_window = 1'b1;`
 
         else
 
             next_window = window;
-            ^^^^^^^^^^^ Ref -> **Variable** `next_window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
-                          ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+            ^^^^^^^^^^^ Ref -> **Variable** `next_window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`\n\\n\---\n\\n\Driven by always_comb at [all.sv:336:5](<file:///tests/data/all.sv#L336,5>)  \n\`always_comb begin\n\    if (reset || window && end_event)\n\        next_window = 1'b0;\n\    else if (!window && start_event)\n\        next_window = 1'b1;\n\    else\n\        next_window = window;\n\end`\n\\n\---\n\\n\Driven by initializer at [all.sv:333:5](<file:///tests/data/all.sv#L333,5>)  \n\`bit window = 1'b0, next_window = 1'b1;`
+                          ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`\n\\n\---\n\\n\Driven by always_ff at [all.sv:345:5](<file:///tests/data/all.sv#L345,5>)  \n\`always_ff @clock\n\window <= next_window;`\n\\n\---\n\\n\Driven by initializer at [all.sv:333:5](<file:///tests/data/all.sv#L333,5>)  \n\`bit window = 1'b0, next_window = 1'b1;`
 
     end
 
@@ -1045,8 +1045,8 @@ checker assert_window1 (
                ^^^^^ Ref -> **AssertionPort** `clock` in `assert_window1`  \n\\n\\n\---\n\\n\`event clock = $inferred_clock`
 
         window <= next_window;
-        ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
-                  ^^^^^^^^^^^ Ref -> **Variable** `next_window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+        ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`\n\\n\---\n\\n\Driven by always_ff at [all.sv:345:5](<file:///tests/data/all.sv#L345,5>)  \n\`always_ff @clock\n\window <= next_window;`\n\\n\---\n\\n\Driven by initializer at [all.sv:333:5](<file:///tests/data/all.sv#L333,5>)  \n\`bit window = 1'b0, next_window = 1'b1;`
+                  ^^^^^^^^^^^ Ref -> **Variable** `next_window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`\n\\n\---\n\\n\Driven by always_comb at [all.sv:336:5](<file:///tests/data/all.sv#L336,5>)  \n\`always_comb begin\n\    if (reset || window && end_event)\n\        next_window = 1'b0;\n\    else if (!window && start_event)\n\        next_window = 1'b1;\n\    else\n\        next_window = window;\n\end`\n\\n\---\n\\n\Driven by initializer at [all.sv:333:5](<file:///tests/data/all.sv#L333,5>)  \n\`bit window = 1'b0, next_window = 1'b1;`
 
 
 
@@ -1055,7 +1055,7 @@ checker assert_window1 (
 
         start_event && !window |=> test_expr[+] ##0 end_event;
         ^^^^^^^^^^^ Ref -> **AssertionPort** `start_event` in `assert_window1`  \n\\n\\n\---\n\\n\`untyped start_event`
-                        ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+                        ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`\n\\n\---\n\\n\Driven by always_ff at [all.sv:345:5](<file:///tests/data/all.sv#L345,5>)  \n\`always_ff @clock\n\window <= next_window;`\n\\n\---\n\\n\Driven by initializer at [all.sv:333:5](<file:///tests/data/all.sv#L333,5>)  \n\`bit window = 1'b0, next_window = 1'b1;`
                                    ^^^^^^^^^ Ref -> **AssertionPort** `test_expr` in `assert_window1`  \n\\n\\n\---\n\\n\`logic test_expr`
                                                     ^^^^^^^^^ Ref -> **AssertionPort** `end_event` in `assert_window1`  \n\\n\\n\---\n\\n\`untyped end_event`
 
@@ -1079,7 +1079,7 @@ checker assert_window1 (
         cover_window_open: cover property (start_event && !window)
         ^^^^^^^^^^^^^^^^^ Sym cover_window_open : StatementBlock
                                            ^^^^^^^^^^^ Ref -> **AssertionPort** `start_event` in `assert_window1`  \n\\n\\n\---\n\\n\`untyped start_event`
-                                                           ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+                                                           ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`\n\\n\---\n\\n\Driven by always_ff at [all.sv:345:5](<file:///tests/data/all.sv#L345,5>)  \n\`always_ff @clock\n\window <= next_window;`\n\\n\---\n\\n\Driven by initializer at [all.sv:333:5](<file:///tests/data/all.sv#L333,5>)  \n\`bit window = 1'b0, next_window = 1'b1;`
 
         $display("window_open covered");
         ^^^^^^^^ Sym $display : SystemName
@@ -1089,15 +1089,15 @@ checker assert_window1 (
 
             start_event && !window
             ^^^^^^^^^^^ Ref -> **AssertionPort** `start_event` in `assert_window1`  \n\\n\\n\---\n\\n\`untyped start_event`
-                            ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+                            ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`\n\\n\---\n\\n\Driven by always_ff at [all.sv:345:5](<file:///tests/data/all.sv#L345,5>)  \n\`always_ff @clock\n\window <= next_window;`\n\\n\---\n\\n\Driven by initializer at [all.sv:333:5](<file:///tests/data/all.sv#L333,5>)  \n\`bit window = 1'b0, next_window = 1'b1;`
 
             ##1 (!end_event && window) [*]
                   ^^^^^^^^^ Ref -> **AssertionPort** `end_event` in `assert_window1`  \n\\n\\n\---\n\\n\`untyped end_event`
-                               ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+                               ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`\n\\n\---\n\\n\Driven by always_ff at [all.sv:345:5](<file:///tests/data/all.sv#L345,5>)  \n\`always_ff @clock\n\window <= next_window;`\n\\n\---\n\\n\Driven by initializer at [all.sv:333:5](<file:///tests/data/all.sv#L333,5>)  \n\`bit window = 1'b0, next_window = 1'b1;`
 
             ##1 end_event && window
                 ^^^^^^^^^ Ref -> **AssertionPort** `end_event` in `assert_window1`  \n\\n\\n\---\n\\n\`untyped end_event`
-                             ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`
+                             ^^^^^^ Ref -> **Variable** `window` in `assert_window1`  \n\Type: `bit`  \n\\n\\n\---\n\\n\`bit window = 1'b0, next_window = 1'b1;`\n\\n\---\n\\n\Driven by always_ff at [all.sv:345:5](<file:///tests/data/all.sv#L345,5>)  \n\`always_ff @clock\n\window <= next_window;`\n\\n\---\n\\n\Driven by initializer at [all.sv:333:5](<file:///tests/data/all.sv#L333,5>)  \n\`bit window = 1'b0, next_window = 1'b1;`
 
         ) $display("window covered");
           ^^^^^^^^ Sym $display : SystemName
@@ -1478,7 +1478,7 @@ module m6;
            ^ Ref -> **Subroutine** `f` in `B`  \n\\n\\n\---\n\\n\`function void f();\n\    i = j;\n\    super.i = super.j;\n\    j = super.f();\n\    j = this.super.f();\n\endfunction`
 
         a = b2;
-        ^ Ref -> **Variable** `a` in `m6`  \n\Type: `A`  \n\\n\\n\---\n\\n\`A a = new;`
+        ^ Ref -> **Variable** `a` in `m6`  \n\Type: `A`  \n\\n\\n\---\n\\n\`A a = new;`\n\\n\---\n\\n\Driven by initial at [all.sv:485:5](<file:///tests/data/all.sv#L485,5>)  \n\`initial begin\n\    b2.f();\n\    a = b2;\n\    c.i = c.j;\n\    randsequence(main)\n\        main : first second;\n\        first : add | dec := (1 + 1);\n\        second : repeat($urandom_range(2, 6)) first;\n\        add : if (depth < 2) first else second;\n\        dec : case (depth & 7)\n\            0 : add;\n\            1, 2 : dec;\n\            default : first;\n\        endcase;\n\        third : rand join first second;\n\        fourth(string s = "done") : { if (depth) break; };\n\    endsequence\n\end`\n\\n\---\n\\n\Driven by initializer at [all.sv:479:5](<file:///tests/data/all.sv#L479,5>)  \n\`A a = new;`
             ^^ Ref -> **Variable** `b2` in `m6`  \n\Type: `B`  \n\\n\\n\---\n\\n\`B b2 = new;`
 
         c.i = c.j;
@@ -1712,11 +1712,11 @@ module m10;
                                                           ^^^ Ref -> **ClassProperty** `len` in `m10.Packet`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int len;`
                                                                 ^ Ref -> **Variable** `p` in `m10`  \n\Type: `Packet`  \n\\n\\n\---\n\\n\`automatic Packet p = new;`
                                                                   ^^^ Ref -> **ClassProperty** `crc` in `m10.Packet`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int crc;`
-                                                                           ^^^^^^ Ref -> **Variable** `stream` in `m10`  \n\Type: `byte$[$]`  \n\Driver: `Procedural (initial)`  \n\\n\\n\---\n\\n\`byte stream[$];`
+                                                                           ^^^^^^ Ref -> **Variable** `stream` in `m10`  \n\Type: `byte$[$]`  \n\\n\\n\---\n\\n\`byte stream[$];`\n\\n\---\n\\n\Driven by initial at [all.sv:556:5](<file:///tests/data/all.sv#L556,5>)  \n\`initial begin\n\    byte q[$];\n\    automatic Packet p = new;\n\    {<< byte{ p.header, p.len, p.payload with [0 +: p.len], p.crc }} = stream;\n\    stream = stream[ $bits(p) / 8 : $ ];\n\end`
 
         stream = stream[ $bits(p) / 8 : $ ];
-        ^^^^^^ Ref -> **Variable** `stream` in `m10`  \n\Type: `byte$[$]`  \n\Driver: `Procedural (initial)`  \n\\n\\n\---\n\\n\`byte stream[$];`
-                 ^^^^^^ Ref -> **Variable** `stream` in `m10`  \n\Type: `byte$[$]`  \n\Driver: `Procedural (initial)`  \n\\n\\n\---\n\\n\`byte stream[$];`
+        ^^^^^^ Ref -> **Variable** `stream` in `m10`  \n\Type: `byte$[$]`  \n\\n\\n\---\n\\n\`byte stream[$];`\n\\n\---\n\\n\Driven by initial at [all.sv:556:5](<file:///tests/data/all.sv#L556,5>)  \n\`initial begin\n\    byte q[$];\n\    automatic Packet p = new;\n\    {<< byte{ p.header, p.len, p.payload with [0 +: p.len], p.crc }} = stream;\n\    stream = stream[ $bits(p) / 8 : $ ];\n\end`
+                 ^^^^^^ Ref -> **Variable** `stream` in `m10`  \n\Type: `byte$[$]`  \n\\n\\n\---\n\\n\`byte stream[$];`\n\\n\---\n\\n\Driven by initial at [all.sv:556:5](<file:///tests/data/all.sv#L556,5>)  \n\`initial begin\n\    byte q[$];\n\    automatic Packet p = new;\n\    {<< byte{ p.header, p.len, p.payload with [0 +: p.len], p.crc }} = stream;\n\    stream = stream[ $bits(p) / 8 : $ ];\n\end`
                          ^^^^^ Sym $bits : SystemName
                                ^ Ref -> **Variable** `p` in `m10`  \n\Type: `Packet`  \n\\n\\n\---\n\\n\`automatic Packet p = new;`
 

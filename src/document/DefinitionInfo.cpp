@@ -13,12 +13,15 @@
 #include "util/Converters.h"
 #include "util/Formatting.h"
 #include "util/Markdown.h"
+#include <algorithm>
 #include <filesystem>
 
 #include "slang/analysis/ValueDriver.h"
+#include "slang/ast/Expression.h"
 #include "slang/ast/symbols/CompilationUnitSymbols.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
 #include "slang/ast/symbols/ParameterSymbols.h"
+#include "slang/ast/symbols/PortSymbols.h"
 #include "slang/ast/symbols/ValueSymbol.h"
 #include "slang/ast/types/AllTypes.h"
 #include "slang/ast/types/Type.h"
@@ -128,42 +131,215 @@ void renderSymbolType(markup::Paragraph& infoPg, const ast::Symbol& symbol) {
     }
 }
 
-void renderSymbolDriverSummary(markup::Paragraph& infoPg, const ast::Symbol& symbol,
-                               const std::shared_ptr<ShallowAnalysis>& analysis) {
-    if (!ast::ValueSymbol::isKind(symbol.kind) || symbol.kind == ast::SymbolKind::EnumValue)
-        return;
+struct DriverGroup {
+    const ast::Symbol* containingSymbol;
+    std::vector<const analysis::ValueDriver*> drivers;
+    SmallVector<const syntax::SyntaxNode*, 4> displayNodes;
+};
 
-    const auto drivers = analysis->getDrivers(symbol.as<ast::ValueSymbol>());
-    if (drivers.empty())
-        return;
+bool isPortDriver(const analysis::ValueDriver& driver) {
+    return driver.isUnidirectionalPort() ||
+           driver.flags.has(analysis::DriverFlags::ViaIndirectPort);
+}
 
-    const slang::analysis::ValueDriver* uniqueDriver = nullptr;
-    for (const auto* driver : drivers) {
-        if (!driver)
-            continue;
+std::string getDriverInstanceDescription(const DriverGroup& group) {
+    const ast::InstanceSymbol* instance = nullptr;
+    if (group.containingSymbol->kind == ast::SymbolKind::Instance) {
+        instance = &group.containingSymbol->as<ast::InstanceSymbol>();
+    }
+    else if (group.containingSymbol->kind == ast::SymbolKind::InstanceBody) {
+        instance = group.containingSymbol->as<ast::InstanceBodySymbol>().parentInstance;
+    }
 
-        if (!uniqueDriver) {
-            uniqueDriver = driver;
+    if (!instance)
+        return {};
+
+    return fmt::format("{} {}", instance->getDefinition().name, instance->getArrayName());
+}
+
+std::string getDriverDescription(const analysis::ValueDriver& driver) {
+    if (isPortDriver(driver))
+        return "via port";
+
+    if (driver.flags.has(analysis::DriverFlags::Initializer))
+        return "by initializer";
+
+    if (driver.source == analysis::DriverSource::Subroutine)
+        return "by subroutine";
+
+    if (driver.source != analysis::DriverSource::Other) {
+        return fmt::format("by {}", ast::SemanticFacts::getProcedureKindStr(
+                                        static_cast<ast::ProceduralBlockKind>(driver.source)));
+    }
+
+    if (driver.kind == analysis::DriverKind::Continuous)
+        return "by continuous assignment";
+
+    return "by procedural assignment";
+}
+
+std::string getDriverGroupHeader(const DriverGroup& group) {
+    std::vector<std::string> descriptions;
+    const auto instanceDescription = getDriverInstanceDescription(group);
+    for (const auto* driver : group.drivers) {
+        auto description = getDriverDescription(*driver);
+        if (isPortDriver(*driver) && !instanceDescription.empty())
+            description += fmt::format(" from `{}`", instanceDescription);
+        if (std::ranges::find(descriptions, description) == descriptions.end())
+            descriptions.push_back(std::move(description));
+    }
+
+    std::string result = "Driven ";
+    for (size_t i = 0; i < descriptions.size(); i++) {
+        if (i != 0)
+            result += " and ";
+        result += descriptions[i];
+    }
+    return result;
+}
+
+const syntax::SyntaxNode* findSyntaxAt(const syntax::SyntaxNode& root, SourceLocation location) {
+    if (!root.sourceRange().contains(location))
+        return nullptr;
+
+    for (size_t i = 0; i < root.getChildCount(); i++) {
+        if (const auto* child = root.childNode(i)) {
+            if (const auto* result = findSyntaxAt(*child, location))
+                return result;
         }
-        else if (driver->kind != uniqueDriver->kind || driver->source != uniqueDriver->source) {
-            uniqueDriver = nullptr;
-            break;
+    }
+    return &root;
+}
+
+const syntax::SyntaxNode* getDriverSourceNode(const analysis::ValueDriver& driver) {
+    if (!driver.flags.has(analysis::DriverFlags::Initializer) &&
+        driver.containingSymbol->kind == ast::SymbolKind::ProceduralBlock) {
+        return driver.containingSymbol->getSyntax();
+    }
+
+    if (driver.flags.has(analysis::DriverFlags::Initializer)) {
+        if (auto* syntax = driver.getSymbol().getSyntax())
+            return syntax;
+    }
+
+    const auto* expressionSyntax = driver.path.fullExpr ? driver.path.fullExpr->syntax : nullptr;
+    if (expressionSyntax)
+        return expressionSyntax;
+
+    const auto* containingSyntax = driver.containingSymbol->getSyntax();
+    const auto range = driver.getSourceRange();
+    if (containingSyntax && range != SourceRange::NoLocation) {
+        if (const auto* syntax = findSyntaxAt(*containingSyntax, range.start()))
+            return syntax;
+    }
+    return containingSyntax;
+}
+
+const syntax::SyntaxNode* getDriverDisplayNode(const analysis::ValueDriver& driver) {
+    const auto* node = getDriverSourceNode(driver);
+    if (!node)
+        return nullptr;
+
+    if (isPortDriver(driver)) {
+        for (auto* current = node; current; current = current->parent) {
+            switch (current->kind) {
+                case syntax::SyntaxKind::ExplicitAnsiPort:
+                case syntax::SyntaxKind::ImplicitAnsiPort:
+                case syntax::SyntaxKind::NamedPortConnection:
+                case syntax::SyntaxKind::OrderedPortConnection:
+                case syntax::SyntaxKind::PortDeclaration:
+                    return current;
+                default:
+                    break;
+            }
+        }
+    }
+    else if (driver.kind == analysis::DriverKind::Continuous) {
+        for (auto* current = node; current; current = current->parent) {
+            if (current->kind == syntax::SyntaxKind::ContinuousAssign)
+                return current;
         }
     }
 
-    if (uniqueDriver) {
-        const auto kind = uniqueDriver->kind;
-        const auto source = uniqueDriver->source;
+    for (auto* current = node; current; current = current->parent) {
+        switch (current->kind) {
+            case syntax::SyntaxKind::ExpressionStatement:
+            case syntax::SyntaxKind::ProceduralAssignStatement:
+            case syntax::SyntaxKind::ProceduralDeassignStatement:
+            case syntax::SyntaxKind::ProceduralForceStatement:
+            case syntax::SyntaxKind::ProceduralReleaseStatement:
+                return current;
+            default:
+                break;
+        }
+    }
 
-        const auto driverStr =
-            (source == slang::analysis::DriverSource::Other ||
-             source == slang::analysis::DriverSource::Subroutine)
-                ? std::string(toString(kind))
-                : fmt::format("{} ({})", toString(kind),
-                              ast::SemanticFacts::getProcedureKindStr(
-                                  static_cast<slang::ast::ProceduralBlockKind>(source)));
+    return &selectDisplayNode(*node);
+}
 
-        infoPg.appendText("Driver: ").appendCode(driverStr).newLine();
+void appendSourceLink(markup::Paragraph& paragraph, SourceLocation location,
+                      const SourceManager& sourceManager) {
+    const auto originalLoc = sourceManager.getFullyOriginalLoc(location);
+    if (!sourceManager.isFileLoc(originalLoc))
+        return;
+
+    const auto& path = sourceManager.getFullPath(originalLoc.buffer());
+    if (path.empty())
+        return;
+
+    const auto line = sourceManager.getLineNumber(originalLoc);
+    const auto column = sourceManager.getColumnNumber(originalLoc);
+    const auto label = fmt::format("{}:{}:{}", path.filename().string(), line, column);
+    const auto target = fmt::format("{}#L{},{}", URI::fromFile(path), line, column);
+    paragraph.appendText(" at ").appendText(fmt::format("[{}](<{}>)", label, target));
+}
+
+void renderDrivers(markup::Document& doc, const ast::Symbol& symbol, ShallowAnalysis& analysis,
+                   const SourceManager& sourceManager) {
+    if (!ast::ValueSymbol::isKind(symbol.kind) || symbol.kind == ast::SymbolKind::EnumValue)
+        return;
+
+    std::vector<DriverGroup> groups;
+    for (const auto* driver : analysis.getDrivers(symbol.as<ast::ValueSymbol>())) {
+        if (!driver || driver->isInputPort())
+            continue;
+
+        const ast::Symbol* containingSymbol = driver->containingSymbol;
+        const auto* containingSyntax = containingSymbol->getSyntax();
+        auto groupIt = std::ranges::find_if(groups, [&](const auto& group) {
+            return group.containingSymbol == containingSymbol ||
+                   (containingSyntax && group.containingSymbol->getSyntax() == containingSyntax);
+        });
+        if (groupIt == groups.end()) {
+            groups.push_back({.containingSymbol = containingSymbol});
+            groupIt = std::prev(groups.end());
+        }
+
+        auto& group = *groupIt;
+        group.drivers.push_back(driver);
+        if (const auto* node = getDriverDisplayNode(*driver);
+            node && std::ranges::find(group.displayNodes, node) == group.displayNodes.end()) {
+            group.displayNodes.push_back(node);
+        }
+    }
+
+    for (const auto& group : groups) {
+        auto& paragraph = doc.addParagraph();
+        paragraph.appendText(getDriverGroupHeader(group));
+
+        auto location = group.containingSymbol->location;
+        if (!group.displayNodes.empty())
+            location = group.displayNodes.front()->getFirstToken().location();
+        appendSourceLink(paragraph, location, sourceManager);
+
+        std::string code;
+        for (const auto* node : group.displayNodes) {
+            if (!code.empty())
+                code += "\n";
+            code += formatCode(*node);
+        }
+        if (!code.empty())
+            paragraph.newLine().appendCodeBlock(code);
     }
 }
 
@@ -214,8 +390,7 @@ void renderSymbolValue(markup::Paragraph& infoPg, const ast::Symbol& symbol) {
     }
 }
 
-void renderSymbolHeader(markup::Paragraph& infoPg, const ast::Symbol& symbol,
-                        const std::shared_ptr<ShallowAnalysis>& analysis) {
+void renderSymbolHeader(markup::Paragraph& infoPg, const ast::Symbol& symbol) {
     // <Kind/Type> <Name> in <Scope>
     renderSymbolHeaderName(infoPg, symbol);
 
@@ -237,7 +412,6 @@ void renderSymbolHeader(markup::Paragraph& infoPg, const ast::Symbol& symbol,
     infoPg.newLine();
 
     renderSymbolType(infoPg, symbol);
-    renderSymbolDriverSummary(infoPg, symbol, analysis);
     renderSymbolValue(infoPg, symbol);
 }
 
@@ -302,8 +476,9 @@ lsp::MarkupContent DefinitionInfo::SymbolTarget::getHover(const SourceManager& s
                                                           BufferID /*docBuffer*/,
                                                           const Config::HoverConfig& hovers) const {
     markup::Document doc;
-    renderSymbolHeader(doc.addParagraph(), *symbol, analysis);
+    renderSymbolHeader(doc.addParagraph(), *symbol);
     syntax.renderCode(doc, sm, hovers);
+    renderDrivers(doc, *symbol, *analysis, sm);
     return doc.build();
 }
 
