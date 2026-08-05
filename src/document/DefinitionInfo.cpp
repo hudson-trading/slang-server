@@ -62,6 +62,21 @@ std::string getInstanceArrayShape(const ast::InstanceArraySymbol& array) {
     return shape;
 }
 
+std::string_view getPortDirectionHeader(ast::ArgumentDirection direction) {
+    switch (direction) {
+        case ast::ArgumentDirection::In:
+            return "Input";
+        case ast::ArgumentDirection::Out:
+            return "Output";
+        case ast::ArgumentDirection::InOut:
+            return "InOut";
+        case ast::ArgumentDirection::Ref:
+            return "Ref";
+        default:
+            return {};
+    }
+}
+
 void renderSymbolHeaderName(markup::Paragraph& infoPg, const ast::Symbol& symbol) {
     if (auto* definition = symbol.as_if<ast::DefinitionSymbol>()) {
         infoPg.appendBold(toString(definition->definitionKind)).appendCode(symbol.name);
@@ -79,6 +94,17 @@ void renderSymbolHeaderName(markup::Paragraph& infoPg, const ast::Symbol& symbol
                 .appendCode(fmt::format("{}{}", instance->getDefinition().name,
                                         getInstanceArrayShape(*array)))
                 .appendText(" ")
+                .appendCode(symbol.name);
+            return;
+        }
+    }
+
+    // Better handling for ports to show direction
+    if (auto* value = symbol.as_if<ast::ValueSymbol>()) {
+        if (auto* port = value->getFirstPortBackref()) {
+            infoPg
+                .appendBold(fmt::format("{} {}", getPortDirectionHeader(port->port->direction),
+                                        toString(symbol.kind)))
                 .appendCode(symbol.name);
             return;
         }
