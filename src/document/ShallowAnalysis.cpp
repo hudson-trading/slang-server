@@ -279,42 +279,100 @@ bool symbolIsReadonly(ast::SymbolKind kind) {
     }
 }
 
-std::optional<lsp::uint> tokenTypeFromSyntaxContext(const syntax::SyntaxNode* syntax) {
+bool isTransparentSyntaxKind(syntax::SyntaxKind kind) {
+    switch (kind) {
+        case syntax::SyntaxKind::IdentifierName:
+        case syntax::SyntaxKind::EmptyIdentifierName:
+        case syntax::SyntaxKind::Declarator:
+        case syntax::SyntaxKind::ParameterPortList:
+        case syntax::SyntaxKind::AnsiPortList:
+        case syntax::SyntaxKind::NonAnsiPortList:
+        case syntax::SyntaxKind::WildcardPortList:
+        case syntax::SyntaxKind::FunctionPortList:
+            return true;
+        default:
+            return false;
+    }
+}
+
+std::optional<lsp::uint> tokenTypeFromSyntaxContext(const parsing::Token* token,
+                                                    const syntax::SyntaxNode* syntax) {
     for (auto* node = syntax; node; node = node->parent) {
-        auto kindName = toString(node->kind);
-        if (kindName.find("Parameter") != std::string_view::npos ||
-            kindName.find("Port") != std::string_view::npos) {
-            return static_cast<lsp::uint>(SemanticTokenTypeIndex::Parameter);
+        if (isTransparentSyntaxKind(node->kind)) {
+            continue;
         }
-        if (kindName.find("Typedef") != std::string_view::npos ||
-            kindName.find("Type") != std::string_view::npos) {
-            return static_cast<lsp::uint>(SemanticTokenTypeIndex::Type);
-        }
-        if (kindName.find("EnumValue") != std::string_view::npos) {
-            return static_cast<lsp::uint>(SemanticTokenTypeIndex::EnumMember);
-        }
-        if (kindName.find("Function") != std::string_view::npos ||
-            kindName.find("Task") != std::string_view::npos) {
-            return static_cast<lsp::uint>(SemanticTokenTypeIndex::Function);
-        }
-        if (kindName.find("Package") != std::string_view::npos) {
-            return static_cast<lsp::uint>(SemanticTokenTypeIndex::Namespace);
-        }
-        if (kindName.find("Class") != std::string_view::npos ||
-            kindName.find("Module") != std::string_view::npos ||
-            kindName.find("Interface") != std::string_view::npos ||
-            kindName.find("Program") != std::string_view::npos ||
-            kindName.find("Checker") != std::string_view::npos ||
-            kindName.find("Primitive") != std::string_view::npos) {
-            return static_cast<lsp::uint>(SemanticTokenTypeIndex::Class);
-        }
-        if (kindName.find("Member") != std::string_view::npos ||
-            kindName.find("Field") != std::string_view::npos) {
-            return static_cast<lsp::uint>(SemanticTokenTypeIndex::Property);
-        }
-        if (kindName.find("Variable") != std::string_view::npos ||
-            kindName.find("Declarator") != std::string_view::npos) {
-            return static_cast<lsp::uint>(SemanticTokenTypeIndex::Variable);
+
+        switch (node->kind) {
+            case syntax::SyntaxKind::ParameterDeclaration:
+            case syntax::SyntaxKind::ParameterDeclarationStatement:
+            case syntax::SyntaxKind::TypeParameterDeclaration:
+            case syntax::SyntaxKind::TypeAssignment:
+            case syntax::SyntaxKind::SpecparamDeclarator:
+            case syntax::SyntaxKind::PortDeclaration:
+            case syntax::SyntaxKind::ImplicitAnsiPort:
+            case syntax::SyntaxKind::ExplicitAnsiPort:
+            case syntax::SyntaxKind::InterfacePortHeader:
+            case syntax::SyntaxKind::NetPortHeader:
+            case syntax::SyntaxKind::VariablePortHeader:
+                return static_cast<lsp::uint>(SemanticTokenTypeIndex::Parameter);
+
+            case syntax::SyntaxKind::TypedefDeclaration:
+            case syntax::SyntaxKind::ForwardTypedefDeclaration:
+            case syntax::SyntaxKind::NamedType:
+            case syntax::SyntaxKind::EnumType:
+                return static_cast<lsp::uint>(SemanticTokenTypeIndex::Type);
+
+            case syntax::SyntaxKind::StructUnionMember:
+            case syntax::SyntaxKind::ClassPropertyDeclaration:
+                return static_cast<lsp::uint>(SemanticTokenTypeIndex::Property);
+
+            case syntax::SyntaxKind::FunctionPrototype:
+            case syntax::SyntaxKind::FunctionDeclaration:
+            case syntax::SyntaxKind::TaskDeclaration:
+            case syntax::SyntaxKind::ClassMethodDeclaration:
+            case syntax::SyntaxKind::ClassMethodPrototype:
+                return static_cast<lsp::uint>(SemanticTokenTypeIndex::Function);
+
+            case syntax::SyntaxKind::PackageHeader: {
+                auto& header = node->as<syntax::ModuleHeaderSyntax>();
+                if (header.name == *token) {
+                    return static_cast<lsp::uint>(SemanticTokenTypeIndex::Namespace);
+                }
+                break;
+            }
+            case syntax::SyntaxKind::ModuleHeader:
+            case syntax::SyntaxKind::InterfaceHeader:
+            case syntax::SyntaxKind::ProgramHeader: {
+                auto& header = node->as<syntax::ModuleHeaderSyntax>();
+                if (header.name == *token) {
+                    return static_cast<lsp::uint>(SemanticTokenTypeIndex::Class);
+                }
+                break;
+            }
+            case syntax::SyntaxKind::ClassDeclaration: {
+                auto& decl = node->as<syntax::ClassDeclarationSyntax>();
+                if (decl.name == *token) {
+                    return static_cast<lsp::uint>(SemanticTokenTypeIndex::Class);
+                }
+                break;
+            }
+            case syntax::SyntaxKind::HierarchyInstantiation:
+            case syntax::SyntaxKind::PrimitiveInstantiation:
+            case syntax::SyntaxKind::ClassName:
+                return static_cast<lsp::uint>(SemanticTokenTypeIndex::Class);
+
+            case syntax::SyntaxKind::DataDeclaration:
+            case syntax::SyntaxKind::CheckerDataDeclaration:
+            case syntax::SyntaxKind::NetDeclaration:
+            case syntax::SyntaxKind::UserDefinedNetDeclaration:
+            case syntax::SyntaxKind::LocalVariableDeclaration:
+            case syntax::SyntaxKind::ForVariableDeclaration:
+            case syntax::SyntaxKind::GenvarDeclaration:
+            case syntax::SyntaxKind::LetDeclaration:
+                return static_cast<lsp::uint>(SemanticTokenTypeIndex::Variable);
+
+            default:
+                break;
         }
     }
 
@@ -376,7 +434,7 @@ std::optional<SemanticClassification> classifyToken(const parsing::Token* token,
         }
     }
 
-    if (auto tokenType = tokenTypeFromSyntaxContext(tokenParent)) {
+    if (auto tokenType = tokenTypeFromSyntaxContext(token, tokenParent)) {
         return SemanticClassification{.tokenType = *tokenType};
     }
 
