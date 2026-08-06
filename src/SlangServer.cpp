@@ -513,8 +513,8 @@ std::vector<std::string> SlangServer::getLoads(const std::string& path) {
     return m_driver->comp->getConePaths<false>(path);
 }
 
-std::optional<std::vector<server::ConeEntry>>
-SlangServer::getDriversWithLocation(const std::string& hierPath) {
+std::optional<std::vector<server::ConeEntry>> SlangServer::getDriversWithLocation(
+    const std::string& hierPath) {
     if (!m_driver->comp) {
         ERROR("No compilation available, cannot trace cones");
         return std::nullopt;
@@ -522,8 +522,8 @@ SlangServer::getDriversWithLocation(const std::string& hierPath) {
     return m_driver->comp->getConeLocations<true>(hierPath);
 }
 
-std::optional<std::vector<server::ConeEntry>>
-SlangServer::getLoadsWithLocation(const std::string& hierPath) {
+std::optional<std::vector<server::ConeEntry>> SlangServer::getLoadsWithLocation(
+    const std::string& hierPath) {
     if (!m_driver->comp) {
         ERROR("No compilation available, cannot trace cones");
         return std::nullopt;
