@@ -142,6 +142,11 @@ public:
     std::vector<lsp::InlayHint> getInlayHints(lsp::Range range,
                                               const struct Config::InlayHints& config);
 
+    lsp::SemanticTokens getSemanticTokens() const;
+
+    static const std::vector<std::string>& semanticTokenLegendTypes();
+    static const std::vector<std::string>& semanticTokenLegendModifiers();
+
     /// @brief Finds all references to a symbol in this document and adds them to the vector
     /// @param references Vector to append references to
     /// @param targetLocation The source location of the target symbol

@@ -13,6 +13,7 @@
 #include "util/Converters.h"
 #include "util/Logging.h"
 #include "util/SlangExtensions.h"
+#include <array>
 #include <fmt/format.h>
 #include <memory>
 #include <string_view>
@@ -28,6 +29,7 @@
 #include "slang/ast/types/Type.h"
 #include "slang/diagnostics/AnalysisDiags.h"
 #include "slang/driver/Driver.h"
+#include "slang/parsing/LexerFacts.h"
 #include "slang/parsing/Token.h"
 #include "slang/parsing/TokenKind.h"
 #include "slang/syntax/AllSyntax.h"
@@ -56,6 +58,348 @@ static bool symbolsMatch(const ast::Symbol* a, const ast::Symbol* b) {
     }
     return false;
 }
+
+namespace {
+enum class SemanticTokenTypeIndex : lsp::uint {
+    Namespace = 0,
+    Type = 1,
+    Class = 2,
+    Parameter = 3,
+    Variable = 4,
+    Property = 5,
+    EnumMember = 6,
+    Function = 7,
+    Macro = 8,
+    Keyword = 9,
+    String = 10,
+    Number = 11,
+    Operator = 12,
+};
+
+enum class SemanticTokenModifierIndex : lsp::uint {
+    Declaration = 0,
+    Readonly = 1,
+    DefaultLibrary = 2,
+};
+
+constexpr std::array<std::string_view, 13> kSemanticTokenTypes = {
+    "namespace", "type",  "class",   "parameter", "variable", "property", "enumMember",
+    "function",  "macro", "keyword", "string",    "number",   "operator",
+};
+
+constexpr std::array<std::string_view, 3> kSemanticTokenModifiers = {
+    "declaration",
+    "readonly",
+    "defaultLibrary",
+};
+
+struct SemanticClassification {
+    lsp::uint tokenType = 0;
+    lsp::uint tokenModifiers = 0;
+};
+
+constexpr lsp::uint toModifierMask(SemanticTokenModifierIndex modifier) {
+    return 1u << static_cast<lsp::uint>(modifier);
+}
+
+void addModifier(lsp::uint& mask, SemanticTokenModifierIndex modifier) {
+    mask |= toModifierMask(modifier);
+}
+
+bool isStringToken(parsing::TokenKind kind) {
+    return kind == parsing::TokenKind::StringLiteral;
+}
+
+bool isNumberToken(parsing::TokenKind kind) {
+    switch (kind) {
+        case parsing::TokenKind::IntegerLiteral:
+        case parsing::TokenKind::IntegerBase:
+        case parsing::TokenKind::UnbasedUnsizedLiteral:
+        case parsing::TokenKind::RealLiteral:
+        case parsing::TokenKind::TimeLiteral:
+            return true;
+        default:
+            return false;
+    }
+}
+
+bool isMacroToken(parsing::TokenKind kind) {
+    switch (kind) {
+        case parsing::TokenKind::Directive:
+        case parsing::TokenKind::MacroUsage:
+        case parsing::TokenKind::MacroQuote:
+        case parsing::TokenKind::MacroTripleQuote:
+        case parsing::TokenKind::MacroEscapedQuote:
+        case parsing::TokenKind::MacroPaste:
+        case parsing::TokenKind::EmptyMacroArgument:
+            return true;
+        default:
+            return false;
+    }
+}
+
+bool isOperatorToken(parsing::TokenKind kind) {
+    switch (kind) {
+        case parsing::TokenKind::ColonEquals:
+        case parsing::TokenKind::ColonSlash:
+        case parsing::TokenKind::DoubleColon:
+        case parsing::TokenKind::Slash:
+        case parsing::TokenKind::Star:
+        case parsing::TokenKind::DoubleStar:
+        case parsing::TokenKind::StarArrow:
+        case parsing::TokenKind::Plus:
+        case parsing::TokenKind::DoublePlus:
+        case parsing::TokenKind::PlusColon:
+        case parsing::TokenKind::PlusDivMinus:
+        case parsing::TokenKind::PlusModMinus:
+        case parsing::TokenKind::Minus:
+        case parsing::TokenKind::DoubleMinus:
+        case parsing::TokenKind::MinusColon:
+        case parsing::TokenKind::MinusArrow:
+        case parsing::TokenKind::MinusDoubleArrow:
+        case parsing::TokenKind::Tilde:
+        case parsing::TokenKind::TildeAnd:
+        case parsing::TokenKind::TildeOr:
+        case parsing::TokenKind::TildeXor:
+        case parsing::TokenKind::Question:
+        case parsing::TokenKind::Hash:
+        case parsing::TokenKind::DoubleHash:
+        case parsing::TokenKind::HashMinusHash:
+        case parsing::TokenKind::HashEqualsHash:
+        case parsing::TokenKind::Xor:
+        case parsing::TokenKind::XorTilde:
+        case parsing::TokenKind::Equals:
+        case parsing::TokenKind::DoubleEquals:
+        case parsing::TokenKind::DoubleEqualsQuestion:
+        case parsing::TokenKind::TripleEquals:
+        case parsing::TokenKind::EqualsArrow:
+        case parsing::TokenKind::PlusEqual:
+        case parsing::TokenKind::MinusEqual:
+        case parsing::TokenKind::SlashEqual:
+        case parsing::TokenKind::StarEqual:
+        case parsing::TokenKind::AndEqual:
+        case parsing::TokenKind::OrEqual:
+        case parsing::TokenKind::PercentEqual:
+        case parsing::TokenKind::XorEqual:
+        case parsing::TokenKind::LeftShiftEqual:
+        case parsing::TokenKind::TripleLeftShiftEqual:
+        case parsing::TokenKind::RightShiftEqual:
+        case parsing::TokenKind::TripleRightShiftEqual:
+        case parsing::TokenKind::LeftShift:
+        case parsing::TokenKind::RightShift:
+        case parsing::TokenKind::TripleLeftShift:
+        case parsing::TokenKind::TripleRightShift:
+        case parsing::TokenKind::Exclamation:
+        case parsing::TokenKind::ExclamationEquals:
+        case parsing::TokenKind::ExclamationEqualsQuestion:
+        case parsing::TokenKind::ExclamationDoubleEquals:
+        case parsing::TokenKind::Percent:
+        case parsing::TokenKind::LessThan:
+        case parsing::TokenKind::LessThanEquals:
+        case parsing::TokenKind::LessThanMinusArrow:
+        case parsing::TokenKind::GreaterThan:
+        case parsing::TokenKind::GreaterThanEquals:
+        case parsing::TokenKind::Or:
+        case parsing::TokenKind::DoubleOr:
+        case parsing::TokenKind::OrMinusArrow:
+        case parsing::TokenKind::OrEqualsArrow:
+        case parsing::TokenKind::At:
+        case parsing::TokenKind::DoubleAt:
+        case parsing::TokenKind::And:
+        case parsing::TokenKind::DoubleAnd:
+        case parsing::TokenKind::TripleAnd:
+            return true;
+        default:
+            return false;
+    }
+}
+
+std::optional<lsp::uint> tokenTypeFromSymbolKind(ast::SymbolKind kind) {
+    switch (kind) {
+        case ast::SymbolKind::Package:
+        case ast::SymbolKind::ExplicitImport:
+        case ast::SymbolKind::WildcardImport:
+            return static_cast<lsp::uint>(SemanticTokenTypeIndex::Namespace);
+        case ast::SymbolKind::TypeAlias:
+        case ast::SymbolKind::NetType:
+        case ast::SymbolKind::ClassType:
+        case ast::SymbolKind::EnumType:
+        case ast::SymbolKind::PackedStructType:
+        case ast::SymbolKind::UnpackedStructType:
+        case ast::SymbolKind::PackedUnionType:
+        case ast::SymbolKind::UnpackedUnionType:
+        case ast::SymbolKind::TypeRefType:
+            return static_cast<lsp::uint>(SemanticTokenTypeIndex::Type);
+        case ast::SymbolKind::Definition:
+        case ast::SymbolKind::Instance:
+        case ast::SymbolKind::InstanceBody:
+        case ast::SymbolKind::InstanceArray:
+        case ast::SymbolKind::Checker:
+        case ast::SymbolKind::CheckerInstance:
+        case ast::SymbolKind::CheckerInstanceBody:
+            return static_cast<lsp::uint>(SemanticTokenTypeIndex::Class);
+        case ast::SymbolKind::Parameter:
+        case ast::SymbolKind::TypeParameter:
+        case ast::SymbolKind::Port:
+        case ast::SymbolKind::MultiPort:
+        case ast::SymbolKind::InterfacePort:
+        case ast::SymbolKind::FormalArgument:
+        case ast::SymbolKind::Specparam:
+            return static_cast<lsp::uint>(SemanticTokenTypeIndex::Parameter);
+        case ast::SymbolKind::Variable:
+        case ast::SymbolKind::Net:
+        case ast::SymbolKind::Genvar:
+        case ast::SymbolKind::LocalAssertionVar:
+        case ast::SymbolKind::PatternVar:
+        case ast::SymbolKind::Iterator:
+            return static_cast<lsp::uint>(SemanticTokenTypeIndex::Variable);
+        case ast::SymbolKind::Field:
+        case ast::SymbolKind::ClassProperty:
+        case ast::SymbolKind::ModportPort:
+        case ast::SymbolKind::ClockVar:
+            return static_cast<lsp::uint>(SemanticTokenTypeIndex::Property);
+        case ast::SymbolKind::EnumValue:
+            return static_cast<lsp::uint>(SemanticTokenTypeIndex::EnumMember);
+        case ast::SymbolKind::Subroutine:
+        case ast::SymbolKind::MethodPrototype:
+            return static_cast<lsp::uint>(SemanticTokenTypeIndex::Function);
+        default:
+            return std::nullopt;
+    }
+}
+
+bool symbolIsReadonly(ast::SymbolKind kind) {
+    switch (kind) {
+        case ast::SymbolKind::Parameter:
+        case ast::SymbolKind::TypeParameter:
+        case ast::SymbolKind::Specparam:
+            return true;
+        default:
+            return false;
+    }
+}
+
+std::optional<lsp::uint> tokenTypeFromSyntaxContext(const syntax::SyntaxNode* syntax) {
+    for (auto* node = syntax; node; node = node->parent) {
+        auto kindName = toString(node->kind);
+        if (kindName.find("Parameter") != std::string_view::npos ||
+            kindName.find("Port") != std::string_view::npos) {
+            return static_cast<lsp::uint>(SemanticTokenTypeIndex::Parameter);
+        }
+        if (kindName.find("Typedef") != std::string_view::npos ||
+            kindName.find("Type") != std::string_view::npos) {
+            return static_cast<lsp::uint>(SemanticTokenTypeIndex::Type);
+        }
+        if (kindName.find("EnumValue") != std::string_view::npos) {
+            return static_cast<lsp::uint>(SemanticTokenTypeIndex::EnumMember);
+        }
+        if (kindName.find("Function") != std::string_view::npos ||
+            kindName.find("Task") != std::string_view::npos) {
+            return static_cast<lsp::uint>(SemanticTokenTypeIndex::Function);
+        }
+        if (kindName.find("Package") != std::string_view::npos) {
+            return static_cast<lsp::uint>(SemanticTokenTypeIndex::Namespace);
+        }
+        if (kindName.find("Class") != std::string_view::npos ||
+            kindName.find("Module") != std::string_view::npos ||
+            kindName.find("Interface") != std::string_view::npos ||
+            kindName.find("Program") != std::string_view::npos ||
+            kindName.find("Checker") != std::string_view::npos ||
+            kindName.find("Primitive") != std::string_view::npos) {
+            return static_cast<lsp::uint>(SemanticTokenTypeIndex::Class);
+        }
+        if (kindName.find("Member") != std::string_view::npos ||
+            kindName.find("Field") != std::string_view::npos) {
+            return static_cast<lsp::uint>(SemanticTokenTypeIndex::Property);
+        }
+        if (kindName.find("Variable") != std::string_view::npos ||
+            kindName.find("Declarator") != std::string_view::npos) {
+            return static_cast<lsp::uint>(SemanticTokenTypeIndex::Variable);
+        }
+    }
+
+    return std::nullopt;
+}
+
+std::optional<SemanticClassification> classifyToken(const parsing::Token* token,
+                                                    const syntax::SyntaxNode* tokenParent,
+                                                    const SymbolIndexer& symbolIndexer) {
+    if (!token || token->isMissing() || token->kind == parsing::TokenKind::Placeholder ||
+        token->kind == parsing::TokenKind::EndOfFile) {
+        return std::nullopt;
+    }
+
+    if (parsing::LexerFacts::isKeyword(token->kind)) {
+        return SemanticClassification{
+            .tokenType = static_cast<lsp::uint>(SemanticTokenTypeIndex::Keyword)};
+    }
+
+    if (isStringToken(token->kind)) {
+        return SemanticClassification{
+            .tokenType = static_cast<lsp::uint>(SemanticTokenTypeIndex::String)};
+    }
+
+    if (isNumberToken(token->kind)) {
+        return SemanticClassification{
+            .tokenType = static_cast<lsp::uint>(SemanticTokenTypeIndex::Number)};
+    }
+
+    if (isMacroToken(token->kind)) {
+        return SemanticClassification{
+            .tokenType = static_cast<lsp::uint>(SemanticTokenTypeIndex::Macro)};
+    }
+
+    if (token->kind == parsing::TokenKind::SystemIdentifier) {
+        SemanticClassification classification{
+            .tokenType = static_cast<lsp::uint>(SemanticTokenTypeIndex::Function)};
+        addModifier(classification.tokenModifiers, SemanticTokenModifierIndex::DefaultLibrary);
+        return classification;
+    }
+
+    if (isOperatorToken(token->kind)) {
+        return SemanticClassification{
+            .tokenType = static_cast<lsp::uint>(SemanticTokenTypeIndex::Operator)};
+    }
+
+    if (token->kind != parsing::TokenKind::Identifier) {
+        return std::nullopt;
+    }
+
+    if (auto* symbol = symbolIndexer.getSymbol(token)) {
+        if (auto tokenType = tokenTypeFromSymbolKind(symbol->kind)) {
+            SemanticClassification classification{.tokenType = *tokenType};
+            addModifier(classification.tokenModifiers, SemanticTokenModifierIndex::Declaration);
+            if (symbolIsReadonly(symbol->kind)) {
+                addModifier(classification.tokenModifiers, SemanticTokenModifierIndex::Readonly);
+            }
+            return classification;
+        }
+    }
+
+    if (auto tokenType = tokenTypeFromSyntaxContext(tokenParent)) {
+        return SemanticClassification{.tokenType = *tokenType};
+    }
+
+    return std::nullopt;
+}
+
+void appendTokenData(std::vector<lsp::uint>& data, lsp::Position& previousStart,
+                     lsp::Position start, lsp::uint length,
+                     const SemanticClassification& classification) {
+    auto deltaLine = start.line - previousStart.line;
+    auto deltaCharacter = deltaLine == 0 ? start.character - previousStart.character
+                                         : start.character;
+
+    data.push_back(deltaLine);
+    data.push_back(deltaCharacter);
+    data.push_back(length);
+    data.push_back(classification.tokenType);
+    data.push_back(classification.tokenModifiers);
+
+    previousStart = start;
+}
+} // namespace
+
 ShallowAnalysis::ShallowAnalysis(SourceManager& sourceManager, slang::BufferID buffer,
                                  std::shared_ptr<SyntaxTree> tree, slang::Bag options,
                                  const std::vector<std::shared_ptr<SyntaxTree>>& allTrees) :
@@ -479,6 +823,54 @@ std::vector<lsp::InlayHint> ShallowAnalysis::getInlayHints(lsp::Range range,
     InlayHintCollector collector(*this, range, config);
     collector.collectHints();
     return collector.result;
+}
+
+lsp::SemanticTokens ShallowAnalysis::getSemanticTokens() const {
+    lsp::SemanticTokens tokens;
+    tokens.data.reserve(syntaxes.collected.size() * 5);
+
+    lsp::Position previousStart{.line = 0, .character = 0};
+    for (const auto* token : syntaxes.collected) {
+        auto tokenParent = syntaxes.getTokenParent(token);
+        auto classification = classifyToken(token, tokenParent, m_symbolIndexer);
+        if (!classification) {
+            continue;
+        }
+
+        auto range = toRange(token->range(), m_sourceManager);
+        if (range.start.line != range.end.line || range.end.character <= range.start.character) {
+            continue;
+        }
+
+        appendTokenData(tokens.data, previousStart, range.start,
+                        range.end.character - range.start.character, *classification);
+    }
+
+    return tokens;
+}
+
+const std::vector<std::string>& ShallowAnalysis::semanticTokenLegendTypes() {
+    static const std::vector<std::string> legend = [] {
+        std::vector<std::string> values;
+        values.reserve(kSemanticTokenTypes.size());
+        for (auto value : kSemanticTokenTypes) {
+            values.emplace_back(value);
+        }
+        return values;
+    }();
+    return legend;
+}
+
+const std::vector<std::string>& ShallowAnalysis::semanticTokenLegendModifiers() {
+    static const std::vector<std::string> legend = [] {
+        std::vector<std::string> values;
+        values.reserve(kSemanticTokenModifiers.size());
+        for (auto value : kSemanticTokenModifiers) {
+            values.emplace_back(value);
+        }
+        return values;
+    }();
+    return legend;
 }
 
 void ShallowAnalysis::addLocalReferences(std::vector<lsp::Location>& references,
