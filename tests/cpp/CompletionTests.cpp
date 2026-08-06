@@ -308,6 +308,33 @@ TEST_CASE("PackageCompletion") {
     golden.record(completionItems);
 }
 
+TEST_CASE("MultidimensionalInstanceArrayCompletion") {
+    ServerHarness server("repo1");
+
+    auto doc = server.openFile("multidimensional_instance_array_completion.sv", R"(
+    module completion_leaf;
+    endmodule
+
+    module completion_top;
+        completion_leaf instances[1:0][2:0] ();
+        int array_data[4];
+
+        initial begin
+            int result = array_data[0];
+        end
+    endmodule
+    )");
+
+    auto items = doc.after("int result = array_data[").getCompletions("[");
+    auto instance = std::ranges::find(items, "instances", [](const CompletionHandle& item) {
+        return item.m_item.label;
+    });
+
+    REQUIRE(instance != items.end());
+    REQUIRE(instance->m_item.labelDetails);
+    CHECK(instance->m_item.labelDetails->detail == " completion_leaf[2][3]");
+}
+
 TEST_CASE("WildcardImportCompletion") {
     ServerHarness server("repo1");
     JsonGoldenTest golden;
