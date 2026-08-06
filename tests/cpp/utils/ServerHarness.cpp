@@ -481,7 +481,7 @@ std::optional<lsp::Position> DocumentHandle::getLspLocation(lsp::uint offset) {
     auto loc = getLocation(offset);
     if (!loc)
         return std::nullopt;
-    auto line = m_server.sourceManager().getLineNumber(*loc);
+    auto line = m_server.sourceManager().getRawLineNumber(*loc);
     auto col = m_server.sourceManager().getColumnNumber(*loc);
     return lsp::Position{static_cast<lsp::uint>(line - 1), static_cast<lsp::uint>(col - 1)};
 }

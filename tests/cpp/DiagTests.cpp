@@ -53,6 +53,21 @@ endmodule
     golden.record(doc.getDiagnostics());
 }
 
+TEST_CASE("LineDirectiveDiagnosticsUseBufferPositions") {
+    ServerHarness server;
+    auto doc = server.openFile("line_directive_diag.sv", R"(`line 100 "mapped.sv" 0
+module top;
+    localparam int value = 1;
+    invalid
+endmodule
+)");
+
+    auto diags = doc.getDiagnostics();
+    REQUIRE_FALSE(diags.empty());
+    for (const auto& diag : diags)
+        CHECK(diag.range.start.line < 5);
+}
+
 TEST_CASE("DiagsPublishedOnOpenCachedDoc") {
     ServerHarness server("cached_dep");
 
