@@ -189,6 +189,9 @@ public:
     std::optional<std::vector<lsp::InlayHint>> getDocInlayHint(
         const lsp::InlayHintParams&) override;
 
+    std::optional<lsp::SemanticTokens> getDocSemanticTokensFull(
+        const lsp::SemanticTokensParams&) override;
+
     std::optional<std::vector<lsp::Location>> getDocReferences(
         const lsp::ReferenceParams&) override;
 

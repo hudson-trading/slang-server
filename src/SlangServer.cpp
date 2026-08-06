@@ -75,6 +75,7 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     registerDocDocumentHighlight();
 
     registerDocInlayHint();
+    registerDocSemanticTokensFull();
     registerDocReferences();
     registerDocRename();
     registerDocCodeAction();
@@ -216,6 +217,16 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
                             .commands = getCommandList(),
                         },
                     .callHierarchyProvider = true,
+                    .semanticTokensProvider =
+                        lsp::SemanticTokensOptions{
+                            .legend =
+                                lsp::SemanticTokensLegend{
+                                    .tokenTypes = ShallowAnalysis::semanticTokenLegendTypes(),
+                                    .tokenModifiers =
+                                        ShallowAnalysis::semanticTokenLegendModifiers(),
+                                },
+                            .full = true,
+                        },
                     .inlayHintProvider =
                         lsp::InlayHintOptions{
                             .resolveProvider = false,
@@ -823,6 +834,19 @@ std::optional<std::vector<lsp::InlayHint>> SlangServer::getDocInlayHint(
     auto hints = doc->getAnalysis()->getInlayHints(params.range, m_config.inlayHints.get());
     INFO("Providing {} inlay hints for {}", hints.size(), params.textDocument.uri.getPath());
     return hints;
+}
+
+std::optional<lsp::SemanticTokens> SlangServer::getDocSemanticTokensFull(
+    const lsp::SemanticTokensParams& params) {
+    auto doc = m_driver->getDocument(params.textDocument.uri);
+    if (!doc) {
+        return {};
+    }
+
+    auto tokens = doc->getSemanticTokens();
+    INFO("Providing {} semantic tokens for {}", tokens.data.size() / 5,
+         params.textDocument.uri.getPath());
+    return tokens;
 }
 
 std::optional<std::vector<lsp::Location>> SlangServer::getDocReferences(
