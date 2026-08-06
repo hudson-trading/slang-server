@@ -13,6 +13,7 @@ export class InstanceViewItem {
     this.parent = parent
     this.data = inst
   }
+
   getParent(): ModuleItem {
     return this.parent
   }
