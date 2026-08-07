@@ -95,6 +95,7 @@ module TestModule #(
     input logic          [test_pkg::WIDTH-1:0] width_port,
     input test_pkg::id_t [test_pkg::WIDTH-1:0] id_array,
     input test_pkg::packet_t pkt_in,
+    input test_pkg::packet_t pkt_array[2],
     output test_pkg::data_t data_out,
     bus_if.master bus_master,
     bus_if.follower bus_follower
@@ -121,13 +122,24 @@ module TestModule #(
     logic [15:0] inst_array_test;
     assign inst_array_test = sub_inst[0].data_out + sub_inst[1].data_out;
 
+    logic thing;
+    assign thing = inst_array_test[0] ? 1'b1 : 1'b0;
+
+    `define MY_MACRO_SIGNAL_MACRO 1'b1
+    logic my_macro_signal;
+    assign my_macro_signal = `MY_MACRO_SIGNAL_MACRO;
+
     always_ff @(posedge clk) begin
         if (rst) begin
-            state <= test_pkg::STATE_A;
+            state   <= test_pkg::STATE_A;
             counter <= '0;
         end else begin
-            state <= state_next;
+            state   <= state_next;
             counter <= counter + 1'b1;
+
+            if (thing) begin
+                $display("Do this thing");
+            end
         end
     end
 
@@ -159,6 +171,7 @@ module TestModule #(
         bus_master.write_enable <= 1'b0;
         bus_master.addr = width_port[0];
         bus_master.data <= state;
+        bus_master.data <= pkt_array[0].id;
 
     end
 
