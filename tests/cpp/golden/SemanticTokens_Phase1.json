@@ -637,21 +637,6 @@
     {
       "range": {
         "start": {
-          "line": 14,
-          "character": 24
-        },
-        "end": {
-          "line": 14,
-          "character": 25
-        }
-      },
-      "text": "y",
-      "type": "class",
-      "modifiers": []
-    },
-    {
-      "range": {
-        "start": {
           "line": 15,
           "character": 4
         },
