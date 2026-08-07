@@ -94,6 +94,10 @@
           "$ref": "#/$defs/Config__InlayHints",
           "description": "Inline hints for things like ordered arguments, wildcard ports, and others"
         },
+        "semanticTokens": {
+          "$ref": "#/$defs/Config__SemanticTokensConfig",
+          "description": "Semantic token highlighting settings"
+        },
         "builds": {
           "type": "array",
           "description": "Builds for direct .f selection or command-based .f generation",
@@ -201,6 +205,16 @@
         "macroArgNames": {
           "type": "integer",
           "description": "Macro argument hints: 0=off, N=only calls with >=N args"
+        }
+      },
+      "required": []
+    },
+    "Config__SemanticTokensConfig": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Enable semantic token highlighting. Off by default: semanticTokens/full is a whole-document request whose latency has not been characterized yet.",
+          "type": "boolean"
         }
       },
       "required": []

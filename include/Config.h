@@ -115,6 +115,17 @@ struct Config {
                      InlayHints>
         inlayHints = InlayHints{};
 
+    struct SemanticTokensConfig {
+        rfl::Description<"Enable semantic token highlighting. Off by default: semanticTokens/full "
+                         "is a whole-document request whose latency has not been characterized "
+                         "yet.",
+                         bool>
+            enabled = false;
+    };
+
+    rfl::Description<"Semantic token highlighting settings", SemanticTokensConfig> semanticTokens =
+        SemanticTokensConfig{};
+
     struct Build {
         rfl::Description<"Optional name used for generated build files and UI labels",
                          std::optional<std::string>>

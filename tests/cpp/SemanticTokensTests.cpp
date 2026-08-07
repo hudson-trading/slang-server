@@ -79,6 +79,7 @@ static bool hasModifier(const SemanticTokenInfo& token, std::string_view modifie
 
 TEST_CASE("SemanticTokens_Phase1") {
     ServerHarness server;
+    server.m_config.semanticTokens.get().enabled = true;
     auto hdl = server.openFile("semantic_tokens_phase1.sv", R"(
 module m #(
     parameter int WIDTH = 4,
@@ -127,4 +128,25 @@ endmodule
 
     JsonGoldenTest golden;
     golden.record(decoded);
+}
+
+TEST_CASE("SemanticTokens_DisabledByDefault") {
+    ServerHarness server;
+    auto hdl = server.openFile("semantic_tokens_disabled.sv", R"(
+module m;
+    logic a;
+endmodule
+)");
+
+    auto tokens = server.getDocSemanticTokensFull(lsp::SemanticTokensParams{
+        .textDocument = {.uri = hdl.m_uri},
+    });
+    CHECK_FALSE(tokens.has_value());
+
+    server.m_config.semanticTokens.get().enabled = true;
+    auto enabled = server.getDocSemanticTokensFull(lsp::SemanticTokensParams{
+        .textDocument = {.uri = hdl.m_uri},
+    });
+    REQUIRE(enabled.has_value());
+    CHECK_FALSE(enabled->data.empty());
 }
