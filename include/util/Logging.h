@@ -7,6 +7,7 @@
 //------------------------------------------------------------------------------
 #pragma once
 
+#include "util/Timing.h"
 #include <chrono>
 #include <fmt/color.h>
 #include <fmt/format.h>
@@ -32,15 +33,10 @@ class ScopedTimer {
 public:
     explicit ScopedTimer(std::string name) : m_name(std::move(name)) {
         INFO("{}...", m_name);
-        m_start = std::chrono::high_resolution_clock::now();
+        m_start = std::chrono::steady_clock::now();
     }
 
-    ~ScopedTimer() {
-        auto end = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - m_start);
-        double seconds = static_cast<double>(duration.count()) / 1000000.0;
-        INFO("{} took {:.3f}s", m_name, seconds);
-    }
+    ~ScopedTimer() { INFO("{} took {:.3f}s", m_name, elapsedMs(m_start) / 1000.0); }
 
     ScopedTimer(const ScopedTimer&) = delete;
     ScopedTimer& operator=(const ScopedTimer&) = delete;
@@ -49,7 +45,7 @@ public:
 
 private:
     std::string m_name;
-    std::chrono::high_resolution_clock::time_point m_start;
+    std::chrono::steady_clock::time_point m_start;
 };
 
 template<>

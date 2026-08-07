@@ -11,9 +11,12 @@
 #include "JsonRpc.h"
 #include "lsp/LspTypes.h"
 #include "rfl/Generic.hpp"
+#include "util/Timing.h"
+#include <chrono>
 #include <concepts>
+#include <cstdint>
+#include <fmt/format.h>
 #include <functional>
-#include <iostream>
 #include <mutex>
 #include <optional>
 #include <rfl/json/write.hpp>
@@ -23,6 +26,57 @@
 #include <variant>
 
 namespace lsp {
+
+namespace {
+/// Captured under the RPC mutex; formatted only after unlock so logging I/O is
+/// not serialized onto the critical path.
+struct HandlerTiming {
+    enum class Kind : uint8_t {
+        None,
+        NotificationOk,
+        NotificationError,
+        RequestOk,
+        RequestError,
+        Ignored,
+        NotFound,
+    };
+
+    Kind kind = Kind::None;
+    std::string method;
+    std::string id;
+    std::string error;
+    double ms = 0;
+};
+
+inline void logHandlerTiming(const HandlerTiming& timing) {
+    switch (timing.kind) {
+        case HandlerTiming::Kind::None:
+            break;
+        case HandlerTiming::Kind::NotificationOk:
+            fmt::print(stderr, "<--- {}\n---- {} ({:.3f}ms)\n\n", timing.method, timing.method,
+                       timing.ms);
+            break;
+        case HandlerTiming::Kind::NotificationError:
+            fmt::print(stderr, "<--- {}\n-/-> {} Error: {} ({:.3f}ms)\n\n", timing.method,
+                       timing.method, timing.error, timing.ms);
+            break;
+        case HandlerTiming::Kind::RequestOk:
+            fmt::print(stderr, "<--- {} {}\n---> {} {} ({:.3f}ms)\n\n", timing.method, timing.id,
+                       timing.method, timing.id, timing.ms);
+            break;
+        case HandlerTiming::Kind::RequestError:
+            fmt::print(stderr, "<--- {} {}\n-/-> {} {} Error: {} ({:.3f}ms)\n\n", timing.method,
+                       timing.id, timing.method, timing.id, timing.error, timing.ms);
+            break;
+        case HandlerTiming::Kind::Ignored:
+            fmt::print(stderr, "<-/- {} (ignoring threaded req)\n\n", timing.method);
+            break;
+        case HandlerTiming::Kind::NotFound:
+            fmt::print(stderr, "<-/- {} (not found)\n\n", timing.method);
+            break;
+    }
+}
+} // namespace
 
 template<typename Impl>
 class JsonRpcServer {
@@ -83,14 +137,17 @@ protected:
         };
     }
 
-    std::variant<rfl::Generic, RpcError, std::nullopt_t> processMessage(RpcRequest request) {
+    /// Run the handler with no logging. Caller must hold @c mutex for stdout
+    /// sends; format @p timing only after releasing it.
+    std::variant<rfl::Generic, RpcError, std::nullopt_t> processMessage(RpcRequest request,
+                                                                        HandlerTiming& timing) {
+        timing.method = request.method;
+
         if (!request.id) {
             // Notification
             auto it = notifications.find(request.method);
             if (it != notifications.end()) {
-                std::cerr << "<--- " << request.method << std::endl;
-                // std::cerr << rfl::json::write(request.params, rfl::json::pretty) <<
-                // std::endl;
+                const auto start = std::chrono::steady_clock::now();
                 try {
                     if (request.params.has_value()) {
                         it->second(request.params.value());
@@ -98,24 +155,26 @@ protected:
                     else {
                         it->second(std::nullopt);
                     }
-                    std::cerr << "---- " << request.method << " (notification finished)"
-                              << std::endl;
+                    timing.ms = elapsedMs(start);
+                    timing.kind = HandlerTiming::Kind::NotificationOk;
                 }
                 catch (const std::exception& e) {
-                    std::cerr << "-/-> " << request.method << " Error: " << e.what() << '\n';
+                    timing.ms = elapsedMs(start);
+                    timing.error = e.what();
+                    timing.kind = HandlerTiming::Kind::NotificationError;
                 }
             }
             else if (request.method.find("$/") == 0) {
-                std::cerr << "<-/- " << request.method << " (ignoring threaded req)" << '\n';
+                timing.kind = HandlerTiming::Kind::Ignored;
             }
             else {
-                std::cerr << "<-/- " << request.method << " (method not found)" << '\n';
+                timing.kind = HandlerTiming::Kind::NotFound;
             }
             return std::nullopt;
         }
 
         // Request
-        std::string id = rfl::visit(
+        timing.id = rfl::visit(
             [&](auto&& id_) -> std::string {
                 using T = typename std::decay_t<decltype(id_)>;
                 if constexpr (std::is_same_v<T, int>) {
@@ -133,8 +192,8 @@ protected:
         auto it = requests.find(request.method);
 
         if (it != requests.end()) {
+            const auto start = std::chrono::steady_clock::now();
             try {
-                std::cerr << "<--- " << request.method << " " << id << '\n';
                 rfl::Generic req_response;
                 if (request.params.has_value()) {
                     req_response = it->second(request.params.value());
@@ -142,45 +201,50 @@ protected:
                 else {
                     req_response = it->second(rfl::Generic{});
                 }
-                std::cerr << "---> " << request.method << " " << id << '\n';
+                timing.ms = elapsedMs(start);
+                timing.kind = HandlerTiming::Kind::RequestOk;
                 return req_response;
             }
             catch (const std::exception& e) {
-                std::cerr << "-/-> " << request.method << " " << id << " Error: " << e.what()
-                          << "\n\n";
+                timing.ms = elapsedMs(start);
+                timing.error = e.what();
+                timing.kind = HandlerTiming::Kind::RequestError;
                 return RpcError{.code = 1, .message = e.what()};
             }
         }
-        else {
-            std::cerr << "<-/- " << request.method << " (not found)" << '\n';
-        }
 
+        timing.kind = HandlerTiming::Kind::NotFound;
         return std::nullopt;
     }
 
     void handleMessage(RpcRequest req) {
-        std::lock_guard<std::mutex> lock(mutex);
-        auto result = processMessage(req);
-        std::visit(
-            [req](auto&& value) {
-                using T = std::decay_t<decltype(value)>;
-                if constexpr (std::is_same_v<T, rfl::Generic>) {
-                    sendMessage(RpcResponse{
-                        .jsonrpc = "2.0",
-                        .id = req.id,
-                        .result = value,
-                    });
-                }
-                else if constexpr (std::is_same_v<T, RpcError>) {
-                    sendMessage(RpcErrorResponse{
-                        .jsonrpc = "2.0",
-                        .id = req.id,
-                        .error = value,
-                    });
-                }
-            },
-            result);
-        std::cerr << '\n';
+        HandlerTiming timing;
+        {
+            // Mutex serializes stdout (also taken by WCP). Keep only handler +
+            // send under the lock; defer stderr formatting until after unlock.
+            std::lock_guard<std::mutex> lock(mutex);
+            auto result = processMessage(req, timing);
+            std::visit(
+                [req](auto&& value) {
+                    using T = std::decay_t<decltype(value)>;
+                    if constexpr (std::is_same_v<T, rfl::Generic>) {
+                        sendMessage(RpcResponse{
+                            .jsonrpc = "2.0",
+                            .id = req.id,
+                            .result = value,
+                        });
+                    }
+                    else if constexpr (std::is_same_v<T, RpcError>) {
+                        sendMessage(RpcErrorResponse{
+                            .jsonrpc = "2.0",
+                            .id = req.id,
+                            .error = value,
+                        });
+                    }
+                },
+                result);
+        }
+        logHandlerTiming(timing);
     }
 
     std::string line;
