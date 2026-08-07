@@ -13,7 +13,6 @@
 #include "util/Converters.h"
 #include "util/Logging.h"
 #include "util/SlangExtensions.h"
-#include <array>
 #include <fmt/format.h>
 #include <memory>
 #include <string_view>
@@ -60,41 +59,40 @@ static bool symbolsMatch(const ast::Symbol* a, const ast::Symbol* b) {
 }
 
 namespace {
-enum class SemanticTokenTypeIndex : lsp::uint {
-    Namespace = 0,
-    Type = 1,
-    Class = 2,
-    Parameter = 3,
-    Variable = 4,
-    Property = 5,
-    EnumMember = 6,
-    Function = 7,
-    Macro = 8,
-    Keyword = 9,
-    String = 10,
-    Number = 11,
-    Operator = 12,
+// A token's type and modifiers travel over the wire as indices into the legend we
+// advertise at initialize. Both the indices below and that legend are derived from
+// the spec's own literals, so the two cannot drift apart: value_of<> is a compile
+// error for a name the spec does not define.
+using TokenTypeLegend = lsp::SemanticTokenTypesOptions;
+using TokenModifierLegend = lsp::SemanticTokenModifiersOptions;
+
+enum class SemanticTokenTypeIndex : TokenTypeLegend::ValueType {
+    Namespace = TokenTypeLegend::value_of<"namespace">(),
+    Type = TokenTypeLegend::value_of<"type">(),
+    Class = TokenTypeLegend::value_of<"class">(),
+    Parameter = TokenTypeLegend::value_of<"parameter">(),
+    Variable = TokenTypeLegend::value_of<"variable">(),
+    Property = TokenTypeLegend::value_of<"property">(),
+    EnumMember = TokenTypeLegend::value_of<"enumMember">(),
+    Function = TokenTypeLegend::value_of<"function">(),
+    Macro = TokenTypeLegend::value_of<"macro">(),
+    Keyword = TokenTypeLegend::value_of<"keyword">(),
+    String = TokenTypeLegend::value_of<"string">(),
+    Number = TokenTypeLegend::value_of<"number">(),
+    Operator = TokenTypeLegend::value_of<"operator">(),
+    // Sentinel for an unclassified token. One past the end of the legend, so it can
+    // never collide with a real type.
+    None = static_cast<TokenTypeLegend::ValueType>(TokenTypeLegend::size()),
 };
 
-enum class SemanticTokenModifierIndex : lsp::uint {
-    Declaration = 0,
-    Readonly = 1,
-    DefaultLibrary = 2,
-};
-
-constexpr std::array<std::string_view, 13> kSemanticTokenTypes = {
-    "namespace", "type",  "class",   "parameter", "variable", "property", "enumMember",
-    "function",  "macro", "keyword", "string",    "number",   "operator",
-};
-
-constexpr std::array<std::string_view, 3> kSemanticTokenModifiers = {
-    "declaration",
-    "readonly",
-    "defaultLibrary",
+enum class SemanticTokenModifierIndex : TokenModifierLegend::ValueType {
+    Declaration = TokenModifierLegend::value_of<"declaration">(),
+    Readonly = TokenModifierLegend::value_of<"readonly">(),
+    DefaultLibrary = TokenModifierLegend::value_of<"defaultLibrary">(),
 };
 
 struct SemanticClassification {
-    lsp::uint tokenType = 0;
+    SemanticTokenTypeIndex tokenType = SemanticTokenTypeIndex::None;
     lsp::uint tokenModifiers = 0;
 };
 
@@ -214,12 +212,12 @@ bool isOperatorToken(parsing::TokenKind kind) {
     }
 }
 
-std::optional<lsp::uint> tokenTypeFromSymbolKind(ast::SymbolKind kind) {
+SemanticTokenTypeIndex tokenTypeFromSymbolKind(ast::SymbolKind kind) {
     switch (kind) {
         case ast::SymbolKind::Package:
         case ast::SymbolKind::ExplicitImport:
         case ast::SymbolKind::WildcardImport:
-            return static_cast<lsp::uint>(SemanticTokenTypeIndex::Namespace);
+            return SemanticTokenTypeIndex::Namespace;
         case ast::SymbolKind::TypeAlias:
         case ast::SymbolKind::NetType:
         case ast::SymbolKind::ClassType:
@@ -229,7 +227,7 @@ std::optional<lsp::uint> tokenTypeFromSymbolKind(ast::SymbolKind kind) {
         case ast::SymbolKind::PackedUnionType:
         case ast::SymbolKind::UnpackedUnionType:
         case ast::SymbolKind::TypeRefType:
-            return static_cast<lsp::uint>(SemanticTokenTypeIndex::Type);
+            return SemanticTokenTypeIndex::Type;
         case ast::SymbolKind::Definition:
         case ast::SymbolKind::Instance:
         case ast::SymbolKind::InstanceBody:
@@ -237,7 +235,7 @@ std::optional<lsp::uint> tokenTypeFromSymbolKind(ast::SymbolKind kind) {
         case ast::SymbolKind::Checker:
         case ast::SymbolKind::CheckerInstance:
         case ast::SymbolKind::CheckerInstanceBody:
-            return static_cast<lsp::uint>(SemanticTokenTypeIndex::Class);
+            return SemanticTokenTypeIndex::Class;
         case ast::SymbolKind::Parameter:
         case ast::SymbolKind::TypeParameter:
         case ast::SymbolKind::Port:
@@ -245,26 +243,26 @@ std::optional<lsp::uint> tokenTypeFromSymbolKind(ast::SymbolKind kind) {
         case ast::SymbolKind::InterfacePort:
         case ast::SymbolKind::FormalArgument:
         case ast::SymbolKind::Specparam:
-            return static_cast<lsp::uint>(SemanticTokenTypeIndex::Parameter);
+            return SemanticTokenTypeIndex::Parameter;
         case ast::SymbolKind::Variable:
         case ast::SymbolKind::Net:
         case ast::SymbolKind::Genvar:
         case ast::SymbolKind::LocalAssertionVar:
         case ast::SymbolKind::PatternVar:
         case ast::SymbolKind::Iterator:
-            return static_cast<lsp::uint>(SemanticTokenTypeIndex::Variable);
+            return SemanticTokenTypeIndex::Variable;
         case ast::SymbolKind::Field:
         case ast::SymbolKind::ClassProperty:
         case ast::SymbolKind::ModportPort:
         case ast::SymbolKind::ClockVar:
-            return static_cast<lsp::uint>(SemanticTokenTypeIndex::Property);
+            return SemanticTokenTypeIndex::Property;
         case ast::SymbolKind::EnumValue:
-            return static_cast<lsp::uint>(SemanticTokenTypeIndex::EnumMember);
+            return SemanticTokenTypeIndex::EnumMember;
         case ast::SymbolKind::Subroutine:
         case ast::SymbolKind::MethodPrototype:
-            return static_cast<lsp::uint>(SemanticTokenTypeIndex::Function);
+            return SemanticTokenTypeIndex::Function;
         default:
-            return std::nullopt;
+            return SemanticTokenTypeIndex::None;
     }
 }
 
@@ -295,8 +293,8 @@ bool isTransparentSyntaxKind(syntax::SyntaxKind kind) {
     }
 }
 
-std::optional<lsp::uint> tokenTypeFromSyntaxContext(const parsing::Token* token,
-                                                    const syntax::SyntaxNode* syntax) {
+SemanticTokenTypeIndex tokenTypeFromSyntaxContext(const parsing::Token* token,
+                                                  const syntax::SyntaxNode* syntax) {
     for (auto* node = syntax; node; node = node->parent) {
         if (isTransparentSyntaxKind(node->kind)) {
             continue;
@@ -314,29 +312,29 @@ std::optional<lsp::uint> tokenTypeFromSyntaxContext(const parsing::Token* token,
             case syntax::SyntaxKind::InterfacePortHeader:
             case syntax::SyntaxKind::NetPortHeader:
             case syntax::SyntaxKind::VariablePortHeader:
-                return static_cast<lsp::uint>(SemanticTokenTypeIndex::Parameter);
+                return SemanticTokenTypeIndex::Parameter;
 
             case syntax::SyntaxKind::TypedefDeclaration:
             case syntax::SyntaxKind::ForwardTypedefDeclaration:
             case syntax::SyntaxKind::NamedType:
             case syntax::SyntaxKind::EnumType:
-                return static_cast<lsp::uint>(SemanticTokenTypeIndex::Type);
+                return SemanticTokenTypeIndex::Type;
 
             case syntax::SyntaxKind::StructUnionMember:
             case syntax::SyntaxKind::ClassPropertyDeclaration:
-                return static_cast<lsp::uint>(SemanticTokenTypeIndex::Property);
+                return SemanticTokenTypeIndex::Property;
 
             case syntax::SyntaxKind::FunctionPrototype:
             case syntax::SyntaxKind::FunctionDeclaration:
             case syntax::SyntaxKind::TaskDeclaration:
             case syntax::SyntaxKind::ClassMethodDeclaration:
             case syntax::SyntaxKind::ClassMethodPrototype:
-                return static_cast<lsp::uint>(SemanticTokenTypeIndex::Function);
+                return SemanticTokenTypeIndex::Function;
 
             case syntax::SyntaxKind::PackageHeader: {
                 auto& header = node->as<syntax::ModuleHeaderSyntax>();
                 if (header.name == *token) {
-                    return static_cast<lsp::uint>(SemanticTokenTypeIndex::Namespace);
+                    return SemanticTokenTypeIndex::Namespace;
                 }
                 break;
             }
@@ -345,21 +343,21 @@ std::optional<lsp::uint> tokenTypeFromSyntaxContext(const parsing::Token* token,
             case syntax::SyntaxKind::ProgramHeader: {
                 auto& header = node->as<syntax::ModuleHeaderSyntax>();
                 if (header.name == *token) {
-                    return static_cast<lsp::uint>(SemanticTokenTypeIndex::Class);
+                    return SemanticTokenTypeIndex::Class;
                 }
                 break;
             }
             case syntax::SyntaxKind::ClassDeclaration: {
                 auto& decl = node->as<syntax::ClassDeclarationSyntax>();
                 if (decl.name == *token) {
-                    return static_cast<lsp::uint>(SemanticTokenTypeIndex::Class);
+                    return SemanticTokenTypeIndex::Class;
                 }
                 break;
             }
             case syntax::SyntaxKind::HierarchyInstantiation:
             case syntax::SyntaxKind::PrimitiveInstantiation:
             case syntax::SyntaxKind::ClassName:
-                return static_cast<lsp::uint>(SemanticTokenTypeIndex::Class);
+                return SemanticTokenTypeIndex::Class;
 
             case syntax::SyntaxKind::DataDeclaration:
             case syntax::SyntaxKind::CheckerDataDeclaration:
@@ -369,63 +367,57 @@ std::optional<lsp::uint> tokenTypeFromSyntaxContext(const parsing::Token* token,
             case syntax::SyntaxKind::ForVariableDeclaration:
             case syntax::SyntaxKind::GenvarDeclaration:
             case syntax::SyntaxKind::LetDeclaration:
-                return static_cast<lsp::uint>(SemanticTokenTypeIndex::Variable);
+                return SemanticTokenTypeIndex::Variable;
 
             default:
                 break;
         }
     }
 
-    return std::nullopt;
+    return SemanticTokenTypeIndex::None;
 }
 
-std::optional<SemanticClassification> classifyToken(const parsing::Token* token,
-                                                    const syntax::SyntaxNode* tokenParent,
-                                                    const SymbolIndexer& symbolIndexer) {
+SemanticClassification classifyToken(const parsing::Token* token, const SyntaxIndexer& syntaxes,
+                                     const SymbolIndexer& symbolIndexer) {
     if (!token || token->isMissing() || token->kind == parsing::TokenKind::Placeholder ||
         token->kind == parsing::TokenKind::EndOfFile) {
-        return std::nullopt;
+        return {};
     }
 
     if (parsing::LexerFacts::isKeyword(token->kind)) {
-        return SemanticClassification{
-            .tokenType = static_cast<lsp::uint>(SemanticTokenTypeIndex::Keyword)};
+        return SemanticClassification{.tokenType = SemanticTokenTypeIndex::Keyword};
     }
 
     if (isStringToken(token->kind)) {
-        return SemanticClassification{
-            .tokenType = static_cast<lsp::uint>(SemanticTokenTypeIndex::String)};
+        return SemanticClassification{.tokenType = SemanticTokenTypeIndex::String};
     }
 
     if (isNumberToken(token->kind)) {
-        return SemanticClassification{
-            .tokenType = static_cast<lsp::uint>(SemanticTokenTypeIndex::Number)};
+        return SemanticClassification{.tokenType = SemanticTokenTypeIndex::Number};
     }
 
     if (isMacroToken(token->kind)) {
-        return SemanticClassification{
-            .tokenType = static_cast<lsp::uint>(SemanticTokenTypeIndex::Macro)};
+        return SemanticClassification{.tokenType = SemanticTokenTypeIndex::Macro};
     }
 
     if (token->kind == parsing::TokenKind::SystemIdentifier) {
-        SemanticClassification classification{
-            .tokenType = static_cast<lsp::uint>(SemanticTokenTypeIndex::Function)};
+        SemanticClassification classification{.tokenType = SemanticTokenTypeIndex::Function};
         addModifier(classification.tokenModifiers, SemanticTokenModifierIndex::DefaultLibrary);
         return classification;
     }
 
     if (isOperatorToken(token->kind)) {
-        return SemanticClassification{
-            .tokenType = static_cast<lsp::uint>(SemanticTokenTypeIndex::Operator)};
+        return SemanticClassification{.tokenType = SemanticTokenTypeIndex::Operator};
     }
 
     if (token->kind != parsing::TokenKind::Identifier) {
-        return std::nullopt;
+        return {};
     }
 
     if (auto* symbol = symbolIndexer.getSymbol(token)) {
-        if (auto tokenType = tokenTypeFromSymbolKind(symbol->kind)) {
-            SemanticClassification classification{.tokenType = *tokenType};
+        if (auto tokenType = tokenTypeFromSymbolKind(symbol->kind);
+            tokenType != SemanticTokenTypeIndex::None) {
+            SemanticClassification classification{.tokenType = tokenType};
             addModifier(classification.tokenModifiers, SemanticTokenModifierIndex::Declaration);
             if (symbolIsReadonly(symbol->kind)) {
                 addModifier(classification.tokenModifiers, SemanticTokenModifierIndex::Readonly);
@@ -434,11 +426,10 @@ std::optional<SemanticClassification> classifyToken(const parsing::Token* token,
         }
     }
 
-    if (auto tokenType = tokenTypeFromSyntaxContext(token, tokenParent)) {
-        return SemanticClassification{.tokenType = *tokenType};
-    }
-
-    return std::nullopt;
+    // Only identifiers the symbol index could not resolve get this far, so the parent
+    // lookup is deferred to here rather than paid once per token in the document.
+    return SemanticClassification{
+        .tokenType = tokenTypeFromSyntaxContext(token, syntaxes.getTokenParent(token))};
 }
 
 void appendTokenData(std::vector<lsp::uint>& data, lsp::Position& previousStart,
@@ -451,7 +442,7 @@ void appendTokenData(std::vector<lsp::uint>& data, lsp::Position& previousStart,
     data.push_back(deltaLine);
     data.push_back(deltaCharacter);
     data.push_back(length);
-    data.push_back(classification.tokenType);
+    data.push_back(static_cast<lsp::uint>(classification.tokenType));
     data.push_back(classification.tokenModifiers);
 
     previousStart = start;
@@ -889,9 +880,8 @@ lsp::SemanticTokens ShallowAnalysis::getSemanticTokens() const {
 
     lsp::Position previousStart{.line = 0, .character = 0};
     for (const auto* token : syntaxes.collected) {
-        auto tokenParent = syntaxes.getTokenParent(token);
-        auto classification = classifyToken(token, tokenParent, m_symbolIndexer);
-        if (!classification) {
+        auto classification = classifyToken(token, syntaxes, m_symbolIndexer);
+        if (classification.tokenType == SemanticTokenTypeIndex::None) {
             continue;
         }
 
@@ -901,33 +891,19 @@ lsp::SemanticTokens ShallowAnalysis::getSemanticTokens() const {
         }
 
         appendTokenData(tokens.data, previousStart, range.start,
-                        range.end.character - range.start.character, *classification);
+                        range.end.character - range.start.character, classification);
     }
 
     return tokens;
 }
 
 const std::vector<std::string>& ShallowAnalysis::semanticTokenLegendTypes() {
-    static const std::vector<std::string> legend = [] {
-        std::vector<std::string> values;
-        values.reserve(kSemanticTokenTypes.size());
-        for (auto value : kSemanticTokenTypes) {
-            values.emplace_back(value);
-        }
-        return values;
-    }();
+    static const std::vector<std::string> legend = TokenTypeLegend::strings();
     return legend;
 }
 
 const std::vector<std::string>& ShallowAnalysis::semanticTokenLegendModifiers() {
-    static const std::vector<std::string> legend = [] {
-        std::vector<std::string> values;
-        values.reserve(kSemanticTokenModifiers.size());
-        for (auto value : kSemanticTokenModifiers) {
-            values.emplace_back(value);
-        }
-        return values;
-    }();
+    static const std::vector<std::string> legend = TokenModifierLegend::strings();
     return legend;
 }
 
