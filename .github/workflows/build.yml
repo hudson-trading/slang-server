@@ -147,18 +147,52 @@ jobs:
           uv sync
           pytest tests\system\ --binary build\${{ matrix.preset }}\bin\slang-server.exe
 
-      - name: Run Neovim plugin tests
-        # This should work on Windows as well, but there's some linker error
-        # that I don't feel like debugging via GH
-        # Also skip when running inside a container (manylinux_2_28): the
-        # prebuilt nvim binaries from nvim-busted-action require a newer GLIBC
-        # than the container provides. The dev-only Ubuntu jobs cover this.
+      - name: Set up Neovim
         if: runner.os != 'Windows' && matrix.container == '' && matrix.skip_neovim_tests != true
-        uses: nvim-neorocks/nvim-busted-action@v1
+        uses: rhysd/action-setup-vim@v1
+        with:
+          version: stable
+          neovim: true
+
+      - name: Set up Lua and LuaRocks
+        if: runner.os != 'Windows' && matrix.container == '' && matrix.skip_neovim_tests != true
+        shell: bash
+        run: |
+          lua_prefix="${RUNNER_TEMP}/lua-5.1.5-install"
+          lua_archive="${RUNNER_TEMP}/lua-5.1.5.tar.gz"
+          lua_source="${RUNNER_TEMP}/lua-5.1.5"
+
+          curl --fail --location --retry 5 --retry-all-errors \
+            https://deb.debian.org/debian/pool/main/l/lua5.1/lua5.1_5.1.5.orig.tar.gz \
+            --output "${lua_archive}"
+          echo "2640fc56a795f29d28ef15e13c34a47e223960b0240e8cb0a82d9b0738695333  ${lua_archive}" | shasum -a 256 --check
+          tar -xzf "${lua_archive}" -C "${RUNNER_TEMP}"
+
+          if [[ "${RUNNER_OS}" == "macOS" ]]; then
+            brew install luarocks readline
+            readline_prefix="$(brew --prefix readline)"
+            make -C "${lua_source}/src" all \
+              MYCFLAGS="-DLUA_USE_LINUX -I${readline_prefix}/include" \
+              MYLIBS="-L${readline_prefix}/lib -lreadline"
+          else
+            sudo apt-get update
+            sudo apt-get install -y libreadline-dev luarocks
+            make -C "${lua_source}" linux
+          fi
+
+          make -C "${lua_source}" install INSTALL_TOP="${lua_prefix}"
+          echo "${lua_prefix}/bin" >> "${GITHUB_PATH}"
+          echo "LUA_PREFIX=${lua_prefix}" >> "${GITHUB_ENV}"
+
+      - name: Run Neovim plugin tests
+        if: runner.os != 'Windows' && matrix.container == '' && matrix.skip_neovim_tests != true
+        shell: bash
         env:
           SLANG_SERVER_BIN: ../../build/${{ matrix.preset }}/bin/slang-server
-        with:
-          luarocks_args: 'clients/neovim/slang-server.nvim-scm-1.rockspec --test-type busted -- -C clients/neovim/'
+        run: |
+          luarocks --lua-version=5.1 --lua-dir="${LUA_PREFIX}" --tree="${LUA_PREFIX}" test \
+            clients/neovim/slang-server.nvim-scm-1.rockspec \
+            --test-type busted -- -C clients/neovim/
 
       - name: Package release artifact
         if: inputs.upload_artifacts && !matrix.skip_upload
