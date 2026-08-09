@@ -147,7 +147,7 @@ public:
     /// @brief Gets the appropriate scope from a symbol for member access traversal
     /// @param symbol The symbol to get the scope from
     /// @return Pointer to the scope, or nullptr if the symbol doesn't have an accessible scope
-    static const slang::ast::Scope* getScopeFromSym(const slang::ast::Symbol* symbol);
+    const slang::ast::Scope* getScopeFromSym(const slang::ast::Symbol* symbol) const;
 
     std::vector<lsp::InlayHint> getInlayHints(lsp::Range range,
                                               const struct Config::InlayHints& config);
@@ -204,6 +204,9 @@ private:
     };
     mutable slang::flat_hash_map<const slang::syntax::LoopGenerateSyntax*, GenvarElaboration>
         m_genvarElaborations;
+
+    mutable slang::flat_hash_map<const slang::ast::DefinitionSymbol*, const slang::ast::Scope*>
+        m_interfaceFallbackScopes;
 
     const GenvarElaboration* getGenvarElaborationAtToken(const slang::parsing::Token* node) const;
 

@@ -176,7 +176,7 @@ public:
             }
         }
 
-        auto* targetScope = ShallowAnalysis::getScopeFromSym(symbol);
+        auto* targetScope = context.analysis->getScopeFromSym(symbol);
         if (!targetScope) {
             WARN("No scope found for sym {}: {}", symbol->getHierarchicalPath(),
                  toString(symbol->kind));
@@ -225,7 +225,7 @@ public:
         auto* receiver = analysis->getSymbolAtToken(receiverToken);
         if (!receiver)
             receiver = analysis->getCompilation()->getPackage(receiverToken->valueText());
-        auto* targetScope = ShallowAnalysis::getScopeFromSym(receiver);
+        auto* targetScope = analysis->getScopeFromSym(receiver);
         if (!targetScope) {
             WARN("No scoped completion target found for {}", receiverToken->valueText());
             return;
@@ -342,6 +342,14 @@ std::string getMemberCompletionDetail(const slang::ast::Symbol& symbol) {
         if (!port.modport.empty()) {
             detailStr += ".";
             detailStr += port.modport;
+        }
+        if (auto portSyntax = port.getSyntax()) {
+            if (auto declarator = portSyntax->as_if<syntax::DeclaratorSyntax>()) {
+                for (auto dimension : declarator->dimensions) {
+                    detailStr +=
+                        syntax::SyntaxPrinter().setIncludeComments(false).print(*dimension).str();
+                }
+            }
         }
     }
     else if (slang::ast::PortSymbol::isKind(symbol.kind)) {

@@ -74,7 +74,8 @@ std::optional<CompletionCoverageScanner::CompletionIssue> CompletionCoverageScan
     }
 
     auto definition = hdl.getDefinitionInfoAt(static_cast<lsp::uint>(token.location().offset()));
-    if (!definition || !definition->symbol()) {
+    auto definitionSymbol = definition ? definition->symbol() : nullptr;
+    if (!definitionSymbol) {
         return std::nullopt;
     }
     if (definition->nameToken().location() == token.location()) {
@@ -99,7 +100,7 @@ std::optional<CompletionCoverageScanner::CompletionIssue> CompletionCoverageScan
             return std::nullopt;
 
         auto expected = completion->m_item;
-        server::completions::MemberCompletionQuery::resolve(*definition->symbol(), expected, true);
+        server::completions::MemberCompletionQuery::resolve(*definitionSymbol, expected, true);
         completion->resolve();
 
         auto documentationText = [](const lsp::CompletionItem& item) -> std::optional<std::string> {
