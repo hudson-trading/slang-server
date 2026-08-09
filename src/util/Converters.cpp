@@ -7,9 +7,7 @@
 //------------------------------------------------------------------------------
 #include "util/Converters.h"
 
-#include <algorithm>
 #include <fmt/format.h>
-#include <vector>
 
 #include "slang/text/SourceLocation.h"
 
@@ -21,19 +19,34 @@ namespace {
 
 // LSP Positions index the document buffer. SourceManager::getLineNumber honors `line
 // directives (for diagnostics-style reporting), which can produce out-of-range positions.
-// Mirror getLineNumber's macro expansion, but keep the physical (raw) line number.
+// Mirror getLineNumber's macro expansion and newline rules, but keep the physical line.
 size_t getPhysicalLineNumber(const SourceLocation& loc, const SourceManager& sourceManager) {
     SourceLocation fileLocation = sourceManager.getFullyExpandedLoc(loc);
     auto text = sourceManager.getSourceText(fileLocation.buffer());
     if (text.empty())
         return 0;
 
-    std::vector<size_t> offsets;
-    SourceManager::computeLineOffsets(text, offsets);
-    auto it = std::ranges::lower_bound(offsets, fileLocation.offset());
-    size_t line = static_cast<size_t>(it - offsets.begin());
-    if (it != offsets.end() && *it == fileLocation.offset())
-        line++;
+    const size_t target = fileLocation.offset();
+    if (target > text.size())
+        return 0;
+
+    // Same newline handling as SourceManager::computeLineOffsets / getRawLineNumber.
+    size_t line = 1;
+    size_t i = 0;
+    while (i < target) {
+        const char c = text[i];
+        if (c == '\n' || c == '\r') {
+            if (i + 1 < text.size() && (text[i + 1] == '\n' || text[i + 1] == '\r') &&
+                text[i] != text[i + 1]) {
+                i++;
+            }
+            i++;
+            line++;
+        }
+        else {
+            i++;
+        }
+    }
     return line;
 }
 

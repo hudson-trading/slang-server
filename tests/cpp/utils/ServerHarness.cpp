@@ -3,6 +3,7 @@
 
 #include "Utils.h"
 #include "lsp/LspTypes.h"
+#include "util/Converters.h"
 #include <catch2/catch_session.hpp>
 #include <catch2/catch_test_macros.hpp>
 #define CATCH_CONFIG_RUNNER
@@ -481,9 +482,8 @@ std::optional<lsp::Position> DocumentHandle::getLspLocation(lsp::uint offset) {
     auto loc = getLocation(offset);
     if (!loc)
         return std::nullopt;
-    auto line = m_server.sourceManager().getLineNumber(*loc);
-    auto col = m_server.sourceManager().getColumnNumber(*loc);
-    return lsp::Position{static_cast<lsp::uint>(line - 1), static_cast<lsp::uint>(col - 1)};
+    // Use the same physical-line conversion as production LSP responses.
+    return server::toPosition(*loc, m_server.sourceManager());
 }
 
 std::optional<server::DefinitionInfo> DocumentHandle::getDefinitionInfoAt(lsp::uint offset) {
