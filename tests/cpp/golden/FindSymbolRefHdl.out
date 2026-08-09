@@ -138,7 +138,7 @@ interface bus_if #(
                                                                                  ^^^^^^^^^^ Sym write_data : FormalArgument
 
         @(posedge clk);
-                  ^^^ Ref -> **Net** `clk` in `bus_if`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
+                  ^^^ Ref -> **Input Net** `clk` in `bus_if`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
 
         addr <= address;
         ^^^^ Ref -> **Variable** `addr` in `bus_if`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`logic [ADDR_WIDTH-1:0] addr;`
@@ -155,7 +155,7 @@ interface bus_if #(
         ^^^^^ Ref -> **Variable** `valid` in `bus_if`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic valid;`
 
         @(posedge clk iff ready);
-                  ^^^ Ref -> **Net** `clk` in `bus_if`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
+                  ^^^ Ref -> **Input Net** `clk` in `bus_if`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
                           ^^^^^ Ref -> **Variable** `ready` in `bus_if`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic ready;`
 
         valid <= 1'b0;
@@ -178,7 +178,7 @@ interface bus_if #(
                                                                                  ^^^^^^^^^ Sym read_data : FormalArgument
 
         @(posedge clk);
-                  ^^^ Ref -> **Net** `clk` in `bus_if`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
+                  ^^^ Ref -> **Input Net** `clk` in `bus_if`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
 
         addr <= address;
         ^^^^ Ref -> **Variable** `addr` in `bus_if`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`logic [ADDR_WIDTH-1:0] addr;`
@@ -191,7 +191,7 @@ interface bus_if #(
         ^^^^^ Ref -> **Variable** `valid` in `bus_if`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic valid;`
 
         @(posedge clk iff ready);
-                  ^^^ Ref -> **Net** `clk` in `bus_if`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
+                  ^^^ Ref -> **Input Net** `clk` in `bus_if`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
                           ^^^^^ Ref -> **Variable** `ready` in `bus_if`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic ready;`
 
         read_data = data;
@@ -236,20 +236,20 @@ module Sub #(
 
 
     always_ff @(posedge clk or posedge rst) begin
-                        ^^^ Ref -> **Net** `clk` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
-                                       ^^^ Ref -> **Net** `rst` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
+                        ^^^ Ref -> **Input Net** `clk` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
+                                       ^^^ Ref -> **Input Net** `rst` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
 
         if (rst) begin
-            ^^^ Ref -> **Net** `rst` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
+            ^^^ Ref -> **Input Net** `rst` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
 
             data_out <= '0;
-            ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+            ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
 
         end else begin
 
             data_out <= data_in;
-            ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
-                        ^^^^^^^ Ref -> **Net** `data_in` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+            ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+                        ^^^^^^^ Ref -> **Input Net** `data_in` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
 
         end
 
@@ -368,19 +368,19 @@ module TestModule #(
                                 ^^^^^^^^ Ref -> **Parameter** `NUM_SUBS` in `TestModule`  \n\Type: `int`  \n\Value: `4`  \n\\n\\n\---\n\\n\`parameter int NUM_SUBS = 4`
 
         .clk(clk),
-         ^^^ Ref -> **Net** `clk` in `Sub`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
-             ^^^ Ref -> **Net** `clk` in `TestModule`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
+         ^^^ Ref -> **Input Net** `clk` in `Sub`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
+             ^^^ Ref -> **Input Net** `clk` in `TestModule`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
 
         .rst(rst),
-         ^^^ Ref -> **Net** `rst` in `Sub`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
-             ^^^ Ref -> **Net** `rst` in `TestModule`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
+         ^^^ Ref -> **Input Net** `rst` in `Sub`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
+             ^^^ Ref -> **Input Net** `rst` in `TestModule`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
 
         .data_in(sub_data_in),
-         ^^^^^^^ Ref -> **Net** `data_in` in `Sub`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+         ^^^^^^^ Ref -> **Input Net** `data_in` in `Sub`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
                  ^^^^^^^^^^^ Ref -> **Variable** `sub_data_in` in `TestModule`  \n\Type: `logic[15:0]$[4]`  \n\\n\\n\---\n\\n\Instance array that depends on NUM_SUBS parameter  \n\  \n\\n\\n\---\n\\n\`logic [15:0] sub_data_in [NUM_SUBS];`
 
         .data_out(sub_data_out)
-         ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+         ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
                   ^^^^^^^^^^^^ Ref -> **Variable** `sub_data_out` in `TestModule`  \n\Type: `logic[15:0]$[4]`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`logic [15:0] sub_data_out [NUM_SUBS];`
 
     );
@@ -395,9 +395,9 @@ module TestModule #(
     assign inst_array_test = sub_inst[0].data_out + sub_inst[1].data_out;
            ^^^^^^^^^^^^^^^ Ref -> **Variable** `inst_array_test` in `TestModule`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\Test instance array access - goto on sub_inst[0] should go to sub_inst declaration  \n\  \n\\n\\n\---\n\\n\`logic [15:0] inst_array_test;`
                              ^^^^^^^^ Ref -> `Sub[4]` `sub_inst` in `TestModule`  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(16)) sub_inst [NUM_SUBS] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(sub_data_in),\n\    .data_out(sub_data_out)\n\);`
-                                         ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+                                         ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
                                                     ^^^^^^^^ Ref -> `Sub[4]` `sub_inst` in `TestModule`  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(16)) sub_inst [NUM_SUBS] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(sub_data_in),\n\    .data_out(sub_data_out)\n\);`
-                                                                ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+                                                                ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
 
 
 
@@ -422,10 +422,10 @@ module TestModule #(
 
 
     always_ff @(posedge clk) begin
-                        ^^^ Ref -> **Net** `clk` in `TestModule`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
+                        ^^^ Ref -> **Input Net** `clk` in `TestModule`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
 
         if (rst) begin
-            ^^^ Ref -> **Net** `rst` in `TestModule`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
+            ^^^ Ref -> **Input Net** `rst` in `TestModule`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
 
             state   <= test_pkg::STATE_A;
             ^^^^^ Ref -> **Variable** `state` in `TestModule`  \n\Type: Enum `state_t` (`logic[1:0]`)  \n\Width: `2`  \n\Driver: `Procedural (always_ff)`  \n\\n\\n\---\n\\n\`test_pkg::state_t state, state_next;`
@@ -494,13 +494,13 @@ module TestModule #(
     // Use the bus interfaces
 
     always_ff @(posedge clk) begin
-                        ^^^ Ref -> **Net** `clk` in `TestModule`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
+                        ^^^ Ref -> **Input Net** `clk` in `TestModule`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
 
         if (rst) begin
-            ^^^ Ref -> **Net** `rst` in `TestModule`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
+            ^^^ Ref -> **Input Net** `rst` in `TestModule`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
 
             data_out <= '0;
-            ^^^^^^^^ Ref -> **Variable** `data_out` in `TestModule`  \n\Type: `data_t` (aka `logic[7:0]`)  \n\Width: `8`  \n\\n\\n\---\n\\n\`output test_pkg::data_t data_out`
+            ^^^^^^^^ Ref -> **Output Variable** `data_out` in `TestModule`  \n\Type: `data_t` (aka `logic[7:0]`)  \n\Width: `8`  \n\\n\\n\---\n\\n\`output test_pkg::data_t data_out`
 
             bus_follower.ready <= 1'b0;
             ^^^^^^^^^^^^ Ref -> **InterfacePort** `bus_follower` in `TestModule`  \n\\n\\n\---\n\\n\`bus_if.follower bus_follower`
@@ -521,7 +521,7 @@ module TestModule #(
                                                    ^^^^^^^^^^^^ Ref -> **ModportPort** `write_enable` in `bus_if.follower`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input clk, rst, valid, addr, data, write_enable`
 
                 data_out <= bus_follower.data[7:0]; // Convert to data_t size
-                ^^^^^^^^ Ref -> **Variable** `data_out` in `TestModule`  \n\Type: `data_t` (aka `logic[7:0]`)  \n\Width: `8`  \n\\n\\n\---\n\\n\`output test_pkg::data_t data_out`
+                ^^^^^^^^ Ref -> **Output Variable** `data_out` in `TestModule`  \n\Type: `data_t` (aka `logic[7:0]`)  \n\Width: `8`  \n\\n\\n\---\n\\n\`output test_pkg::data_t data_out`
                             ^^^^^^^^^^^^ Ref -> **InterfacePort** `bus_follower` in `TestModule`  \n\\n\\n\---\n\\n\`bus_if.follower bus_follower`
                                          ^^^^ Ref -> **ModportPort** `data` in `bus_if.follower`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input clk, rst, valid, addr, data, write_enable`
 
@@ -548,7 +548,7 @@ module TestModule #(
         bus_master.addr = width_port[0];
         ^^^^^^^^^^ Ref -> **InterfacePort** `bus_master` in `TestModule`  \n\\n\\n\---\n\\n\`bus_if.master bus_master`
                    ^^^^ Ref -> **ModportPort** `addr` in `bus_if.master`  \n\Type: `logic[31:0]`  \n\Width: `32`  \n\\n\\n\---\n\\n\`output valid, addr, data, write_enable`
-                          ^^^^^^^^^^ Ref -> **Net** `width_port` in `TestModule`  \n\Type: `logic[31:0]`  \n\Width: `32`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\some useful info  \n\  \n\\n\\n\---\n\\n\`input logic [test_pkg::WIDTH-1:0] width_port`
+                          ^^^^^^^^^^ Ref -> **Input Net** `width_port` in `TestModule`  \n\Type: `logic[31:0]`  \n\Width: `32`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\some useful info  \n\  \n\\n\\n\---\n\\n\`input logic [test_pkg::WIDTH-1:0] width_port`
 
         bus_master.data <= state;
         ^^^^^^^^^^ Ref -> **InterfacePort** `bus_master` in `TestModule`  \n\\n\\n\---\n\\n\`bus_if.master bus_master`
@@ -558,7 +558,7 @@ module TestModule #(
         bus_master.data <= pkt_array[0].id;
         ^^^^^^^^^^ Ref -> **InterfacePort** `bus_master` in `TestModule`  \n\\n\\n\---\n\\n\`bus_if.master bus_master`
                    ^^^^ Ref -> **ModportPort** `data` in `bus_if.master`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output valid, addr, data, write_enable`
-                           ^^^^^^^^^ Ref -> **Net** `pkt_array` in `TestModule`  \n\Type: `packet_t$[2]`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input test_pkg::packet_t pkt_array[2]`
+                           ^^^^^^^^^ Ref -> **Input Net** `pkt_array` in `TestModule`  \n\Type: `packet_t$[2]`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input test_pkg::packet_t pkt_array[2]`
                                         ^^ Ref -> **Field** `id` in `test_pkg::packet_t`  \n\Type: `id_t` (aka `logic[31:0]`)  \n\Width: `32`  \n\\n\\n\---\n\\n\`id_t id;`
 
 
@@ -616,20 +616,20 @@ module NoDefaults #(
       ^^^^^^^^ Sym sub_inst : Instance
 
         .clk(clk),
-         ^^^ Ref -> **Net** `clk` in `Sub`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
-             ^^^ Ref -> **Net** `clk` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
+         ^^^ Ref -> **Input Net** `clk` in `Sub`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
+             ^^^ Ref -> **Input Net** `clk` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
 
         .rst(rst),
-         ^^^ Ref -> **Net** `rst` in `Sub`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
-             ^^^ Ref -> **Net** `rst` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
+         ^^^ Ref -> **Input Net** `rst` in `Sub`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
+             ^^^ Ref -> **Input Net** `rst` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
 
         .data_in(data_in),
-         ^^^^^^^ Ref -> **Net** `data_in` in `Sub`  \n\Type: Incomplete type  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
-                 ^^^^^^^ Ref -> **Net** `data_in` in `NoDefaults`  \n\Type: Incomplete type  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+         ^^^^^^^ Ref -> **Input Net** `data_in` in `Sub`  \n\Type: Incomplete type  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+                 ^^^^^^^ Ref -> **Input Net** `data_in` in `NoDefaults`  \n\Type: Incomplete type  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
 
         .data_out(data_out)
-         ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
-                  ^^^^^^^^ Ref -> **Variable** `data_out` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+         ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+                  ^^^^^^^^ Ref -> **Output Variable** `data_out` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
 
     );
 
@@ -644,19 +644,19 @@ module NoDefaults #(
                          ^^^^^^ Sym sub_2d : InstanceArray
 
         .clk(clk),
-         ^^^ Ref -> **Net** `clk` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
-             ^^^ Ref -> **Net** `clk` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
+         ^^^ Ref -> **Input Net** `clk` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
+             ^^^ Ref -> **Input Net** `clk` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
 
         .rst(rst),
-         ^^^ Ref -> **Net** `rst` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
-             ^^^ Ref -> **Net** `rst` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
+         ^^^ Ref -> **Input Net** `rst` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
+             ^^^ Ref -> **Input Net** `rst` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
 
         .data_in(data_in),
-         ^^^^^^^ Ref -> **Net** `data_in` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
-                 ^^^^^^^ Ref -> **Net** `data_in` in `NoDefaults`  \n\Type: Incomplete type  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+         ^^^^^^^ Ref -> **Input Net** `data_in` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+                 ^^^^^^^ Ref -> **Input Net** `data_in` in `NoDefaults`  \n\Type: Incomplete type  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
 
         .data_out()
-         ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+         ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
 
     );
 
@@ -671,9 +671,9 @@ module NoDefaults #(
     assign test_2d_access = sub_2d[0][1].data_out + sub_2d[1][2].data_out;
            ^^^^^^^^^^^^^^ Ref -> **Variable** `test_2d_access` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\Test 2D instance array access  \n\  \n\\n\\n\---\n\\n\`logic [WIDTH-1:0] test_2d_access;`
                             ^^^^^^ Ref -> `Sub[2][3]` `sub_2d` in `NoDefaults`  \n\\n\\n\---\n\\n\2D instance array  \n\  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(WIDTH)) sub_2d [2][3] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(data_in),\n\    .data_out()\n\);`
-                                         ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+                                         ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
                                                     ^^^^^^ Ref -> `Sub[2][3]` `sub_2d` in `NoDefaults`  \n\\n\\n\---\n\\n\2D instance array  \n\  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(WIDTH)) sub_2d [2][3] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(data_in),\n\    .data_out()\n\);`
-                                                                 ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+                                                                 ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
 
 
 
@@ -692,19 +692,19 @@ module NoDefaults #(
                              ^^^^^^^^^^^^^ Sym gen_sub_array : InstanceArray
 
             .clk(clk),
-             ^^^ Ref -> **Net** `clk` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
-                 ^^^ Ref -> **Net** `clk` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
+             ^^^ Ref -> **Input Net** `clk` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
+                 ^^^ Ref -> **Input Net** `clk` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
 
             .rst(rst),
-             ^^^ Ref -> **Net** `rst` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
-                 ^^^ Ref -> **Net** `rst` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
+             ^^^ Ref -> **Input Net** `rst` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
+                 ^^^ Ref -> **Input Net** `rst` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
 
             .data_in(data_in),
-             ^^^^^^^ Ref -> **Net** `data_in` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
-                     ^^^^^^^ Ref -> **Net** `data_in` in `NoDefaults`  \n\Type: Incomplete type  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+             ^^^^^^^ Ref -> **Input Net** `data_in` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+                     ^^^^^^^ Ref -> **Input Net** `data_in` in `NoDefaults`  \n\Type: Incomplete type  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
 
             .data_out()
-             ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+             ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
 
         );
 
@@ -722,7 +722,7 @@ module NoDefaults #(
            ^^^^^^^^^^^^^^^^^^^^^ Ref -> **Variable** `test_gen_array_access` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\Test instance array inside generate scope access  \n\  \n\\n\\n\---\n\\n\`logic [WIDTH-1:0] test_gen_array_access;`
                                    ^^^^^^^^^^ Ref -> **GenerateBlockArray** `gen_loop_2` in `NoDefaults`  \n\\n\\n\---\n\\n\`for(j = 0; j < 3; j++) begin : gen_loop_2\n\    Sub #(.WIDTH(WIDTH)) gen_sub_array [4] (\n\        .clk(clk),\n\        .rst(rst),\n\        .data_in(data_in),\n\        .data_out()\n\    );\n\end`
                                                  ^^^^^^^^^^^^^ Ref -> `Sub[4]` `gen_sub_array` in `NoDefaults.gen_loop_2`  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(WIDTH)) gen_sub_array [4] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(data_in),\n\    .data_out()\n\);`
-                                                                  ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+                                                                  ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
 
 
 
@@ -746,20 +746,20 @@ module NoDefaults #(
            ^^^ Sym sub : Instance
 
             .clk(clk),
-             ^^^ Ref -> **Net** `clk` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
-                 ^^^ Ref -> **Net** `clk` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
+             ^^^ Ref -> **Input Net** `clk` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
+                 ^^^ Ref -> **Input Net** `clk` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
 
             .rst(rst),
-             ^^^ Ref -> **Net** `rst` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
-                 ^^^ Ref -> **Net** `rst` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
+             ^^^ Ref -> **Input Net** `rst` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
+                 ^^^ Ref -> **Input Net** `rst` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
 
             .data_in(data_in),
-             ^^^^^^^ Ref -> **Net** `data_in` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
-                     ^^^^^^^ Ref -> **Net** `data_in` in `NoDefaults`  \n\Type: Incomplete type  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+             ^^^^^^^ Ref -> **Input Net** `data_in` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+                     ^^^^^^^ Ref -> **Input Net** `data_in` in `NoDefaults`  \n\Type: Incomplete type  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
 
             .data_out(data_out)
-             ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
-                      ^^^^^^^^ Ref -> **Variable** `data_out` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+             ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+                      ^^^^^^^^ Ref -> **Output Variable** `data_out` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
 
         );
 
@@ -782,20 +782,20 @@ module NoDefaults #(
           ^^^^^^^^^^ Sym sub_branch : Instance
 
             .clk(clk),
-             ^^^ Ref -> **Net** `clk` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
-                 ^^^ Ref -> **Net** `clk` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
+             ^^^ Ref -> **Input Net** `clk` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
+                 ^^^ Ref -> **Input Net** `clk` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
 
             .rst(rst),
-             ^^^ Ref -> **Net** `rst` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
-                 ^^^ Ref -> **Net** `rst` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
+             ^^^ Ref -> **Input Net** `rst` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
+                 ^^^ Ref -> **Input Net** `rst` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
 
             .data_in(data_in),
-             ^^^^^^^ Ref -> **Net** `data_in` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
-                     ^^^^^^^ Ref -> **Net** `data_in` in `NoDefaults`  \n\Type: Incomplete type  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+             ^^^^^^^ Ref -> **Input Net** `data_in` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+                     ^^^^^^^ Ref -> **Input Net** `data_in` in `NoDefaults`  \n\Type: Incomplete type  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
 
             .data_out(data_out)
-             ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
-                      ^^^^^^^^ Ref -> **Variable** `data_out` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+             ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+                      ^^^^^^^^ Ref -> **Output Variable** `data_out` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
 
         );
 
@@ -813,20 +813,20 @@ module NoDefaults #(
           ^^^^^^^^^^^^^ Sym sub_no_branch : Instance
 
             .clk(clk),
-             ^^^ Ref -> **Net** `clk` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
-                 ^^^ Ref -> **Net** `clk` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
+             ^^^ Ref -> **Input Net** `clk` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
+                 ^^^ Ref -> **Input Net** `clk` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
 
             .rst(rst),
-             ^^^ Ref -> **Net** `rst` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
-                 ^^^ Ref -> **Net** `rst` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
+             ^^^ Ref -> **Input Net** `rst` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
+                 ^^^ Ref -> **Input Net** `rst` in `NoDefaults`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
 
             .data_in(data_in),
-             ^^^^^^^ Ref -> **Net** `data_in` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
-                     ^^^^^^^ Ref -> **Net** `data_in` in `NoDefaults`  \n\Type: Incomplete type  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+             ^^^^^^^ Ref -> **Input Net** `data_in` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+                     ^^^^^^^ Ref -> **Input Net** `data_in` in `NoDefaults`  \n\Type: Incomplete type  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
 
             .data_out(data_out)
-             ^^^^^^^^ Ref -> **Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
-                      ^^^^^^^^ Ref -> **Variable** `data_out` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+             ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+                      ^^^^^^^^ Ref -> **Output Variable** `data_out` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
 
         );
 
@@ -928,10 +928,10 @@ module StructAssignmentTest (
 
 
     always_ff @(posedge clk) begin
-                        ^^^ Ref -> **Net** `clk` in `StructAssignmentTest`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
+                        ^^^ Ref -> **Input Net** `clk` in `StructAssignmentTest`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic clk`
 
         if (rst) begin
-            ^^^ Ref -> **Net** `rst` in `StructAssignmentTest`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
+            ^^^ Ref -> **Input Net** `rst` in `StructAssignmentTest`  \n\Type: `logic`  \n\Driver: `Continuous`  \n\\n\\n\---\n\\n\`input logic rst`
 
             // Basic struct member assignment
 
