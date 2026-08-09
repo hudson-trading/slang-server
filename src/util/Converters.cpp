@@ -7,13 +7,37 @@
 //------------------------------------------------------------------------------
 #include "util/Converters.h"
 
+#include <algorithm>
 #include <fmt/format.h>
+#include <vector>
 
 #include "slang/text/SourceLocation.h"
 
 namespace server {
 
 using namespace slang;
+
+namespace {
+
+// LSP Positions index the document buffer. SourceManager::getLineNumber honors `line
+// directives (for diagnostics-style reporting), which can produce out-of-range positions.
+// Mirror getLineNumber's macro expansion, but keep the physical (raw) line number.
+size_t getPhysicalLineNumber(const SourceLocation& loc, const SourceManager& sourceManager) {
+    SourceLocation fileLocation = sourceManager.getFullyExpandedLoc(loc);
+    auto text = sourceManager.getSourceText(fileLocation.buffer());
+    if (text.empty())
+        return 0;
+
+    std::vector<size_t> offsets;
+    SourceManager::computeLineOffsets(text, offsets);
+    auto it = std::ranges::lower_bound(offsets, fileLocation.offset());
+    size_t line = static_cast<size_t>(it - offsets.begin());
+    if (it != offsets.end() && *it == fileLocation.offset())
+        line++;
+    return line;
+}
+
+} // namespace
 
 // Runs dfs on the syntax node to find the name token, which will point to the same memory
 std::optional<const parsing::Token> findNameToken(const syntax::SyntaxNode* node,
@@ -41,7 +65,8 @@ std::optional<const parsing::Token> findNameToken(const syntax::SyntaxNode* node
 
 lsp::Position toPosition(const SourceLocation& loc, const SourceManager& sourceManager) {
     auto character = sourceManager.getColumnNumber(loc);
-    return lsp::Position{.line = static_cast<lsp::uint>(sourceManager.getLineNumber(loc) - 1),
+    return lsp::Position{.line = static_cast<lsp::uint>(getPhysicalLineNumber(loc, sourceManager) -
+                                                        1),
                          .character = static_cast<lsp::uint>(character > 0 ? character - 1 : 0)};
 }
 
@@ -67,7 +92,8 @@ lsp::Range toRange(const SourceLocation& loc, const SourceManager& sourceManager
                    const size_t length) {
 
     auto character = sourceManager.getColumnNumber(loc);
-    lsp::Position start{.line = static_cast<lsp::uint>(sourceManager.getLineNumber(loc) - 1),
+    lsp::Position start{.line = static_cast<lsp::uint>(getPhysicalLineNumber(loc, sourceManager) -
+                                                       1),
                         .character = static_cast<lsp::uint>(character > 0 ? character - 1 : 0)};
     lsp::Position end{start};
     end.character += length;

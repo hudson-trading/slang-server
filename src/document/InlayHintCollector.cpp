@@ -188,7 +188,8 @@ void InlayHintCollector::handle(const HierarchyInstantiationSyntax& syntax) {
                                     FORMATTING_INDENT - 1;
 
                     auto getLine = [&](const auto& loc) {
-                        return m_analysis.m_sourceManager.getLineNumber(loc);
+                        // Compare physical document lines (ignore `line remapping).
+                        return toPosition(loc, m_analysis.m_sourceManager).line;
                     };
 
                     if (getLine(instanceSyntax->openParen.location()) ==
