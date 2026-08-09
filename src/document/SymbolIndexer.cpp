@@ -154,15 +154,16 @@ void SymbolIndexer::indexInstanceSyntax(const slang::syntax::HierarchicalInstanc
     }
 }
 
-void SymbolIndexer::indexSymbolName(const slang::ast::Symbol& symbol) {
+void SymbolIndexer::indexSymbolName(const slang::ast::Symbol& symbol, bool isUnnamed) {
     if (symbol.getSyntax() != nullptr) {
         syntex[symbol.getSyntax()] = &symbol;
 
         auto& syntax = *symbol.getSyntax();
-        if (syntax.sourceRange().start().buffer() == m_buffer && !symbol.name.empty()) {
+        if (!isUnnamed && syntax.sourceRange().start().buffer() == m_buffer &&
+            !symbol.name.empty()) {
             SmallVector<const parsing::Token*> tokens;
             findNames(tokens, symbol.name, syntax);
-            if (tokens.size() == 0) {
+            if (tokens.empty()) {
                 // We want to avoid this case, since we may recurse through many layers
                 WARN("No tokens found for symbol '{} : {}' with syntax kind {}", symbol.name,
                      toString(symbol.kind), toString(syntax.kind));

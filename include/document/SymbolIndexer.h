@@ -64,9 +64,11 @@ public:
     void handle(const slang::ast::InstanceArraySymbol& sym);
 
     void handle(const slang::ast::GenerateBlockSymbol& sym) {
-        if (!sym.isUnnamed) {
-            indexSymbolName(sym);
-        }
+        indexSymbolName(sym, sym.isUnnamed);
+        visitDefault(sym);
+    }
+    void handle(const slang::ast::GenerateBlockArraySymbol& sym) {
+        indexSymbolName(sym, sym.isUnnamed);
         visitDefault(sym);
     }
 
@@ -99,7 +101,7 @@ private:
                              const slang::ast::InstanceBodySymbol& instanceSymbol,
                              const slang::ast::DefinitionSymbol& definition);
 
-    void indexSymbolName(const slang::ast::Symbol& symbol);
+    void indexSymbolName(const slang::ast::Symbol& symbol, bool isUnnamed = false);
 };
 
 } // namespace server
