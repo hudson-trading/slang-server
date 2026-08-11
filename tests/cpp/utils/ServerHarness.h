@@ -360,12 +360,30 @@ protected:
 
 class SymbolRefScanner : public DocumentScanner<server::DefinitionInfo> {
 public:
-    SymbolRefScanner() : DocumentScanner<server::DefinitionInfo>() {}
+    explicit SymbolRefScanner(std::vector<lsp::uint> selectedOffsets = {}) :
+        DocumentScanner<server::DefinitionInfo>(), selectedOffsets(std::move(selectedOffsets)) {}
 
 protected:
+    std::vector<lsp::uint> selectedOffsets;
+
     std::optional<server::DefinitionInfo> getElementAt(DocumentHandle* hdl,
                                                        lsp::uint offset) override {
-        return hdl->getDefinitionInfoAt(offset);
+        auto info = hdl->getDefinitionInfoAt(offset);
+        if (!info || selectedOffsets.empty())
+            return info;
+
+        auto doc = hdl->doc;
+        auto token = doc->getWordTokenAt(slang::SourceLocation(doc->getBuffer(), offset));
+        if (!token)
+            return {};
+
+        for (auto selectedOffset : selectedOffsets) {
+            auto selectedToken = doc->getWordTokenAt(
+                slang::SourceLocation(doc->getBuffer(), selectedOffset));
+            if (selectedToken && selectedToken->location() == token->location())
+                return info;
+        }
+        return {};
     }
 
     void processElementTransition(DocumentHandle* hdl, SourceManager&, lsp::uint offset) override {
@@ -375,7 +393,16 @@ protected:
 
         auto pElem = std::get<server::DefinitionInfo>(*prevElement);
         auto& nameToken = pElem.nameToken();
-        if (tok && nameToken.location() == tok->location()) {
+        bool multilineHover =
+            !selectedOffsets.empty() &&
+            (pElem.targets.size() > 1 || std::ranges::any_of(pElem.targets, [](const auto& target) {
+                 if (std::holds_alternative<server::DefinitionInfo::PortConnectionTarget>(target))
+                     return true;
+                 if (auto* symbol = std::get_if<server::DefinitionInfo::SymbolTarget>(&target))
+                     return symbol->syntaxes.size() > 1;
+                 return false;
+             }));
+        if (tok && nameToken.location() == tok->location() && !multilineHover) {
             auto symbol = pElem.symbol();
             auto kindStr = symbol ? toString(symbol->kind)
                            : pElem.macro() && pElem.macro()->syntaxTarget()
@@ -385,9 +412,7 @@ protected:
             test.record(fmt::format(" Sym {} : {}\n", nameToken.valueText(), kindStr));
         }
         else {
-            test.record(fmt::format(" Ref -> "));
-            // Print hover, but turn newlines into \n
-            // auto maybeHover = doc->getAnalysis().getDocHover(hdl->getPosition(offset), true);
+            test.record(multilineHover ? " Ref ->\n" : " Ref -> ");
             auto maybeHover = hdl->getHoverAt(offset);
             if (!maybeHover) {
                 test.record(" No Hover\n");
@@ -406,6 +431,23 @@ protected:
             replace(hoverText, "````systemverilog\n", "`");
             replace(hoverText, "\n````", "`");
             replace(hoverText, URI::fromFile(findSlangRoot()).str(), "file://");
+            if (multilineHover) {
+                size_t start = 0;
+                while (start <= hoverText.size()) {
+                    auto end = hoverText.find('\n', start);
+                    if (end == std::string::npos)
+                        end = hoverText.size();
+                    auto line = std::string_view(hoverText).substr(start, end - start);
+                    while (line.ends_with(' '))
+                        line.remove_suffix(1);
+                    if (!line.empty())
+                        test.record(fmt::format("    | {}\n", line));
+                    if (end == hoverText.size())
+                        break;
+                    start = end + 1;
+                }
+                return;
+            }
             std::string singleLine;
             for (char c : hoverText) {
                 if (c == '\n' || c == '\r') {

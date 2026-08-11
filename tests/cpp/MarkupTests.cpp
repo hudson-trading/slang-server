@@ -1,5 +1,6 @@
 #include "catch2/catch_test_macros.hpp"
 #include "util/Markdown.h"
+#include <utility>
 
 static std::string escapeMultilineMarkdown(std::string_view text) {
     std::string escaped;
@@ -84,4 +85,27 @@ TEST_CASE("AppendCode_NoBackticks") {
 
     // Should use single backticks without spaces (no backticks in content)
     CHECK(result == "`int variable = 42`");
+}
+
+TEST_CASE("ComposeAndCompareMarkup") {
+    using namespace server::markup;
+
+    Paragraph header;
+    header.appendText("header");
+    Paragraph detail;
+    detail.appendText(" detail");
+    header.append(std::move(detail));
+
+    Paragraph expected;
+    expected.appendText("header detail");
+    CHECK(header == expected);
+
+    Document first;
+    CHECK(first.isEmpty());
+    first.addParagraph(std::move(header));
+
+    Document second;
+    second.addParagraph(std::move(expected));
+    CHECK(first == second);
+    CHECK_FALSE(first.isEmpty());
 }

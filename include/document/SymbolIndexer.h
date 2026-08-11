@@ -8,6 +8,7 @@
 #pragma once
 
 #include <cstdint>
+#include <span>
 #include <string_view>
 #include <type_traits>
 #include <unordered_map>
@@ -22,11 +23,14 @@
 #include "slang/ast/types/AllTypes.h"
 #include "slang/syntax/SyntaxNode.h"
 #include "slang/text/SourceLocation.h"
+#include "slang/util/SmallVector.h"
 
 namespace server {
 
-using Symdex = std::unordered_map<const slang::parsing::Token*, const slang::ast::Symbol*>;
-using Syntex = std::unordered_map<const slang::syntax::SyntaxNode*, const slang::ast::Symbol*>;
+using SymbolList = slang::SmallVector<const slang::ast::Symbol*, 2>;
+
+using Symdex = std::unordered_map<const slang::parsing::Token*, SymbolList>;
+using Syntex = std::unordered_map<const slang::syntax::SyntaxNode*, SymbolList>;
 
 struct SymbolIndexer
     : public slang::ast::ASTVisitor<SymbolIndexer, slang::ast::VisitFlags::Symbols> {
@@ -45,7 +49,12 @@ public:
 
     const slang::ast::Symbol* getSymbol(const slang::syntax::SyntaxNode* node) const;
 
+    std::span<const slang::ast::Symbol* const> getSymbols(const slang::parsing::Token* node) const;
+
     const slang::ast::Scope* getScopeForSyntax(const slang::syntax::SyntaxNode& syntax) const;
+
+    slang::SmallVector<const slang::ast::Scope*, 2> getScopesForSyntax(
+        const slang::syntax::SyntaxNode& syntax) const;
 
     // These are not in the buffer, but should be visited
     void handle(const slang::ast::RootSymbol& sym);
@@ -99,9 +108,14 @@ private:
     /// Helper to index instance syntax (shared by InstanceSymbol and InstanceArraySymbol)
     void indexInstanceSyntax(const slang::syntax::HierarchicalInstanceSyntax& instSyntax,
                              const slang::ast::InstanceBodySymbol& instanceSymbol,
-                             const slang::ast::DefinitionSymbol& definition);
+                             const slang::ast::DefinitionSymbol& definition,
+                             const slang::ast::InstanceSymbol* instance,
+                             const slang::ast::Scope* parentScope);
 
     void indexSymbolName(const slang::ast::Symbol& symbol, bool isUnnamed = false);
+
+    void addSymbol(const slang::parsing::Token* token, const slang::ast::Symbol& symbol);
+    void addSymbol(const slang::syntax::SyntaxNode* syntax, const slang::ast::Symbol& symbol);
 };
 
 } // namespace server

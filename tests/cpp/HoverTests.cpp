@@ -5,6 +5,15 @@
 #include "utils/ServerHarness.h"
 #include <cstdlib>
 
+static size_t countSubstring(std::string_view text, std::string_view substring) {
+    size_t count = 0;
+    for (size_t pos = 0; (pos = text.find(substring, pos)) != std::string_view::npos;
+         pos += substring.size()) {
+        count++;
+    }
+    return count;
+}
+
 TEST_CASE("HoverMacroExpansion") {
     ServerHarness server;
 
@@ -179,6 +188,465 @@ endmodule
     CAPTURE(content.value);
     CHECK(content.value.find("**TypeAlias** `T`") != std::string::npos);
     CHECK(content.value.find("Value: `byte`") != std::string::npos);
+}
+
+TEST_CASE("HoverAndGotoImplicitPortShowBothSides") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+module leaf(input logic [7:0] shared);
+endmodule
+
+module top;
+    logic [7:0] shared;
+    leaf u(.shared);
+endmodule
+)");
+
+    auto cursor = doc.after("u(.");
+    auto info = doc.getDefinitionInfoAt(cursor.m_offset);
+    REQUIRE(info);
+    REQUIRE(info->targets.size() == 1);
+    auto* portTarget = std::get_if<server::DefinitionInfo::PortConnectionTarget>(
+        &info->targets.front());
+    REQUIRE(portTarget);
+
+    auto defs = cursor.getDefinitions();
+    REQUIRE(defs.size() == 2);
+    CHECK(defs[0].targetSelectionRange.start.line > defs[1].targetSelectionRange.start.line);
+
+    auto hover = doc.getHoverAt(cursor.m_offset);
+    REQUIRE(hover);
+    auto content = rfl::get<lsp::MarkupContent>(hover->contents).value;
+    CHECK(content.find("input logic [7:0] shared") != std::string::npos);
+    CHECK(content.find("logic [7:0] shared") != std::string::npos);
+    CHECK(countSubstring(content, "Type: `logic[7:0]`") == 1);
+    CHECK(countSubstring(content, "Width: `8`") == 1);
+    auto outerLabel = content.find("**Outer**");
+    auto innerLabel = content.find("**Inner**");
+    CHECK(outerLabel != std::string::npos);
+    CHECK(innerLabel != std::string::npos);
+    CHECK(outerLabel < innerLabel);
+    CHECK(content.find("Driven via port from `leaf u`") != std::string::npos);
+}
+
+TEST_CASE("HoverImplicitPortInGenerateLoopDeduplicatesElaborations") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+module leaf(input logic reset);
+endmodule
+
+module top(input logic reset);
+    for (genvar i = 0; i < 2; i++) begin : instances
+        leaf memory(.reset);
+    end
+endmodule
+)");
+
+    auto cursor = doc.after("memory(.");
+    auto info = doc.getDefinitionInfoAt(cursor.m_offset);
+    REQUIRE(info);
+    REQUIRE(info->targets.size() == 1);
+
+    auto hover = doc.getHoverAt(cursor.m_offset);
+    REQUIRE(hover);
+    auto content = rfl::get<lsp::MarkupContent>(hover->contents).value;
+    CAPTURE(content);
+    CHECK(countSubstring(content, "**Outer**") == 1);
+    CHECK(countSubstring(content, "**Inner**") == 1);
+    CHECK(countSubstring(content, "Generated signals: `2`") == 1);
+    CHECK(countSubstring(content, "Driven via port from `leaf memory`") == 1);
+}
+
+TEST_CASE("HoverExplicitPortShowsInputDriver") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+module leaf(input logic [7:0] data);
+endmodule
+
+module top;
+    logic [7:0] value;
+    leaf u(.data(value));
+endmodule
+)");
+
+    auto cursor = doc.after("u(.");
+    auto hover = doc.getHoverAt(cursor.m_offset);
+    REQUIRE(hover);
+    auto content = rfl::get<lsp::MarkupContent>(hover->contents).value;
+    CAPTURE(content);
+    CHECK(content.find("input logic [7:0] data") != std::string::npos);
+    CHECK(content.find("Driven via port from `leaf u`") != std::string::npos);
+}
+
+TEST_CASE("HoverOutputConnectionsShowInnerDriver") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+module implicit_leaf(output logic implicit_value);
+    always_comb implicit_value = 1'b1;
+endmodule
+
+module explicit_leaf(output logic data);
+    always_comb data = 1'b1;
+endmodule
+
+module top(
+    output logic implicit_value,
+    output logic explicit_value
+);
+    implicit_leaf implicit_u(.implicit_value);
+    explicit_leaf explicit_u(.data(explicit_value));
+endmodule
+)");
+
+    auto implicitCursor = doc.after("implicit_u(.");
+    auto implicitHover = doc.getHoverAt(implicitCursor.m_offset);
+    REQUIRE(implicitHover);
+    auto implicitContent = rfl::get<lsp::MarkupContent>(implicitHover->contents).value;
+    CAPTURE(implicitContent);
+    CHECK(implicitContent.find("Driven via port from `implicit_leaf implicit_u`") !=
+          std::string::npos);
+    CHECK(implicitContent.find("Driven by always_comb") != std::string::npos);
+
+    auto explicitCursor = doc.after(".data(");
+    auto explicitHover = doc.getHoverAt(explicitCursor.m_offset);
+    REQUIRE(explicitHover);
+    auto explicitContent = rfl::get<lsp::MarkupContent>(explicitHover->contents).value;
+    CAPTURE(explicitContent);
+    CHECK(explicitContent.find("Driven via port from `explicit_leaf explicit_u`") !=
+          std::string::npos);
+    CHECK(explicitContent.find("Driven by always_comb") != std::string::npos);
+
+    auto declarationCursor = doc.after("output logic explicit_");
+    auto declarationHover = doc.getHoverAt(declarationCursor.m_offset);
+    REQUIRE(declarationHover);
+    auto declarationContent = rfl::get<lsp::MarkupContent>(declarationHover->contents).value;
+    CAPTURE(declarationContent);
+    CHECK(declarationContent.find("Driven via port from `explicit_leaf explicit_u`") !=
+          std::string::npos);
+    CHECK(declarationContent.find("Driven by always_comb") != std::string::npos);
+}
+
+TEST_CASE("HoverAndGotoForwardedInterfacePortShowBothSides") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+interface bus;
+    logic data;
+endinterface
+
+module leaf(bus shared);
+endmodule
+
+module top(bus shared);
+    leaf u(.shared);
+endmodule
+)");
+
+    auto cursor = doc.after("u(.");
+    auto info = doc.getDefinitionInfoAt(cursor.m_offset);
+    REQUIRE(info);
+    REQUIRE(info->targets.size() == 1);
+    auto* portTarget = std::get_if<server::DefinitionInfo::PortConnectionTarget>(
+        &info->targets.front());
+    REQUIRE(portTarget);
+    CHECK(portTarget->outer.symbol->kind == slang::ast::SymbolKind::InterfacePort);
+    CHECK(portTarget->inner.symbol->kind == slang::ast::SymbolKind::InterfacePort);
+
+    auto location = doc.getLocation(cursor.m_offset);
+    REQUIRE(location);
+    auto analysis = doc.doc->getAnalysis();
+    auto* token = analysis->getWordTokenAt(*location);
+    REQUIRE(token);
+    CHECK(analysis->getSymbolAtToken(token) == portTarget->inner.symbol);
+
+    auto hover = doc.getHoverAt(cursor.m_offset);
+    REQUIRE(hover);
+    auto content = rfl::get<lsp::MarkupContent>(hover->contents).value;
+    CHECK(countSubstring(content, "**Outer**") == 1);
+    CHECK(countSubstring(content, "**Inner**") == 1);
+}
+
+TEST_CASE("HoverAndGotoModportShowTypeAndDirection") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+interface bus;
+    logic [7:0] data;
+    assign data = '0;
+    modport initiator(output data);
+endinterface
+
+module top;
+    bus b();
+endmodule
+)");
+
+    auto cursor = doc.before("data);");
+    auto info = doc.getDefinitionInfoAt(cursor.m_offset);
+    REQUIRE(info);
+    REQUIRE(info->targets.size() == 1);
+    auto* symbolTarget = std::get_if<server::DefinitionInfo::SymbolTarget>(&info->primaryTarget());
+    REQUIRE(symbolTarget);
+    CHECK(symbolTarget->symbol->kind == slang::ast::SymbolKind::ModportPort);
+    CHECK(symbolTarget->syntaxes.size() == 2);
+
+    auto defs = cursor.getDefinitions();
+    CHECK(defs.size() == 2);
+
+    auto hover = doc.getHoverAt(cursor.m_offset);
+    REQUIRE(hover);
+    auto content = rfl::get<lsp::MarkupContent>(hover->contents).value;
+    CHECK(content.find("logic [7:0] data") != std::string::npos);
+    CHECK(content.find("output data") != std::string::npos);
+    CHECK(countSubstring(content, "**ModportPort** `data`") == 1);
+    CHECK(countSubstring(content, "Type: `logic[7:0]`") == 1);
+    CHECK(countSubstring(content, "Width: `8`") == 1);
+    CHECK(countSubstring(content, "Driven by continuous assignment") == 1);
+}
+
+TEST_CASE("HoverAndGotoExplicitModportPrototypeRetainsDeclaration") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+interface bus;
+    task transfer(input logic value);
+    endtask
+    modport matching(import task transfer(input logic value));
+    modport mismatched(import task transfer(input int value));
+endinterface
+)");
+
+    auto matching = doc.after("matching(import task ");
+    auto matchingInfo = doc.getDefinitionInfoAt(matching.m_offset);
+    REQUIRE(matchingInfo);
+    REQUIRE(matchingInfo->targets.size() == 2);
+    CHECK(std::get<server::DefinitionInfo::SymbolTarget>(matchingInfo->targets[0]).symbol->kind ==
+          slang::ast::SymbolKind::MethodPrototype);
+    CHECK(std::get<server::DefinitionInfo::SymbolTarget>(matchingInfo->targets[1]).symbol->kind ==
+          slang::ast::SymbolKind::Subroutine);
+    auto matchingLocation = doc.getLocation(matching.m_offset);
+    REQUIRE(matchingLocation);
+    auto analysis = doc.doc->getAnalysis();
+    auto* matchingToken = analysis->getWordTokenAt(*matchingLocation);
+    REQUIRE(matchingToken);
+    CHECK(analysis->getSymbolAtToken(matchingToken) ==
+          std::get<server::DefinitionInfo::SymbolTarget>(matchingInfo->targets[1]).symbol);
+
+    auto matchingDefs = matching.getDefinitions();
+    REQUIRE(matchingDefs.size() == 2);
+    CHECK(matchingDefs[0].targetSelectionRange.start.line == 4);
+    CHECK(matchingDefs[1].targetSelectionRange.start.line == 2);
+
+    auto matchingHover = doc.getHoverAt(matching.m_offset);
+    REQUIRE(matchingHover);
+    auto matchingContent = rfl::get<lsp::MarkupContent>(matchingHover->contents).value;
+    CHECK(matchingContent.find("**MethodPrototype** `transfer` in `bus.matching`") !=
+          std::string::npos);
+    CHECK(matchingContent.find("**Subroutine** `transfer` in `bus`") != std::string::npos);
+    CHECK(matchingContent.find("task transfer(input logic value);") != std::string::npos);
+
+    auto mismatched = doc.after("mismatched(import task ");
+    auto mismatchedInfo = doc.getDefinitionInfoAt(mismatched.m_offset);
+    REQUIRE(mismatchedInfo);
+    REQUIRE(mismatchedInfo->targets.size() == 1);
+    CHECK(std::get<server::DefinitionInfo::SymbolTarget>(mismatchedInfo->targets[0]).symbol->kind ==
+          slang::ast::SymbolKind::MethodPrototype);
+    auto mismatchedLocation = doc.getLocation(mismatched.m_offset);
+    REQUIRE(mismatchedLocation);
+    auto* mismatchedToken = analysis->getWordTokenAt(*mismatchedLocation);
+    REQUIRE(mismatchedToken);
+    CHECK(analysis->getSymbolAtToken(mismatchedToken) ==
+          std::get<server::DefinitionInfo::SymbolTarget>(mismatchedInfo->targets[0]).symbol);
+
+    auto mismatchedDefs = mismatched.getDefinitions();
+    REQUIRE(mismatchedDefs.size() == 1);
+    CHECK(mismatchedDefs[0].targetSelectionRange.start.line == 5);
+
+    auto mismatchedHover = doc.getHoverAt(mismatched.m_offset);
+    REQUIRE(mismatchedHover);
+    auto mismatchedContent = rfl::get<lsp::MarkupContent>(mismatchedHover->contents).value;
+    CHECK(mismatchedContent.find("**MethodPrototype** `transfer` in `bus.mismatched`") !=
+          std::string::npos);
+    CHECK(mismatchedContent.find("task transfer(input int value)") != std::string::npos);
+}
+
+TEST_CASE("HoverGeneratedSymbolsSummarizesValues") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+module top;
+    for (genvar i = 0; i < 3; i++) begin : g
+        localparam int VALUE = i;
+        localparam int EVEN = i * 2 + 2;
+        localparam int SAME = 1;
+        logic [VALUE:0] data;
+    end
+endmodule
+)");
+
+    auto checkValueRange = [&](Cursor cursor) {
+        auto info = doc.getDefinitionInfoAt(cursor.m_offset);
+        REQUIRE(info);
+        CHECK(info->targets.size() == 3);
+
+        auto hover = doc.getHoverAt(cursor.m_offset);
+        REQUIRE(hover);
+        auto content = rfl::get<lsp::MarkupContent>(hover->contents).value;
+        CHECK(content.find("Value range: `0` through `2`") != std::string::npos);
+        CHECK(content.find("Value: `0`") == std::string::npos);
+        CHECK(countSubstring(content, "**Parameter** `VALUE`") == 1);
+        CHECK(countSubstring(content, "Type: `int`") == 1);
+
+        // All elaborated symbols share the same source declaration.
+        CHECK(cursor.getDefinitions().size() == 1);
+    };
+
+    checkValueRange(doc.before("VALUE ="));
+    checkValueRange(doc.before("VALUE:0"));
+
+    auto evenHover = doc.getHoverAt(doc.before("EVEN =").m_offset);
+    REQUIRE(evenHover);
+    auto evenContent = rfl::get<lsp::MarkupContent>(evenHover->contents).value;
+    CHECK(evenContent.find("Values: `2`, `4`, `6`") != std::string::npos);
+    CHECK(evenContent.find("Value range:") == std::string::npos);
+    CHECK(countSubstring(evenContent, "**Parameter** `EVEN`") == 1);
+
+    auto sameHover = doc.getHoverAt(doc.before("SAME =").m_offset);
+    REQUIRE(sameHover);
+    auto sameContent = rfl::get<lsp::MarkupContent>(sameHover->contents).value;
+    CHECK(countSubstring(sameContent, "**Parameter** `SAME`") == 1);
+    CHECK(countSubstring(sameContent, "Value: `1`") == 1);
+
+    auto checkGenvarRange = [&](Cursor cursor, size_t targetCount,
+                                slang::ast::SymbolKind primaryKind) {
+        auto info = doc.getDefinitionInfoAt(cursor.m_offset);
+        REQUIRE(info);
+        CHECK(info->targets.size() == targetCount);
+        REQUIRE(info->symbol());
+        CHECK(info->symbol()->kind == primaryKind);
+
+        auto hover = doc.getHoverAt(cursor.m_offset);
+        REQUIRE(hover);
+        auto content = rfl::get<lsp::MarkupContent>(hover->contents).value;
+        CAPTURE(content);
+        CHECK(content.find("Value range: `0` through `2`") != std::string::npos);
+        CHECK(content.find("Value: `0`") == std::string::npos);
+    };
+
+    checkGenvarRange(doc.after("genvar "), 4, slang::ast::SymbolKind::Genvar);
+    checkGenvarRange(doc.before("i < 3"), 4, slang::ast::SymbolKind::Genvar);
+    checkGenvarRange(doc.before("i++)"), 4, slang::ast::SymbolKind::Genvar);
+    checkGenvarRange(doc.after("VALUE = "), 3, slang::ast::SymbolKind::Parameter);
+}
+
+TEST_CASE("HoverNestedGeneratedSymbolsDeduplicatesEquivalentElaborations") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+module producer(output logic [8:0] exponent_out);
+    always_comb exponent_out = '0;
+endmodule
+
+module top;
+    for (genvar unit_index = 0; unit_index < 2; unit_index++) begin : units
+        for (genvar row = 0; row < 2; row++) begin : rows
+            localparam int ROW_INDEX = row;
+            logic [8:0] math_out_exponent;
+            logic [row:0] varying_width;
+            producer math(.exponent_out(math_out_exponent));
+        end
+    end
+endmodule
+)");
+
+    auto rowHeader = doc.before("row = 0; row < 2");
+    auto rowHeaderInfo = doc.getDefinitionInfoAt(rowHeader.m_offset);
+    REQUIRE(rowHeaderInfo);
+    REQUIRE(rowHeaderInfo->targets.size() == 3);
+    REQUIRE(rowHeaderInfo->symbol());
+    CHECK(rowHeaderInfo->symbol()->kind == slang::ast::SymbolKind::Genvar);
+    auto rowHeaderHover = doc.getHoverAt(rowHeader.m_offset);
+    REQUIRE(rowHeaderHover);
+    auto rowHeaderContent = rfl::get<lsp::MarkupContent>(rowHeaderHover->contents).value;
+    CAPTURE(rowHeaderContent);
+    CHECK(countSubstring(rowHeaderContent, "**Genvar** `row`") == 1);
+    CHECK(countSubstring(rowHeaderContent, "Value range: `0` through `1`") == 1);
+
+    auto row = doc.after("ROW_INDEX = ");
+    auto rowInfo = doc.getDefinitionInfoAt(row.m_offset);
+    REQUIRE(rowInfo);
+    REQUIRE(rowInfo->targets.size() == 2);
+    auto rowHover = doc.getHoverAt(row.m_offset);
+    REQUIRE(rowHover);
+    auto rowContent = rfl::get<lsp::MarkupContent>(rowHover->contents).value;
+    CAPTURE(rowContent);
+    CHECK(countSubstring(rowContent, "````systemverilog\nrow\n````") == 1);
+
+    auto rowIndexHover = doc.getHoverAt(doc.before("ROW_INDEX =").m_offset);
+    REQUIRE(rowIndexHover);
+    auto rowIndexContent = rfl::get<lsp::MarkupContent>(rowIndexHover->contents).value;
+    CAPTURE(rowIndexContent);
+    CHECK(rowIndexContent.find("Value range: `0` through `1`") != std::string::npos);
+    CHECK(countSubstring(rowIndexContent, "**Parameter** `ROW_INDEX`") == 1);
+
+    auto value = doc.before("math_out_exponent;");
+    auto valueInfo = doc.getDefinitionInfoAt(value.m_offset);
+    REQUIRE(valueInfo);
+    REQUIRE(valueInfo->targets.size() == 1);
+    auto valueHover = doc.getHoverAt(value.m_offset);
+    REQUIRE(valueHover);
+    auto valueContent = rfl::get<lsp::MarkupContent>(valueHover->contents).value;
+    CAPTURE(valueContent);
+    CHECK(countSubstring(valueContent, "**Variable** `math_out_exponent`") == 1);
+    CHECK(countSubstring(valueContent, "Generated signals: `4`") == 1);
+    CHECK(countSubstring(valueContent, "Driven via port from `producer math`") == 1);
+    CHECK(countSubstring(valueContent, "Driven by always_comb") == 1);
+
+    auto varying = doc.before("varying_width;");
+    auto varyingInfo = doc.getDefinitionInfoAt(varying.m_offset);
+    REQUIRE(varyingInfo);
+    REQUIRE(varyingInfo->targets.size() == 2);
+    auto varyingHover = doc.getHoverAt(varying.m_offset);
+    REQUIRE(varyingHover);
+    auto varyingContent = rfl::get<lsp::MarkupContent>(varyingHover->contents).value;
+    CAPTURE(varyingContent);
+    CHECK(countSubstring(varyingContent, "**Variable** `varying_width`") == 2);
+    CHECK(countSubstring(varyingContent, "Generated signals: `2`") == 2);
+}
+
+TEST_CASE("HoverReusedGenvarKeepsLoopValuesSeparate") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+module top;
+    genvar i;
+    for (i = 0; i < 2; i++) begin : first
+    end
+    for (i = 4; i < 6; i++) begin : second
+    end
+endmodule
+)");
+
+    auto checkRange = [&](Cursor cursor, std::string_view expected) {
+        auto info = doc.getDefinitionInfoAt(cursor.m_offset);
+        REQUIRE(info);
+        REQUIRE(info->targets.size() == 3);
+        REQUIRE(info->symbol());
+        CHECK(info->symbol()->kind == slang::ast::SymbolKind::Genvar);
+
+        auto hover = doc.getHoverAt(cursor.m_offset);
+        REQUIRE(hover);
+        auto content = rfl::get<lsp::MarkupContent>(hover->contents).value;
+        CAPTURE(content);
+        CHECK(content.find(expected) != std::string::npos);
+    };
+
+    checkRange(doc.before("i = 0"), "Value range: `0` through `1`");
+    checkRange(doc.before("i = 4"), "Value range: `4` through `5`");
 }
 
 TEST_CASE("HoverPlaintextDocComments") {

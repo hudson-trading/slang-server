@@ -188,7 +188,7 @@ macromodule m3;
 
     ) m (, b, c, d, );
       ^ Sym m : Instance
-           ^ Ref -> **Net** `b` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wire b;`\n\\n\---\n\\n\Driven via port from `m2 m2_inst` at [all.sv:72:9](<file:///tests/data/all.sv#L72,9>)  \n\`.b(b)`\n\\n\---\n\\n\Driven via port from `m2 m` at [all.sv:62:12](<file:///tests/data/all.sv#L62,12>)  \n\`b`
+           ^ Ref -> **Net** `b` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wire b;`\n\\n\---\n\\n\Driven via port from `m2 m2_inst` at [all.sv:72:9](<file:///tests/data/all.sv#L72,9>)  \n\`.b(b)`\n\\n\---\n\\n\Driven via port from `m2 m` at [all.sv:62:12](<file:///tests/data/all.sv#L62,12>)  \n\`b`\n\\n\---\n\\n\Driven by initializer at [all.sv:40:21](<file:///tests/data/all.sv#L40,21>)  \n\`(* bar = "asdf" *) output logic b = 1`
               ^ Ref -> **Variable** `c` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic c;`
                  ^ Ref -> `I` `d` in `m3`  \n\\n\\n\---\n\\n\`I d(.a(), .b());`
 
@@ -217,11 +217,11 @@ macromodule m3;
       ^^^^^^^ Sym m2_inst : Instance
 
         .a({1, 2}),
-         ^ Ref -> **Input Net** `a` in `m2`  \n\Type: `int$[]`  \n\\n\\n\---\n\\n\`input int a[]`
+         ^ Ref -> **Input Net** `a` in `m2`  \n\Type: `int$[]`  \n\\n\\n\---\n\\n\`input int a[]`\n\\n\---\n\\n\Driven via port from `m2 m2_inst` at [all.sv:40:6](<file:///tests/data/all.sv#L40,6>)  \n\`input int a[]`
 
         .b(b),
          ^ Ref -> **Output Variable** `b` in `m2`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`(* bar = "asdf" *) output logic b = 1`\n\\n\---\n\\n\Driven by initializer at [all.sv:40:21](<file:///tests/data/all.sv#L40,21>)  \n\`(* bar = "asdf" *) output logic b = 1`
-           ^ Ref -> **Net** `b` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wire b;`\n\\n\---\n\\n\Driven via port from `m2 m2_inst` at [all.sv:72:9](<file:///tests/data/all.sv#L72,9>)  \n\`.b(b)`\n\\n\---\n\\n\Driven via port from `m2 m` at [all.sv:62:12](<file:///tests/data/all.sv#L62,12>)  \n\`b`
+           ^ Ref -> **Net** `b` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wire b;`\n\\n\---\n\\n\Driven via port from `m2 m2_inst` at [all.sv:72:9](<file:///tests/data/all.sv#L72,9>)  \n\`.b(b)`\n\\n\---\n\\n\Driven via port from `m2 m` at [all.sv:62:12](<file:///tests/data/all.sv#L62,12>)  \n\`b`\n\\n\---\n\\n\Driven by initializer at [all.sv:40:21](<file:///tests/data/all.sv#L40,21>)  \n\`(* bar = "asdf" *) output logic b = 1`
 
         .c(),
          ^ Ref -> **Ref Variable** `c` in `m2`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`ref c`
@@ -271,7 +271,7 @@ macromodule m3;
     initial begin
 
         repeat (3) @(negedge b) f = #2 1;
-                             ^ Ref -> **Net** `b` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wire b;`\n\\n\---\n\\n\Driven via port from `m2 m2_inst` at [all.sv:72:9](<file:///tests/data/all.sv#L72,9>)  \n\`.b(b)`\n\\n\---\n\\n\Driven via port from `m2 m` at [all.sv:62:12](<file:///tests/data/all.sv#L62,12>)  \n\`b`
+                             ^ Ref -> **Net** `b` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wire b;`\n\\n\---\n\\n\Driven via port from `m2 m2_inst` at [all.sv:72:9](<file:///tests/data/all.sv#L72,9>)  \n\`.b(b)`\n\\n\---\n\\n\Driven via port from `m2 m` at [all.sv:62:12](<file:///tests/data/all.sv#L62,12>)  \n\`b`\n\\n\---\n\\n\Driven by initializer at [all.sv:40:21](<file:///tests/data/all.sv#L40,21>)  \n\`(* bar = "asdf" *) output logic b = 1`
                                 ^ Ref -> **Variable** `f` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic f, z;`\n\\n\---\n\\n\Driven by initial at [all.sv:88:5](<file:///tests/data/all.sv#L88,5>)  \n\`initial begin\n\    repeat (3) @(negedge b) f = #2 1;\n\    wait (f) ++f;\n\    wait fork;\n\    wait_order (m3.ev) f++;\n\    fork : fkb\n\        static int i = 1;\n\        disable fork;\n\    join_none\n\    disable m3.foo;\n\    assign z = 1;\n\    deassign z;\n\    if (1) begin end else begin end\n\    unique0 casex (w)\n\        0, 1: ;\n\        default ;\n\    endcase\n\    case (w) inside\n\        [0: 3]: ;\n\    endcase\n\end`
 
         wait (f) ++f;
@@ -338,7 +338,7 @@ macromodule m3;
 
 
     always_ff @(posedge b iff f == 1) begin
-                        ^ Ref -> **Net** `b` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wire b;`\n\\n\---\n\\n\Driven via port from `m2 m2_inst` at [all.sv:72:9](<file:///tests/data/all.sv#L72,9>)  \n\`.b(b)`\n\\n\---\n\\n\Driven via port from `m2 m` at [all.sv:62:12](<file:///tests/data/all.sv#L62,12>)  \n\`b`
+                        ^ Ref -> **Net** `b` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`wire b;`\n\\n\---\n\\n\Driven via port from `m2 m2_inst` at [all.sv:72:9](<file:///tests/data/all.sv#L72,9>)  \n\`.b(b)`\n\\n\---\n\\n\Driven via port from `m2 m` at [all.sv:62:12](<file:///tests/data/all.sv#L62,12>)  \n\`b`\n\\n\---\n\\n\Driven by initializer at [all.sv:40:21](<file:///tests/data/all.sv#L40,21>)  \n\`(* bar = "asdf" *) output logic b = 1`
                               ^ Ref -> **Variable** `f` in `m3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic f, z;`\n\\n\---\n\\n\Driven by initial at [all.sv:88:5](<file:///tests/data/all.sv#L88,5>)  \n\`initial begin\n\    repeat (3) @(negedge b) f = #2 1;\n\    wait (f) ++f;\n\    wait fork;\n\    wait_order (m3.ev) f++;\n\    fork : fkb\n\        static int i = 1;\n\        disable fork;\n\    join_none\n\    disable m3.foo;\n\    assign z = 1;\n\    deassign z;\n\    if (1) begin end else begin end\n\    unique0 casex (w)\n\        0, 1: ;\n\        default ;\n\    endcase\n\    case (w) inside\n\        [0: 3]: ;\n\    endcase\n\end`
 
         forever break;
@@ -539,11 +539,12 @@ macromodule m3;
            ^ Sym j : Genvar
 
     for (genvar i = 0; i < 10; i += 2)
-                       ^ Ref -> **Genvar** `i` in `m3.genblk1`  \n\\n\\n\---\n\\n\`i`
-                               ^ Ref -> **Genvar** `i` in `m3.genblk1`  \n\\n\\n\---\n\\n\`i`
+                ^ Sym i : Genvar
+                       ^ Ref -> **Genvar** `i` in `m3.genblk1`  \n\Type: `integer`  \n\Values: `0`, `2`, `4`, `6`, `8`  \n\\n\\n\---\n\\n\`i`
+                               ^ Ref -> **Genvar** `i` in `m3.genblk1`  \n\Type: `integer`  \n\Values: `0`, `2`, `4`, `6`, `8`  \n\\n\\n\---\n\\n\`i`
 
         if (i == 7) begin
-            ^ Ref -> **Parameter** `i` in `m3.genblk1`  \n\Type: `integer`  \n\Value: `8`  \n\\n\\n\---\n\\n\`i`
+            ^ Ref -> **Genvar** `i` in `m3.genblk1`  \n\Type: `integer`  \n\Values: `0`, `2`, `4`, `6`, `8`  \n\\n\\n\---\n\\n\`i`
 
         end
 
@@ -829,14 +830,14 @@ interface Iface;
     modport m(export foo, function void bar(int, logic), task baz, export func);
             ^ Sym m : Modport
                      ^^^ Sym foo : MethodPrototype
-                                        ^^^ Sym bar : Subroutine
-                                                              ^^^ Sym baz : Subroutine
+                                        ^^^ Sym bar : MethodPrototype
+                                                              ^^^ Sym baz : MethodPrototype
                                                                           ^^^^ Sym func : MethodPrototype
 
     modport n(import function void func(int), import task t2);
             ^ Sym n : Modport
-                                   ^^^^ Sym func : Subroutine
-                                                          ^^ Sym t2 : Subroutine
+                                   ^^^^ Sym func : MethodPrototype
+                                                          ^^ Sym t2 : MethodPrototype
 
     modport o(export t2);
             ^ Sym o : Modport

@@ -539,11 +539,12 @@ macromodule m3;
            ^ Refs[1]
 
     for (genvar i = 0; i < 10; i += 2)
-                       ^ Refs[3]
-                               ^ Refs[3]
+                ^ Refs[4]
+                       ^ Refs[4]
+                               ^ Refs[4]
 
         if (i == 7) begin
-            ^ Refs[3]
+            ^ Refs[4]
 
         end
 

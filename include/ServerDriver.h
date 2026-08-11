@@ -176,6 +176,10 @@ private:
     /// Parse config flags and build files, load sources, create documents
     void parseAndLoadSources(const std::vector<std::string>& buildfiles);
 
+    std::optional<DefinitionInfo> getMacroDefinitionInfo(const ShallowAnalysis& analysis,
+                                                         const parsing::Token& token,
+                                                         const syntax::SyntaxNode& referenceSyntax);
+
     /// Set of URIs for documents that are explicitly opened by the client
     flat_hash_set<URI> m_openDocs;
 

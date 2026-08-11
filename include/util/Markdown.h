@@ -31,11 +31,16 @@ public:
     /// Add a line break within the paragraph
     Paragraph& newLine();
 
+    /// Append an already rendered paragraph fragment
+    Paragraph& append(Paragraph paragraph);
+
     /// Check if the paragraph has any content
     bool isEmpty() const { return buffer.empty(); }
 
     /// Get the markdown content
     std::string_view asMarkdown() const { return buffer; }
+
+    bool operator==(const Paragraph&) const = default;
 
 private:
     std::string buffer;
@@ -49,6 +54,14 @@ public:
 
     /// Add an existing paragraph to the document
     void addParagraph(Paragraph para);
+
+    /// Append all paragraphs from another document
+    void append(Document doc);
+
+    /// Check if the document has any rendered content
+    bool isEmpty() const;
+
+    bool operator==(const Document&) const = default;
 
     /// Build and return LSP MarkupContent
     lsp::MarkupContent build() const;
