@@ -44,6 +44,58 @@ endmodule
     CHECK(sigContent.value.find("sig_foo") != std::string::npos);
 }
 
+TEST_CASE("HoverMacroNotFollowingTypedef") {
+    // Regression for #425: define directives are trivia on the following token, so
+    // selectDisplayNode must not promote to a trailing TypedefDeclaration.
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+`define DATA_W 32
+
+typedef struct packed {
+  logic [7:0]  field_a;
+  logic [15:0] field_b;
+} big_struct_t;
+
+`define A 8
+`define B 4
+typedef struct packed { logic x; } small_t;
+
+module top;
+    logic [`DATA_W-1:0] data;
+    logic [`A-1:0] a;
+    logic [`B-1:0] b;
+endmodule
+)");
+
+    {
+        auto hover = doc.getHoverAt(doc.before("`DATA_W").m_offset);
+        REQUIRE(hover.has_value());
+        auto content = rfl::get<lsp::MarkupContent>(hover->contents);
+        CAPTURE(content.value);
+        CHECK(content.value.find("`define DATA_W") != std::string::npos);
+        CHECK(content.value.find("big_struct_t") == std::string::npos);
+        CHECK(content.value.find("Expands to") != std::string::npos);
+        CHECK(content.value.find("32") != std::string::npos);
+    }
+    {
+        auto hover = doc.getHoverAt(doc.before("`A").m_offset);
+        REQUIRE(hover.has_value());
+        auto content = rfl::get<lsp::MarkupContent>(hover->contents);
+        CAPTURE(content.value);
+        CHECK(content.value.find("`define A") != std::string::npos);
+        CHECK(content.value.find("small_t") == std::string::npos);
+    }
+    {
+        auto hover = doc.getHoverAt(doc.before("`B").m_offset);
+        REQUIRE(hover.has_value());
+        auto content = rfl::get<lsp::MarkupContent>(hover->contents);
+        CAPTURE(content.value);
+        CHECK(content.value.find("`define B") != std::string::npos);
+        CHECK(content.value.find("small_t") == std::string::npos);
+    }
+}
+
 TEST_CASE("HoverNonAsciiString") {
     // Regression test: hovering on a string parameter with non-ASCII bytes should not crash
     // "a" + "b" in SV adds the character codes, producing 0xc3 which is invalid UTF-8
