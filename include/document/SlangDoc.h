@@ -157,6 +157,8 @@ public:
 
     std::vector<lsp::DocumentLink> getDocLinks() { return getAnalysis()->getDocLinks(); }
 
+    lsp::SemanticTokens getSemanticTokens() { return getAnalysis()->getSemanticTokens(); }
+
     std::vector<lsp::Range> getInactiveRegions();
 };
 

@@ -75,6 +75,7 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     registerDocDocumentHighlight();
 
     registerDocInlayHint();
+    registerDocSemanticTokensFull();
     registerDocReferences();
     registerDocRename();
     registerDocCodeAction();
@@ -168,6 +169,21 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
         }
     }
 
+    // Opt-in: semanticTokens/full re-classifies the whole document, so it stays unadvertised
+    // until the request path is threaded and its latency is measured.
+    std::optional<rfl::Variant<lsp::SemanticTokensOptions, lsp::SemanticTokensRegistrationOptions>>
+        semanticTokensProvider;
+    if (m_config.semanticTokens.get().enabled.get()) {
+        semanticTokensProvider = lsp::SemanticTokensOptions{
+            .legend =
+                lsp::SemanticTokensLegend{
+                    .tokenTypes = ShallowAnalysis::semanticTokenLegendTypes(),
+                    .tokenModifiers = ShallowAnalysis::semanticTokenLegendModifiers(),
+                },
+            .full = true,
+        };
+    }
+
     auto result =
         lsp::InitializeResult{
             .capabilities =
@@ -216,6 +232,7 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
                             .commands = getCommandList(),
                         },
                     .callHierarchyProvider = true,
+                    .semanticTokensProvider = std::move(semanticTokensProvider),
                     .inlayHintProvider =
                         lsp::InlayHintOptions{
                             .resolveProvider = false,
@@ -823,6 +840,25 @@ std::optional<std::vector<lsp::InlayHint>> SlangServer::getDocInlayHint(
     auto hints = doc->getAnalysis()->getInlayHints(params.range, m_config.inlayHints.get());
     INFO("Providing {} inlay hints for {}", hints.size(), params.textDocument.uri.getPath());
     return hints;
+}
+
+std::optional<lsp::SemanticTokens> SlangServer::getDocSemanticTokensFull(
+    const lsp::SemanticTokensParams& params) {
+    // Checked per request, not just at initialize: config can be reloaded while the
+    // server is running, but capabilities are only sent once.
+    if (!m_config.semanticTokens.get().enabled.get()) {
+        return {};
+    }
+
+    auto doc = m_driver->getDocument(params.textDocument.uri);
+    if (!doc) {
+        return {};
+    }
+
+    auto tokens = doc->getSemanticTokens();
+    INFO("Providing {} semantic tokens for {}", tokens.data.size() / 5,
+         params.textDocument.uri.getPath());
+    return tokens;
 }
 
 std::optional<std::vector<lsp::Location>> SlangServer::getDocReferences(

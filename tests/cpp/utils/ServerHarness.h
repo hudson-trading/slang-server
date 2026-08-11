@@ -98,6 +98,9 @@ public:
 
     // For access to indexer in tests
     using SlangServer::m_indexer;
+
+    // For toggling opt-in features that config normally gates
+    using SlangServer::m_config;
 };
 
 enum DocState {

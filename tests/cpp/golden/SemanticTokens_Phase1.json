@@ -1,0 +1,668 @@
+[
+  [
+    {
+      "range": {
+        "start": {
+          "line": 1,
+          "character": 0
+        },
+        "end": {
+          "line": 1,
+          "character": 6
+        }
+      },
+      "text": "module",
+      "type": "keyword",
+      "modifiers": []
+    },
+    {
+      "range": {
+        "start": {
+          "line": 1,
+          "character": 7
+        },
+        "end": {
+          "line": 1,
+          "character": 8
+        }
+      },
+      "text": "m",
+      "type": "class",
+      "modifiers": [
+        "declaration"
+      ]
+    },
+    {
+      "range": {
+        "start": {
+          "line": 1,
+          "character": 9
+        },
+        "end": {
+          "line": 1,
+          "character": 10
+        }
+      },
+      "text": "#",
+      "type": "operator",
+      "modifiers": []
+    },
+    {
+      "range": {
+        "start": {
+          "line": 2,
+          "character": 4
+        },
+        "end": {
+          "line": 2,
+          "character": 13
+        }
+      },
+      "text": "parameter",
+      "type": "keyword",
+      "modifiers": []
+    },
+    {
+      "range": {
+        "start": {
+          "line": 2,
+          "character": 14
+        },
+        "end": {
+          "line": 2,
+          "character": 17
+        }
+      },
+      "text": "int",
+      "type": "keyword",
+      "modifiers": []
+    },
+    {
+      "range": {
+        "start": {
+          "line": 2,
+          "character": 18
+        },
+        "end": {
+          "line": 2,
+          "character": 23
+        }
+      },
+      "text": "WIDTH",
+      "type": "parameter",
+      "modifiers": [
+        "declaration",
+        "readonly"
+      ]
+    },
+    {
+      "range": {
+        "start": {
+          "line": 2,
+          "character": 24
+        },
+        "end": {
+          "line": 2,
+          "character": 25
+        }
+      },
+      "text": "=",
+      "type": "operator",
+      "modifiers": []
+    },
+    {
+      "range": {
+        "start": {
+          "line": 2,
+          "character": 26
+        },
+        "end": {
+          "line": 2,
+          "character": 27
+        }
+      },
+      "text": "4",
+      "type": "number",
+      "modifiers": []
+    },
+    {
+      "range": {
+        "start": {
+          "line": 3,
+          "character": 4
+        },
+        "end": {
+          "line": 3,
+          "character": 13
+        }
+      },
+      "text": "parameter",
+      "type": "keyword",
+      "modifiers": []
+    },
+    {
+      "range": {
+        "start": {
+          "line": 3,
+          "character": 14
+        },
+        "end": {
+          "line": 3,
+          "character": 18
+        }
+      },
+      "text": "type",
+      "type": "keyword",
+      "modifiers": []
+    },
+    {
+      "range": {
+        "start": {
+          "line": 3,
+          "character": 19
+        },
+        "end": {
+          "line": 3,
+          "character": 26
+        }
+      },
+      "text": "ENTRY_T",
+      "type": "type",
+      "modifiers": [
+        "declaration"
+      ]
+    },
+    {
+      "range": {
+        "start": {
+          "line": 3,
+          "character": 27
+        },
+        "end": {
+          "line": 3,
+          "character": 28
+        }
+      },
+      "text": "=",
+      "type": "operator",
+      "modifiers": []
+    },
+    {
+      "range": {
+        "start": {
+          "line": 3,
+          "character": 29
+        },
+        "end": {
+          "line": 3,
+          "character": 34
+        }
+      },
+      "text": "logic",
+      "type": "keyword",
+      "modifiers": []
+    },
+    {
+      "range": {
+        "start": {
+          "line": 5,
+          "character": 4
+        },
+        "end": {
+          "line": 5,
+          "character": 11
+        }
+      },
+      "text": "typedef",
+      "type": "keyword",
+      "modifiers": []
+    },
+    {
+      "range": {
+        "start": {
+          "line": 5,
+          "character": 12
+        },
+        "end": {
+          "line": 5,
+          "character": 17
+        }
+      },
+      "text": "logic",
+      "type": "keyword",
+      "modifiers": []
+    },
+    {
+      "range": {
+        "start": {
+          "line": 5,
+          "character": 19
+        },
+        "end": {
+          "line": 5,
+          "character": 21
+        }
+      },
+      "text": "31",
+      "type": "number",
+      "modifiers": []
+    },
+    {
+      "range": {
+        "start": {
+          "line": 5,
+          "character": 22
+        },
+        "end": {
+          "line": 5,
+          "character": 23
+        }
+      },
+      "text": "0",
+      "type": "number",
+      "modifiers": []
+    },
+    {
+      "range": {
+        "start": {
+          "line": 5,
+          "character": 25
+        },
+        "end": {
+          "line": 5,
+          "character": 31
+        }
+      },
+      "text": "word_t",
+      "type": "type",
+      "modifiers": [
+        "declaration"
+      ]
+    },
+    {
+      "range": {
+        "start": {
+          "line": 6,
+          "character": 4
+        },
+        "end": {
+          "line": 6,
+          "character": 10
+        }
+      },
+      "text": "word_t",
+      "type": "type",
+      "modifiers": []
+    },
+    {
+      "range": {
+        "start": {
+          "line": 6,
+          "character": 11
+        },
+        "end": {
+          "line": 6,
+          "character": 15
+        }
+      },
+      "text": "addr",
+      "type": "variable",
+      "modifiers": [
+        "declaration"
+      ]
+    },
+    {
+      "range": {
+        "start": {
+          "line": 8,
+          "character": 4
+        },
+        "end": {
+          "line": 8,
+          "character": 12
+        }
+      },
+      "text": "function",
+      "type": "keyword",
+      "modifiers": []
+    },
+    {
+      "range": {
+        "start": {
+          "line": 8,
+          "character": 13
+        },
+        "end": {
+          "line": 8,
+          "character": 22
+        }
+      },
+      "text": "automatic",
+      "type": "keyword",
+      "modifiers": []
+    },
+    {
+      "range": {
+        "start": {
+          "line": 8,
+          "character": 23
+        },
+        "end": {
+          "line": 8,
+          "character": 29
+        }
+      },
+      "text": "word_t",
+      "type": "type",
+      "modifiers": []
+    },
+    {
+      "range": {
+        "start": {
+          "line": 8,
+          "character": 30
+        },
+        "end": {
+          "line": 8,
+          "character": 31
+        }
+      },
+      "text": "f",
+      "type": "function",
+      "modifiers": [
+        "declaration"
+      ]
+    },
+    {
+      "range": {
+        "start": {
+          "line": 8,
+          "character": 32
+        },
+        "end": {
+          "line": 8,
+          "character": 37
+        }
+      },
+      "text": "input",
+      "type": "keyword",
+      "modifiers": []
+    },
+    {
+      "range": {
+        "start": {
+          "line": 8,
+          "character": 38
+        },
+        "end": {
+          "line": 8,
+          "character": 44
+        }
+      },
+      "text": "word_t",
+      "type": "type",
+      "modifiers": []
+    },
+    {
+      "range": {
+        "start": {
+          "line": 8,
+          "character": 45
+        },
+        "end": {
+          "line": 8,
+          "character": 46
+        }
+      },
+      "text": "x",
+      "type": "parameter",
+      "modifiers": [
+        "declaration"
+      ]
+    },
+    {
+      "range": {
+        "start": {
+          "line": 9,
+          "character": 8
+        },
+        "end": {
+          "line": 9,
+          "character": 14
+        }
+      },
+      "text": "return",
+      "type": "keyword",
+      "modifiers": []
+    },
+    {
+      "range": {
+        "start": {
+          "line": 9,
+          "character": 15
+        },
+        "end": {
+          "line": 9,
+          "character": 16
+        }
+      },
+      "text": "x",
+      "type": "function",
+      "modifiers": []
+    },
+    {
+      "range": {
+        "start": {
+          "line": 9,
+          "character": 17
+        },
+        "end": {
+          "line": 9,
+          "character": 18
+        }
+      },
+      "text": "+",
+      "type": "operator",
+      "modifiers": []
+    },
+    {
+      "range": {
+        "start": {
+          "line": 9,
+          "character": 19
+        },
+        "end": {
+          "line": 9,
+          "character": 24
+        }
+      },
+      "text": "WIDTH",
+      "type": "function",
+      "modifiers": []
+    },
+    {
+      "range": {
+        "start": {
+          "line": 10,
+          "character": 4
+        },
+        "end": {
+          "line": 10,
+          "character": 15
+        }
+      },
+      "text": "endfunction",
+      "type": "keyword",
+      "modifiers": []
+    },
+    {
+      "range": {
+        "start": {
+          "line": 12,
+          "character": 4
+        },
+        "end": {
+          "line": 12,
+          "character": 11
+        }
+      },
+      "text": "initial",
+      "type": "keyword",
+      "modifiers": []
+    },
+    {
+      "range": {
+        "start": {
+          "line": 12,
+          "character": 12
+        },
+        "end": {
+          "line": 12,
+          "character": 17
+        }
+      },
+      "text": "begin",
+      "type": "keyword",
+      "modifiers": []
+    },
+    {
+      "range": {
+        "start": {
+          "line": 13,
+          "character": 8
+        },
+        "end": {
+          "line": 13,
+          "character": 14
+        }
+      },
+      "text": "word_t",
+      "type": "type",
+      "modifiers": []
+    },
+    {
+      "range": {
+        "start": {
+          "line": 13,
+          "character": 15
+        },
+        "end": {
+          "line": 13,
+          "character": 16
+        }
+      },
+      "text": "y",
+      "type": "variable",
+      "modifiers": [
+        "declaration"
+      ]
+    },
+    {
+      "range": {
+        "start": {
+          "line": 13,
+          "character": 17
+        },
+        "end": {
+          "line": 13,
+          "character": 18
+        }
+      },
+      "text": "=",
+      "type": "operator",
+      "modifiers": []
+    },
+    {
+      "range": {
+        "start": {
+          "line": 13,
+          "character": 19
+        },
+        "end": {
+          "line": 13,
+          "character": 20
+        }
+      },
+      "text": "f",
+      "type": "variable",
+      "modifiers": []
+    },
+    {
+      "range": {
+        "start": {
+          "line": 13,
+          "character": 21
+        },
+        "end": {
+          "line": 13,
+          "character": 25
+        }
+      },
+      "text": "addr",
+      "type": "variable",
+      "modifiers": []
+    },
+    {
+      "range": {
+        "start": {
+          "line": 14,
+          "character": 8
+        },
+        "end": {
+          "line": 14,
+          "character": 16
+        }
+      },
+      "text": "$display",
+      "type": "function",
+      "modifiers": [
+        "defaultLibrary"
+      ]
+    },
+    {
+      "range": {
+        "start": {
+          "line": 14,
+          "character": 17
+        },
+        "end": {
+          "line": 14,
+          "character": 22
+        }
+      },
+      "text": "\"%0d\"",
+      "type": "string",
+      "modifiers": []
+    },
+    {
+      "range": {
+        "start": {
+          "line": 15,
+          "character": 4
+        },
+        "end": {
+          "line": 15,
+          "character": 7
+        }
+      },
+      "text": "end",
+      "type": "keyword",
+      "modifiers": []
+    },
+    {
+      "range": {
+        "start": {
+          "line": 16,
+          "character": 0
+        },
+        "end": {
+          "line": 16,
+          "character": 9
+        }
+      },
+      "text": "endmodule",
+      "type": "keyword",
+      "modifiers": []
+    }
+  ]
+]
