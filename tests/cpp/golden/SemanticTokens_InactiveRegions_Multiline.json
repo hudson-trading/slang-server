@@ -1,0 +1,28 @@
+[
+  [
+    {
+      "line": 3,
+      "startChar": 4,
+      "length": 88,
+      "tokenType": 0,
+      "tokenModifiers": 0,
+      "text": "logic[2:0] inactive_a;\n    logic inactive_b;\n    int inactive_c;\n    logic inactive_d;\n`"
+    },
+    {
+      "line": 12,
+      "startChar": 4,
+      "length": 15,
+      "tokenType": 0,
+      "tokenModifiers": 0,
+      "text": "logic[2:0] a;\n`"
+    },
+    {
+      "line": 18,
+      "startChar": 9,
+      "length": 10,
+      "tokenType": 0,
+      "tokenModifiers": 0,
+      "text": "logic foo;"
+    }
+  ]
+]

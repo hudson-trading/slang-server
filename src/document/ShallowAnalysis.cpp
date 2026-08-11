@@ -39,11 +39,12 @@
 namespace server {
 using namespace slang;
 
+namespace {
 // Helper to check if two symbols represent the same semantic entity.
 // After normalization in getSymbolAtToken, most symbols should have pointer equality.
 // This fallback handles edge cases where different instance bodies create different
 // symbol objects for the same source-level declaration (e.g., parameters).
-static bool symbolsMatch(const ast::Symbol* a, const ast::Symbol* b) {
+bool symbolsMatch(const ast::Symbol* a, const ast::Symbol* b) {
     if (!a || !b) {
         return false;
     }
@@ -56,6 +57,37 @@ static bool symbolsMatch(const ast::Symbol* a, const ast::Symbol* b) {
     }
     return false;
 }
+
+// Returns the raw buffer offset where an inactive-code token should end.
+size_t inactiveRegionEndOffset(const SourceManager& sourceManager, const SourceRange region,
+                               const bool includeNextDirective) {
+    if (!includeNextDirective) {
+        return region.end().offset();
+    }
+
+    const auto text = sourceManager.getSourceText(region.end().buffer());
+    auto offset = region.end().offset();
+    if (offset >= text.size()) {
+        return offset;
+    }
+
+    auto endOffset = offset;
+    if (text[offset] == '\r') {
+        endOffset++;
+        offset++;
+    }
+    if (offset < text.size() && text[offset] == '\n') {
+        endOffset++;
+        offset++;
+    }
+
+    if (endOffset != region.end().offset() && offset < text.size() && text[offset] == '`') {
+        return offset + 1;
+    }
+    return region.end().offset();
+}
+} // namespace
+
 ShallowAnalysis::ShallowAnalysis(SourceManager& sourceManager, slang::BufferID buffer,
                                  std::shared_ptr<SyntaxTree> tree, slang::Bag options,
                                  const std::vector<std::shared_ptr<SyntaxTree>>& allTrees) :
@@ -657,6 +689,139 @@ std::vector<const slang::analysis::ValueDriver*> ShallowAnalysis::getDrivers(
     }
 
     return manager->getDrivers(symbol);
+}
+
+/// TODO: When more tokens are added we need to ensure that they aren't overlapping unless the
+/// client supports `overlappingTokenSupport`
+lsp::SemanticTokens ShallowAnalysis::getSemanticTokens(const bool inactiveRegionsSupported,
+                                                       const Config::SemanticTokensConfig& cfg,
+                                                       const bool multilineTokenSupport) {
+    if (!cfg.enabled.value()) {
+        return lsp::SemanticTokens{.data = {}};
+    }
+
+    struct SemanticTokenInfo {
+        lsp::uint line;
+        lsp::uint character;
+        lsp::uint length;
+        lsp::uint tokenType;
+        lsp::uint tokenModifiers;
+    };
+
+    std::vector<SemanticTokenInfo> tokens;
+
+    // In the future if/when more semantic tokens are added then this can be made a lot more
+    // efficient
+    bool inactiveDisabled = inactiveRegionsSupported;
+    for (auto kind : cfg.disabledKinds.value()) {
+        if (kind == Config::SemanticTokensConfig::SemanticTokenKind::InactiveCode) {
+            inactiveDisabled = true;
+            break;
+        }
+    }
+
+    if (!inactiveDisabled) {
+        for (const auto& region : syntaxes.disabledRegions) {
+            const auto range = toRange(region, m_sourceManager);
+            const auto text = m_sourceManager.getSourceText(region.start().buffer());
+            const auto startOffset = region.start().offset();
+            const auto endOffset = inactiveRegionEndOffset(m_sourceManager, region,
+                                                           multilineTokenSupport);
+
+            if (endOffset <= startOffset || startOffset >= text.size()) {
+                continue;
+            }
+
+            if (multilineTokenSupport) {
+                tokens.push_back({
+                    range.start.line,
+                    range.start.character,
+                    static_cast<lsp::uint>(endOffset - startOffset),
+                    0,
+                    0,
+                });
+                continue;
+            }
+
+            auto offset = startOffset;
+            auto line = range.start.line;
+            auto startChar = range.start.character;
+            while (offset < endOffset) {
+                auto lineEnd = text.find('\n', offset);
+                if (lineEnd == std::string_view::npos || lineEnd > endOffset) {
+                    lineEnd = endOffset;
+                }
+
+                auto tokenEnd = lineEnd;
+                if (tokenEnd > offset && text[tokenEnd - 1] == '\r') {
+                    tokenEnd--;
+                }
+
+                if (tokenEnd > offset) {
+                    tokens.push_back({
+                        line,
+                        startChar,
+                        static_cast<lsp::uint>(tokenEnd - offset),
+                        0,
+                        0,
+                    });
+                }
+
+                if (lineEnd >= endOffset || lineEnd >= text.size() || text[lineEnd] != '\n') {
+                    break;
+                }
+
+                offset = lineEnd + 1;
+                line++;
+                startChar = 0;
+            }
+        }
+    }
+
+    std::sort(tokens.begin(), tokens.end(), [](const auto& lhs, const auto& rhs) {
+        if (lhs.line != rhs.line) {
+            return lhs.line < rhs.line;
+        }
+
+        return lhs.character < rhs.character;
+    });
+
+    std::vector<lsp::uint> data;
+    data.reserve(tokens.size() * 5);
+
+    lsp::uint prevLine = 0;
+    lsp::uint prevChar = 0;
+    bool first = true;
+
+    for (const auto& token : tokens) {
+        /// From
+        /// https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_semanticTokens
+        // A specific token i in the file consists of the following array indices:
+        //  * at index 5*i - deltaLine: token line number, relative to the start of the previous
+        //  token
+        //  * at index 5*i+1 - deltaStart: token start character, relative to the start of the
+        //  previous token (relative to 0 or the previous token’s start if they are on the same
+        //  line)
+        //  * at index 5*i+2 - length: the length of the token. at index 5*i+3 - tokenType: will be
+        //  looked up in SemanticTokensLegend.tokenTypes. We currently ask that tokenType < 65536.
+        //  * at index 5*i+4 - tokenModifiers: each set bit will be looked up in
+        //  SemanticTokensLegend.tokenModifiers
+
+        const lsp::uint deltaLine = first ? token.line : token.line - prevLine;
+        const lsp::uint deltaChar = deltaLine == 0 ? token.character - prevChar : token.character;
+
+        data.push_back(deltaLine);
+        data.push_back(deltaChar);
+        data.push_back(token.length);
+        data.push_back(token.tokenType);
+        data.push_back(token.tokenModifiers);
+
+        prevLine = token.line;
+        prevChar = token.character;
+        first = false;
+    }
+
+    return lsp::SemanticTokens{.data = data};
 }
 
 } // namespace server
