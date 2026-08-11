@@ -283,9 +283,9 @@ public:
         for (lsp::uint offset = 0; offset < data.size() - 1; offset++) {
             auto locOpt = hdl.getLocation(offset);
             auto loc = *locOpt;
-            auto line = sm.getLineNumber(loc);
+            auto line = sm.getRawLineNumber(loc);
 
-            bool newLine = line != sm.getLineNumber(prevLoc);
+            bool newLine = line != sm.getRawLineNumber(prevLoc);
 
             // Get current element
             std::optional<std::variant<ElementT, std::string>> currentElement;

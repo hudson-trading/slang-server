@@ -40,8 +40,10 @@ std::optional<const parsing::Token> findNameToken(const syntax::SyntaxNode* node
 }
 
 lsp::Position toPosition(const SourceLocation& loc, const SourceManager& sourceManager) {
-    auto character = sourceManager.getColumnNumber(loc);
-    return lsp::Position{.line = static_cast<lsp::uint>(sourceManager.getLineNumber(loc) - 1),
+    auto actualLoc = sourceManager.getFullyExpandedLoc(loc);
+    auto character = sourceManager.getColumnNumber(actualLoc);
+    return lsp::Position{.line = static_cast<lsp::uint>(sourceManager.getRawLineNumber(actualLoc) -
+                                                        1),
                          .character = static_cast<lsp::uint>(character > 0 ? character - 1 : 0)};
 }
 
@@ -51,8 +53,9 @@ std::optional<SourceLocation> toSourceLocation(BufferID buffer, const lsp::Posit
 }
 
 lsp::Range toRange(const SourceRange& range, const SourceManager& sourceManager) {
-    return lsp::Range{.start = toPosition(range.start(), sourceManager),
-                      .end = toPosition(range.end(), sourceManager)};
+    auto actualRange = sourceManager.getFullyExpandedRange(range);
+    return lsp::Range{.start = toPosition(actualRange.start(), sourceManager),
+                      .end = toPosition(actualRange.end(), sourceManager)};
 }
 
 lsp::Location toOriginalLocation(const SourceRange& range, const SourceManager& sourceManager) {
@@ -66,9 +69,7 @@ lsp::Location toOriginalLocation(const SourceRange& range, const SourceManager& 
 lsp::Range toRange(const SourceLocation& loc, const SourceManager& sourceManager,
                    const size_t length) {
 
-    auto character = sourceManager.getColumnNumber(loc);
-    lsp::Position start{.line = static_cast<lsp::uint>(sourceManager.getLineNumber(loc) - 1),
-                        .character = static_cast<lsp::uint>(character > 0 ? character - 1 : 0)};
+    auto start = toPosition(loc, sourceManager);
     lsp::Position end{start};
     end.character += length;
     return lsp::Range{.start = start, .end = end};

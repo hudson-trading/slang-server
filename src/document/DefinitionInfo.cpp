@@ -287,7 +287,7 @@ void appendSourceLink(markup::Paragraph& paragraph, SourceLocation location,
     if (path.empty())
         return;
 
-    const auto line = sourceManager.getLineNumber(originalLoc);
+    const auto line = sourceManager.getRawLineNumber(originalLoc);
     const auto column = sourceManager.getColumnNumber(originalLoc);
     const auto label = fmt::format("{}:{}:{}", path.filename().string(), line, column);
     const auto target = fmt::format("{}#L{},{}", URI::fromFile(path), line, column);

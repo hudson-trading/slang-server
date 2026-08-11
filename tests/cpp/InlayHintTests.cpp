@@ -4,6 +4,7 @@
 #include "utils/GoldenTest.h"
 #include "utils/InlayHintScanner.h"
 #include "utils/ServerHarness.h"
+#include <algorithm>
 
 using namespace slang;
 
@@ -125,6 +126,34 @@ endmodule
 
     InlayHintScanner scanner;
     scanner.scanDocument(hdl);
+}
+
+TEST_CASE("InlayHintsLineDirectivesUseBufferPositions") {
+    ServerHarness server("");
+    auto hdl = server.openFile("inlay_line_directive.sv", R"(module receiver(
+    input logic clk
+);
+endmodule
+
+module top;
+    logic clk;
+    receiver u_rx(
+`line 8 "mapped.sv" 0
+        .*
+    );
+endmodule
+)");
+
+    auto hints = hdl.getAllInlayHints();
+    auto hint = std::ranges::find_if(hints, [](const auto& item) {
+        return item.textEdits && !item.textEdits->empty();
+    });
+    REQUIRE(hint != hints.end());
+    CHECK(hint->position.line == 9);
+
+    const auto& edit = hint->textEdits->front();
+    CHECK(edit.range.start.line == 9);
+    CHECK_FALSE(edit.newText.starts_with('\n'));
 }
 
 TEST_CASE("InlayHintsParameters") {
