@@ -12,7 +12,6 @@
 #include "lsp/LspTypes.h"
 #include "rfl/Generic.hpp"
 #include "util/Timing.h"
-#include <chrono>
 #include <concepts>
 #include <cstdint>
 #include <fmt/format.h>
@@ -160,7 +159,7 @@ protected:
             // Notification
             auto it = notifications.find(request.method);
             if (it != notifications.end()) {
-                const auto start = std::chrono::steady_clock::now();
+                ScopedElapsedMs elapsed(timing.ms);
                 try {
                     if (request.params.has_value()) {
                         it->second(request.params.value());
@@ -168,11 +167,9 @@ protected:
                     else {
                         it->second(std::nullopt);
                     }
-                    timing.ms = elapsedMs(start);
                     timing.kind = HandlerTiming::Kind::NotificationOk;
                 }
                 catch (const std::exception& e) {
-                    timing.ms = elapsedMs(start);
                     timing.error = e.what();
                     timing.kind = HandlerTiming::Kind::NotificationError;
                 }
@@ -205,7 +202,7 @@ protected:
         auto it = requests.find(request.method);
 
         if (it != requests.end()) {
-            const auto start = std::chrono::steady_clock::now();
+            ScopedElapsedMs elapsed(timing.ms);
             try {
                 rfl::Generic req_response;
                 if (request.params.has_value()) {
@@ -214,12 +211,10 @@ protected:
                 else {
                     req_response = it->second(rfl::Generic{});
                 }
-                timing.ms = elapsedMs(start);
                 timing.kind = HandlerTiming::Kind::RequestOk;
                 return req_response;
             }
             catch (const std::exception& e) {
-                timing.ms = elapsedMs(start);
                 timing.error = e.what();
                 timing.kind = HandlerTiming::Kind::RequestError;
                 return RpcError{.code = 1, .message = e.what()};
