@@ -107,6 +107,14 @@ Paragraph& Paragraph::newLine() {
     return *this;
 }
 
+Paragraph& Paragraph::append(Paragraph paragraph) {
+    if (buffer.empty())
+        buffer = std::move(paragraph.buffer);
+    else
+        buffer += paragraph.buffer;
+    return *this;
+}
+
 // Document implementation
 
 Paragraph& Document::addParagraph() {
@@ -116,6 +124,16 @@ Paragraph& Document::addParagraph() {
 
 void Document::addParagraph(Paragraph para) {
     paragraphs.push_back(std::move(para));
+}
+
+void Document::append(Document doc) {
+    paragraphs.reserve(paragraphs.size() + doc.paragraphs.size());
+    for (auto& paragraph : doc.paragraphs)
+        paragraphs.push_back(std::move(paragraph));
+}
+
+bool Document::isEmpty() const {
+    return std::ranges::all_of(paragraphs, &Paragraph::isEmpty);
 }
 
 lsp::MarkupContent Document::build() const {

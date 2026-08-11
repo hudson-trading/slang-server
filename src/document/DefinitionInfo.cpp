@@ -15,6 +15,7 @@
 #include "util/Markdown.h"
 #include <algorithm>
 #include <filesystem>
+#include <type_traits>
 
 #include "slang/analysis/ValueDriver.h"
 #include "slang/ast/Expression.h"
@@ -80,7 +81,13 @@ std::string_view getPortDirectionHeader(ast::ArgumentDirection direction) {
     }
 }
 
-void renderSymbolHeaderName(markup::Paragraph& infoPg, const ast::Symbol& symbol) {
+void renderSymbolHeaderName(markup::Paragraph& infoPg, const ast::Symbol& symbol,
+                            std::string_view kindOverride = {}) {
+    if (!kindOverride.empty()) {
+        infoPg.appendBold(kindOverride).appendCode(symbol.name);
+        return;
+    }
+
     if (auto* definition = symbol.as_if<ast::DefinitionSymbol>()) {
         infoPg.appendBold(toString(definition->definitionKind)).appendCode(symbol.name);
         return;
@@ -390,9 +397,11 @@ void renderSymbolValue(markup::Paragraph& infoPg, const ast::Symbol& symbol) {
     }
 }
 
-void renderSymbolHeader(markup::Paragraph& infoPg, const ast::Symbol& symbol) {
+void renderSymbolHeader(markup::Paragraph& infoPg, const ast::Symbol& symbol,
+                        bool renderType = true, bool renderValue = true,
+                        std::string_view kindOverride = {}) {
     // <Kind/Type> <Name> in <Scope>
-    renderSymbolHeaderName(infoPg, symbol);
+    renderSymbolHeaderName(infoPg, symbol, kindOverride);
 
     auto& parentSym = symbol.getParentScope()->asSymbol();
     auto lexicalPath = parentSym.getLexicalPath();
@@ -411,8 +420,149 @@ void renderSymbolHeader(markup::Paragraph& infoPg, const ast::Symbol& symbol) {
         infoPg.appendText(" in ").appendCode(lexicalPath);
     infoPg.newLine();
 
-    renderSymbolType(infoPg, symbol);
-    renderSymbolValue(infoPg, symbol);
+    if (renderType)
+        renderSymbolType(infoPg, symbol);
+    if (renderValue)
+        renderSymbolValue(infoPg, symbol);
+}
+
+void renderSymbolTargetHeader(markup::Paragraph& infoPg, const DefinitionInfo::SymbolTarget& target,
+                              std::string_view label = {}, bool renderType = true,
+                              bool renderValue = true) {
+    if (!label.empty())
+        infoPg.appendBold(label);
+    renderSymbolHeader(infoPg, *target.symbol, renderType, renderValue);
+}
+
+const ast::Symbol& getDriverSymbol(const DefinitionInfo::SymbolTarget& target) {
+    if (auto* modportPort = target.symbol->as_if<ast::ModportPortSymbol>()) {
+        if (modportPort->internalSymbol)
+            return *modportPort->internalSymbol;
+    }
+    return *target.symbol;
+}
+
+void renderSymbolSyntaxes(markup::Document& doc, const DefinitionInfo::SymbolTarget& target,
+                          const SourceManager& sm, const Config::HoverConfig& hovers) {
+    std::vector<DefinitionInfo::SyntaxTarget> rendered;
+    for (const auto& syntax : target.syntaxes) {
+        if (std::ranges::find(rendered, syntax) != rendered.end())
+            continue;
+        syntax.renderCode(doc, sm, hovers);
+        rendered.push_back(syntax);
+    }
+}
+
+struct RenderedSymbolHover {
+    markup::Paragraph header;
+    markup::Paragraph type;
+    markup::Paragraph value;
+    markup::Document syntaxes;
+    markup::Document drivers;
+    bool renderType = true;
+    bool renderValue = true;
+    bool renderDrivers = true;
+
+    bool operator==(const RenderedSymbolHover& other) const {
+        return header == other.header && type == other.type && value == other.value &&
+               syntaxes == other.syntaxes && drivers == other.drivers;
+    }
+
+    void appendTo(markup::Document& doc) {
+        if (renderType)
+            header.append(std::move(type));
+        if (renderValue)
+            header.append(std::move(value));
+        doc.addParagraph(std::move(header));
+        doc.append(std::move(syntaxes));
+        if (renderDrivers)
+            doc.append(std::move(drivers));
+    }
+};
+
+RenderedSymbolHover renderSymbolHover(const DefinitionInfo::SymbolTarget& target,
+                                      std::string_view label, const SourceManager& sm,
+                                      const Config::HoverConfig& hovers) {
+    RenderedSymbolHover result;
+    renderSymbolTargetHeader(result.header, target, label, false, false);
+    renderSymbolType(result.type, *target.symbol);
+    renderSymbolValue(result.value, *target.symbol);
+    renderSymbolSyntaxes(result.syntaxes, target, sm, hovers);
+    renderDrivers(result.drivers, getDriverSymbol(target), *target.analysis, sm);
+    result.renderType = !result.type.isEmpty();
+    result.renderValue = !result.value.isEmpty();
+    result.renderDrivers = !result.drivers.isEmpty();
+    return result;
+}
+
+void deduplicateSymbolHoverParts(const std::vector<RenderedSymbolHover*>& hovers) {
+    for (size_t i = 0; i < hovers.size(); i++) {
+        auto& current = *hovers[i];
+        for (size_t j = 0; j < i; j++) {
+            const auto& previous = *hovers[j];
+            if (current.renderType && previous.renderType && current.type == previous.type)
+                current.renderType = false;
+            if (current.renderValue && previous.renderValue && current.value == previous.value)
+                current.renderValue = false;
+            if (current.renderDrivers && previous.renderDrivers &&
+                current.drivers == previous.drivers) {
+                current.renderDrivers = false;
+            }
+        }
+    }
+}
+
+std::optional<lsp::MarkupContent> renderGenvarRange(
+    const std::vector<DefinitionInfo::Target>& targets, const SourceManager& sm,
+    const Config::HoverConfig& hovers) {
+    if (targets.size() < 2)
+        return {};
+
+    std::vector<const DefinitionInfo::SymbolTarget*> genvars;
+    const ConstantValue* minValue = nullptr;
+    const ConstantValue* maxValue = nullptr;
+    for (const auto& target : targets) {
+        auto* symbolTarget = std::get_if<DefinitionInfo::SymbolTarget>(&target);
+        if (!symbolTarget)
+            return {};
+
+        auto* parameter = symbolTarget->symbol->as_if<ast::ParameterSymbol>();
+        if (!parameter || !parameter->isFromGenvar())
+            return {};
+
+        const auto& value = parameter->getValue();
+        if (value.bad())
+            return {};
+
+        if (!minValue || value < *minValue)
+            minValue = &value;
+        if (!maxValue || value > *maxValue)
+            maxValue = &value;
+        genvars.push_back(symbolTarget);
+    }
+
+    if (*minValue == *maxValue)
+        return {};
+
+    markup::Document doc;
+    auto& header = doc.addParagraph();
+    renderSymbolHeader(header, *genvars.front()->symbol, true, false, "Genvar");
+    header.appendText("Value range: ")
+        .appendCode(formatConstantValue(*minValue))
+        .appendText(" through ")
+        .appendCode(formatConstantValue(*maxValue))
+        .newLine();
+
+    std::vector<DefinitionInfo::SyntaxTarget> renderedSyntaxes;
+    for (const auto* target : genvars) {
+        for (const auto& syntax : target->syntaxes) {
+            if (std::ranges::find(renderedSyntaxes, syntax) != renderedSyntaxes.end())
+                continue;
+            syntax.renderCode(doc, sm, hovers);
+            renderedSyntaxes.push_back(syntax);
+        }
+    }
+    return doc.build();
 }
 
 void renderMacroHeader(markup::Paragraph& infoPg, const DefinitionInfo::MacroTarget& macro,
@@ -472,19 +622,44 @@ void DefinitionInfo::SyntaxTarget::renderCode(markup::Document& doc, const Sourc
     }
 }
 
-lsp::MarkupContent DefinitionInfo::SymbolTarget::getHover(const SourceManager& sm,
-                                                          BufferID /*docBuffer*/,
-                                                          const Config::HoverConfig& hovers) const {
-    markup::Document doc;
-    renderSymbolHeader(doc.addParagraph(), *symbol);
-    syntax.renderCode(doc, sm, hovers);
-    renderDrivers(doc, *symbol, *analysis, sm);
-    return doc.build();
+DefinitionInfo::MacroTarget::MacroTarget(Definition definition,
+                                         const syntax::SyntaxNode& referenceSyntax,
+                                         const ShallowAnalysis& analysis) :
+    definition(std::move(definition)) {
+    if (referenceSyntax.kind != syntax::SyntaxKind::MacroUsage)
+        return;
+
+    auto it = analysis.syntaxes.macroExpansions.find(&referenceSyntax);
+    if (it != analysis.syntaxes.macroExpansions.end())
+        macroExpansionText = it->second.getText();
 }
 
-lsp::MarkupContent DefinitionInfo::MacroTarget::getHover(const SourceManager& sm,
-                                                         BufferID docBuffer,
-                                                         const Config::HoverConfig& hovers) const {
+markup::Document DefinitionInfo::SymbolTarget::getHover(const SourceManager& sm,
+                                                        BufferID /*docBuffer*/,
+                                                        const Config::HoverConfig& hovers) const {
+    markup::Document doc;
+    renderSymbolHover(*this, {}, sm, hovers).appendTo(doc);
+    return doc;
+}
+
+markup::Document DefinitionInfo::PortConnectionTarget::getHover(
+    const SourceManager& sm, BufferID /*docBuffer*/, const Config::HoverConfig& hovers) const {
+    std::vector<RenderedSymbolHover> hoversToRender;
+    hoversToRender.push_back(renderSymbolHover(outer, "Outer", sm, hovers));
+    hoversToRender.push_back(renderSymbolHover(inner, "Inner", sm, hovers));
+    std::vector<RenderedSymbolHover*> hoverPointers;
+    for (auto& hover : hoversToRender)
+        hoverPointers.push_back(&hover);
+    deduplicateSymbolHoverParts(hoverPointers);
+
+    markup::Document result;
+    for (auto& hover : hoversToRender)
+        hover.appendTo(result);
+    return result;
+}
+
+markup::Document DefinitionInfo::MacroTarget::getHover(const SourceManager& sm, BufferID docBuffer,
+                                                       const Config::HoverConfig& hovers) const {
     markup::Document doc;
     renderMacroHeader(doc.addParagraph(), *this, sm, docBuffer);
 
@@ -500,10 +675,10 @@ lsp::MarkupContent DefinitionInfo::MacroTarget::getHover(const SourceManager& sm
             .appendText(svCodeBlockString(macroExpansionText));
     }
 
-    return doc.build();
+    return doc;
 }
 
-lsp::MarkupContent DefinitionInfo::SystemSubroutineTarget::getHover(
+markup::Document DefinitionInfo::SystemSubroutineTarget::getHover(
     const SourceManager& /*sm*/, BufferID /*docBuffer*/,
     const Config::HoverConfig& /*hovers*/) const {
     markup::Document md;
@@ -519,7 +694,7 @@ lsp::MarkupContent DefinitionInfo::SystemSubroutineTarget::getHover(
     if (!doc->description.empty()) {
         md.addParagraph().appendText(doc->description);
     }
-    return md.build();
+    return md;
 }
 
 std::vector<lsp::LocationLink> DefinitionInfo::SyntaxTarget::getDefinition(
@@ -540,7 +715,32 @@ std::vector<lsp::LocationLink> DefinitionInfo::SyntaxTarget::getDefinition(
 
 std::vector<lsp::LocationLink> DefinitionInfo::SymbolTarget::getDefinition(
     const SourceManager& sm) const {
-    return syntax.getDefinition(sm);
+    std::vector<lsp::LocationLink> result;
+    for (const auto& syntax : syntaxes) {
+        for (auto& link : syntax.getDefinition(sm)) {
+            auto duplicate = std::ranges::any_of(result, [&](const auto& existing) {
+                return existing.targetUri == link.targetUri &&
+                       existing.targetSelectionRange == link.targetSelectionRange;
+            });
+            if (!duplicate)
+                result.push_back(std::move(link));
+        }
+    }
+    return result;
+}
+
+std::vector<lsp::LocationLink> DefinitionInfo::PortConnectionTarget::getDefinition(
+    const SourceManager& sm) const {
+    auto result = outer.getDefinition(sm);
+    for (auto& link : inner.getDefinition(sm)) {
+        auto duplicate = std::ranges::any_of(result, [&](const auto& existing) {
+            return existing.targetUri == link.targetUri &&
+                   existing.targetSelectionRange == link.targetSelectionRange;
+        });
+        if (!duplicate)
+            result.push_back(std::move(link));
+    }
+    return result;
 }
 
 std::vector<lsp::LocationLink> DefinitionInfo::MacroTarget::getDefinition(
@@ -599,11 +799,57 @@ std::vector<lsp::LocationLink> DefinitionInfo::SystemSubroutineTarget::getDefini
 
 lsp::MarkupContent DefinitionInfo::getHover(const SourceManager& sm, BufferID docBuffer,
                                             const Config::HoverConfig& hovers) const {
-    return std::visit([&](const auto& t) { return t.getHover(sm, docBuffer, hovers); }, target);
+    if (auto genvarRange = renderGenvarRange(targets, sm, hovers))
+        return std::move(*genvarRange);
+
+    using RenderedTargetHover = std::variant<RenderedSymbolHover, markup::Document>;
+    std::vector<RenderedTargetHover> renderedTargets;
+    for (const auto& target : targets) {
+        auto rendered = std::visit(
+            [&](const auto& concreteTarget) -> RenderedTargetHover {
+                using T = std::decay_t<decltype(concreteTarget)>;
+                if constexpr (std::is_same_v<T, SymbolTarget>)
+                    return renderSymbolHover(concreteTarget, {}, sm, hovers);
+                else
+                    return concreteTarget.getHover(sm, docBuffer, hovers);
+            },
+            target);
+        if (std::ranges::find(renderedTargets, rendered) != renderedTargets.end())
+            continue;
+        renderedTargets.push_back(std::move(rendered));
+    }
+
+    std::vector<RenderedSymbolHover*> symbolHovers;
+    for (auto& rendered : renderedTargets) {
+        if (auto* symbol = std::get_if<RenderedSymbolHover>(&rendered))
+            symbolHovers.push_back(symbol);
+    }
+    deduplicateSymbolHoverParts(symbolHovers);
+
+    markup::Document result;
+    for (auto& rendered : renderedTargets) {
+        if (auto* symbol = std::get_if<RenderedSymbolHover>(&rendered))
+            symbol->appendTo(result);
+        else
+            result.append(std::move(std::get<markup::Document>(rendered)));
+    }
+    return result.build();
 }
 
 std::vector<lsp::LocationLink> DefinitionInfo::getDefinition(const SourceManager& sm) const {
-    return std::visit([&](const auto& t) { return t.getDefinition(sm); }, target);
+    std::vector<lsp::LocationLink> result;
+    for (const auto& target : targets) {
+        auto links = std::visit([&](const auto& t) { return t.getDefinition(sm); }, target);
+        for (auto& link : links) {
+            auto duplicate = std::ranges::any_of(result, [&](const auto& existing) {
+                return existing.targetUri == link.targetUri &&
+                       existing.targetSelectionRange == link.targetSelectionRange;
+            });
+            if (!duplicate)
+                result.push_back(std::move(link));
+        }
+    }
+    return result;
 }
 
 } // namespace server

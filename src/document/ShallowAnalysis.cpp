@@ -13,6 +13,7 @@
 #include "util/Converters.h"
 #include "util/Logging.h"
 #include "util/SlangExtensions.h"
+#include <algorithm>
 #include <fmt/format.h>
 #include <memory>
 #include <string_view>
@@ -23,6 +24,7 @@
 #include "slang/ast/symbols/InstanceSymbols.h"
 #include "slang/ast/symbols/MemberSymbols.h"
 #include "slang/ast/symbols/PortSymbols.h"
+#include "slang/ast/symbols/SubroutineSymbols.h"
 #include "slang/ast/symbols/ValueSymbol.h"
 #include "slang/ast/types/AllTypes.h"
 #include "slang/ast/types/Type.h"
@@ -273,15 +275,60 @@ struct OffsetFinder {
     const parsing::Token* foundToken = nullptr;
 };
 
-const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declTok) const {
+slang::SmallVector<const ast::Symbol*, 2> ShallowAnalysis::getSymbolsAtToken(
+    const parsing::Token* declTok) const {
+    slang::SmallVector<const ast::Symbol*, 2> symbols;
+    auto addSymbol = [&](const ast::Symbol* symbol) {
+        auto addOne = [&](const ast::Symbol* candidate) {
+            if (candidate && std::ranges::find(symbols, candidate) == symbols.end())
+                symbols.push_back(candidate);
+        };
+
+        if (!symbol)
+            return;
+
+        switch (symbol->kind) {
+            case ast::SymbolKind::InstanceBody:
+                addOne(&symbol->as<ast::InstanceBodySymbol>().getDefinition());
+                break;
+            case ast::SymbolKind::Port: {
+                // The internal symbol carries the declared type and is the symbol used by
+                // references inside the instance.
+                auto& port = symbol->as<ast::PortSymbol>();
+                addOne(port.internalSymbol ? port.internalSymbol : symbol);
+                break;
+            }
+            case ast::SymbolKind::ModportPort: {
+                // A named modport port has both an underlying typed symbol and a directional
+                // declaration in the modport.
+                auto& port = symbol->as<ast::ModportPortSymbol>();
+                addOne(symbol);
+                addOne(port.internalSymbol);
+                break;
+            }
+            case ast::SymbolKind::MethodPrototype: {
+                auto& prototype = symbol->as<ast::MethodPrototypeSymbol>();
+                addOne(symbol);
+                if (symbol->getSyntax() &&
+                    symbol->getSyntax()->kind == syntax::SyntaxKind::ModportSubroutinePort) {
+                    addOne(prototype.getSubroutine());
+                }
+                break;
+            }
+            default:
+                addOne(symbol);
+                break;
+        }
+    };
+
     if (!declTok) {
-        return nullptr;
+        return symbols;
     }
 
     auto syntax = syntaxes.getTokenParent(declTok);
     // Note: SuperHandle nodes can cause issues in symbol lookup
     if (!syntax || syntax->kind == syntax::SyntaxKind::SuperHandle) {
-        return nullptr;
+        return symbols;
     }
 
     // Handle macro args
@@ -321,41 +368,62 @@ const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declT
              syntax->kind == syntax::SyntaxKind::PackageImportItem) {
         auto pkg = m_compilation->getPackage(syntax->getFirstToken().valueText());
         if (!pkg) {
-            return {};
+            return symbols;
         }
         if (syntax->getFirstToken() == *declTok) {
-            return pkg;
+            addSymbol(pkg);
         }
-        return pkg->find(declTok->valueText());
+        else {
+            addSymbol(pkg->find(declTok->valueText()));
+        }
+        return symbols;
     }
-    else if (auto sym = m_symbolIndexer.getSymbol(declTok)) {
-        switch (sym->kind) {
-            case ast::SymbolKind::InstanceBody:
-                // Module declarations get indexed to their body. We do want to keep the body
-                // as the indexed sym for use in the future though with hdl features.
-                return &sym->as<ast::InstanceBodySymbol>().getDefinition();
-            case ast::SymbolKind::Port: {
-                // Named port connections get indexed to the port symbol. Return the internal
-                // symbol so that references work across instance boundaries.
-                auto& port = sym->as<ast::PortSymbol>();
-                if (port.internalSymbol) {
-                    return port.internalSymbol;
-                }
-                return sym;
+    else if (auto indexed = m_symbolIndexer.getSymbols(declTok); !indexed.empty()) {
+        if (syntax->kind == syntax::SyntaxKind::NamedPortConnection &&
+            !syntax->as<syntax::NamedPortConnectionSyntax>().openParen) {
+            if (indexed.size() > 1) {
+                symbols.append(indexed.begin(), indexed.end());
             }
-            default:
-                return sym;
+            else {
+                for (auto* scope : m_symbolIndexer.getScopesForSyntax(*syntax))
+                    addSymbol(scope->lookupName(declTok->valueText()));
+                addSymbol(indexed.front());
+            }
+            return symbols;
         }
+
+        // Keep the selected facade kind while retaining distinct elaborations of that kind.
+        auto legacyKind = indexed.back()->kind;
+        for (auto* symbol : indexed) {
+            if (symbol->kind == legacyKind)
+                addSymbol(symbol);
+        }
+        return symbols;
     }
 
-    auto scope = m_symbolIndexer.getScopeForSyntax(*syntax);
-    if (!scope) {
+    auto scopes = m_symbolIndexer.getScopesForSyntax(*syntax);
+    if (scopes.empty()) {
         INFO("No scope found for syntax {}, using root scope", syntax->toString());
-        scope = &m_compilation->getRoot().as<ast::Scope>();
+        scopes.push_back(&m_compilation->getRoot().as<ast::Scope>());
     }
 
-    // Perform name lookup; this should be most gotos
-    if (auto nameSyntax = findNameSyntax(*syntax)) {
+    auto resolveInScope = [&](const ast::Scope* scope) -> const ast::Symbol* {
+        // Perform name lookup; this should be most gotos.
+        auto nameSyntax = findNameSyntax(*syntax);
+        if (!nameSyntax) {
+            if (declTok->kind != parsing::TokenKind::Identifier ||
+                syntax->kind == syntax::SyntaxKind::AttributeSpec) {
+                return nullptr;
+            }
+            if (syntax->kind == syntax::SyntaxKind::DotMemberClause)
+                return handleInterfacePortHeader(declTok, syntax, scope);
+            if (auto def = m_compilation->tryGetDefinition(declTok->valueText(), *scope);
+                def.definition) {
+                return def.definition;
+            }
+            return m_compilation->getPackage(declTok->valueText());
+        }
+
         auto scopedName = nameSyntax->as_if<slang::syntax::ScopedNameSyntax>();
         if (scopedName && scopedName->separator == *declTok) {
             return nullptr;
@@ -394,7 +462,7 @@ const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declT
                             type = &cur->as<ast::ValueSymbol>().getType();
                         }
 
-                        if (type->isArray()) {
+                        if (type && type->isArray()) {
                             cur = type->getArrayElementType();
                         }
                         else {
@@ -428,28 +496,48 @@ const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declT
         if (auto scopedResult = handleScopedNameLookup(nameSyntax, context, scope)) {
             return scopedResult;
         }
-    }
 
-    if (declTok->kind != parsing::TokenKind::Identifier ||
-        syntax->kind == syntax::SyntaxKind::AttributeSpec) {
-        return nullptr;
-    }
+        if (declTok->kind != parsing::TokenKind::Identifier ||
+            syntax->kind == syntax::SyntaxKind::AttributeSpec) {
+            return nullptr;
+        }
 
-    if (syntax->kind == syntax::SyntaxKind::DotMemberClause) {
-        return handleInterfacePortHeader(declTok, syntax, scope);
-    }
-    // Try getting a definition as a last resort
-    auto def = m_compilation->tryGetDefinition(declTok->valueText(), *scope);
-    if (def.definition) {
-        return def.definition;
-    }
+        if (syntax->kind == syntax::SyntaxKind::DotMemberClause) {
+            return handleInterfacePortHeader(declTok, syntax, scope);
+        }
+        // Try getting a definition as a last resort.
+        auto def = m_compilation->tryGetDefinition(declTok->valueText(), *scope);
+        if (def.definition) {
+            return def.definition;
+        }
 
-    auto pkg = m_compilation->getPackage(declTok->valueText());
-    if (pkg) {
-        return pkg;
-    }
+        return m_compilation->getPackage(declTok->valueText());
+    };
 
-    return nullptr;
+    for (auto* scope : scopes)
+        addSymbol(resolveInScope(scope));
+    return symbols;
+}
+
+const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declTok) const {
+    auto symbols = getSymbolsAtToken(declTok);
+    if (declTok) {
+        auto* syntaxNode = syntaxes.getTokenParent(declTok);
+        if (syntaxNode && syntaxNode->kind == syntax::SyntaxKind::NamedPortConnection &&
+            !syntaxNode->as<syntax::NamedPortConnectionSyntax>().openParen) {
+            if (symbols.size() > 1)
+                return symbols[1];
+            return symbols.empty() ? nullptr : symbols.front();
+        }
+    }
+    if (auto it = std::ranges::find_if(symbols,
+                                       [](const ast::Symbol* symbol) {
+                                           return symbol->kind == ast::SymbolKind::ModportPort;
+                                       });
+        it != symbols.end()) {
+        return *it;
+    }
+    return symbols.empty() ? nullptr : symbols.back();
 }
 
 const ast::Symbol* ShallowAnalysis::getDefinition(std::string_view name) const {

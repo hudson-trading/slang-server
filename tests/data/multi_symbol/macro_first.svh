@@ -1,0 +1,1 @@
+`define MULTI_MACRO FIRST_MACRO

@@ -20,6 +20,8 @@
 #include "util/Formatting.h"
 #include "util/Logging.h"
 #include "util/Markdown.h"
+#include <algorithm>
+#include <filesystem>
 #include <memory>
 #include <queue>
 #include <string_view>
@@ -485,6 +487,85 @@ bool ServerDriver::createCompilation() {
     return true;
 }
 
+std::optional<DefinitionInfo> ServerDriver::getMacroDefinitionInfo(
+    const ShallowAnalysis& analysis, const parsing::Token& token,
+    const syntax::SyntaxNode& referenceSyntax) {
+    std::vector<const syntax::DefineDirectiveSyntax*> macroDefs;
+    auto addMacroDef = [&](const syntax::DefineDirectiveSyntax* definition) {
+        if (definition && std::ranges::find(macroDefs, definition) == macroDefs.end())
+            macroDefs.push_back(definition);
+    };
+    if (referenceSyntax.kind == syntax::SyntaxKind::MacroUsage ||
+        referenceSyntax.kind == syntax::SyntaxKind::UndefDirective) {
+        auto it = analysis.macroUsageDefinitions.find(&referenceSyntax);
+        if (it != analysis.macroUsageDefinitions.end())
+            addMacroDef(it->second);
+    }
+
+    // A macro usage in a define body has no direct usage mapping. The workspace index also
+    // supplies definitions that are not part of the current shallow compilation.
+    if (macroDefs.empty()) {
+        auto macroName = token.kind == parsing::TokenKind::Directive ? token.rawText().substr(1)
+                                                                     : token.valueText();
+        auto macro = analysis.macros.find(macroName);
+        if (macro != analysis.macros.end()) {
+            addMacroDef(macro->second);
+        }
+        else {
+            std::vector<std::filesystem::path> visited;
+            for (const auto& path : m_indexer.getFilesForMacro(macroName)) {
+                if (std::ranges::find(visited, path) != visited.end())
+                    continue;
+                visited.push_back(path);
+
+                auto macroDoc = getDocument(URI::fromFile(path));
+                if (!macroDoc)
+                    continue;
+                auto macroAnalysis = macroDoc->getAnalysis();
+                auto indexedMacro = macroAnalysis->macros.find(macroName);
+                if (indexedMacro != macroAnalysis->macros.end())
+                    addMacroDef(indexedMacro->second);
+            }
+        }
+        if (macroDefs.empty())
+            return {};
+    }
+
+    std::vector<DefinitionInfo::Target> targets;
+    for (auto* macroDef : macroDefs) {
+        auto nameToken = macroDef->name;
+        auto macroUsageRange = SourceRange::NoLocation;
+        if (sm.isMacroLoc(nameToken.location())) {
+            auto tokenRange = SourceRange(nameToken.location(),
+                                          nameToken.location() + nameToken.rawText().length());
+            auto expansionRange = sm.getFullyExpandedRange(tokenRange);
+            if (sm.getSourceText(expansionRange).empty()) {
+                ERROR("Couldn't get original range for macro {}", nameToken.valueText());
+            }
+            else {
+                macroUsageRange = expansionRange;
+            }
+        }
+
+        DefinitionInfo::SyntaxTarget syntaxTarget{macroDef, nameToken, macroUsageRange};
+        DefinitionInfo::MacroTarget::Definition macroDefinition = syntaxTarget;
+
+        const auto defPath = sm.getFullPath(nameToken.location().buffer());
+        const auto defPathStr = defPath.filename().string();
+        if (defPathStr.empty() || defPathStr[0] == '<') {
+            std::string defineSourceFile;
+            const auto srcIt = m_defineSources.find(std::string(nameToken.valueText()));
+            if (srcIt != m_defineSources.end())
+                defineSourceFile = srcIt->second.string();
+            macroDefinition = DefinitionInfo::CommandLineDefineTarget{nameToken, defineSourceFile};
+        }
+
+        targets.emplace_back(
+            DefinitionInfo::MacroTarget{std::move(macroDefinition), referenceSyntax, analysis});
+    }
+    return DefinitionInfo{std::move(targets)};
+}
+
 std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
                                                                 const lsp::Position& position) {
     auto doc = getDocument(uri);
@@ -507,10 +588,6 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
         return {};
     }
 
-    std::optional<parsing::Token> nameToken;
-    const syntax::SyntaxNode* symSyntax = nullptr;
-    const ast::Symbol* symbol = nullptr;
-
     auto isMacroRef = [&]() {
         // Normal macro usage (`FOO) or usage inside a `define body
         return declTok->kind == parsing::TokenKind::Directive &&
@@ -528,46 +605,10 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
                declSyntax->kind == syntax::SyntaxKind::NamedConditionalDirectiveExpression;
     };
 
-    if (isMacroRef() || isUndefRef() || isIfdefRef()) {
+    if (isMacroRef() || isUndefRef() || isIfdefRef())
+        return getMacroDefinitionInfo(*analysis, *declTok, *declSyntax);
 
-        // For macro usages and undefs, look up the definition that was
-        // active at the time (handles undef/redefine correctly)
-        const syntax::DefineDirectiveSyntax* macroDef = nullptr;
-        if (declSyntax->kind == syntax::SyntaxKind::MacroUsage ||
-            declSyntax->kind == syntax::SyntaxKind::UndefDirective) {
-            auto it = analysis->macroUsageDefinitions.find(declSyntax);
-            if (it != analysis->macroUsageDefinitions.end())
-                macroDef = it->second;
-        }
-
-        // Fall back to the macros map
-        // if we're looking at a macro usage in a define body, or macro isn't found but indexed
-        if (!macroDef) {
-            // For directive tokens (`FOO), valueText strips the backtick.
-            // For identifier tokens (FOO in `undef), valueText is the name.
-            auto macroName = declTok->kind == parsing::TokenKind::Directive
-                                 ? declTok->rawText().substr(1)
-                                 : declTok->valueText();
-            auto macro = analysis->macros.find(macroName);
-            if (macro == analysis->macros.end()) {
-                auto files = m_indexer.getFilesForMacro(macroName);
-                if (files.empty())
-                    return {};
-                auto macroDoc = getDocument(URI::fromFile(files[0].string()));
-                if (!macroDoc)
-                    return {};
-                auto macroAnalysis = macroDoc->getAnalysis();
-                macro = macroAnalysis->macros.find(macroName);
-                if (macro == macroAnalysis->macros.end())
-                    return {};
-            }
-            macroDef = macro->second;
-        }
-
-        symSyntax = macroDef;
-        nameToken = macroDef->name;
-    }
-    else if (declTok->kind == parsing::TokenKind::SystemIdentifier) {
+    if (declTok->kind == parsing::TokenKind::SystemIdentifier) {
         auto knownName = declTok->systemName();
         if (knownName == parsing::KnownSystemName::Unknown)
             return {};
@@ -580,93 +621,185 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
         return DefinitionInfo{DefinitionInfo::SystemSubroutineTarget{
             *declTok, sysDoc, sub->kind == ast::SubroutineKind::Task}};
     }
-    else {
-        symbol = analysis->getSymbolAtToken(declTok);
-        if (!symbol) {
-            // check the index
-            auto symbols = m_indexer.getFilesForSymbol(declTok->rawText());
-            if (symbols.empty()) {
-                return {};
-            }
-            auto symDoc = getDocument(URI::fromFile(symbols[0].string()));
-            if (!symDoc) {
-                return {};
-            }
-            auto symAnalysis = symDoc->getAnalysis();
-            auto result = symAnalysis->getCompilation()->tryGetDefinition(
-                declTok->rawText(), symAnalysis->getCompilation()->getRoot());
-            if (!result.definition) {
-                return {};
-            }
-            symbol = result.definition;
-        }
-        symSyntax = symbol->getSyntax();
+    std::vector<std::pair<const ast::Symbol*, std::shared_ptr<ShallowAnalysis>>> symbols;
+    auto addSymbol = [&](const ast::Symbol* symbol,
+                         const std::shared_ptr<ShallowAnalysis>& symbolAnalysis) {
+        if (!symbol)
+            return;
+        auto duplicate = std::ranges::any_of(symbols, [&](const auto& existing) {
+            return (existing.first == symbol && existing.second == symbolAnalysis) ||
+                   (existing.second != symbolAnalysis && existing.first->kind == symbol->kind &&
+                    existing.first->location == symbol->location);
+        });
+        if (!duplicate)
+            symbols.emplace_back(symbol, symbolAnalysis);
+    };
 
+    auto localSymbols = analysis->getSymbolsAtToken(declTok);
+    for (auto* symbol : localSymbols)
+        addSymbol(symbol, analysis);
+
+    bool hasTopLevelResolution = std::ranges::any_of(localSymbols, [](const ast::Symbol* symbol) {
+        return symbol->kind == ast::SymbolKind::Definition ||
+               symbol->kind == ast::SymbolKind::Package;
+    });
+    bool hasLocalTopLevelResolution =
+        std::ranges::any_of(localSymbols, [&](const ast::Symbol* symbol) {
+            return (symbol->kind == ast::SymbolKind::Definition ||
+                    symbol->kind == ast::SymbolKind::Package) &&
+                   sm.getFullyExpandedLoc(symbol->location).buffer() == doc->getBuffer();
+        });
+
+    // A declaration in the queried document is authoritative. Externally resolved top-level
+    // names still use the index to retain other possible definitions.
+    bool searchIndex = localSymbols.empty() ||
+                       (hasTopLevelResolution && !hasLocalTopLevelResolution);
+    if (searchIndex) {
+        auto matchesResolvedKind = [&](const ast::Symbol* candidate) {
+            if (localSymbols.empty())
+                return true;
+            return std::ranges::any_of(localSymbols, [&](const ast::Symbol* resolved) {
+                if (resolved->kind != candidate->kind)
+                    return false;
+                if (auto* resolvedDef = resolved->as_if<ast::DefinitionSymbol>()) {
+                    auto* candidateDef = candidate->as_if<ast::DefinitionSymbol>();
+                    return candidateDef &&
+                           candidateDef->definitionKind == resolvedDef->definitionKind;
+                }
+                return true;
+            });
+        };
+
+        std::vector<std::filesystem::path> visited;
+        for (const auto& path : m_indexer.getFilesForSymbol(declTok->valueText())) {
+            if (std::ranges::find(visited, path) != visited.end())
+                continue;
+            visited.push_back(path);
+
+            auto symbolDoc = getDocument(URI::fromFile(path));
+            if (!symbolDoc)
+                continue;
+            auto symbolAnalysis = symbolDoc->getAnalysis();
+            auto addGlobalDefinition = [&](const ast::Symbol* symbol) {
+                if (symbol && symbol->name == declTok->valueText() &&
+                    sm.getFullyExpandedLoc(symbol->location).buffer() == symbolDoc->getBuffer() &&
+                    matchesResolvedKind(symbol)) {
+                    addSymbol(symbol, symbolAnalysis);
+                }
+            };
+
+            for (auto* definition : symbolAnalysis->getCompilation()->getDefinitions())
+                addGlobalDefinition(definition);
+
+            for (auto* unit : symbolAnalysis->getCompilation()->getCompilationUnits()) {
+                for (auto& member : unit->members()) {
+                    if (member.kind == ast::SymbolKind::Package)
+                        addGlobalDefinition(&member);
+                }
+            }
+        }
+    }
+
+    auto makeSyntaxTarget =
+        [&](const ast::Symbol* symbol) -> std::optional<DefinitionInfo::SyntaxTarget> {
+        auto* symSyntax = symbol->getSyntax();
         if (!symSyntax) {
             ERROR("Failed to get syntax for symbol {} of kind {}", symbol->name,
                   toString(symbol->kind));
             return {};
         }
 
-        // For some symbols we want to return the parent to get the data type
-        if (symbol->kind == ast::SymbolKind::Modport ||
-            symbol->kind == ast::SymbolKind::ModportPort) {
+        // Modports have a directional declaration around their name syntax.
+        if ((symbol->kind == ast::SymbolKind::Modport ||
+             symbol->kind == ast::SymbolKind::ModportPort) &&
+            symSyntax->parent) {
             symSyntax = symSyntax->parent;
         }
-        nameToken = findNameToken(symSyntax, symbol->name);
-        if (!nameToken) {
+
+        auto foundNameToken = findNameToken(symSyntax, symbol->name);
+        if (!foundNameToken) {
             ERROR("Failed to find name token for symbol '{}' of kind {} = {}", symbol->name,
                   toString(symbol->kind), symSyntax->toString());
-
-            // TODO: figure out why this fails sometimes with all generates
-            nameToken = symSyntax->getFirstToken();
         }
-    }
+        parsing::Token nameToken = foundNameToken ? *foundNameToken : symSyntax->getFirstToken();
 
-    auto macroUsageRange = SourceRange::NoLocation;
-    if (nameToken && sm.isMacroLoc(nameToken->location())) {
-        auto tokenRange = SourceRange(nameToken->location(),
-                                      nameToken->location() + nameToken->rawText().length());
-        auto expansionRange = sm.getFullyExpandedRange(tokenRange);
-        auto text = sm.getSourceText(expansionRange);
-        if (text.empty()) {
-            ERROR("Couldn't get original range for symbol {}", nameToken->valueText());
+        auto macroUsageRange = SourceRange::NoLocation;
+        if (sm.isMacroLoc(nameToken.location())) {
+            auto tokenRange = SourceRange(nameToken.location(),
+                                          nameToken.location() + nameToken.rawText().length());
+            auto expansionRange = sm.getFullyExpandedRange(tokenRange);
+            if (sm.getSourceText(expansionRange).empty()) {
+                ERROR("Couldn't get original range for symbol {}", nameToken.valueText());
+            }
+            else {
+                macroUsageRange = expansionRange;
+            }
         }
-        else {
-            macroUsageRange = expansionRange;
-        }
-    }
 
-    std::string macroExpansionText;
-    if (declSyntax->kind == syntax::SyntaxKind::MacroUsage) {
-        auto it = analysis->syntaxes.macroExpansions.find(declSyntax);
-        if (it != analysis->syntaxes.macroExpansions.end())
-            macroExpansionText = it->second.getText();
-    }
-
-    auto makeSyntaxTarget = [&]() {
-        return DefinitionInfo::SyntaxTarget{symSyntax, *nameToken, macroUsageRange};
+        return DefinitionInfo::SyntaxTarget{symSyntax, nameToken, macroUsageRange};
     };
 
-    auto makeTarget = [&]() -> DefinitionInfo::Target {
-        if (symbol)
-            return DefinitionInfo::SymbolTarget{makeSyntaxTarget(), symbol, analysis};
+    auto makeSymbolTarget = [&](const ast::Symbol* symbol,
+                                const std::shared_ptr<ShallowAnalysis>& symbolAnalysis)
+        -> std::optional<DefinitionInfo::SymbolTarget> {
+        if (!symbol)
+            return {};
+        auto syntaxTarget = makeSyntaxTarget(symbol);
+        if (!syntaxTarget)
+            return {};
 
-        DefinitionInfo::MacroTarget::Definition macroDefinition = makeSyntaxTarget();
-
-        const auto defPath = sm.getFullPath(nameToken->location().buffer());
-        const auto defPathStr = defPath.filename().string();
-        if (defPathStr.empty() || defPathStr[0] == '<') {
-            std::string defineSourceFile;
-            const auto srcIt = m_defineSources.find(std::string(nameToken->valueText()));
-            if (srcIt != m_defineSources.end())
-                defineSourceFile = srcIt->second.string();
-            macroDefinition = DefinitionInfo::CommandLineDefineTarget{*nameToken, defineSourceFile};
+        std::vector<DefinitionInfo::SyntaxTarget> syntaxes;
+        syntaxes.push_back(std::move(*syntaxTarget));
+        if (auto* modportPort = symbol->as_if<ast::ModportPortSymbol>()) {
+            if (modportPort->internalSymbol) {
+                if (auto internalSyntax = makeSyntaxTarget(modportPort->internalSymbol))
+                    syntaxes.push_back(std::move(*internalSyntax));
+            }
         }
-
-        return DefinitionInfo::MacroTarget{macroDefinition, macroExpansionText};
+        return DefinitionInfo::SymbolTarget{std::move(syntaxes), symbol, symbolAnalysis};
     };
-    return DefinitionInfo{makeTarget()};
+
+    if (declSyntax && declSyntax->kind == syntax::SyntaxKind::NamedPortConnection &&
+        !declSyntax->as<syntax::NamedPortConnectionSyntax>().openParen && localSymbols.size() > 1) {
+        std::vector<DefinitionInfo::Target> targets;
+        for (size_t i = 0; i + 1 < localSymbols.size(); i += 2) {
+            auto outer = makeSymbolTarget(localSymbols[i], analysis);
+            auto inner = makeSymbolTarget(localSymbols[i + 1], analysis);
+            if (outer && inner) {
+                targets.emplace_back(
+                    DefinitionInfo::PortConnectionTarget{std::move(*outer), std::move(*inner)});
+            }
+            else if (outer) {
+                targets.emplace_back(std::move(*outer));
+            }
+            else if (inner) {
+                targets.emplace_back(std::move(*inner));
+            }
+        }
+        if (!targets.empty())
+            return DefinitionInfo{std::move(targets)};
+    }
+
+    std::vector<DefinitionInfo::Target> targets;
+    std::vector<const ast::Symbol*> foldedSymbols;
+    for (const auto& [symbol, symbolAnalysis] : symbols) {
+        if (std::ranges::find(foldedSymbols, symbol) != foldedSymbols.end())
+            continue;
+
+        auto target = makeSymbolTarget(symbol, symbolAnalysis);
+        if (!target)
+            continue;
+
+        if (auto* modportPort = symbol->as_if<ast::ModportPortSymbol>()) {
+            if (modportPort->internalSymbol)
+                foldedSymbols.push_back(modportPort->internalSymbol);
+        }
+        targets.emplace_back(std::move(*target));
+    }
+
+    if (targets.empty())
+        return {};
+    return DefinitionInfo{std::move(targets)};
 }
 
 std::optional<lsp::Hover> ServerDriver::getDocHover(const URI& uri, const lsp::Position& position) {

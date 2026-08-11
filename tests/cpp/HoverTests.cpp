@@ -5,6 +5,15 @@
 #include "utils/ServerHarness.h"
 #include <cstdlib>
 
+static size_t countSubstring(std::string_view text, std::string_view substring) {
+    size_t count = 0;
+    for (size_t pos = 0; (pos = text.find(substring, pos)) != std::string_view::npos;
+         pos += substring.size()) {
+        count++;
+    }
+    return count;
+}
+
 TEST_CASE("HoverMacroExpansion") {
     ServerHarness server;
 
@@ -127,6 +136,227 @@ endmodule
     CAPTURE(content.value);
     CHECK(content.value.find("**TypeAlias** `T`") != std::string::npos);
     CHECK(content.value.find("Value: `byte`") != std::string::npos);
+}
+
+TEST_CASE("HoverAndGotoImplicitPortShowBothSides") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+module leaf(input logic [7:0] shared);
+endmodule
+
+module top;
+    logic [7:0] shared;
+    leaf u(.shared);
+endmodule
+)");
+
+    auto cursor = doc.after("u(.");
+    auto info = doc.getDefinitionInfoAt(cursor.m_offset);
+    REQUIRE(info);
+    REQUIRE(info->targets.size() == 1);
+    auto* portTarget = std::get_if<server::DefinitionInfo::PortConnectionTarget>(
+        &info->targets.front());
+    REQUIRE(portTarget);
+
+    auto defs = cursor.getDefinitions();
+    REQUIRE(defs.size() == 2);
+    CHECK(defs[0].targetSelectionRange.start.line > defs[1].targetSelectionRange.start.line);
+
+    auto hover = doc.getHoverAt(cursor.m_offset);
+    REQUIRE(hover);
+    auto content = rfl::get<lsp::MarkupContent>(hover->contents).value;
+    CHECK(content.find("input logic [7:0] shared") != std::string::npos);
+    CHECK(content.find("logic [7:0] shared") != std::string::npos);
+    CHECK(countSubstring(content, "Type: `logic[7:0]`") == 1);
+    CHECK(countSubstring(content, "Width: `8`") == 1);
+    auto outerLabel = content.find("**Outer**");
+    auto innerLabel = content.find("**Inner**");
+    CHECK(outerLabel != std::string::npos);
+    CHECK(innerLabel != std::string::npos);
+    CHECK(outerLabel < innerLabel);
+}
+
+TEST_CASE("HoverAndGotoForwardedInterfacePortShowBothSides") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+interface bus;
+    logic data;
+endinterface
+
+module leaf(bus shared);
+endmodule
+
+module top(bus shared);
+    leaf u(.shared);
+endmodule
+)");
+
+    auto cursor = doc.after("u(.");
+    auto info = doc.getDefinitionInfoAt(cursor.m_offset);
+    REQUIRE(info);
+    REQUIRE(info->targets.size() == 1);
+    auto* portTarget = std::get_if<server::DefinitionInfo::PortConnectionTarget>(
+        &info->targets.front());
+    REQUIRE(portTarget);
+    CHECK(portTarget->outer.symbol->kind == slang::ast::SymbolKind::InterfacePort);
+    CHECK(portTarget->inner.symbol->kind == slang::ast::SymbolKind::InterfacePort);
+
+    auto location = doc.getLocation(cursor.m_offset);
+    REQUIRE(location);
+    auto analysis = doc.doc->getAnalysis();
+    auto* token = analysis->getWordTokenAt(*location);
+    REQUIRE(token);
+    CHECK(analysis->getSymbolAtToken(token) == portTarget->inner.symbol);
+
+    auto hover = doc.getHoverAt(cursor.m_offset);
+    REQUIRE(hover);
+    auto content = rfl::get<lsp::MarkupContent>(hover->contents).value;
+    CHECK(countSubstring(content, "**Outer**") == 1);
+    CHECK(countSubstring(content, "**Inner**") == 1);
+}
+
+TEST_CASE("HoverAndGotoModportShowTypeAndDirection") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+interface bus;
+    logic [7:0] data;
+    assign data = '0;
+    modport initiator(output data);
+endinterface
+
+module top;
+    bus b();
+endmodule
+)");
+
+    auto cursor = doc.before("data);");
+    auto info = doc.getDefinitionInfoAt(cursor.m_offset);
+    REQUIRE(info);
+    REQUIRE(info->targets.size() == 1);
+    auto* symbolTarget = std::get_if<server::DefinitionInfo::SymbolTarget>(&info->primaryTarget());
+    REQUIRE(symbolTarget);
+    CHECK(symbolTarget->symbol->kind == slang::ast::SymbolKind::ModportPort);
+    CHECK(symbolTarget->syntaxes.size() == 2);
+
+    auto defs = cursor.getDefinitions();
+    CHECK(defs.size() == 2);
+
+    auto hover = doc.getHoverAt(cursor.m_offset);
+    REQUIRE(hover);
+    auto content = rfl::get<lsp::MarkupContent>(hover->contents).value;
+    CHECK(content.find("logic [7:0] data") != std::string::npos);
+    CHECK(content.find("output data") != std::string::npos);
+    CHECK(countSubstring(content, "**ModportPort** `data`") == 1);
+    CHECK(countSubstring(content, "Type: `logic[7:0]`") == 1);
+    CHECK(countSubstring(content, "Width: `8`") == 1);
+    CHECK(countSubstring(content, "Driven by continuous assignment") == 1);
+}
+
+TEST_CASE("HoverAndGotoExplicitModportPrototypeRetainsDeclaration") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+interface bus;
+    task transfer(input logic value);
+    endtask
+    modport matching(import task transfer(input logic value));
+    modport mismatched(import task transfer(input int value));
+endinterface
+)");
+
+    auto matching = doc.after("matching(import task ");
+    auto matchingInfo = doc.getDefinitionInfoAt(matching.m_offset);
+    REQUIRE(matchingInfo);
+    REQUIRE(matchingInfo->targets.size() == 2);
+    CHECK(std::get<server::DefinitionInfo::SymbolTarget>(matchingInfo->targets[0]).symbol->kind ==
+          slang::ast::SymbolKind::MethodPrototype);
+    CHECK(std::get<server::DefinitionInfo::SymbolTarget>(matchingInfo->targets[1]).symbol->kind ==
+          slang::ast::SymbolKind::Subroutine);
+    auto matchingLocation = doc.getLocation(matching.m_offset);
+    REQUIRE(matchingLocation);
+    auto analysis = doc.doc->getAnalysis();
+    auto* matchingToken = analysis->getWordTokenAt(*matchingLocation);
+    REQUIRE(matchingToken);
+    CHECK(analysis->getSymbolAtToken(matchingToken) ==
+          std::get<server::DefinitionInfo::SymbolTarget>(matchingInfo->targets[1]).symbol);
+
+    auto matchingDefs = matching.getDefinitions();
+    REQUIRE(matchingDefs.size() == 2);
+    CHECK(matchingDefs[0].targetSelectionRange.start.line == 4);
+    CHECK(matchingDefs[1].targetSelectionRange.start.line == 2);
+
+    auto matchingHover = doc.getHoverAt(matching.m_offset);
+    REQUIRE(matchingHover);
+    auto matchingContent = rfl::get<lsp::MarkupContent>(matchingHover->contents).value;
+    CHECK(matchingContent.find("**MethodPrototype** `transfer` in `bus.matching`") !=
+          std::string::npos);
+    CHECK(matchingContent.find("**Subroutine** `transfer` in `bus`") != std::string::npos);
+    CHECK(matchingContent.find("task transfer(input logic value);") != std::string::npos);
+
+    auto mismatched = doc.after("mismatched(import task ");
+    auto mismatchedInfo = doc.getDefinitionInfoAt(mismatched.m_offset);
+    REQUIRE(mismatchedInfo);
+    REQUIRE(mismatchedInfo->targets.size() == 1);
+    CHECK(std::get<server::DefinitionInfo::SymbolTarget>(mismatchedInfo->targets[0]).symbol->kind ==
+          slang::ast::SymbolKind::MethodPrototype);
+    auto mismatchedLocation = doc.getLocation(mismatched.m_offset);
+    REQUIRE(mismatchedLocation);
+    auto* mismatchedToken = analysis->getWordTokenAt(*mismatchedLocation);
+    REQUIRE(mismatchedToken);
+    CHECK(analysis->getSymbolAtToken(mismatchedToken) ==
+          std::get<server::DefinitionInfo::SymbolTarget>(mismatchedInfo->targets[0]).symbol);
+
+    auto mismatchedDefs = mismatched.getDefinitions();
+    REQUIRE(mismatchedDefs.size() == 1);
+    CHECK(mismatchedDefs[0].targetSelectionRange.start.line == 5);
+
+    auto mismatchedHover = doc.getHoverAt(mismatched.m_offset);
+    REQUIRE(mismatchedHover);
+    auto mismatchedContent = rfl::get<lsp::MarkupContent>(mismatchedHover->contents).value;
+    CHECK(mismatchedContent.find("**MethodPrototype** `transfer` in `bus.mismatched`") !=
+          std::string::npos);
+    CHECK(mismatchedContent.find("task transfer(input int value)") != std::string::npos);
+}
+
+TEST_CASE("HoverGeneratedSymbolsShowsEveryValue") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+module top;
+    for (genvar i = 0; i < 3; i++) begin : g
+        localparam int VALUE = i;
+        logic [VALUE:0] data;
+    end
+endmodule
+)");
+
+    auto checkAllValues = [&](Cursor cursor) {
+        auto info = doc.getDefinitionInfoAt(cursor.m_offset);
+        REQUIRE(info);
+        CHECK(info->targets.size() == 3);
+
+        auto hover = doc.getHoverAt(cursor.m_offset);
+        REQUIRE(hover);
+        auto content = rfl::get<lsp::MarkupContent>(hover->contents).value;
+        CHECK(content.find("Value: `0`") != std::string::npos);
+        CHECK(content.find("Value: `1`") != std::string::npos);
+        CHECK(content.find("Value: `2`") != std::string::npos);
+
+        // All elaborated symbols share the same source declaration.
+        CHECK(cursor.getDefinitions().size() == 1);
+    };
+
+    checkAllValues(doc.before("VALUE ="));
+    checkAllValues(doc.before("VALUE:0"));
+
+    auto genvarHover = doc.getHoverAt(doc.after("VALUE = ").m_offset);
+    REQUIRE(genvarHover);
+    auto genvarContent = rfl::get<lsp::MarkupContent>(genvarHover->contents).value;
+    CHECK(genvarContent.find("Value range: `0` through `2`") != std::string::npos);
+    CHECK(genvarContent.find("Value: `0`") == std::string::npos);
 }
 
 TEST_CASE("HoverPlaintextDocComments") {

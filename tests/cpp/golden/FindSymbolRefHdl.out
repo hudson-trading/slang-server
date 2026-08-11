@@ -504,7 +504,7 @@ module TestModule #(
 
             bus_follower.ready <= 1'b0;
             ^^^^^^^^^^^^ Ref -> **InterfacePort** `bus_follower` in `TestModule`  \n\\n\\n\---\n\\n\`bus_if.follower bus_follower`
-                         ^^^^^ Ref -> **ModportPort** `ready` in `bus_if.follower`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`output ready`
+                         ^^^^^ Ref -> **ModportPort** `ready` in `bus_if.follower`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`output ready`\n\\n\---\n\\n\`logic ready;`
 
         end else begin
 
@@ -512,18 +512,18 @@ module TestModule #(
 
             bus_follower.ready <= 1'b1;
             ^^^^^^^^^^^^ Ref -> **InterfacePort** `bus_follower` in `TestModule`  \n\\n\\n\---\n\\n\`bus_if.follower bus_follower`
-                         ^^^^^ Ref -> **ModportPort** `ready` in `bus_if.follower`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`output ready`
+                         ^^^^^ Ref -> **ModportPort** `ready` in `bus_if.follower`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`output ready`\n\\n\---\n\\n\`logic ready;`
 
             if (bus_follower.valid && bus_follower.write_enable) begin
                 ^^^^^^^^^^^^ Ref -> **InterfacePort** `bus_follower` in `TestModule`  \n\\n\\n\---\n\\n\`bus_if.follower bus_follower`
-                             ^^^^^ Ref -> **ModportPort** `valid` in `bus_if.follower`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input clk, rst, valid, addr, data, write_enable`
+                             ^^^^^ Ref -> **ModportPort** `valid` in `bus_if.follower`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input clk, rst, valid, addr, data, write_enable`\n\\n\---\n\\n\`logic valid;`
                                       ^^^^^^^^^^^^ Ref -> **InterfacePort** `bus_follower` in `TestModule`  \n\\n\\n\---\n\\n\`bus_if.follower bus_follower`
-                                                   ^^^^^^^^^^^^ Ref -> **ModportPort** `write_enable` in `bus_if.follower`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input clk, rst, valid, addr, data, write_enable`
+                                                   ^^^^^^^^^^^^ Ref -> **ModportPort** `write_enable` in `bus_if.follower`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input clk, rst, valid, addr, data, write_enable`\n\\n\---\n\\n\`logic write_enable;`
 
                 data_out <= bus_follower.data[7:0]; // Convert to data_t size
                 ^^^^^^^^ Ref -> **Output Variable** `data_out` in `TestModule`  \n\Type: `data_t` (aka `logic[7:0]`)  \n\Width: `8`  \n\\n\\n\---\n\\n\`output test_pkg::data_t data_out`
                             ^^^^^^^^^^^^ Ref -> **InterfacePort** `bus_follower` in `TestModule`  \n\\n\\n\---\n\\n\`bus_if.follower bus_follower`
-                                         ^^^^ Ref -> **ModportPort** `data` in `bus_if.follower`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input clk, rst, valid, addr, data, write_enable`
+                                         ^^^^ Ref -> **ModportPort** `data` in `bus_if.follower`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input clk, rst, valid, addr, data, write_enable`\n\\n\---\n\\n\`data_t data;`
 
             end
 
@@ -539,25 +539,25 @@ module TestModule #(
 
         bus_master.valid <= 1'b0;
         ^^^^^^^^^^ Ref -> **InterfacePort** `bus_master` in `TestModule`  \n\\n\\n\---\n\\n\`bus_if.master bus_master`
-                   ^^^^^ Ref -> **ModportPort** `valid` in `bus_if.master`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`output valid, addr, data, write_enable`
+                   ^^^^^ Ref -> **ModportPort** `valid` in `bus_if.master`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`output valid, addr, data, write_enable`\n\\n\---\n\\n\`logic valid;`
 
         bus_master.write_enable <= 1'b0;
         ^^^^^^^^^^ Ref -> **InterfacePort** `bus_master` in `TestModule`  \n\\n\\n\---\n\\n\`bus_if.master bus_master`
-                   ^^^^^^^^^^^^ Ref -> **ModportPort** `write_enable` in `bus_if.master`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`output valid, addr, data, write_enable`
+                   ^^^^^^^^^^^^ Ref -> **ModportPort** `write_enable` in `bus_if.master`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`output valid, addr, data, write_enable`\n\\n\---\n\\n\`logic write_enable;`
 
         bus_master.addr = width_port[0];
         ^^^^^^^^^^ Ref -> **InterfacePort** `bus_master` in `TestModule`  \n\\n\\n\---\n\\n\`bus_if.master bus_master`
-                   ^^^^ Ref -> **ModportPort** `addr` in `bus_if.master`  \n\Type: `logic[31:0]`  \n\Width: `32`  \n\\n\\n\---\n\\n\`output valid, addr, data, write_enable`
+                   ^^^^ Ref -> **ModportPort** `addr` in `bus_if.master`  \n\Type: `logic[31:0]`  \n\Width: `32`  \n\\n\\n\---\n\\n\`output valid, addr, data, write_enable`\n\\n\---\n\\n\`logic [ADDR_WIDTH-1:0] addr;`
                           ^^^^^^^^^^ Ref -> **Input Net** `width_port` in `TestModule`  \n\Type: `logic[31:0]`  \n\Width: `32`  \n\\n\\n\---\n\\n\some useful info  \n\  \n\\n\\n\---\n\\n\`input logic [test_pkg::WIDTH-1:0] width_port`
 
         bus_master.data <= state;
         ^^^^^^^^^^ Ref -> **InterfacePort** `bus_master` in `TestModule`  \n\\n\\n\---\n\\n\`bus_if.master bus_master`
-                   ^^^^ Ref -> **ModportPort** `data` in `bus_if.master`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output valid, addr, data, write_enable`
+                   ^^^^ Ref -> **ModportPort** `data` in `bus_if.master`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output valid, addr, data, write_enable`\n\\n\---\n\\n\`data_t data;`
                            ^^^^^ Ref -> **Variable** `state` in `TestModule`  \n\Type: Enum `state_t` (`logic[1:0]`)  \n\Width: `2`  \n\\n\\n\---\n\\n\`test_pkg::state_t state, state_next;`\n\\n\---\n\\n\Driven by always_ff at [hdl_test.sv:132:5](<file:///tests/data/hdl_test.sv#L132,5>)  \n\`always_ff @(posedge clk) begin\n\    if (rst) begin\n\        state   <= test_pkg::STATE_A;\n\        counter <= '0;\n\    end else begin\n\        state   <= state_next;\n\        counter <= counter + 1'b1;\n\        if (thing) begin\n\            $display("Do this thing");\n\        end\n\    end\n\end`
 
         bus_master.data <= pkt_array[0].id;
         ^^^^^^^^^^ Ref -> **InterfacePort** `bus_master` in `TestModule`  \n\\n\\n\---\n\\n\`bus_if.master bus_master`
-                   ^^^^ Ref -> **ModportPort** `data` in `bus_if.master`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output valid, addr, data, write_enable`
+                   ^^^^ Ref -> **ModportPort** `data` in `bus_if.master`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output valid, addr, data, write_enable`\n\\n\---\n\\n\`data_t data;`
                            ^^^^^^^^^ Ref -> **Input Net** `pkt_array` in `TestModule`  \n\Type: `packet_t$[2]`  \n\\n\\n\---\n\\n\`input test_pkg::packet_t pkt_array[2]`
                                         ^^ Ref -> **Field** `id` in `test_pkg::packet_t`  \n\Type: `id_t` (aka `logic[31:0]`)  \n\Width: `32`  \n\\n\\n\---\n\\n\`id_t id;`
 

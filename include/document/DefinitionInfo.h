@@ -11,6 +11,7 @@
 #include "document/ShallowAnalysis.h"
 #include "lsp/LspTypes.h"
 #include <string>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -32,12 +33,6 @@ class Document;
 }
 
 struct DefinitionInfo {
-    enum class Kind {
-        Symbol,
-        Macro,
-        SystemSubroutine,
-    };
-
     struct SyntaxTarget {
         // The syntax that the token refers to.
         const slang::syntax::SyntaxNode* node;
@@ -61,18 +56,35 @@ struct DefinitionInfo {
     };
 
     struct SymbolTarget {
-        SyntaxTarget syntax;
+        // A semantic symbol can have more than one declaration site that is useful to display.
+        // For example, a modport port has both its directional declaration and the declaration of
+        // the underlying typed symbol.
+        std::vector<SyntaxTarget> syntaxes;
         const slang::ast::Symbol* symbol;
         std::shared_ptr<ShallowAnalysis> analysis;
 
-        const slang::parsing::Token& nameToken() const { return syntax.nameToken; }
+        const slang::parsing::Token& nameToken() const { return syntaxes.front().nameToken; }
 
         bool operator==(const SymbolTarget& other) const {
-            return syntax == other.syntax && symbol == other.symbol;
+            return syntaxes == other.syntaxes && symbol == other.symbol;
         }
 
-        lsp::MarkupContent getHover(const slang::SourceManager& sm, slang::BufferID docBuffer,
-                                    const Config::HoverConfig& hovers) const;
+        markup::Document getHover(const slang::SourceManager& sm, slang::BufferID docBuffer,
+                                  const Config::HoverConfig& hovers) const;
+
+        std::vector<lsp::LocationLink> getDefinition(const slang::SourceManager& sm) const;
+    };
+
+    struct PortConnectionTarget {
+        SymbolTarget outer;
+        SymbolTarget inner;
+
+        const slang::parsing::Token& nameToken() const { return outer.nameToken(); }
+
+        bool operator==(const PortConnectionTarget&) const = default;
+
+        markup::Document getHover(const slang::SourceManager& sm, slang::BufferID docBuffer,
+                                  const Config::HoverConfig& hovers) const;
 
         std::vector<lsp::LocationLink> getDefinition(const slang::SourceManager& sm) const;
     };
@@ -95,6 +107,9 @@ struct DefinitionInfo {
         // Expanded text for macro usages (what the macro expands to at this call site).
         std::string macroExpansionText;
 
+        MacroTarget(Definition definition, const slang::syntax::SyntaxNode& referenceSyntax,
+                    const ShallowAnalysis& analysis);
+
         const slang::parsing::Token& nameToken() const {
             return std::visit([](const auto& definition)
                                   -> const slang::parsing::Token& { return definition.nameToken; },
@@ -111,8 +126,8 @@ struct DefinitionInfo {
             return definition == other.definition && macroExpansionText == other.macroExpansionText;
         }
 
-        lsp::MarkupContent getHover(const slang::SourceManager& sm, slang::BufferID docBuffer,
-                                    const Config::HoverConfig& hovers) const;
+        markup::Document getHover(const slang::SourceManager& sm, slang::BufferID docBuffer,
+                                  const Config::HoverConfig& hovers) const;
 
         std::vector<lsp::LocationLink> getDefinition(const slang::SourceManager& sm) const;
     };
@@ -129,62 +144,47 @@ struct DefinitionInfo {
                    isTask == other.isTask;
         }
 
-        lsp::MarkupContent getHover(const slang::SourceManager& sm, slang::BufferID docBuffer,
-                                    const Config::HoverConfig& hovers) const;
+        markup::Document getHover(const slang::SourceManager& sm, slang::BufferID docBuffer,
+                                  const Config::HoverConfig& hovers) const;
 
         std::vector<lsp::LocationLink> getDefinition(const slang::SourceManager& sm) const;
     };
 
-    using Target = std::variant<SymbolTarget, MacroTarget, SystemSubroutineTarget>;
+    using Target =
+        std::variant<SymbolTarget, PortConnectionTarget, MacroTarget, SystemSubroutineTarget>;
 
-    // The thing this token resolves to.
-    Target target;
+    // The things this token resolves to, in semantic / elaboration order.
+    std::vector<Target> targets;
 
-    Kind kind() const {
-        switch (target.index()) {
-            case 0:
-                return Kind::Symbol;
-            case 1:
-                return Kind::Macro;
-            default:
-                return Kind::SystemSubroutine;
-        }
-    }
+    explicit DefinitionInfo(Target target) { targets.push_back(std::move(target)); }
+    explicit DefinitionInfo(std::vector<Target> targets) : targets(std::move(targets)) {}
+
+    const Target& primaryTarget() const { return targets.front(); }
+    Target& primaryTarget() { return targets.front(); }
 
     const slang::parsing::Token& nameToken() const {
         return std::visit(
             [](const auto& target) -> const slang::parsing::Token& { return target.nameToken(); },
-            target);
+            primaryTarget());
     }
-
-    const SyntaxTarget* syntaxTarget() const {
-        if (auto* sym = std::get_if<SymbolTarget>(&target)) {
-            return &sym->syntax;
-        }
-        if (auto* macro = std::get_if<MacroTarget>(&target)) {
-            return macro->syntaxTarget();
-        }
-        return nullptr;
-    }
-
-    const SymbolTarget* symbolTarget() const { return std::get_if<SymbolTarget>(&target); }
 
     const slang::ast::Symbol* symbol() const {
-        if (auto* sym = symbolTarget()) {
-            return sym->symbol;
-        }
+        if (auto* symbol = std::get_if<SymbolTarget>(&primaryTarget()))
+            return symbol->symbol;
+        if (auto* port = std::get_if<PortConnectionTarget>(&primaryTarget()))
+            return port->outer.symbol;
         return nullptr;
     }
 
-    MacroTarget* macro() { return std::get_if<MacroTarget>(&target); }
+    MacroTarget* macro() { return std::get_if<MacroTarget>(&primaryTarget()); }
 
-    const MacroTarget* macro() const { return std::get_if<MacroTarget>(&target); }
+    const MacroTarget* macro() const { return std::get_if<MacroTarget>(&primaryTarget()); }
 
     const SystemSubroutineTarget* systemSubroutine() const {
-        return std::get_if<SystemSubroutineTarget>(&target);
+        return std::get_if<SystemSubroutineTarget>(&primaryTarget());
     }
 
-    bool operator==(const DefinitionInfo& other) const { return target == other.target; }
+    bool operator==(const DefinitionInfo& other) const { return targets == other.targets; }
 
     bool operator!=(const DefinitionInfo& other) const { return !(*this == other); }
 
@@ -192,8 +192,7 @@ struct DefinitionInfo {
     lsp::MarkupContent getHover(const slang::SourceManager& sm, slang::BufferID docBuffer,
                                 const Config::HoverConfig& hovers) const;
 
-    /// Resolve goto-definition links for this definition. May return multiple in the future
-    /// (e.g. for symbols with several declarations).
+    /// Resolve and deduplicate goto-definition links for every target and declaration site.
     std::vector<lsp::LocationLink> getDefinition(const slang::SourceManager& sm) const;
 };
 

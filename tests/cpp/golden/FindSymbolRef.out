@@ -543,7 +543,7 @@ macromodule m3;
                                ^ Ref -> **Genvar** `i` in `m3.genblk1`  \n\\n\\n\---\n\\n\`i`
 
         if (i == 7) begin
-            ^ Ref -> **Parameter** `i` in `m3.genblk1`  \n\Type: `integer`  \n\Value: `8`  \n\\n\\n\---\n\\n\`i`
+            ^ Ref -> **Genvar** `i` in `m3.genblk1`  \n\Type: `integer`  \n\Value range: `0` through `8`  \n\\n\\n\---\n\\n\`i`
 
         end
 
@@ -829,14 +829,14 @@ interface Iface;
     modport m(export foo, function void bar(int, logic), task baz, export func);
             ^ Sym m : Modport
                      ^^^ Sym foo : MethodPrototype
-                                        ^^^ Sym bar : Subroutine
-                                                              ^^^ Sym baz : Subroutine
+                                        ^^^ Sym bar : MethodPrototype
+                                                              ^^^ Sym baz : MethodPrototype
                                                                           ^^^^ Sym func : MethodPrototype
 
     modport n(import function void func(int), import task t2);
             ^ Sym n : Modport
-                                   ^^^^ Sym func : Subroutine
-                                                          ^^ Sym t2 : Subroutine
+                                   ^^^^ Sym func : MethodPrototype
+                                                          ^^ Sym t2 : MethodPrototype
 
     modport o(export t2);
             ^ Sym o : Modport
