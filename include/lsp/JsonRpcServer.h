@@ -49,32 +49,45 @@ struct HandlerTiming {
 };
 
 inline void logHandlerTiming(const HandlerTiming& timing) {
+    if (timing.kind == HandlerTiming::Kind::None)
+        return;
+
+    std::string body;
+    bool timed = false;
     switch (timing.kind) {
         case HandlerTiming::Kind::None:
-            break;
+            return;
         case HandlerTiming::Kind::NotificationOk:
-            fmt::print(stderr, "<--- {}\n---- {} ({:.3f}ms)\n\n", timing.method, timing.method,
-                       timing.ms);
+            body = fmt::format("<--- {}\n---- {}", timing.method, timing.method);
+            timed = true;
             break;
         case HandlerTiming::Kind::NotificationError:
-            fmt::print(stderr, "<--- {}\n-/-> {} Error: {} ({:.3f}ms)\n\n", timing.method,
-                       timing.method, timing.error, timing.ms);
+            body = fmt::format("<--- {}\n-/-> {} Error: {}", timing.method, timing.method,
+                               timing.error);
+            timed = true;
             break;
         case HandlerTiming::Kind::RequestOk:
-            fmt::print(stderr, "<--- {} {}\n---> {} {} ({:.3f}ms)\n\n", timing.method, timing.id,
-                       timing.method, timing.id, timing.ms);
+            body = fmt::format("<--- {} {}\n---> {} {}", timing.method, timing.id, timing.method,
+                               timing.id);
+            timed = true;
             break;
         case HandlerTiming::Kind::RequestError:
-            fmt::print(stderr, "<--- {} {}\n-/-> {} {} Error: {} ({:.3f}ms)\n\n", timing.method,
-                       timing.id, timing.method, timing.id, timing.error, timing.ms);
+            body = fmt::format("<--- {} {}\n-/-> {} {} Error: {}", timing.method, timing.id,
+                               timing.method, timing.id, timing.error);
+            timed = true;
             break;
         case HandlerTiming::Kind::Ignored:
-            fmt::print(stderr, "<-/- {} (ignoring threaded req)\n\n", timing.method);
+            body = fmt::format("<-/- {} (ignoring threaded req)", timing.method);
             break;
         case HandlerTiming::Kind::NotFound:
-            fmt::print(stderr, "<-/- {} (not found)\n\n", timing.method);
+            body = fmt::format("<-/- {} (not found)", timing.method);
             break;
     }
+
+    if (timed)
+        fmt::print(stderr, "{} ({:.3f}ms)\n\n", body, timing.ms);
+    else
+        fmt::print(stderr, "{}\n\n", body);
 }
 } // namespace
 
