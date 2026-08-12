@@ -21,6 +21,7 @@
 #include <rfl/json/write.hpp>
 #include <rfl/visit.hpp>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <variant>
 
@@ -41,9 +42,13 @@ struct HandlerTiming {
     };
 
     Kind kind = Kind::None;
-    std::string method;
-    std::string id;
+    /// Views into the request still alive in @c handleMessage.
+    std::string_view method;
+    std::string_view id;
+    /// Owned: @c exception::what() does not outlive the catch block.
     std::string error;
+    /// Backing store when the request id is an int.
+    std::string idStorage;
     double ms = 0;
 };
 
@@ -151,7 +156,8 @@ protected:
 
     /// Run the handler with no logging. Caller must hold @c mutex for stdout
     /// sends; format @p timing only after releasing it.
-    std::variant<rfl::Generic, RpcError, std::nullopt_t> processMessage(RpcRequest request,
+    /// @p request must outlive @p timing.method (and logging after unlock).
+    std::variant<rfl::Generic, RpcError, std::nullopt_t> processMessage(const RpcRequest& request,
                                                                         HandlerTiming& timing) {
         timing.method = request.method;
 
@@ -184,14 +190,15 @@ protected:
         }
 
         // Request
-        timing.id = rfl::visit(
-            [&](auto&& id_) -> std::string {
+        rfl::visit(
+            [&](auto&& id_) {
                 using T = typename std::decay_t<decltype(id_)>;
                 if constexpr (std::is_same_v<T, int>) {
-                    return std::to_string(id_);
+                    timing.idStorage = std::to_string(id_);
+                    timing.id = timing.idStorage;
                 }
                 else if constexpr (std::is_same_v<T, std::string>) {
-                    return id_;
+                    timing.id = id_;
                 }
                 else {
                     static_assert(rfl::always_false_v<T>, "Not all cases were covered.");
