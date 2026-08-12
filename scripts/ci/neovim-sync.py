@@ -3,14 +3,33 @@
 import argparse
 import logging
 import os
+import re
 import subprocess
 import sys
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from git import Repo
 from git.util import Actor
-from tempfile import TemporaryDirectory
 
 logger = logging.getLogger()
+
+ROCKSPEC_PATTERN = re.compile(
+    r"^slang-server\.nvim-(?P<version>\d+(?:\.\d+)*)-\d+\.rockspec$"
+)
+
+
+def rockspec_version(directory):
+    rockspecs = list(Path(directory).glob("slang-server.nvim-*.rockspec"))
+    if len(rockspecs) != 1:
+        raise ValueError(
+            f"Expected one rockspec in {directory}, found {len(rockspecs)}"
+        )
+    rockspec = rockspecs[0]
+    match = ROCKSPEC_PATTERN.match(rockspec.name)
+    if not match:
+        raise ValueError(f"Invalid rockspec filename: {rockspec.name}")
+    return match.group("version")
 
 
 def main():
@@ -51,6 +70,10 @@ https://github.com/hudson-trading/slang-server/commit/{this_commit}
     temp_dir = TemporaryDirectory()
     plugin_repo = Repo.clone_from(clone_url, temp_dir.name)
     plugin_remote = plugin_repo.remote()
+    source_version = rockspec_version("clients/neovim")
+    mirrored_version = rockspec_version(temp_dir.name)
+    version = source_version if source_version != mirrored_version else None
+
     branch_ref = f"origin/{branch}"
     if branch == "main":
         pass
@@ -79,12 +102,21 @@ https://github.com/hudson-trading/slang-server/commit/{this_commit}
 
     plugin_repo.index.commit(commit_message, author=author)
 
+    tag = None
+    if version and branch == "main":
+        tag = f"v{version}"
+        logging.warning(f"Rockspec version changed; creating tag {tag}")
+        plugin_repo.create_tag(tag)
+
     if args.dry_run:
         logging.warning("Dry run, not pushing")
         return
 
     logging.warning(f"Pushing to {branch}")
-    plugin_remote.push(f"HEAD:{branch}")
+    refspecs = [f"HEAD:{branch}"]
+    if tag:
+        refspecs.append(f"refs/tags/{tag}:refs/tags/{tag}")
+    plugin_remote.push(refspecs)
 
 
 if __name__ == "__main__":

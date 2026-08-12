@@ -1,6 +1,6 @@
 rockspec_format = "3.0"
 package = "slang-server.nvim"
-version = "scm-1"
+version = "0.2.1-1"
 source = {
    url = "git+https://github.com/hudson-trading/slang-server.nvim",
 }
