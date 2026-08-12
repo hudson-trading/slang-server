@@ -44,6 +44,14 @@ void verifyReferenceTokens(ServerHarness& server, const std::vector<lsp::Locatio
     }
 }
 
+std::vector<lsp::uint> getReferenceLines(const std::vector<lsp::Location>& locations) {
+    std::vector<lsp::uint> result;
+    for (const auto& location : locations)
+        result.push_back(location.range.start.line);
+    std::ranges::sort(result);
+    return result;
+}
+
 TEST_CASE("FindReferences - Simple Variable") {
     ServerHarness server("indexer_test");
     auto hdl = server.openFile("references_test.sv");
@@ -1083,4 +1091,110 @@ TEST_CASE("FindReferences - Port Across Instance Boundary") {
     // 5. Named port connection: .data_out(result)
     CHECK(refs->size() == 5);
     verifyReferenceTokens(server, *refs, "data_out");
+}
+
+TEST_CASE("FindReferences - Implicit Port Connection Includes Both Sides") {
+    ServerHarness server;
+    auto hdl = server.openFile("test.sv", R"(
+typedef struct packed { logic value; } symbol_t;
+
+module first_leaf(input symbol_t tx_pattern);
+    logic first_use;
+    assign first_use = tx_pattern.value;
+endmodule
+
+module second_leaf(input symbol_t tx_pattern);
+    logic second_use;
+    assign second_use = tx_pattern.value;
+endmodule
+
+module top;
+    symbol_t tx_pattern;
+    logic outer_use;
+    assign outer_use = tx_pattern.value;
+    first_leaf first_u(.tx_pattern);
+    second_leaf second_u(.tx_pattern);
+endmodule
+)");
+
+    auto declaration = hdl.after("module top;\n    symbol_t tx_");
+    auto refs = server.getDocReferences(lsp::ReferenceParams{
+        .context = {.includeDeclaration = true},
+        .textDocument = {.uri = hdl.m_uri},
+        .position = declaration.getPosition(),
+    });
+
+    REQUIRE(refs.has_value());
+    CHECK(getReferenceLines(*refs) == std::vector<lsp::uint>{3, 5, 8, 10, 14, 16, 17, 18});
+
+    auto connection = hdl.after("first_u(.");
+    refs = server.getDocReferences(lsp::ReferenceParams{
+        .context = {.includeDeclaration = true},
+        .textDocument = {.uri = hdl.m_uri},
+        .position = connection.getPosition(),
+    });
+
+    REQUIRE(refs.has_value());
+    CHECK(getReferenceLines(*refs) == std::vector<lsp::uint>{3, 5, 8, 10, 14, 16, 17, 18});
+
+    refs = server.getDocReferences(lsp::ReferenceParams{
+        .context = {.includeDeclaration = false},
+        .textDocument = {.uri = hdl.m_uri},
+        .position = connection.getPosition(),
+    });
+
+    REQUIRE(refs.has_value());
+    CHECK(getReferenceLines(*refs) == std::vector<lsp::uint>{5, 10, 16, 17, 18});
+}
+
+TEST_CASE("FindReferences - Modport Port Includes Underlying Signal") {
+    ServerHarness server;
+    auto hdl = server.openFile("test.sv", R"(
+interface bus;
+    logic data;
+    logic sampled;
+    assign sampled = data;
+    modport view(input data);
+endinterface
+
+module top(bus.view b);
+    logic copied;
+    assign copied = b.data;
+endmodule
+)");
+
+    auto modport = hdl.before("data);");
+    auto refs = server.getDocReferences(lsp::ReferenceParams{
+        .context = {.includeDeclaration = true},
+        .textDocument = {.uri = hdl.m_uri},
+        .position = modport.getPosition(),
+    });
+
+    REQUIRE(refs.has_value());
+    CHECK(getReferenceLines(*refs) == std::vector<lsp::uint>{2, 4, 5, 10});
+}
+
+TEST_CASE("FindReferences - Modport Prototype Includes Implementation") {
+    ServerHarness server;
+    auto hdl = server.openFile("test.sv", R"(
+interface bus;
+    task transfer(input logic value);
+    endtask
+    modport view(import task transfer(input logic value));
+endinterface
+
+module top(bus.view b);
+    initial b.transfer(1'b1);
+endmodule
+)");
+
+    auto prototype = hdl.after("view(import task ");
+    auto refs = server.getDocReferences(lsp::ReferenceParams{
+        .context = {.includeDeclaration = true},
+        .textDocument = {.uri = hdl.m_uri},
+        .position = prototype.getPosition(),
+    });
+
+    REQUIRE(refs.has_value());
+    CHECK(getReferenceLines(*refs) == std::vector<lsp::uint>{2, 4, 8});
 }

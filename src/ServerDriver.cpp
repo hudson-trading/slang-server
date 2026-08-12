@@ -1033,8 +1033,8 @@ std::optional<std::vector<lsp::Location>> ServerDriver::getDocReferences(
         return std::nullopt;
     }
 
-    // Get the symbol at the position. Hold the analysis via shared_ptr so that
-    // targetSymbol remains valid even if getAnalysis() is called on this doc again.
+    // Get the symbol at the position. Hold the analysis via shared_ptr so that symbols remain
+    // valid even if getAnalysis() is called on this doc again.
     auto analysis = doc->getAnalysis();
     auto loc = toSourceLocation(doc->getBuffer(), position, sm);
     if (!loc) {
@@ -1046,15 +1046,37 @@ std::optional<std::vector<lsp::Location>> ServerDriver::getDocReferences(
         return std::nullopt;
     }
 
-    const ast::Symbol* targetSymbol = analysis->getSymbolAtToken(declTok);
-    if (!targetSymbol) {
-        return std::nullopt;
-    }
+    struct ReferenceTarget {
+        const ast::Symbol* symbol;
+        std::shared_ptr<ShallowAnalysis> analysis;
+        BufferID analysisBuffer;
+    };
+    SmallVector<ReferenceTarget, 2> targetSymbols;
+    auto addTargetSymbol = [&](const ast::Symbol* symbol,
+                               const std::shared_ptr<ShallowAnalysis>& symbolAnalysis,
+                               BufferID symbolAnalysisBuffer) {
+        if (!symbol)
+            return;
 
-    // A top level of a shallow compilation is an instance body; get the definition instead
-    if (targetSymbol->kind == ast::SymbolKind::InstanceBody) {
-        targetSymbol = &targetSymbol->as<ast::InstanceBodySymbol>().getDefinition();
-    }
+        // A top level of a shallow compilation is an instance body; get the definition instead
+        if (symbol->kind == ast::SymbolKind::InstanceBody)
+            symbol = &symbol->as<ast::InstanceBodySymbol>().getDefinition();
+
+        auto symbolLocation = sm.getFullyOriginalLoc(symbol->location);
+        auto duplicate = std::ranges::any_of(targetSymbols, [&](const ReferenceTarget& existing) {
+            return existing.symbol == symbol ||
+                   (existing.symbol->kind == symbol->kind &&
+                    sm.getFullyOriginalLoc(existing.symbol->location) == symbolLocation);
+        });
+        if (!duplicate)
+            targetSymbols.push_back({symbol, symbolAnalysis, symbolAnalysisBuffer});
+    };
+
+    for (auto* symbol : analysis->getSymbolsAtToken(declTok))
+        addTargetSymbol(symbol, analysis, doc->getBuffer());
+
+    if (targetSymbols.empty())
+        return std::nullopt;
 
     std::vector<lsp::Location> references;
 
@@ -1096,92 +1118,140 @@ std::optional<std::vector<lsp::Location>> ServerDriver::getDocReferences(
         }
     };
 
-    auto targetLoc = sm.getFullyOriginalLoc(targetSymbol->location);
-    auto targetDoc = getDocument(URI::fromFile(sm.getFullPath(targetLoc.buffer())));
+    for (size_t targetIndex = 0; targetIndex < targetSymbols.size(); targetIndex++) {
+        auto target = targetSymbols[targetIndex];
+        const auto* targetSymbol = target.symbol;
+        const auto existingReferenceCount = references.size();
+        auto targetLoc = sm.getFullyOriginalLoc(targetSymbol->location);
+        auto targetDoc = getDocument(URI::fromFile(sm.getFullPath(targetLoc.buffer())));
 
-    // Helper to process referencing files with a given finder function
-    auto processReferencingFiles = [&](std::string_view name, auto&& finder) {
-        for (const auto& filePath : m_indexer.getFilesReferencingSymbol(name)) {
-            if (filePath == targetDoc->getURI().getPath()) {
-                continue;
+        // Helper to process referencing files with a given finder function
+        auto processReferencingFiles = [&](std::string_view name, auto&& finder) {
+            for (const auto& filePath : m_indexer.getFilesReferencingSymbol(name)) {
+                if (targetDoc && filePath == targetDoc->getURI().getPath())
+                    continue;
+
+                URI fileUri = URI::fromFile(filePath.string());
+                auto fileDoc = getDocument(fileUri);
+                if (fileDoc) {
+                    finder(fileDoc->getSyntaxTree()->getMetadata(), fileUri);
+                }
+                else {
+                    ERROR("No doc found for {}", filePath.string());
+                }
             }
-            URI fileUri = URI::fromFile(filePath.string());
-            auto fileDoc = getDocument(fileUri);
-            if (fileDoc) {
-                finder(fileDoc->getSyntaxTree()->getMetadata(), fileUri);
-            }
-            else {
-                ERROR("No doc found for {}", filePath.string());
+        };
+
+        // Add refs in declaration file, and remove declaration if requested
+        if (targetDoc) {
+            auto targetAnalysis = targetDoc->getAnalysis();
+            targetAnalysis->addLocalReferences(references, targetSymbol->location, targetName);
+            if (!includeDeclaration) {
+                auto targetLspLoc = lsp::Location{
+                    .uri = URI::fromFile(sm.getFullPath(targetLoc.buffer())),
+                    .range = toRange(SourceRange(targetLoc, targetLoc + targetSymbol->name.size()),
+                                     sm),
+                };
+                references.erase(std::remove_if(references.begin(), references.end(),
+                                                [&](const lsp::Location& loc) {
+                                                    return loc.uri == targetLspLoc.uri &&
+                                                           loc.range == targetLspLoc.range;
+                                                }),
+                                 references.end());
             }
         }
-    };
 
-    // Add refs in declaration file, and remove declaration if requested
-    if (targetDoc) {
-        auto targetAnalysis = targetDoc->getAnalysis();
-        targetAnalysis->addLocalReferences(references, targetSymbol->location, targetName);
-        if (!includeDeclaration) {
-            auto targetLspLoc = lsp::Location{
-                .uri = URI::fromFile(sm.getFullPath(targetLoc.buffer())),
-                .range = toRange(SourceRange(targetLoc, targetLoc + targetSymbol->name.size()), sm),
-            };
-            references.erase(std::remove_if(references.begin(), references.end(),
-                                            [&](const lsp::Location& loc) {
-                                                return loc.uri == targetLspLoc.uri &&
-                                                       loc.range == targetLspLoc.range;
-                                            }),
-                             references.end());
-        }
-    }
-
-    // Add global references
-    switch (targetSymbol->kind) {
-        case ast::SymbolKind::Instance: {
-            processReferencingFiles(targetSymbol->as<ast::InstanceSymbol>().getDefinition().name,
-                                    findModuleReferencesInDocument);
-        } break;
-        case ast::SymbolKind::InstanceBody: {
-            processReferencingFiles(
-                targetSymbol->as<ast::InstanceBodySymbol>().getDefinition().name,
-                findModuleReferencesInDocument);
-        } break;
-        case ast::SymbolKind::Definition: {
-            const auto& definition = targetSymbol->as<ast::DefinitionSymbol>();
-            if (definition.definitionKind == ast::DefinitionKind::Interface) {
-                processReferencingFiles(definition.name, findInterfaceReferencesInDocument);
-            }
-            else {
-                processReferencingFiles(definition.name, findModuleReferencesInDocument);
-            }
-        } break;
-        case ast::SymbolKind::Package: {
-            processReferencingFiles(targetName, findPkgReferencesInDocument);
-        } break;
-        default: {
-            if (targetSymbol->getParentScope() == nullptr ||
-                targetSymbol->getParentScope()->asSymbol().getParentScope() == nullptr) {
-                ERROR("Target symbol {}: {} has no parent scope, missed kind case for global "
-                      "symbol",
-                      targetName, toString(targetSymbol->kind));
-                break;
-            }
-            auto& parentSymbol = targetSymbol->getParentScope()->asSymbol();
-            auto& gParentSymbol = parentSymbol.getParentScope()->asSymbol();
-            if (gParentSymbol.kind == ast::SymbolKind::CompilationUnit) {
-                // Package and module members
-                addMemberReferences(references, parentSymbol, *targetSymbol);
-            }
-            else if (gParentSymbol.kind == ast::SymbolKind::Package &&
-                     ast::Type::isKind(parentSymbol.kind)) {
-                // submembers in the case of structs and enums
-                addMemberReferences(references, gParentSymbol, *targetSymbol, true);
-            }
-            else {
-                if (targetLoc.buffer() != doc->getBuffer()) {
-                    analysis->addLocalReferences(references, targetSymbol->location, targetName);
+        // Add global references
+        switch (targetSymbol->kind) {
+            case ast::SymbolKind::Instance: {
+                processReferencingFiles(
+                    targetSymbol->as<ast::InstanceSymbol>().getDefinition().name,
+                    findModuleReferencesInDocument);
+            } break;
+            case ast::SymbolKind::InstanceBody: {
+                processReferencingFiles(
+                    targetSymbol->as<ast::InstanceBodySymbol>().getDefinition().name,
+                    findModuleReferencesInDocument);
+            } break;
+            case ast::SymbolKind::Definition: {
+                const auto& definition = targetSymbol->as<ast::DefinitionSymbol>();
+                if (definition.definitionKind == ast::DefinitionKind::Interface) {
+                    processReferencingFiles(definition.name, findInterfaceReferencesInDocument);
+                }
+                else {
+                    processReferencingFiles(definition.name, findModuleReferencesInDocument);
+                }
+            } break;
+            case ast::SymbolKind::Package: {
+                processReferencingFiles(targetName, findPkgReferencesInDocument);
+            } break;
+            default: {
+                if (targetSymbol->getParentScope() == nullptr ||
+                    targetSymbol->getParentScope()->asSymbol().getParentScope() == nullptr) {
+                    ERROR("Target symbol {}: {} has no parent scope, missed kind case for global "
+                          "symbol",
+                          targetName, toString(targetSymbol->kind));
+                    break;
+                }
+                auto& parentSymbol = targetSymbol->getParentScope()->asSymbol();
+                auto& gParentSymbol = parentSymbol.getParentScope()->asSymbol();
+                if (gParentSymbol.kind == ast::SymbolKind::CompilationUnit) {
+                    // Package and module members
+                    addMemberReferences(references, parentSymbol, *targetSymbol);
+                }
+                else if (gParentSymbol.kind == ast::SymbolKind::Package &&
+                         ast::Type::isKind(parentSymbol.kind)) {
+                    // submembers in the case of structs and enums
+                    addMemberReferences(references, gParentSymbol, *targetSymbol, true);
+                }
+                else if (targetLoc.buffer() != target.analysisBuffer) {
+                    target.analysis->addLocalReferences(references, targetSymbol->location,
+                                                        targetName);
                 }
             }
         }
+
+        const auto newReferenceEnd = references.size();
+        for (size_t i = existingReferenceCount; i < newReferenceEnd; i++) {
+            auto referenceDoc = getDocument(references[i].uri);
+            if (!referenceDoc || !referenceDoc->hasAnalysis())
+                continue;
+
+            auto referenceLoc = toSourceLocation(referenceDoc->getBuffer(),
+                                                 references[i].range.start, sm);
+            if (!referenceLoc)
+                continue;
+
+            auto referenceAnalysis = referenceDoc->getAnalysis();
+            auto* referenceToken = referenceAnalysis->syntaxes.getWordTokenAt(*referenceLoc);
+            if (!referenceToken)
+                continue;
+
+            auto referenceSymbols = referenceAnalysis->getSymbolsAtToken(referenceToken);
+            if (referenceSymbols.size() < 2)
+                continue;
+
+            // A multi-symbol reference joins its symbols into the same reference component.
+            for (auto* symbol : referenceSymbols) {
+                addTargetSymbol(symbol, referenceAnalysis, referenceDoc->getBuffer());
+            }
+        }
+
+        auto output = references.begin() + existingReferenceCount;
+        for (auto it = output; it != references.end(); ++it) {
+            auto duplicate = std::any_of(references.begin(),
+                                         references.begin() + existingReferenceCount,
+                                         [&](const lsp::Location& existing) {
+                                             return existing.uri == it->uri &&
+                                                    existing.range == it->range;
+                                         });
+            if (!duplicate) {
+                if (output != it)
+                    *output = std::move(*it);
+                ++output;
+            }
+        }
+        references.erase(output, references.end());
     }
 
     return references.empty() ? std::nullopt : std::make_optional(std::move(references));
