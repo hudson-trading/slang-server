@@ -19,7 +19,7 @@ ROCKSPEC_PATTERN = re.compile(
 )
 
 
-def rockspec_version(directory):
+def rockspec_version(directory, *, required=True):
     rockspecs = list(Path(directory).glob("slang-server.nvim-*.rockspec"))
     if len(rockspecs) != 1:
         raise ValueError(
@@ -28,7 +28,9 @@ def rockspec_version(directory):
     rockspec = rockspecs[0]
     match = ROCKSPEC_PATTERN.match(rockspec.name)
     if not match:
-        raise ValueError(f"Invalid rockspec filename: {rockspec.name}")
+        if required:
+            raise ValueError(f"Invalid rockspec filename: {rockspec.name}")
+        return None
     return match.group("version")
 
 
@@ -71,7 +73,7 @@ https://github.com/hudson-trading/slang-server/commit/{this_commit}
     plugin_repo = Repo.clone_from(clone_url, temp_dir.name)
     plugin_remote = plugin_repo.remote()
     source_version = rockspec_version("clients/neovim")
-    mirrored_version = rockspec_version(temp_dir.name)
+    mirrored_version = rockspec_version(temp_dir.name, required=False)
     version = source_version if source_version != mirrored_version else None
 
     branch_ref = f"origin/{branch}"
