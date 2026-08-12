@@ -38,6 +38,26 @@ The plugin is lazily loaded by default on the first invocation of a `:SlangServe
 
 The default configuration can be found in [config.lua](./lua/slang-server/_core/config.lua). Override options can be defined in the global `vim.g.slang_server_config`, or passed to `opts = {...}` in the lazy.nvim plugin spec.
 
+### Inactive regions
+
+To enable inactive-region highlighting merge the following capabilities and notification handler into your `slang_server` LSP configuration:
+
+```lua
+vim.lsp.config("slang_server", {
+  capabilities = {
+    experimental = {
+      inactiveRegions = {
+        inactiveRegions = true,
+      },
+    },
+  },
+  handlers = {
+    ["textDocument/inactiveRegions"] =
+      require("slang-server._lsp.experimental.inactive_regions").handler,
+  },
+})
+```
+
 ## GitHub Repos
 
 This plugin lives in two repos:
