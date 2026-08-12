@@ -182,7 +182,7 @@ jobs:
         env:
           SLANG_SERVER_BIN: ../../build/${{ matrix.preset }}/bin/slang-server
         with:
-          luarocks_args: 'clients/neovim/slang-server.nvim-scm-1.rockspec --test-type busted -- -C clients/neovim/'
+          luarocks_args: 'clients/neovim/slang-server.nvim-0.2.1-1.rockspec --test-type busted -- -C clients/neovim/'
 
       - name: Package release artifact
         if: inputs.upload_artifacts && !matrix.skip_upload
