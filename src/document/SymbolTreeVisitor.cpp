@@ -10,6 +10,7 @@
 
 #include "lsp/LspTypes.h"
 #include "util/Converters.h"
+#include "util/RequestCancel.h"
 #include <memory>
 #include <optional>
 #include <string>
@@ -31,11 +32,13 @@ SymbolTreeVisitor::SymbolTreeVisitor(const SourceManager& sourceManager) :
 std::vector<lsp::DocumentSymbol> SymbolTreeVisitor::get_symbols(std::shared_ptr<SyntaxTree> tree,
                                                                 const bool macros = true) {
     if (m_symbols.empty()) {
+        lsp::RequestCancelState::throwIfActiveCancelled();
         visit(tree->root());
 
         if (macros) {
             auto tree_macros = tree->getDefinedMacros();
             for (const DefineDirectiveSyntax* const macro : tree_macros) {
+                lsp::RequestCancelState::throwIfActiveCancelled();
                 if (macro && macro->name.range().start() != slang::SourceLocation::NoLocation) {
                     lsp::DocumentSymbol symbol{.kind = lsp::SymbolKind::Constant};
                     bool ok = extract_range(macro->name, symbol);

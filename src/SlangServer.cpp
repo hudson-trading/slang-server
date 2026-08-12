@@ -91,6 +91,7 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
 
     // LSP Lifecycle
     registerInitialized();
+    registerCancelRequest();
 
     INFO("Server started with pid: {}", OS::getpid());
 
@@ -652,6 +653,7 @@ std::optional<std::vector<lsp::DocumentLink>> SlangServer::getDocDocumentLink(
 
 rfl::Variant<std::vector<lsp::SymbolInformation>, std::vector<lsp::DocumentSymbol>, std ::monostate>
 SlangServer::getDocDocumentSymbol(const lsp::DocumentSymbolParams& params) {
+    cancelState.throwIfCancelled();
     auto doc = m_driver->getDocument(params.textDocument.uri);
     if (doc) {
         return doc->getSymbols();
@@ -760,6 +762,7 @@ SlangServer::getWorkspaceSymbol(const lsp::WorkspaceSymbolParams& params) {
     std::vector<lsp::WorkspaceSymbol> result;
 
     m_indexer.forEachSymbol([&](const std::string& name, const Indexer::GlobalSymbolLoc& entry) {
+        cancelState.throwIfCancelled();
         if (!params.query.empty() && !fuzzyMatch(params.query, name))
             return;
         result.emplace_back(
@@ -816,6 +819,7 @@ lsp::CompletionItem SlangServer::getCompletionItemResolve(const lsp::CompletionI
 
 std::optional<std::vector<lsp::InlayHint>> SlangServer::getDocInlayHint(
     const lsp::InlayHintParams& params) {
+    cancelState.throwIfCancelled();
     auto doc = m_driver->getDocument(params.textDocument.uri);
     if (!doc) {
         return {};
@@ -827,11 +831,13 @@ std::optional<std::vector<lsp::InlayHint>> SlangServer::getDocInlayHint(
 
 std::optional<std::vector<lsp::Location>> SlangServer::getDocReferences(
     const lsp::ReferenceParams& params) {
+    cancelState.throwIfCancelled();
     return m_driver->getDocReferences(params.textDocument.uri, params.position,
                                       params.context.includeDeclaration);
 }
 
 std::optional<lsp::WorkspaceEdit> SlangServer::getDocRename(const lsp::RenameParams& params) {
+    cancelState.throwIfCancelled();
     return m_driver->getDocRename(params.textDocument.uri, params.position, params.newName);
 }
 

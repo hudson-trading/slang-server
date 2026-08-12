@@ -12,6 +12,7 @@
 #include "lsp/LspTypes.h"
 #include "util/Converters.h"
 #include "util/Logging.h"
+#include "util/RequestCancel.h"
 #include "util/SlangExtensions.h"
 #include <fmt/format.h>
 #include <memory>
@@ -492,6 +493,7 @@ void ShallowAnalysis::addLocalReferences(std::vector<lsp::Location>& references,
     const ast::Symbol* targetSymbol = nullptr;
     // First loop: find the target symbol by matching the token location
     for (; it != end; ++it) {
+        lsp::RequestCancelState::throwIfActiveCancelled();
         const auto* token = *it;
         if (token->valueText() != targetName) {
             continue;
@@ -516,6 +518,7 @@ void ShallowAnalysis::addLocalReferences(std::vector<lsp::Location>& references,
     // Second loop: continue from where we left off to find all references
     auto path = m_sourceManager.getFullPath(m_buffer);
     for (; it != end; ++it) {
+        lsp::RequestCancelState::throwIfActiveCancelled();
         const auto* token = *it;
         if (token->valueText() != targetName) {
             continue;

@@ -20,6 +20,7 @@
 #include "util/Formatting.h"
 #include "util/Logging.h"
 #include "util/Markdown.h"
+#include "util/RequestCancel.h"
 #include <memory>
 #include <queue>
 #include <string_view>
@@ -874,6 +875,7 @@ std::optional<std::vector<lsp::Location>> ServerDriver::getDocReferences(
     // Helper to process referencing files with a given finder function
     auto processReferencingFiles = [&](std::string_view name, auto&& finder) {
         for (const auto& filePath : m_indexer.getFilesReferencingSymbol(name)) {
+            lsp::RequestCancelState::throwIfActiveCancelled();
             if (filePath == targetDoc->getURI().getPath()) {
                 continue;
             }

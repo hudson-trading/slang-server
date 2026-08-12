@@ -8,6 +8,7 @@
 #include "util/Converters.h"
 #include "util/Formatting.h"
 #include "util/Logging.h"
+#include "util/RequestCancel.h"
 
 #include "slang/ast/Symbol.h"
 #include "slang/ast/symbols/ClassSymbols.h"
@@ -380,6 +381,7 @@ void InlayHintCollector::collectHints() {
     }
 
     for (auto it = start; it != end; ++it) {
+        lsp::RequestCancelState::throwIfActiveCancelled();
         switch (it->second->kind) {
             case syntax::SyntaxKind::HierarchyInstantiation:
                 handle(it->second->as<HierarchyInstantiationSyntax>());
