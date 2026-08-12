@@ -355,7 +355,9 @@ protected:
 
     void waitForWorkerGate() {
         std::unique_lock lock(m_testGateMutex);
-        m_testGateCv.wait(lock, [this] { return m_testGateOpen; });
+        m_testGateCv.wait(lock, [this] {
+            return m_testGateOpen || m_stop.load(std::memory_order_acquire);
+        });
     }
 
     void enqueueMessage(QueuedMessage msg) {
@@ -373,6 +375,14 @@ protected:
         m_queueCv.notify_one();
     }
 
+    void completeQueuedMessage(QueuedMessage& msg, RpcResult result, const HandlerTiming& timing) {
+        logHandlerTiming(timing);
+        if (msg.resultPromise)
+            msg.resultPromise->set_value(std::move(result));
+        if (msg.donePromise)
+            msg.donePromise->set_value();
+    }
+
     void workerLoop() {
         while (true) {
             QueuedMessage msg;
@@ -388,8 +398,29 @@ protected:
                 m_workerBusy = true;
             }
 
+            struct BusyGuard {
+                JsonRpcServer& self;
+                ~BusyGuard() {
+                    {
+                        std::lock_guard lock(self.m_queueMutex);
+                        self.m_workerBusy = false;
+                    }
+                    self.m_idleCv.notify_all();
+                }
+            } busyGuard{*this};
+
             // Test-only gate: allows deterministic pending-cancel coverage.
             waitForWorkerGate();
+            if (m_stop.load(std::memory_order_acquire)) {
+                // Shutting down after dequeue: finish promises so waiters cannot hang.
+                if (msg.req.id)
+                    cancelState.dropPending(requestIdToString(msg.req.id.value()));
+                HandlerTiming timing;
+                timing.method = msg.req.method;
+                timing.kind = HandlerTiming::Kind::Ignored;
+                completeQueuedMessage(msg, std::nullopt, timing);
+                continue;
+            }
 
             HandlerTiming timing;
             RpcResult result = std::nullopt;
@@ -422,18 +453,7 @@ protected:
                         result);
                 }
             }
-            logHandlerTiming(timing);
-
-            if (msg.resultPromise)
-                msg.resultPromise->set_value(std::move(result));
-            if (msg.donePromise)
-                msg.donePromise->set_value();
-
-            {
-                std::lock_guard lock(m_queueMutex);
-                m_workerBusy = false;
-            }
-            m_idleCv.notify_all();
+            completeQueuedMessage(msg, std::move(result), timing);
         }
     }
 
@@ -470,6 +490,7 @@ public:
     /// Test helper: pause the worker after dequeue, before processMessage.
     void pauseWorkerForTest() { setWorkerGateOpen(false); }
     void resumeWorkerForTest() { setWorkerGateOpen(true); }
+    void waitForIdleForTest() { waitForIdle(); }
 
     /// Enqueue and wait until the worker finishes this message.
     void handleMessageAndWait(RpcRequest req) {

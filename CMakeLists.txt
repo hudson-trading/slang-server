@@ -311,6 +311,7 @@ add_library(
   src/lsp/URI.cpp
   src/util/Converters.cpp
   src/util/Formatting.cpp
+  src/util/RequestCancel.cpp
   src/util/SlangExtensions.cpp
   src/util/Markdown.cpp
   src/Config.cpp

@@ -118,7 +118,8 @@ TEST_CASE("CancelRequest_PendingRequest_ReturnsCancelled", "[cancel]") {
     doc.save();
 
     WorkspaceSymbolParams params{.query = ""};
-    auto target = makeRequest("workspace/symbol", 10, rfl::to_generic<rfl::UnderlyingEnums>(params));
+    auto target = makeRequest("workspace/symbol", 10,
+                              rfl::to_generic<rfl::UnderlyingEnums>(params));
 
     // Pause after dequeue so the request stays pending (registered) until we cancel.
     server.pauseWorkerForTest();
@@ -165,8 +166,13 @@ TEST_CASE("CancelRequest_DidChangePreemptsQueuedRequest", "[cancel]") {
     auto didChangeFut = server.enqueueForTest(makeDidChange(doc.m_uri));
     server.resumeWorkerForTest();
 
-    REQUIRE(isCancelledError(future.get()));
-    REQUIRE(std::holds_alternative<std::nullopt_t>(didChangeFut.get()));
+    auto symResult = future.get();
+    auto changeResult = didChangeFut.get();
+    server.waitForIdleForTest();
+
+    REQUIRE(isCancelledError(symResult));
+    // Notification result is nullopt / empty — must not be an RPC error.
+    REQUIRE_FALSE(std::holds_alternative<RpcError>(changeResult));
 }
 
 TEST_CASE("CancelRequest_HandleMessageDoesNotBlockOnCancel", "[cancel]") {
@@ -195,8 +201,8 @@ TEST_CASE("CancelRequest_HandleMessageDoesNotBlockOnCancel", "[cancel]") {
 
     const auto t0 = std::chrono::steady_clock::now();
     server.handleMessageForTest(makeCancel(30));
-    const auto ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0)
-                        .count();
+    const auto ms =
+        std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
     runner.join();
 
     // Cancel must be applied on the calling thread, not stuck behind workspace/symbol.

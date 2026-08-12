@@ -32,94 +32,39 @@ public:
 class RequestCancelState {
 public:
     /// Record that @p id has been enqueued and is eligible for cancel.
-    void registerPending(const std::string& id) {
-        std::lock_guard lock(m_mutex);
-        m_pending.insert(id);
-    }
+    void registerPending(const std::string& id);
 
     /// Forget a pending id that will never run (e.g. discarded during shutdown).
-    void dropPending(const std::string& id) {
-        std::lock_guard lock(m_mutex);
-        m_pending.erase(id);
-        m_cancelled.erase(id);
-    }
+    void dropPending(const std::string& id);
 
-    void cancel(const std::string& id) {
-        std::lock_guard lock(m_mutex);
-        const bool known = m_pending.contains(id) || (m_currentId && *m_currentId == id);
-        if (!known)
-            return;
+    void cancel(const std::string& id);
 
-        m_cancelled.insert(id);
-        if (m_currentId && *m_currentId == id)
-            m_currentCancelled.store(true, std::memory_order_release);
-    }
-
-    /// Cancel whatever the worker is currently executing (used to preempt on didChange).
-    void cancelCurrent() {
-        std::lock_guard lock(m_mutex);
-        if (!m_currentId)
-            return;
-        m_cancelled.insert(*m_currentId);
-        m_currentCancelled.store(true, std::memory_order_release);
-    }
+    /// Cancel whatever the worker is currently executing.
+    void cancelCurrent();
 
     /// Cancel the in-flight request and every still-queued pending request.
-    void cancelAllPendingAndCurrent() {
-        std::lock_guard lock(m_mutex);
-        for (const auto& id : m_pending)
-            m_cancelled.insert(id);
-        if (m_currentId) {
-            m_cancelled.insert(*m_currentId);
-            m_currentCancelled.store(true, std::memory_order_release);
-        }
-    }
+    void cancelAllPendingAndCurrent();
 
-    void beginRequest(const std::string& id) {
-        std::lock_guard lock(m_mutex);
-        m_pending.erase(id);
-        m_currentId = id;
-        m_currentCancelled.store(m_cancelled.contains(id), std::memory_order_release);
-        t_active = this;
-    }
+    void beginRequest(const std::string& id);
+    void endRequest();
 
-    void endRequest() {
-        std::lock_guard lock(m_mutex);
-        if (m_currentId) {
-            m_cancelled.erase(*m_currentId);
-            m_currentId.reset();
-        }
-        m_currentCancelled.store(false, std::memory_order_release);
-        if (t_active == this)
-            t_active = nullptr;
-    }
+    bool isCancelled(const std::string& id) const;
 
-    bool isCancelled(const std::string& id) const {
-        std::lock_guard lock(m_mutex);
-        return m_cancelled.contains(id);
-    }
-
-    void throwIfCancelled() const {
-        if (m_currentCancelled.load(std::memory_order_acquire))
-            throw RequestCancelledException();
-    }
+    void throwIfCancelled() const;
 
     /// Cooperative checkpoint for code that does not have a RequestCancelState&.
     /// No-op when no request is active on this thread (e.g. harness direct calls).
-    static void throwIfActiveCancelled() {
-        if (t_active)
-            t_active->throwIfCancelled();
-    }
+    static void throwIfActiveCancelled();
 
 private:
+    void installActive();
+    void clearActive();
+
     mutable std::mutex m_mutex;
     std::unordered_set<std::string> m_pending;
     std::unordered_set<std::string> m_cancelled;
     std::optional<std::string> m_currentId;
     std::atomic<bool> m_currentCancelled{false};
-
-    /// Worker-thread active cancel state for deep checkpoints without API plumbing.
-    static inline thread_local RequestCancelState* t_active = nullptr;
 };
 
 } // namespace lsp
