@@ -40,9 +40,49 @@ The default configuration can be found in [config.lua](./lua/slang-server/_core/
 
 ### Inactive regions
 
-To enable inactive-region highlighting merge the following capabilities and notification handler into your `slang_server` LSP configuration:
+To enable inactive-region highlighting, define a notification handler and add it along with the experimental capability to your `slang_server` LSP configuration:
 
 ```lua
+local inactive_regions_ns = vim.api.nvim_create_namespace("SlangServerInactiveRegions")
+local inactive_region_hl = "SlangServerInactiveRegion"
+
+vim.api.nvim_set_hl(0, inactive_region_hl, {
+  link = "Comment",
+  default = true,
+})
+
+local function apply_inactive_region_highlights(uri, ranges)
+  local bufnr = vim.fn.bufnr(vim.uri_to_fname(uri), false)
+  if bufnr == -1 then
+    return
+  end
+
+  vim.api.nvim_buf_clear_namespace(bufnr, inactive_regions_ns, 0, -1)
+
+  for _, range in ipairs(ranges) do
+    vim.api.nvim_buf_set_extmark(
+      bufnr,
+      inactive_regions_ns,
+      range.start.line,
+      range.start.character,
+      {
+        end_row = range["end"].line,
+        end_col = range["end"].character,
+        hl_group = inactive_region_hl,
+        hl_eol = true,
+      }
+    )
+  end
+end
+
+local function inactive_regions_handler(err, params, _, _)
+  if err or not params or not params.uri or not params.regions then
+    return
+  end
+
+  apply_inactive_region_highlights(params.uri, params.regions)
+end
+
 vim.lsp.config("slang_server", {
   capabilities = {
     experimental = {
@@ -52,8 +92,7 @@ vim.lsp.config("slang_server", {
     },
   },
   handlers = {
-    ["textDocument/inactiveRegions"] =
-      require("slang-server._lsp.experimental.inactive_regions").handler,
+    ["textDocument/inactiveRegions"] = inactive_regions_handler,
   },
 })
 ```

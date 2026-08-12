@@ -14,7 +14,6 @@ M.HIER_PACKAGE = "SlangPackage"
 M.HIER_PORT = "SlangServerPort"
 M.HIER_PARAM = "SlangServerParam"
 M.HIER_REG = "SlangServerReg"
-M.INACTIVE_REGION = "SlangServerInactiveRegion"
 
 M.HIER_NORMAL = "Normal"
 M.HIER_SUBTLE = "Comment"
@@ -24,11 +23,6 @@ M.HIER_ERROR = "ErrorMsg"
 for hl_name, hl_opts in pairs(config.highlights) do
    vim.api.nvim_set_hl(M.ns_id, hl_name, hl_opts)
 end
-
-vim.api.nvim_set_hl(M.ns_id, M.INACTIVE_REGION, {
-   link = "Comment",
-   default = true,
-})
 
 vim.api.nvim_set_hl_ns(M.ns_id)
 
