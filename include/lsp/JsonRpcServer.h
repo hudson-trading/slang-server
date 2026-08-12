@@ -12,6 +12,7 @@
 #include "lsp/LspTypes.h"
 #include "rfl/Generic.hpp"
 #include "util/RequestCancel.h"
+#include "util/StackThread.h"
 #include "util/Timing.h"
 #include <atomic>
 #include <concepts>
@@ -28,7 +29,6 @@
 #include <rfl/visit.hpp>
 #include <string>
 #include <string_view>
-#include <thread>
 #include <unordered_map>
 #include <utility>
 #include <variant>
@@ -323,7 +323,8 @@ protected:
         if (m_worker.joinable())
             return;
         m_stop.store(false, std::memory_order_release);
-        m_worker = std::thread([this] { workerLoop(); });
+        // Explicit stack: musl defaults (~128KiB) overflow in CTRE URI matching.
+        m_worker.start([this] { workerLoop(); });
     }
 
     void stopWorker() {
@@ -476,7 +477,7 @@ protected:
     std::condition_variable m_queueCv;
     std::condition_variable m_idleCv;
     std::queue<QueuedMessage> m_queue;
-    std::thread m_worker;
+    StackThread m_worker;
     std::atomic<bool> m_stop{false};
     bool m_workerBusy = false;
 
