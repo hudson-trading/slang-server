@@ -338,7 +338,7 @@ std::vector<std::shared_ptr<SlangDoc>> ServerDriver::getDependentDocs(
         // Collect declared symbols from current tree
         meta.visitDeclaredSymbols([&](std::string_view name) { knownNames.emplace(name); });
 
-        meta.visitReferencedSymbols([&](std::string_view name) {
+        auto loadDependency = [&](std::string_view name) {
             if (knownNames.find(name) != knownNames.end())
                 return; // already added
 
@@ -374,7 +374,9 @@ std::vector<std::shared_ptr<SlangDoc>> ServerDriver::getDependentDocs(
             else {
                 ERROR("No doc found for {}", filePath);
             }
-        });
+        };
+
+        meta.visitReferencedSymbols(loadDependency);
     }
 
     return result;

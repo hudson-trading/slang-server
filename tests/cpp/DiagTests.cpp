@@ -385,16 +385,24 @@ endmodule
 TEST_CASE("ShallowIncludesIfacePackages") {
     ServerHarness server("iface_pkg_dep");
 
-    auto doc = server.openFile("producer.sv");
+    auto producer = server.openFile("producer.sv");
 
     // No diagnostics should be reported on producer.sv: the interface and its imported
     // package both resolve once the package is pulled in transitively.
-    CHECK(doc.getDiagnostics().empty());
+    CHECK(producer.getDiagnostics().empty());
 
     // The struct member `data` is typed via payload_t in types_pkg, which is reachable only
     // through simple_if's package import. Goto-definition resolves it iff the package was
     // pulled into the shallow compilation.
-    auto defs = doc.after("bus.payload.da").getDefinitions();
+    auto defs = producer.after("bus.payload.da").getDefinitions();
+    REQUIRE(defs.size() == 1);
+    CHECK(defs[0].targetUri.str().ends_with("types_pkg.sv"));
+
+    auto consumer = server.openFile("consumer.sv");
+
+    // An interface port without a modport must pull in the interface and its dependencies too.
+    CHECK(consumer.getDiagnostics().empty());
+    defs = consumer.after("bus.payload.va").getDefinitions();
     REQUIRE(defs.size() == 1);
     CHECK(defs[0].targetUri.str().ends_with("types_pkg.sv"));
 }
