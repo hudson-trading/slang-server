@@ -13,6 +13,8 @@
 #include "util/Converters.h"
 #include <filesystem>
 #include <memory>
+#include <set>
+#include <tuple>
 #include <vector>
 
 #include "slang/util/Bag.h"
@@ -77,20 +79,34 @@ public:
         auto cone = m_analysis->getCone<isDriver>(params.item.name);
 
         std::vector<R> result;
+        std::set<std::tuple<std::string, std::string, uint32_t, uint32_t, uint32_t, uint32_t>> seen;
         for (const auto leaf : cone) {
             std::string hier = leaf.getHierarchicalPath();
-            auto range = leaf.getSourceRange();
-            if (range.start().valid()) {
+            auto sourceRange = leaf.getSourceRange();
+            if (sourceRange.start().valid()) {
                 auto fullPath = std::filesystem::absolute(
-                    m_sourceManager.getFileName(range.start()));
+                    m_sourceManager.getFileName(sourceRange.start()));
+                auto range = toRange(sourceRange, m_sourceManager);
+                auto key = std::tuple(hier, fullPath.string(), range.start.line,
+                                      range.start.character, range.end.line, range.end.character);
+                if (!seen.insert(std::move(key)).second) {
+                    continue;
+                }
+
                 // only different by to / from field name . . . sigh
                 if constexpr (std::is_same_v<lsp::CallHierarchyIncomingCallsParams, P>) {
-                    result.push_back({.from = {.name = hier, .uri = URI::fromFile(fullPath)},
-                                      .fromRanges = {{toRange(range, m_sourceManager)}}});
+                    result.push_back({.from = {.name = hier,
+                                               .uri = URI::fromFile(fullPath),
+                                               .range = range,
+                                               .selectionRange = range},
+                                      .fromRanges = {{range}}});
                 }
                 else {
-                    result.push_back({.to = {.name = hier, .uri = URI::fromFile(fullPath)},
-                                      .fromRanges = {{toRange(range, m_sourceManager)}}});
+                    result.push_back({.to = {.name = hier,
+                                             .uri = URI::fromFile(fullPath),
+                                             .range = range,
+                                             .selectionRange = range},
+                                      .fromRanges = {{range}}});
                 }
             }
         }

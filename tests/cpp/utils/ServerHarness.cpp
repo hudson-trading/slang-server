@@ -137,9 +137,12 @@ static void checkCallHierarchyGeneric(const std::string& path,
     std::set<ExpectedStart> gotStarts;
     for (const auto& call : *result) {
         CHECK(call.fromRanges.size() == 1);
-        auto [name, uri] = extractFunc(call);
+        auto [name, uri, range, selectionRange] = extractFunc(call);
+        CHECK(range == call.fromRanges[0]);
+        CHECK(selectionRange == call.fromRanges[0]);
         gotStarts.insert({.name = name, .uri = uri.str(), .start = call.fromRanges[0].start});
     }
+    CHECK(result->size() == expected.size());
     CHECK(gotStarts == expStarts);
 }
 
@@ -149,8 +152,9 @@ void ServerHarness::checkIncomingCalls(const std::string& path,
         return getCallHierarchyIncomingCalls(
             lsp::CallHierarchyIncomingCallsParams{.item = {.name = path}});
     };
-    auto extract = [](const auto& incoming) -> std::pair<std::string, URI> {
-        return {incoming.from.name, incoming.from.uri};
+    auto extract = [](const auto& incoming) {
+        return std::tuple(incoming.from.name, incoming.from.uri, incoming.from.range,
+                          incoming.from.selectionRange);
     };
 
     checkCallHierarchyGeneric<lsp::CallHierarchyIncomingCall>(path, expected, getCall, extract);
@@ -162,8 +166,9 @@ void ServerHarness::checkOutgoingCalls(const std::string& path,
         return getCallHierarchyOutgoingCalls(
             lsp::CallHierarchyOutgoingCallsParams{.item = {.name = path}});
     };
-    auto extract = [](const auto& outgoing) -> std::pair<std::string, URI> {
-        return {outgoing.to.name, outgoing.to.uri};
+    auto extract = [](const auto& outgoing) {
+        return std::tuple(outgoing.to.name, outgoing.to.uri, outgoing.to.range,
+                          outgoing.to.selectionRange);
     };
 
     checkCallHierarchyGeneric<lsp::CallHierarchyOutgoingCall>(path, expected, getCall, extract);
