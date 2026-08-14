@@ -55,6 +55,16 @@ TEST_CASE("Cone Tracing") {
     SECTION("Incoming Multiple") {
         auto cursor_a = doc.before("a + b;");
         auto cursor_b = doc.before("b;");
+
+        auto result = server.getCallHierarchyIncomingCalls(
+            lsp::CallHierarchyIncomingCallsParams{.item = {.name = "test.the_sub_2.x"}});
+
+        REQUIRE(result.has_value());
+
+        // A multi-bit signal should produce one incoming hierarchy item per
+        // unique driver, not one item per cone leaf.
+        CHECK(result->size() == 2);
+
         server.checkIncomingCalls("test.the_sub_2.x", {{"test.the_sub_2.a", &cursor_a},
                                                        {"test.the_sub_2.b", &cursor_b}});
     }
@@ -79,6 +89,12 @@ TEST_CASE("Cone Tracing") {
         };
         auto result = *incoming("test.the_sub_2.b");
         checkIncoming(result, {{.name = "test.x1", .line = 34, .character = 12}});
+
+        REQUIRE(result.size() == 1);
+        REQUIRE(result[0].fromRanges.size() == 1);
+
+        CHECK(result[0].from.range == result[0].fromRanges[0]);
+        CHECK(result[0].from.selectionRange == result[0].fromRanges[0]);
     }
 
     SECTION("Incoming Single2") {

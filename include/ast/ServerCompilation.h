@@ -83,14 +83,22 @@ public:
             if (range.start().valid()) {
                 auto fullPath = std::filesystem::absolute(
                     m_sourceManager.getFileName(range.start()));
+                auto lspRange = toRange(range, m_sourceManager);
+
                 // only different by to / from field name . . . sigh
                 if constexpr (std::is_same_v<lsp::CallHierarchyIncomingCallsParams, P>) {
-                    result.push_back({.from = {.name = hier, .uri = URI::fromFile(fullPath)},
-                                      .fromRanges = {{toRange(range, m_sourceManager)}}});
+                    result.push_back({.from = {.name = hier,
+                                               .uri = URI::fromFile(fullPath),
+                                               .range = lspRange,
+                                               .selectionRange = lspRange},
+                                      .fromRanges = {lspRange}});
                 }
                 else {
-                    result.push_back({.to = {.name = hier, .uri = URI::fromFile(fullPath)},
-                                      .fromRanges = {{toRange(range, m_sourceManager)}}});
+                    result.push_back({.to = {.name = hier,
+                                             .uri = URI::fromFile(fullPath),
+                                             .range = lspRange,
+                                             .selectionRange = lspRange},
+                                      .fromRanges = {lspRange}});
                 }
             }
         }
