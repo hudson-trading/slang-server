@@ -427,6 +427,20 @@ TEST_CASE("ModuleMemberCompletion") {
     auto lhs = doc.before("sub_module u_sub (").getResolvedCompletions();
     auto rhs = doc.after("wide_signal =").getResolvedCompletions();
 
+    auto hasCompletion = [](const std::vector<CompletionHandle>& items, std::string_view label) {
+        return std::any_of(items.begin(), items.end(), [&](const CompletionHandle& item) {
+            return item.m_item.label == label;
+        });
+    };
+
+    // Declaration snippets should not be offered from procedural bodies.
+    auto functionBody = doc.after("return ^data;").getCompletions();
+    auto taskBody = doc.after("wide_signal <= 16'h0;").getCompletions();
+    CHECK(!hasCompletion(functionBody, "function"));
+    CHECK(!hasCompletion(functionBody, "task"));
+    CHECK(!hasCompletion(taskBody, "function"));
+    CHECK(!hasCompletion(taskBody, "task"));
+
     golden.record("lhs", lhs);
     golden.record("rhs", rhs);
 

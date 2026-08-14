@@ -627,6 +627,25 @@ void addModuleMemberKwCompletions(std::vector<lsp::CompletionItem>& results) {
         .insertText = "always_latch begin\n\t$0\nend",
         .insertTextFormat = lsp::InsertTextFormat::Snippet,
     });
+    results.emplace_back(lsp::CompletionItem{
+        .label = "function",
+        .kind = lsp::CompletionItemKind::Snippet,
+        .documentation = svCodeBlock(
+            "function automatic functionName(arguments);\n    ...\nendfunction : functionName"),
+        .filterText = "function",
+        .insertText =
+            "function ${1:automatic} ${2:functionName}(${3:arguments});\n\t$0\nendfunction : $2",
+        .insertTextFormat = lsp::InsertTextFormat::Snippet,
+    });
+    results.emplace_back(lsp::CompletionItem{
+        .label = "task",
+        .kind = lsp::CompletionItemKind::Snippet,
+        .documentation = svCodeBlock(
+            "task automatic taskName(arguments);\n    ...\nendtask : taskName"),
+        .filterText = "task",
+        .insertText = "task ${1:automatic} ${2:taskName}(${3:arguments});\n\t$0\nendtask : $2",
+        .insertTextFormat = lsp::InsertTextFormat::Snippet,
+    });
 }
 
 //------------------------------------------------------------------------------

@@ -82,6 +82,17 @@
         "insertTextFormat": "Snippet"
       },
       {
+        "label": "function",
+        "kind": "Snippet",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nfunction automatic functionName(arguments);\n    ...\nendfunction : functionName\n````"
+        },
+        "filterText": "function",
+        "insertText": "function ${1:automatic} ${2:functionName}(${3:arguments});\n    $0\nendfunction : $2",
+        "insertTextFormat": "Snippet"
+      },
+      {
         "label": "logic",
         "kind": "Keyword",
         "filterText": "logic"
@@ -102,6 +113,17 @@
           "value": "````systemverilog\ntypedef enum logic [1:0] {\n    IDLE = 2'b00,\n    ACTIVE = 2'b01,\n    WAIT = 2'b10\n} state_t;\n````"
         },
         "filterText": "state_t"
+      },
+      {
+        "label": "task",
+        "kind": "Snippet",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\ntask automatic taskName(arguments);\n    ...\nendtask : taskName\n````"
+        },
+        "filterText": "task",
+        "insertText": "task ${1:automatic} ${2:taskName}(${3:arguments});\n    $0\nendtask : $2",
+        "insertTextFormat": "Snippet"
       },
       {
         "label": "tb",
