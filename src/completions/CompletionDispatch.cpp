@@ -18,6 +18,7 @@
 #include "util/Formatting.h"
 #include "util/Logging.h"
 #include <filesystem>
+#include <unordered_set>
 
 #include "slang/ast/Compilation.h"
 #include "slang/ast/Lookup.h"
@@ -27,6 +28,7 @@
 
 namespace fs = std::filesystem;
 namespace ast = slang::ast;
+namespace syntax = slang::syntax;
 
 namespace server {
 
@@ -114,6 +116,108 @@ void CompletionDispatch::getCompletions(std::vector<lsp::CompletionItem>& result
         // Member completions
         // Capture analysis once to avoid invalidation from repeated getAnalysis() calls.
         auto analysis = doc->getAnalysis();
+
+        const syntax::HierarchyInstantiationSyntax* hierarchy = nullptr;
+        const syntax::HierarchicalInstanceSyntax* instance = nullptr;
+        bool parameterConnection = false;
+        bool portConnection = false;
+
+        for (auto* node = ctx.syntax; node; node = node->parent) {
+            switch (node->kind) {
+                case syntax::SyntaxKind::NamedParamAssignment:
+                case syntax::SyntaxKind::ParameterValueAssignment:
+                    parameterConnection = true;
+                    break;
+
+                case syntax::SyntaxKind::HierarchicalInstance:
+                    instance = &node->as<syntax::HierarchicalInstanceSyntax>();
+                    portConnection = true;
+                    break;
+
+                case syntax::SyntaxKind::HierarchyInstantiation:
+                    hierarchy = &node->as<syntax::HierarchyInstantiationSyntax>();
+                    break;
+
+                default:
+                    break;
+            }
+
+            if (hierarchy)
+                break;
+        }
+
+        if (hierarchy && (parameterConnection || portConnection)) {
+            const ast::DefinitionSymbol* definition = nullptr;
+
+            if (auto* symbol = analysis->getSymbolAtToken(&hierarchy->type);
+                symbol && ast::DefinitionSymbol::isKind(symbol->kind)) {
+                definition = &symbol->as<ast::DefinitionSymbol>();
+            }
+
+            if (!definition) {
+                auto* symbol = analysis->getDefinition(hierarchy->type.valueText());
+                if (symbol && ast::DefinitionSymbol::isKind(symbol->kind)) {
+                    definition = &symbol->as<ast::DefinitionSymbol>();
+                }
+            }
+
+            if (definition) {
+                const auto* definitionSyntax = definition->getSyntax();
+
+                if (definitionSyntax &&
+                    definitionSyntax->kind == syntax::SyntaxKind::ModuleDeclaration) {
+                    const auto& module = definitionSyntax->as<syntax::ModuleDeclarationSyntax>();
+
+                    std::unordered_set<std::string> connectedNames;
+
+                    if (parameterConnection && hierarchy->parameters) {
+                        for (const auto* parameter : hierarchy->parameters->parameters) {
+                            if (parameter->kind != syntax::SyntaxKind::NamedParamAssignment)
+                                continue;
+
+                            const auto& assignment =
+                                parameter->as<syntax::NamedParamAssignmentSyntax>();
+                            if (!assignment.name.valueText().empty()) {
+                                connectedNames.emplace(assignment.name.valueText());
+                            }
+                        }
+                    }
+                    else if (portConnection && instance) {
+                        for (const auto* connection : instance->connections) {
+                            if (connection->kind != syntax::SyntaxKind::NamedPortConnection)
+                                continue;
+
+                            const auto& named = connection->as<syntax::NamedPortConnectionSyntax>();
+                            if (!named.name.valueText().empty()) {
+                                connectedNames.emplace(named.name.valueText());
+                            }
+                        }
+                    }
+
+                    std::vector<lsp::CompletionItem> candidates;
+
+                    if (parameterConnection) {
+                        completions::addNamedParameterCompletions(candidates, *module.header);
+                    }
+                    else {
+                        completions::addNamedPortCompletions(candidates, *module.header);
+                    }
+
+                    for (auto& candidate : candidates) {
+                        if (!connectedNames.contains(candidate.label)) {
+                            results.push_back(std::move(candidate));
+                        }
+                    }
+
+                    return;
+                }
+            }
+
+            WARN("Could not resolve module definition for named connection {}",
+                 hierarchy->type.valueText());
+            return;
+        }
+
         auto exprToken = analysis->getTokenAt(loc - 2);
         if (!exprToken) {
             WARN("No expression token found before '.'");

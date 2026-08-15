@@ -863,3 +863,109 @@ TEST_CASE("LocalparamKeywordInheritance") {
     CHECK(insertText.find("lp1") == std::string::npos);
     CHECK(insertText.find("lp2") == std::string::npos);
 }
+
+TEST_CASE("NamedPortAndParameterCompletion") {
+    ServerHarness server("repo1");
+
+    auto doc = server.openFile("named_connection_completion.sv", R"(
+        module child #(
+            parameter int WIDTH = 8,
+            parameter int DEPTH = 16
+        ) (
+            input logic clk,
+            input logic rst,
+            output logic data
+        );
+        endmodule
+
+        module top;
+            logic clk;
+            logic rst;
+            logic data;
+
+            child #(
+                .
+            ) u_child (
+                .
+            );
+        endmodule
+    )");
+
+    auto hasCompletion = [](const auto& items, std::string_view label) {
+        return std::any_of(items.begin(), items.end(),
+                           [&](const auto& item) { return item.m_item.label == label; });
+    };
+
+    auto paramCompletions = doc.after("child #(\n                .").getCompletions(".");
+    CHECK(hasCompletion(paramCompletions, "WIDTH"));
+    CHECK(hasCompletion(paramCompletions, "DEPTH"));
+
+    auto portCompletions = doc.after("u_child (\n                .").getCompletions(".");
+    CHECK(hasCompletion(portCompletions, "clk"));
+    CHECK(hasCompletion(portCompletions, "rst"));
+    CHECK(hasCompletion(portCompletions, "data"));
+
+    auto memberDoc = server.openFile("named_connection_member_regression.sv", R"(
+        module member_regression;
+            typedef struct {
+                logic field_a;
+                logic field_b;
+            } item_t;
+
+            item_t item;
+
+            initial begin
+                item.;
+            end
+        endmodule
+    )");
+
+    auto memberCompletions = memberDoc.after("item.").getCompletions(".");
+    CHECK(hasCompletion(memberCompletions, "field_a"));
+    CHECK(hasCompletion(memberCompletions, "field_b"));
+
+    auto filteredDoc = server.openFile("named_connection_filtering.sv", R"(
+        module filter_child #(
+            parameter int WIDTH = 8,
+            parameter int DEPTH = 16
+        ) (
+            input logic clk,
+            input logic rst,
+            output logic data
+        );
+        endmodule
+
+        module filter_top;
+            logic clk;
+            logic rst;
+            logic data;
+
+            filter_child #(
+                .WIDTH(32),
+                .
+            ) param_inst (
+                .clk(clk),
+                .rst(rst),
+                .data(data)
+            );
+
+            filter_child port_inst (
+                .clk(clk),
+                .
+            );
+        endmodule
+    )");
+
+    auto filteredParams = filteredDoc.after(".WIDTH(32),\n                .").getCompletions(".");
+
+    CHECK(!hasCompletion(filteredParams, "WIDTH"));
+    CHECK(hasCompletion(filteredParams, "DEPTH"));
+
+    auto filteredPorts = filteredDoc.after("filter_child port_inst (")
+                             .after(".clk(clk),\n                .")
+                             .getCompletions(".");
+
+    CHECK(!hasCompletion(filteredPorts, "clk"));
+    CHECK(hasCompletion(filteredPorts, "rst"));
+    CHECK(hasCompletion(filteredPorts, "data"));
+}

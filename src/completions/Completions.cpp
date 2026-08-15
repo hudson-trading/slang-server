@@ -138,6 +138,66 @@ void collectParams(const syntax::ParameterPortListSyntax& paramList,
     }
 }
 
+void addNamedParameterCompletions(std::vector<lsp::CompletionItem>& results,
+                                  const slang::syntax::ModuleHeaderSyntax& header) {
+    if (!header.parameters)
+        return;
+
+    size_t maxLen = 0;
+    std::vector<std::string_view> names;
+    std::vector<std::string> defaults;
+    collectParams(*header.parameters, names, defaults, maxLen);
+
+    for (size_t i = 0; i < names.size(); ++i) {
+        auto name = std::string(names[i]);
+
+        SnippetString snippet(name);
+        snippet.appendText("(");
+        snippet.appendPlaceholder(name);
+        snippet.appendText(")");
+
+        std::string detail = " parameter";
+        if (!defaults[i].empty())
+            detail += fmt::format(" = {}", defaults[i]);
+
+        results.push_back(lsp::CompletionItem{
+            .label = name,
+            .labelDetails = lsp::CompletionItemLabelDetails{.detail = std::move(detail)},
+            .kind = lsp::CompletionItemKind::TypeParameter,
+            .filterText = name,
+            .insertText = std::string(snippet.getValue()),
+            .insertTextFormat = lsp::InsertTextFormat::Snippet,
+        });
+    }
+}
+
+void addNamedPortCompletions(std::vector<lsp::CompletionItem>& results,
+                             const slang::syntax::ModuleHeaderSyntax& header) {
+    if (!header.ports)
+        return;
+
+    PortVisitor visitor;
+    header.ports->visit(visitor);
+
+    for (auto portName : visitor.names) {
+        auto name = std::string(portName);
+
+        SnippetString snippet(name);
+        snippet.appendText("(");
+        snippet.appendPlaceholder(name);
+        snippet.appendText(")");
+
+        results.push_back(lsp::CompletionItem{
+            .label = name,
+            .labelDetails = lsp::CompletionItemLabelDetails{.detail = " port"},
+            .kind = lsp::CompletionItemKind::Field,
+            .filterText = name,
+            .insertText = std::string(snippet.getValue()),
+            .insertTextFormat = lsp::InsertTextFormat::Snippet,
+        });
+    }
+}
+
 void resolveModuleInstance(const slang::syntax::ModuleHeaderSyntax& header,
                            lsp::CompletionItem& ret, bool excludeName) {
 
