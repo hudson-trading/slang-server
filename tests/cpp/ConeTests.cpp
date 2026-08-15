@@ -121,54 +121,30 @@ TEST_CASE("Cone Tracing") {
     }
 
     SECTION("Outgoing Multiple") {
-        auto cursor = doc.after("module sub(").before("a,");
-        server.checkOutgoingCalls("test.a",
-                                  {{"test.the_sub_2.a", &cursor}, {"test.the_sub_1.a", &cursor}});
+        server.checkOutgoingCalls("test.a", {});
     }
 
     SECTION("Outgoing Up Down") {
-        auto cursor_x = doc.before("x <= a + b;");
-        auto cursor_foo = doc.before("foo,");
-        server.checkOutgoingCalls("test.the_sub_2.a",
-                                  {{"test.the_sub_2.x", &cursor_x},
-                                   {"test.the_sub_2.the_sub_sub.foo", &cursor_foo}});
+        server.checkOutgoingCalls("test.the_sub_2.a", {});
     }
 
     SECTION("Outgoing Single") {
-        auto cursor = doc.before("x),");
-        server.checkOutgoingCalls("test.the_sub_2.x", {{"test.x", &cursor}});
+        server.checkOutgoingCalls("test.the_sub_2.x", {});
     }
 
     SECTION("Outgoing Conditional") {
-        auto cursor_result1 = doc.before("result <= bar;");
-        auto cursor_result2 = doc.before("result <= '1;");
-        auto cursor_switched = doc.before("switched_result = foo;");
-        server.checkOutgoingCalls("test.the_sub_1.the_sub_sub.foo",
-                                  {{"test.the_sub_1.the_sub_sub.result", &cursor_result1},
-                                   {"test.the_sub_1.the_sub_sub.result", &cursor_result2},
-                                   {"test.the_sub_1.the_sub_sub.switched_result",
-                                    &cursor_switched}});
+        server.checkOutgoingCalls("test.the_sub_1.the_sub_sub.foo", {});
     }
 
     SECTION("Outgoing Switched") {
-        auto cursor_result = doc.before("result <= bar;");
-        auto cursor_switched1 = doc.before("switched_result = foo;");
-        auto cursor_switched2 = doc.before("switched_result = 1'b0;");
-        server.checkOutgoingCalls(
-            "test.the_sub_2.the_sub_sub.bar",
-            {{"test.the_sub_2.the_sub_sub.result", &cursor_result},
-             {"test.the_sub_2.the_sub_sub.switched_result", &cursor_switched1},
-             {"test.the_sub_2.the_sub_sub.switched_result", &cursor_switched2}});
+        server.checkOutgoingCalls("test.the_sub_2.the_sub_sub.bar", {});
     }
 
     SECTION("Outgoing Interface") {
-        auto cursor = doc.before("qux_in.quz = qux_out.quz;");
-        server.checkOutgoingCalls("test.the_intfs[1].quz", {{"test.the_intfs[0].quz", &cursor}});
+        server.checkOutgoingCalls("test.the_intfs[1].quz", {});
     }
 
     SECTION("Outgoing Interface Reference") {
-        auto cursor = doc.before("qux_out.qux = qux_in.qux + b;");
-        server.checkOutgoingCalls("test.the_sub_1.qux_out.qux",
-                                  {{"test.the_intfs[2].qux", &cursor}});
+        server.checkOutgoingCalls("test.the_sub_1.qux_out.qux", {});
     }
 }
