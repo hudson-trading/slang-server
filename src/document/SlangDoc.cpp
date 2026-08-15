@@ -28,6 +28,7 @@
 #include "slang/syntax/SyntaxTree.h"
 #include "slang/text/SourceLocation.h"
 #include "slang/text/SourceManager.h"
+#include "slang/util/OS.h"
 namespace server {
 
 using namespace slang;
@@ -245,12 +246,20 @@ void SlangDoc::onChange(const std::vector<lsp::TextDocumentContentChangeEvent>& 
     m_analysis.reset();
 }
 bool SlangDoc::reloadBuffer() {
-    auto result = m_sourceManager.reloadBuffer(m_buffer.id);
-    if (!result) {
-        ERROR("Failed to re-read buffer for {}: {}", m_uri.getPath(), result.error().message());
+    SmallVector<char> newData;
+    if (std::error_code ec = OS::readFile(m_sourceManager.getFullPath(m_buffer.id), newData)) {
+        ERROR("Failed to re-read buffer for {}: {}", m_uri.getPath(), ec.message());
         return false;
     }
-    m_buffer = *result;
+
+    // Watcher events often fire without a content change (e.g. after the editor
+    // saves a file). Keep the current buffer in that case; replacing it would
+    // needlessly reparse and replace compilation diags with shallow diags.
+    if (std::string_view(newData.data(), newData.size()) == getText()) {
+        return false;
+    }
+
+    m_buffer = m_sourceManager.replaceBuffer(m_buffer.id, std::move(newData));
     m_tree.reset();
     m_analysis.reset();
     return true;

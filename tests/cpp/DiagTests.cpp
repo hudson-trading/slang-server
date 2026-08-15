@@ -365,6 +365,31 @@ TEST_CASE("OpenBuildFileDoesNotOverwriteCompilationDiags") {
     }
 }
 
+TEST_CASE("UnchangedWatchedFileDoesNotOverwriteCompilationDiags") {
+    ServerHarness server("comp_repo");
+    server.setBuildFile("cpu_design.f");
+
+    // unused_mod is not instantiated under the design top, so its compilation diags
+    // (unused module definition) differ from what a shallow analysis would produce
+    auto modUri = URI::fromFile(fs::current_path() / "unused_mod.sv");
+    auto compDiags = server.client.getDiagnostics(modUri);
+    REQUIRE(!compDiags.empty());
+
+    auto mod = server.openFile("unused_mod.sv");
+
+    // A watcher event without an actual content change must not replace the
+    // compilation diags with shallow diags.
+    server.onWorkspaceDidChangeWatchedFiles(lsp::DidChangeWatchedFilesParams{
+        .changes = {{lsp::FileEvent{.uri = modUri, .type = lsp::FileChangeType::Changed}}}});
+
+    auto afterDiags = server.client.getDiagnostics(modUri);
+    REQUIRE(compDiags.size() == afterDiags.size());
+    for (size_t i = 0; i < compDiags.size(); i++) {
+        CHECK(compDiags[i].message == afterDiags[i].message);
+        CHECK(compDiags[i].range.start.line == afterDiags[i].range.start.line);
+    }
+}
+
 TEST_CASE("OpenNonBuildFileGetsShallowDiags") {
     ServerHarness server("comp_repo");
     server.setBuildFile("cpu_design.f");
