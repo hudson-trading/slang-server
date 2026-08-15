@@ -9,5 +9,5 @@ endmodule
 
 module top;
     logic clk, a, b, sum;
-    adder u_adder(/*clk:*/ clk, /*a:*/ a, /*b:*/ b, /*sum:*/ sum);
+    adder u_adder(clk, a, b, sum);
 endmodule
