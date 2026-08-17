@@ -237,9 +237,10 @@ module test;
     generate
 
         for (i = 0; i < `SIMPLE_MACRO; i++) begin : gen_block
-                    ^ Ref -> **Genvar** `i` in `test`  \n\\n\\n\---\n\\n\`i`
+             ^ Ref -> **Genvar** `i` in `test`  \n\Type: `integer`  \n\Value range: `0` through `41`  \n\\n\\n\---\n\\n\`i`
+                    ^ Ref -> **Genvar** `i` in `test`  \n\Type: `integer`  \n\Value range: `0` through `41`  \n\\n\\n\---\n\\n\`i`
                         ^^^^^^^^^^^^^ Ref -> DefineDirective SIMPLE_MACRO  \n\\n\\n\---\n\\n\Basic macro definitions  \n\  \n\\n\\n\---\n\\n\``define SIMPLE_MACRO 42`\n\\n\---\n\\n\Expands to   \n\`42`
-                                       ^ Ref -> **Genvar** `i` in `test`  \n\\n\\n\---\n\\n\`i`
+                                       ^ Ref -> **Genvar** `i` in `test`  \n\Type: `integer`  \n\Value range: `0` through `41`  \n\\n\\n\---\n\\n\`i`
                                                     ^^^^^^^^^ Sym gen_block : GenerateBlockArray
 
             logic [`FUNC_MACRO(7):0] gen_signal;

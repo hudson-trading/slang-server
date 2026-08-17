@@ -15,6 +15,7 @@
 #include "util/Markdown.h"
 #include <memory>
 #include <optional>
+#include <span>
 #include <string_view>
 #include <vector>
 
@@ -120,6 +121,15 @@ public:
     /// @brief Gets the AST symbol that a declared token refers to, if any
     const slang::ast::Symbol* getSymbolAtToken(const slang::parsing::Token* node) const;
 
+    /// @brief Gets all AST symbols that a token refers to. A source token can denote multiple
+    /// elaborated symbols, or both sides of an implicit connection.
+    slang::SmallVector<const slang::ast::Symbol*, 2> getSymbolsAtToken(
+        const slang::parsing::Token* node) const;
+
+    /// @brief Gets the implicit per-iteration parameters for a loop-header genvar token.
+    std::span<const slang::ast::ParameterSymbol* const> getGenvarIterationParametersAtToken(
+        const slang::parsing::Token* node) const;
+
     /// Syntax finder for location->syntax mapping
     SyntaxIndexer syntaxes;
 
@@ -186,6 +196,16 @@ private:
 
     /// Symbol indexer for syntax->symbol mappings of definitions; Used for lookups
     SymbolIndexer m_symbolIndexer;
+
+    struct GenvarElaboration {
+        const slang::ast::GenvarSymbol* source = nullptr;
+        slang::SmallVector<const slang::ast::ParameterSymbol*> parameters;
+        bool initialized = false;
+    };
+    mutable slang::flat_hash_map<const slang::syntax::LoopGenerateSyntax*, GenvarElaboration>
+        m_genvarElaborations;
+
+    const GenvarElaboration* getGenvarElaborationAtToken(const slang::parsing::Token* node) const;
 
     /// @brief Helper method to check if a token is positioned over a selector
     bool isOverSelector(const slang::parsing::Token* node,

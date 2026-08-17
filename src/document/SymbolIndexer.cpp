@@ -9,6 +9,7 @@
 #include "document/SymbolIndexer.h"
 
 #include "util/Logging.h"
+#include <algorithm>
 
 #include "slang/ast/Scope.h"
 #include "slang/ast/Symbol.h"
@@ -53,11 +54,11 @@ SymbolIndexer::SymbolIndexer(slang::BufferID buffer) : m_buffer(buffer) {
 }
 
 const slang::ast::Symbol* SymbolIndexer::getSymbol(const slang::parsing::Token* node) const {
-    auto it = symdex.find(node);
-    if (it == symdex.end()) {
+    auto symbols = getSymbols(node);
+    if (symbols.empty()) {
         return nullptr;
     }
-    return it->second;
+    return symbols.back();
 }
 
 const slang::ast::Symbol* SymbolIndexer::getSymbol(const slang::syntax::SyntaxNode* node) const {
@@ -65,35 +66,72 @@ const slang::ast::Symbol* SymbolIndexer::getSymbol(const slang::syntax::SyntaxNo
     if (it == syntex.end()) {
         return nullptr;
     }
-    return it->second;
+    return it->second.back();
+}
+
+std::span<const slang::ast::Symbol* const> SymbolIndexer::getSymbols(
+    const slang::parsing::Token* node) const {
+    auto it = symdex.find(node);
+    if (it == symdex.end()) {
+        return {};
+    }
+    return {it->second.data(), it->second.size()};
+}
+
+void SymbolIndexer::addSymbol(const slang::parsing::Token* token,
+                              const slang::ast::Symbol& symbol) {
+    auto& symbols = symdex[token];
+    if (std::ranges::find(symbols, &symbol) == symbols.end())
+        symbols.push_back(&symbol);
+}
+
+void SymbolIndexer::addSymbol(const slang::syntax::SyntaxNode* syntax,
+                              const slang::ast::Symbol& symbol) {
+    auto& symbols = syntex[syntax];
+    if (std::ranges::find(symbols, &symbol) == symbols.end())
+        symbols.push_back(&symbol);
 }
 
 const slang::ast::Scope* SymbolIndexer::getScopeForSyntax(
+    const slang::syntax::SyntaxNode& syntax) const {
+
+    auto scopes = getScopesForSyntax(syntax);
+    return scopes.empty() ? nullptr : scopes.back();
+}
+
+slang::SmallVector<const slang::ast::Scope*, 2> SymbolIndexer::getScopesForSyntax(
     const slang::syntax::SyntaxNode& syntax) const {
 
     const slang::syntax::SyntaxNode* current = &syntax;
     while (current != nullptr) {
         auto it = syntex.find(current);
         if (it != syntex.end()) {
-            const slang::ast::Symbol* symbol = it->second;
-            if (symbol) {
+            slang::SmallVector<const slang::ast::Scope*, 2> result;
+            for (const auto* symbol : it->second) {
+                const slang::ast::Scope* scope = nullptr;
                 if (symbol->isScope()) {
-                    return &symbol->as<slang::ast::Scope>();
+                    scope = &symbol->as<slang::ast::Scope>();
                 }
-                else {
-                    return symbol->getParentScope();
-                }
+                else
+                    scope = symbol->getParentScope();
+
+                if (scope && std::ranges::find(result, scope) == result.end())
+                    result.push_back(scope);
             }
+            if (!result.empty())
+                return result;
         }
         current = current->parent;
     }
 
-    return nullptr;
+    return {};
 }
 
 void SymbolIndexer::indexInstanceSyntax(const slang::syntax::HierarchicalInstanceSyntax& instSyntax,
                                         const slang::ast::InstanceBodySymbol& body,
-                                        const slang::ast::DefinitionSymbol& definition) {
+                                        const slang::ast::DefinitionSymbol& definition,
+                                        const slang::ast::InstanceSymbol* instance,
+                                        const slang::ast::Scope* parentScope) {
 
     // Mark ports
     for (auto port : instSyntax.connections) {
@@ -109,7 +147,82 @@ void SymbolIndexer::indexInstanceSyntax(const slang::syntax::HierarchicalInstanc
                     continue;
                 }
 
-                symdex[&portSyntax.name] = maybePortSym;
+                // `.name` is shorthand for `.name(name)`, so its single token denotes both the
+                // formal port and the value in the instance's parent scope.
+                if (!portSyntax.openParen) {
+                    auto addConnection = [&](const slang::ast::Symbol* outer,
+                                             const slang::ast::Symbol* inner) {
+                        if (!outer || !inner)
+                            return false;
+
+                        auto& symbols = symdex[&portSyntax.name];
+                        for (size_t i = 0; i + 1 < symbols.size(); i += 2) {
+                            if (symbols[i] == outer && symbols[i + 1] == inner)
+                                return true;
+                        }
+                        symbols.push_back(outer);
+                        symbols.push_back(inner);
+                        return true;
+                    };
+
+                    bool indexedConnection = false;
+                    if (instance && instance->getSyntax()) {
+                        for (auto* connection : instance->getPortConnections()) {
+                            bool matchesFormal = &connection->port == maybePortSym;
+                            if (auto* multiPort =
+                                    maybePortSym->as_if<slang::ast::MultiPortSymbol>()) {
+                                matchesFormal = std::ranges::find(multiPort->ports,
+                                                                  &connection->port) !=
+                                                multiPort->ports.end();
+                            }
+                            if (!matchesFormal)
+                                continue;
+
+                            const slang::ast::Symbol* outer = nullptr;
+                            if (parentScope) {
+                                outer = parentScope->lookupName(
+                                    name, slang::ast::LookupLocation::after(*instance));
+                            }
+                            if (!outer) {
+                                if (auto* expression = connection->getExpression())
+                                    outer = expression->getSymbolReference();
+                            }
+                            if (!outer &&
+                                connection->port.kind == slang::ast::SymbolKind::InterfacePort) {
+                                outer = connection->getIfaceConn().first;
+                            }
+
+                            const slang::ast::Symbol* inner = &connection->port;
+                            if (auto* port = connection->port.as_if<slang::ast::PortSymbol>();
+                                port && port->internalSymbol) {
+                                inner = port->internalSymbol;
+                            }
+                            indexedConnection |= addConnection(outer, inner);
+                        }
+                    }
+                    else {
+                        const slang::ast::Symbol* connected = nullptr;
+                        if (parentScope) {
+                            auto location = instance && instance->getParentScope() == parentScope
+                                                ? slang::ast::LookupLocation::after(*instance)
+                                                : slang::ast::LookupLocation::max;
+                            connected = parentScope->lookupName(name, location);
+                        }
+
+                        const slang::ast::Symbol* inner = maybePortSym;
+                        if (auto* port = maybePortSym->as_if<slang::ast::PortSymbol>();
+                            port && port->internalSymbol) {
+                            inner = port->internalSymbol;
+                        }
+                        indexedConnection = addConnection(connected, inner);
+                    }
+
+                    if (indexedConnection)
+                        continue;
+                }
+
+                // Keep the formal last because single-symbol lookup selects the last entry.
+                addSymbol(&portSyntax.name, *maybePortSym);
 
             } break;
             default:
@@ -121,14 +234,10 @@ void SymbolIndexer::indexInstanceSyntax(const slang::syntax::HierarchicalInstanc
         return;
     }
 
-    // Mark module type and param if we haven't already
+    // Mark module type and parameters. The definition is normally shared, while elaborated
+    // parameter symbols can differ for each instance that shares this syntax.
     auto& paramInst = instSyntax.parent->as<slang::syntax::HierarchyInstantiationSyntax>();
-    if (symdex.find(&paramInst.type) != symdex.end()) {
-        return;
-    }
-
-    // Mark instance type
-    symdex[&paramInst.type] = &definition;
+    addSymbol(&paramInst.type, definition);
 
     if (paramInst.parameters == nullptr) {
         return;
@@ -144,7 +253,7 @@ void SymbolIndexer::indexInstanceSyntax(const slang::syntax::HierarchicalInstanc
                     const slang::ast::Symbol* paramSym = body.lookupName(
                         paramSyntax.name.valueText());
                     if (paramSym) {
-                        symdex[&paramSyntax.name] = paramSym;
+                        addSymbol(&paramSyntax.name, *paramSym);
                     }
                 }
             } break;
@@ -156,7 +265,7 @@ void SymbolIndexer::indexInstanceSyntax(const slang::syntax::HierarchicalInstanc
 
 void SymbolIndexer::indexSymbolName(const slang::ast::Symbol& symbol, bool isUnnamed) {
     if (symbol.getSyntax() != nullptr) {
-        syntex[symbol.getSyntax()] = &symbol;
+        addSymbol(symbol.getSyntax(), symbol);
 
         auto& syntax = *symbol.getSyntax();
         if (!isUnnamed && syntax.sourceRange().start().buffer() == m_buffer &&
@@ -170,7 +279,7 @@ void SymbolIndexer::indexSymbolName(const slang::ast::Symbol& symbol, bool isUnn
             }
 
             for (auto* tok : tokens) {
-                symdex[tok] = &symbol;
+                addSymbol(tok, symbol);
             }
         }
     }
@@ -184,13 +293,14 @@ void SymbolIndexer::handle(const slang::ast::InstanceArraySymbol& sym) {
     }
 
     auto& instSyntax = sym.getSyntax()->as<slang::syntax::HierarchicalInstanceSyntax>();
-    symdex[&instSyntax.decl->name] = &sym;
+    addSymbol(&instSyntax.decl->name, sym);
 
     // Get definition and body - either from first element or by lookup
     if (!sym.elements.empty() && sym.elements[0]->kind == slang::ast::SymbolKind::Instance) {
         // Use first element if available
         auto& firstInst = sym.elements[0]->as<slang::ast::InstanceSymbol>();
-        indexInstanceSyntax(instSyntax, firstInst.body, firstInst.getDefinition());
+        indexInstanceSyntax(instSyntax, firstInst.body, firstInst.getDefinition(), &firstInst,
+                            firstInst.getParentScope());
     }
     else if (instSyntax.parent != nullptr &&
              instSyntax.parent->kind == slang::syntax::SyntaxKind::HierarchyInstantiation) {
@@ -208,7 +318,7 @@ void SymbolIndexer::handle(const slang::ast::InstanceArraySymbol& sym) {
         auto& definition = result.definition->as<slang::ast::DefinitionSymbol>();
         auto& inst = slang::ast::InstanceSymbol::createInvalid(parentScope->getCompilation(),
                                                                definition);
-        indexInstanceSyntax(instSyntax, inst.body, definition);
+        indexInstanceSyntax(instSyntax, inst.body, definition, &inst, sym.getParentScope());
     }
 }
 
@@ -218,7 +328,7 @@ void SymbolIndexer::handle(const slang::ast::InstanceSymbol& sym) {
         // This means it's the top level- just index the module name
         auto& modName =
             sym.getDefinition().getSyntax()->as<slang::syntax::ModuleDeclarationSyntax>();
-        symdex[&modName.header->name] = &sym.getDefinition();
+        addSymbol(&modName.header->name, sym.getDefinition());
         visitDefault(sym);
         return;
     }
@@ -231,8 +341,9 @@ void SymbolIndexer::handle(const slang::ast::InstanceSymbol& sym) {
     switch (sym.getSyntax()->kind) {
         case slang::syntax::SyntaxKind::HierarchicalInstance: {
             auto& instSyntax = sym.getSyntax()->as<slang::syntax::HierarchicalInstanceSyntax>();
-            symdex[&instSyntax.decl->name] = &sym;
-            indexInstanceSyntax(instSyntax, sym.body, sym.getDefinition());
+            addSymbol(&instSyntax.decl->name, sym);
+            indexInstanceSyntax(instSyntax, sym.body, sym.getDefinition(), &sym,
+                                sym.getParentScope());
         } break;
         default: {
             WARN("Unknown instance symbol kind: {}", toString(sym.getSyntax()->kind));
@@ -247,7 +358,7 @@ void SymbolIndexer::handle(const slang::ast::InstanceSymbol& sym) {
 void SymbolIndexer::handle(const slang::ast::EnumValueSymbol& sym) {
     auto& syntax = sym.getSyntax()->as<slang::syntax::DeclaratorSyntax>();
     if (syntax.dimensions.empty()) {
-        symdex[&syntax.name] = &sym;
+        addSymbol(&syntax.name, sym);
     }
 }
 
