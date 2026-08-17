@@ -27,6 +27,10 @@
 namespace server {
 using namespace slang;
 
+namespace {
+std::string escapeInvalidUtf8(std::string_view s);
+}
+
 void stripBlankLines(std::string& s) {
     auto firstTok = std::find_if(s.begin(), s.end(), [](unsigned char ch) {
         return !isWhitespace(static_cast<char>(ch));
@@ -339,7 +343,7 @@ std::string getDocCommentForHover(const syntax::SyntaxNode& node,
 }
 
 std::string svCodeBlockString(std::string_view code) {
-    auto res = std::string{code};
+    auto res = escapeInvalidUtf8(code);
     stripBlankLines(res);
     shiftIndent(res);
     // We use quad backticks since in sv triple can be used for macro concatenations
@@ -549,34 +553,25 @@ std::string getTypeStringImpl(const ast::ValueSymbol& value) {
 template std::string getTypeStringImpl<true>(const ast::ValueSymbol& value);
 template std::string getTypeStringImpl<false>(const ast::ValueSymbol& value);
 
-bool isValidUtf8(std::string_view s) {
-    size_t i = 0;
-    while (i < s.size()) {
-        unsigned char c = static_cast<unsigned char>(s[i]);
-        int seqLen = utf8Len(c);
+namespace {
 
-        // utf8Len returns 0 for invalid leading bytes
-        if (seqLen == 0) {
-            return false;
-        }
+size_t validUtf8SequenceLength(std::string_view s) {
+    if (s.empty())
+        return 0;
 
-        // Check if we have enough bytes remaining
-        if (i + seqLen > s.size()) {
-            return false;
-        }
+    auto sequenceLength = utf8Len(static_cast<unsigned char>(s.front()));
+    if (sequenceLength == 0 || s.size() < static_cast<size_t>(sequenceLength))
+        return 0;
 
-        // Validate continuation bytes (must be 10xxxxxx)
-        for (int j = 1; j < seqLen; j++) {
-            unsigned char cont = static_cast<unsigned char>(s[i + j]);
-            if ((cont & 0xC0) != 0x80) {
-                return false;
-            }
-        }
+    char bytes[4]{};
+    for (size_t i = 0; i < std::min(s.size(), sizeof(bytes)); i++)
+        bytes[i] = s[i];
 
-        i += seqLen;
-    }
-
-    return true;
+    uint32_t codePoint;
+    int error;
+    int decodedLength;
+    utf8Decode(bytes, &codePoint, &error, decodedLength);
+    return error ? 0 : static_cast<size_t>(decodedLength);
 }
 
 // Escape invalid UTF-8 bytes as \xNN, preserving valid ASCII/UTF-8
@@ -586,44 +581,31 @@ std::string escapeInvalidUtf8(std::string_view s) {
 
     size_t i = 0;
     while (i < s.size()) {
-        unsigned char c = static_cast<unsigned char>(s[i]);
-        int seqLen = utf8Len(c);
-
-        // utf8Len returns 0 for invalid leading bytes
-        if (seqLen == 0) {
-            result += fmt::format("\\x{:02x}", c);
-            i++;
-            continue;
-        }
-
-        // Check if we have enough bytes remaining
-        if (i + static_cast<size_t>(seqLen) > s.size()) {
-            result += fmt::format("\\x{:02x}", c);
-            i++;
-            continue;
-        }
-
-        // Validate continuation bytes (must be 10xxxxxx)
-        bool valid = true;
-        for (int j = 1; j < seqLen; j++) {
-            unsigned char cont = static_cast<unsigned char>(s[i + j]);
-            if ((cont & 0xC0) != 0x80) {
-                valid = false;
-                break;
-            }
-        }
-
-        if (valid) {
-            result.append(s.substr(i, seqLen));
-            i += seqLen;
+        auto sequenceLength = validUtf8SequenceLength(s.substr(i));
+        if (sequenceLength) {
+            result.append(s.substr(i, sequenceLength));
+            i += sequenceLength;
         }
         else {
-            result += fmt::format("\\x{:02x}", c);
+            result += fmt::format("\\x{:02x}", static_cast<unsigned char>(s[i]));
             i++;
         }
     }
 
     return result;
+}
+
+} // namespace
+
+bool isValidUtf8(std::string_view s) {
+    size_t i = 0;
+    while (i < s.size()) {
+        auto sequenceLength = validUtf8SequenceLength(s.substr(i));
+        if (!sequenceLength)
+            return false;
+        i += sequenceLength;
+    }
+    return true;
 }
 
 std::string formatConstantValue(const ConstantValue& value) {

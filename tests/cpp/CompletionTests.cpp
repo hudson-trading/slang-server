@@ -209,6 +209,22 @@ TEST_CASE("ModuleCompletion") {
 );)");
 }
 
+TEST_CASE("ModuleCompletionInvalidUtf8") {
+    std::string text = "\n// ";
+    text.append("\xb2\xe2\xca\xd4", 4);
+    text += "\nmodule invalid_encoding(input logic value); endmodule";
+
+    auto tree = syntax::SyntaxTree::fromText(text);
+    auto item = completions::getInstanceCompletion("invalid_encoding",
+                                                   syntax::SyntaxKind::ModuleDeclaration);
+    completions::resolveModule(*tree, "invalid_encoding", item);
+
+    REQUIRE(item.documentation);
+    auto& documentation = rfl::get<lsp::MarkupContent>(*item.documentation);
+    CHECK(documentation.value.find("\\xb2\\xe2\\xca\\xd4") != std::string::npos);
+    CHECK_NOTHROW(rfl::json::write(item));
+}
+
 TEST_CASE("PackageCompletion") {
     ServerHarness server("repo1");
     JsonGoldenTest golden;
