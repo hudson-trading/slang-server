@@ -661,13 +661,12 @@ void ShallowAnalysis::addLocalReferences(std::vector<lsp::Location>& references,
         }
 
         // Check if this is the token at the target location
-        const ast::Symbol* tokenSymbol = getSymbolAtToken(token);
-        if (!tokenSymbol) {
-            continue;
-        }
-
-        if (tokenSymbol->location == targetLocation) {
-            targetSymbol = tokenSymbol;
+        auto tokenSymbols = getSymbolsAtToken(token);
+        auto targetIt = std::ranges::find_if(tokenSymbols, [&](const ast::Symbol* symbol) {
+            return symbol->location == targetLocation;
+        });
+        if (targetIt != tokenSymbols.end()) {
+            targetSymbol = *targetIt;
             break;
         }
     }
@@ -684,8 +683,10 @@ void ShallowAnalysis::addLocalReferences(std::vector<lsp::Location>& references,
             continue;
         }
 
-        const ast::Symbol* tokenSymbol = getSymbolAtToken(token);
-        if (!symbolsMatch(tokenSymbol, targetSymbol)) {
+        auto tokenSymbols = getSymbolsAtToken(token);
+        if (std::ranges::none_of(tokenSymbols, [&](const ast::Symbol* symbol) {
+                return symbolsMatch(symbol, targetSymbol);
+            })) {
             continue;
         }
 

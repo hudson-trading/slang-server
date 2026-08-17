@@ -134,7 +134,7 @@ endmodule
 
 extern interface I(input a, output b);
                  ^ Refs[3]
-                         ^ Refs[2]
+                         ^ Refs[3]
                                    ^ Refs[2]
 
 
@@ -144,7 +144,7 @@ interface I(.*);
 
     modport mod(input a);
             ^^^ Refs[1]
-                      ^ Refs[1]
+                      ^ Refs[3]
 
 endinterface
 
@@ -167,7 +167,7 @@ macromodule m3;
     I d(.a(), .b());
     ^ Refs[3]
       ^ Refs[3]
-         ^ Refs[2]
+         ^ Refs[3]
                ^ Refs[2]
 
 
