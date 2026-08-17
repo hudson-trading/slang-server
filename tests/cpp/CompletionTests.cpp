@@ -720,7 +720,7 @@ TEST_CASE("NonProceduralSignalCompletion") {
     auto comps = doc.after("assign\n").getResolvedCompletions();
     golden.record("assign_lhs", comps);
 
-    // Non-procedural contexts like continuous assign should include local signals
+    // An unfinished continuous assign still needs signals from the surrounding module body.
     auto findByLabel = [&](const std::string& label) {
         return std::find_if(comps.begin(), comps.end(),
                             [&](const lsp::CompletionItem& item) { return item.label == label; });

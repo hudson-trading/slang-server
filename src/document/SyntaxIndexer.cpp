@@ -84,15 +84,6 @@ void SyntaxIndexer::visit(const slang::syntax::SyntaxNode& node) {
 
             if (token->location().buffer() == m_buffer &&
                 token->kind != parsing::TokenKind::Placeholder) {
-                if (collected.size() > 0) {
-                    /// TODO: investigate overlaps
-                    // SLANG_ASSERT(collected.back()->range().end() <= token->range().start());
-                    if (!(collected.back()->range().end() <= token->range().start())) {
-                        ERROR("Token '{}': {} overlaps with previous token '{}' : {}",
-                              token->rawText(), toString(token->kind), collected.back()->rawText(),
-                              toString(collected.back()->kind));
-                    }
-                }
                 collected.push_back(token);
 
                 tokenToParent[token] = &node;
