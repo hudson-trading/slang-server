@@ -13,33 +13,98 @@
         },
         "filterText": "Dut",
         "insertText": "Dut #(\n    .a(${1:a /* default 0 */}),\n    .b(${2:b /* default 1 */})\n ) ${3:dut} (\n    .foo(${4:foo})\n);",
-        "insertTextFormat": "Snippet"
+        "insertTextFormat": "Snippet",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 43,
+              "character": 8
+            },
+            "end": {
+              "line": 43,
+              "character": 8
+            }
+          },
+          "newText": "Dut #(\n\t.a(${1:a /* default 0 */}),\n\t.b(${2:b /* default 1 */})\n ) ${3:dut} (\n\t.foo(${4:foo})\n);"
+        }
       },
       {
         "label": "always_comb",
         "kind": "Snippet",
         "filterText": "always_comb",
         "insertText": "always_comb begin\n    $0\nend",
-        "insertTextFormat": "Snippet"
+        "insertTextFormat": "Snippet",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 43,
+              "character": 8
+            },
+            "end": {
+              "line": 43,
+              "character": 8
+            }
+          },
+          "newText": "always_comb begin\n\t$0\nend"
+        }
       },
       {
         "label": "always_ff",
         "kind": "Snippet",
         "filterText": "always_ff",
         "insertText": "always_ff @($0) begin\n    \nend",
-        "insertTextFormat": "Snippet"
+        "insertTextFormat": "Snippet",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 43,
+              "character": 8
+            },
+            "end": {
+              "line": 43,
+              "character": 8
+            }
+          },
+          "newText": "always_ff @($0) begin\n\t\nend"
+        }
       },
       {
         "label": "always_latch",
         "kind": "Snippet",
         "filterText": "always_latch",
         "insertText": "always_latch begin\n    $0\nend",
-        "insertTextFormat": "Snippet"
+        "insertTextFormat": "Snippet",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 43,
+              "character": 8
+            },
+            "end": {
+              "line": 43,
+              "character": 8
+            }
+          },
+          "newText": "always_latch begin\n\t$0\nend"
+        }
       },
       {
         "label": "assign",
         "kind": "Keyword",
-        "filterText": "assign"
+        "filterText": "assign",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 43,
+              "character": 8
+            },
+            "end": {
+              "line": 43,
+              "character": 8
+            }
+          },
+          "newText": "assign"
+        }
       },
       {
         "label": "base_pkg",
@@ -53,7 +118,20 @@
         },
         "filterText": "base_pkg",
         "insertText": "base_pkg",
-        "insertTextFormat": "PlainText"
+        "insertTextFormat": "PlainText",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 43,
+              "character": 8
+            },
+            "end": {
+              "line": 43,
+              "character": 8
+            }
+          },
+          "newText": "base_pkg"
+        }
       },
       {
         "label": "bus_transaction_t",
@@ -65,7 +143,20 @@
           "kind": "markdown",
           "value": "````systemverilog\n// Type definitions\ntypedef struct {\n    logic [7:0] addr;\n    logic [31:0] data;\n} bus_transaction_t;\n````"
         },
-        "filterText": "bus_transaction_t"
+        "filterText": "bus_transaction_t",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 43,
+              "character": 8
+            },
+            "end": {
+              "line": 43,
+              "character": 8
+            }
+          },
+          "newText": "bus_transaction_t"
+        }
       },
       {
         "label": "cycle_test_module",
@@ -79,17 +170,56 @@
         },
         "filterText": "cycle_test_module",
         "insertText": "cycle_test_module ${1:cycle_test_module} ();",
-        "insertTextFormat": "Snippet"
+        "insertTextFormat": "Snippet",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 43,
+              "character": 8
+            },
+            "end": {
+              "line": 43,
+              "character": 8
+            }
+          },
+          "newText": "cycle_test_module ${1:cycle_test_module} ();"
+        }
       },
       {
         "label": "logic",
         "kind": "Keyword",
-        "filterText": "logic"
+        "filterText": "logic",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 43,
+              "character": 8
+            },
+            "end": {
+              "line": 43,
+              "character": 8
+            }
+          },
+          "newText": "logic"
+        }
       },
       {
         "label": "reg",
         "kind": "Keyword",
-        "filterText": "reg"
+        "filterText": "reg",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 43,
+              "character": 8
+            },
+            "end": {
+              "line": 43,
+              "character": 8
+            }
+          },
+          "newText": "reg"
+        }
       },
       {
         "label": "state_t",
@@ -101,7 +231,20 @@
           "kind": "markdown",
           "value": "````systemverilog\ntypedef enum logic [1:0] {\n    IDLE = 2'b00,\n    ACTIVE = 2'b01,\n    WAIT = 2'b10\n} state_t;\n````"
         },
-        "filterText": "state_t"
+        "filterText": "state_t",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 43,
+              "character": 8
+            },
+            "end": {
+              "line": 43,
+              "character": 8
+            }
+          },
+          "newText": "state_t"
+        }
       },
       {
         "label": "tb",
@@ -115,7 +258,20 @@
         },
         "filterText": "tb",
         "insertText": "tb ${1:tb} ();",
-        "insertTextFormat": "Snippet"
+        "insertTextFormat": "Snippet",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 43,
+              "character": 8
+            },
+            "end": {
+              "line": 43,
+              "character": 8
+            }
+          },
+          "newText": "tb ${1:tb} ();"
+        }
       },
       {
         "label": "util_pkg",
@@ -129,12 +285,38 @@
         },
         "filterText": "util_pkg",
         "insertText": "util_pkg",
-        "insertTextFormat": "PlainText"
+        "insertTextFormat": "PlainText",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 43,
+              "character": 8
+            },
+            "end": {
+              "line": 43,
+              "character": 8
+            }
+          },
+          "newText": "util_pkg"
+        }
       },
       {
         "label": "wire",
         "kind": "Keyword",
-        "filterText": "wire"
+        "filterText": "wire",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 43,
+              "character": 8
+            },
+            "end": {
+              "line": 43,
+              "character": 8
+            }
+          },
+          "newText": "wire"
+        }
       }
     ]
   },
@@ -151,7 +333,20 @@
           "kind": "markdown",
           "value": "````systemverilog\ntypedef enum logic [1:0] {\n    IDLE = 2'b00,\n    ACTIVE = 2'b01,\n    WAIT = 2'b10\n} state_t;\n````"
         },
-        "filterText": "ACTIVE"
+        "filterText": "ACTIVE",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 64,
+              "character": 25
+            },
+            "end": {
+              "line": 64,
+              "character": 25
+            }
+          },
+          "newText": "ACTIVE"
+        }
       },
       {
         "label": "IDLE",
@@ -164,7 +359,20 @@
           "kind": "markdown",
           "value": "````systemverilog\ntypedef enum logic [1:0] {\n    IDLE = 2'b00,\n    ACTIVE = 2'b01,\n    WAIT = 2'b10\n} state_t;\n````"
         },
-        "filterText": "IDLE"
+        "filterText": "IDLE",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 64,
+              "character": 25
+            },
+            "end": {
+              "line": 64,
+              "character": 25
+            }
+          },
+          "newText": "IDLE"
+        }
       },
       {
         "label": "PARAM_INT",
@@ -176,7 +384,20 @@
           "kind": "markdown",
           "value": "````systemverilog\n// Parameters\nparameter int PARAM_INT = 42\n````"
         },
-        "filterText": "PARAM_INT"
+        "filterText": "PARAM_INT",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 64,
+              "character": 25
+            },
+            "end": {
+              "line": 64,
+              "character": 25
+            }
+          },
+          "newText": "PARAM_INT"
+        }
       },
       {
         "label": "PARAM_LOGIC",
@@ -188,7 +409,20 @@
           "kind": "markdown",
           "value": "````systemverilog\nparameter logic [7:0] PARAM_LOGIC = 8'hAA\n````"
         },
-        "filterText": "PARAM_LOGIC"
+        "filterText": "PARAM_LOGIC",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 64,
+              "character": 25
+            },
+            "end": {
+              "line": 64,
+              "character": 25
+            }
+          },
+          "newText": "PARAM_LOGIC"
+        }
       },
       {
         "label": "WAIT",
@@ -201,7 +435,20 @@
           "kind": "markdown",
           "value": "````systemverilog\ntypedef enum logic [1:0] {\n    IDLE = 2'b00,\n    ACTIVE = 2'b01,\n    WAIT = 2'b10\n} state_t;\n````"
         },
-        "filterText": "WAIT"
+        "filterText": "WAIT",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 64,
+              "character": 25
+            },
+            "end": {
+              "line": 64,
+              "character": 25
+            }
+          },
+          "newText": "WAIT"
+        }
       },
       {
         "label": "base_pkg",
@@ -215,7 +462,20 @@
         },
         "filterText": "base_pkg",
         "insertText": "base_pkg",
-        "insertTextFormat": "PlainText"
+        "insertTextFormat": "PlainText",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 64,
+              "character": 25
+            },
+            "end": {
+              "line": 64,
+              "character": 25
+            }
+          },
+          "newText": "base_pkg"
+        }
       },
       {
         "label": "bus_port",
@@ -227,7 +487,20 @@
           "kind": "markdown",
           "value": "````systemverilog\nbus_if.master bus_port\n````"
         },
-        "filterText": "bus_port"
+        "filterText": "bus_port",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 64,
+              "character": 25
+            },
+            "end": {
+              "line": 64,
+              "character": 25
+            }
+          },
+          "newText": "bus_port"
+        }
       },
       {
         "label": "bus_transaction_t",
@@ -239,7 +512,20 @@
           "kind": "markdown",
           "value": "````systemverilog\n// Type definitions\ntypedef struct {\n    logic [7:0] addr;\n    logic [31:0] data;\n} bus_transaction_t;\n````"
         },
-        "filterText": "bus_transaction_t"
+        "filterText": "bus_transaction_t",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 64,
+              "character": 25
+            },
+            "end": {
+              "line": 64,
+              "character": 25
+            }
+          },
+          "newText": "bus_transaction_t"
+        }
       },
       {
         "label": "calc_parity",
@@ -253,7 +539,20 @@
         },
         "filterText": "calc_parity",
         "insertText": "calc_parity(${1:data /* logic[7:0] */})",
-        "insertTextFormat": "Snippet"
+        "insertTextFormat": "Snippet",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 64,
+              "character": 25
+            },
+            "end": {
+              "line": 64,
+              "character": 25
+            }
+          },
+          "newText": "calc_parity(${1:data /* logic[7:0] */})"
+        }
       },
       {
         "label": "clk",
@@ -265,7 +564,20 @@
           "kind": "markdown",
           "value": "````systemverilog\ninput logic clk\n````"
         },
-        "filterText": "clk"
+        "filterText": "clk",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 64,
+              "character": 25
+            },
+            "end": {
+              "line": 64,
+              "character": 25
+            }
+          },
+          "newText": "clk"
+        }
       },
       {
         "label": "data_out",
@@ -277,7 +589,20 @@
           "kind": "markdown",
           "value": "````systemverilog\noutput logic [7:0] data_out\n````"
         },
-        "filterText": "data_out"
+        "filterText": "data_out",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 64,
+              "character": 25
+            },
+            "end": {
+              "line": 64,
+              "character": 25
+            }
+          },
+          "newText": "data_out"
+        }
       },
       {
         "label": "gen_array",
@@ -289,7 +614,20 @@
           "kind": "markdown",
           "value": "````systemverilog\nfor (i = 0; i < 4; i++) begin : gen_array\n    logic [7:0] gen_signal;\nend\n````"
         },
-        "filterText": "gen_array"
+        "filterText": "gen_array",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 64,
+              "character": 25
+            },
+            "end": {
+              "line": 64,
+              "character": 25
+            }
+          },
+          "newText": "gen_array"
+        }
       },
       {
         "label": "i",
@@ -301,7 +639,20 @@
           "kind": "markdown",
           "value": "````systemverilog\ni\n````"
         },
-        "filterText": "i"
+        "filterText": "i",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 64,
+              "character": 25
+            },
+            "end": {
+              "line": 64,
+              "character": 25
+            }
+          },
+          "newText": "i"
+        }
       },
       {
         "label": "internal_signal",
@@ -313,7 +664,20 @@
           "kind": "markdown",
           "value": "````systemverilog\n// Local variables of different types\nlogic internal_signal;\n````"
         },
-        "filterText": "internal_signal"
+        "filterText": "internal_signal",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 64,
+              "character": 25
+            },
+            "end": {
+              "line": 64,
+              "character": 25
+            }
+          },
+          "newText": "internal_signal"
+        }
       },
       {
         "label": "intf",
@@ -325,7 +689,20 @@
           "kind": "markdown",
           "value": "````systemverilog\n// Interface port example\nsimple_interface intf();\n````"
         },
-        "filterText": "intf"
+        "filterText": "intf",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 64,
+              "character": 25
+            },
+            "end": {
+              "line": 64,
+              "character": 25
+            }
+          },
+          "newText": "intf"
+        }
       },
       {
         "label": "reset_signals",
@@ -339,7 +716,20 @@
         },
         "filterText": "reset_signals",
         "insertText": "reset_signals()",
-        "insertTextFormat": "Snippet"
+        "insertTextFormat": "Snippet",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 64,
+              "character": 25
+            },
+            "end": {
+              "line": 64,
+              "character": 25
+            }
+          },
+          "newText": "reset_signals()"
+        }
       },
       {
         "label": "rst",
@@ -351,7 +741,20 @@
           "kind": "markdown",
           "value": "````systemverilog\ninput logic rst\n````"
         },
-        "filterText": "rst"
+        "filterText": "rst",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 64,
+              "character": 25
+            },
+            "end": {
+              "line": 64,
+              "character": 25
+            }
+          },
+          "newText": "rst"
+        }
       },
       {
         "label": "state_t",
@@ -363,7 +766,20 @@
           "kind": "markdown",
           "value": "````systemverilog\ntypedef enum logic [1:0] {\n    IDLE = 2'b00,\n    ACTIVE = 2'b01,\n    WAIT = 2'b10\n} state_t;\n````"
         },
-        "filterText": "state_t"
+        "filterText": "state_t",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 64,
+              "character": 25
+            },
+            "end": {
+              "line": 64,
+              "character": 25
+            }
+          },
+          "newText": "state_t"
+        }
       },
       {
         "label": "u_sub",
@@ -375,7 +791,20 @@
           "kind": "markdown",
           "value": "````systemverilog\n// Instance of another module\nsub_module u_sub (\n    .clk(clk),\n    .rst(rst),\n    .enable(internal_signal)\n);\n````"
         },
-        "filterText": "u_sub"
+        "filterText": "u_sub",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 64,
+              "character": 25
+            },
+            "end": {
+              "line": 64,
+              "character": 25
+            }
+          },
+          "newText": "u_sub"
+        }
       },
       {
         "label": "util_pkg",
@@ -389,7 +818,20 @@
         },
         "filterText": "util_pkg",
         "insertText": "util_pkg",
-        "insertTextFormat": "PlainText"
+        "insertTextFormat": "PlainText",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 64,
+              "character": 25
+            },
+            "end": {
+              "line": 64,
+              "character": 25
+            }
+          },
+          "newText": "util_pkg"
+        }
       },
       {
         "label": "wide_signal",
@@ -401,7 +843,20 @@
           "kind": "markdown",
           "value": "````systemverilog\nlogic [15:0] wide_signal;\n````"
         },
-        "filterText": "wide_signal"
+        "filterText": "wide_signal",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 64,
+              "character": 25
+            },
+            "end": {
+              "line": 64,
+              "character": 25
+            }
+          },
+          "newText": "wide_signal"
+        }
       }
     ]
   }

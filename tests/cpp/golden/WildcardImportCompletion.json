@@ -12,7 +12,20 @@
           "kind": "markdown",
           "value": "````systemverilog\ntypedef enum {\n    ADD,\n    SUBTRACT,\n    MULTIPLY\n} operation_t;\n````"
         },
-        "filterText": "ADD"
+        "filterText": "ADD",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 56,
+              "character": 28
+            },
+            "end": {
+              "line": 56,
+              "character": 28
+            }
+          },
+          "newText": "ADD"
+        }
       },
       {
         "label": "E_VALUE",
@@ -25,7 +38,20 @@
           "kind": "markdown",
           "value": "````systemverilog\nparameter int E_VALUE = 271\n````"
         },
-        "filterText": "E_VALUE"
+        "filterText": "E_VALUE",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 56,
+              "character": 28
+            },
+            "end": {
+              "line": 56,
+              "character": 28
+            }
+          },
+          "newText": "E_VALUE"
+        }
       },
       {
         "label": "MAX_SIZE",
@@ -38,7 +64,20 @@
           "kind": "markdown",
           "value": "````systemverilog\nparameter int MAX_SIZE = 1024\n````"
         },
-        "filterText": "MAX_SIZE"
+        "filterText": "MAX_SIZE",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 56,
+              "character": 28
+            },
+            "end": {
+              "line": 56,
+              "character": 28
+            }
+          },
+          "newText": "MAX_SIZE"
+        }
       },
       {
         "label": "MULTIPLY",
@@ -51,7 +90,20 @@
           "kind": "markdown",
           "value": "````systemverilog\ntypedef enum {\n    ADD,\n    SUBTRACT,\n    MULTIPLY\n} operation_t;\n````"
         },
-        "filterText": "MULTIPLY"
+        "filterText": "MULTIPLY",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 56,
+              "character": 28
+            },
+            "end": {
+              "line": 56,
+              "character": 28
+            }
+          },
+          "newText": "MULTIPLY"
+        }
       },
       {
         "label": "PI_VALUE",
@@ -64,7 +116,20 @@
           "kind": "markdown",
           "value": "````systemverilog\nparameter int PI_VALUE = 314\n````"
         },
-        "filterText": "PI_VALUE"
+        "filterText": "PI_VALUE",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 56,
+              "character": 28
+            },
+            "end": {
+              "line": 56,
+              "character": 28
+            }
+          },
+          "newText": "PI_VALUE"
+        }
       },
       {
         "label": "SUBTRACT",
@@ -77,7 +142,20 @@
           "kind": "markdown",
           "value": "````systemverilog\ntypedef enum {\n    ADD,\n    SUBTRACT,\n    MULTIPLY\n} operation_t;\n````"
         },
-        "filterText": "SUBTRACT"
+        "filterText": "SUBTRACT",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 56,
+              "character": 28
+            },
+            "end": {
+              "line": 56,
+              "character": 28
+            }
+          },
+          "newText": "SUBTRACT"
+        }
       },
       {
         "label": "base_pkg",
@@ -91,7 +169,20 @@
         },
         "filterText": "base_pkg",
         "insertText": "base_pkg",
-        "insertTextFormat": "PlainText"
+        "insertTextFormat": "PlainText",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 56,
+              "character": 28
+            },
+            "end": {
+              "line": 56,
+              "character": 28
+            }
+          },
+          "newText": "base_pkg"
+        }
       },
       {
         "label": "byte_t",
@@ -104,7 +195,20 @@
           "kind": "markdown",
           "value": "````systemverilog\ntypedef logic [7:0] byte_t;\n````"
         },
-        "filterText": "byte_t"
+        "filterText": "byte_t",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 56,
+              "character": 28
+            },
+            "end": {
+              "line": 56,
+              "character": 28
+            }
+          },
+          "newText": "byte_t"
+        }
       },
       {
         "label": "calculate",
@@ -119,7 +223,20 @@
         },
         "filterText": "calculate",
         "insertText": "calculate(${1:a /* real */}, ${2:b /* real */}, ${3:op /* math_pkg::operation_t */})",
-        "insertTextFormat": "Snippet"
+        "insertTextFormat": "Snippet",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 56,
+              "character": 28
+            },
+            "end": {
+              "line": 56,
+              "character": 28
+            }
+          },
+          "newText": "calculate(${1:a /* real */}, ${2:b /* real */}, ${3:op /* math_pkg::operation_t */})"
+        }
       },
       {
         "label": "data",
@@ -127,7 +244,24 @@
           "detail": " byte_t"
         },
         "kind": "Variable",
-        "filterText": "data"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nbyte_t data = 8'hFF;\n````"
+        },
+        "filterText": "data",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 56,
+              "character": 28
+            },
+            "end": {
+              "line": 56,
+              "character": 28
+            }
+          },
+          "newText": "data"
+        }
       },
       {
         "label": "find_max",
@@ -142,7 +276,20 @@
         },
         "filterText": "find_max",
         "insertText": "find_max(${1:array /* int\\$[] */}, ${2:size /* int */})",
-        "insertTextFormat": "Snippet"
+        "insertTextFormat": "Snippet",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 56,
+              "character": 28
+            },
+            "end": {
+              "line": 56,
+              "character": 28
+            }
+          },
+          "newText": "find_max(${1:array /* int\\$[] */}, ${2:size /* int */})"
+        }
       },
       {
         "label": "max_val",
@@ -150,7 +297,24 @@
           "detail": " int"
         },
         "kind": "Variable",
-        "filterText": "max_val"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nint max_val = find_max();\n````"
+        },
+        "filterText": "max_val",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 56,
+              "character": 28
+            },
+            "end": {
+              "line": 56,
+              "character": 28
+            }
+          },
+          "newText": "max_val"
+        }
       },
       {
         "label": "my_point",
@@ -158,7 +322,24 @@
           "detail": " point_t"
         },
         "kind": "Variable",
-        "filterText": "my_point"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\npoint_t my_point;\n````"
+        },
+        "filterText": "my_point",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 56,
+              "character": 28
+            },
+            "end": {
+              "line": 56,
+              "character": 28
+            }
+          },
+          "newText": "my_point"
+        }
       },
       {
         "label": "op",
@@ -166,7 +347,24 @@
           "detail": " operation_t"
         },
         "kind": "Variable",
-        "filterText": "op"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\noperation_t op = ADD;\n````"
+        },
+        "filterText": "op",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 56,
+              "character": 28
+            },
+            "end": {
+              "line": 56,
+              "character": 28
+            }
+          },
+          "newText": "op"
+        }
       },
       {
         "label": "operation_t",
@@ -179,7 +377,20 @@
           "kind": "markdown",
           "value": "````systemverilog\ntypedef enum {\n    ADD,\n    SUBTRACT,\n    MULTIPLY\n} operation_t;\n````"
         },
-        "filterText": "operation_t"
+        "filterText": "operation_t",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 56,
+              "character": 28
+            },
+            "end": {
+              "line": 56,
+              "character": 28
+            }
+          },
+          "newText": "operation_t"
+        }
       },
       {
         "label": "point_t",
@@ -192,7 +403,20 @@
           "kind": "markdown",
           "value": "````systemverilog\ntypedef struct {\n    real x;\n    real y;\n} point_t;\n````"
         },
-        "filterText": "point_t"
+        "filterText": "point_t",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 56,
+              "character": 28
+            },
+            "end": {
+              "line": 56,
+              "character": 28
+            }
+          },
+          "newText": "point_t"
+        }
       },
       {
         "label": "print_result",
@@ -207,7 +431,20 @@
         },
         "filterText": "print_result",
         "insertText": "print_result(${1:value /* real */})",
-        "insertTextFormat": "Snippet"
+        "insertTextFormat": "Snippet",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 56,
+              "character": 28
+            },
+            "end": {
+              "line": 56,
+              "character": 28
+            }
+          },
+          "newText": "print_result(${1:value /* real */})"
+        }
       },
       {
         "label": "result",
@@ -215,7 +452,24 @@
           "detail": " real"
         },
         "kind": "Variable",
-        "filterText": "result"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\n// Test completions with wildcard imports\nreal result = calculate(PI_VALUE, E_VALUE, op);\n````"
+        },
+        "filterText": "result",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 56,
+              "character": 28
+            },
+            "end": {
+              "line": 56,
+              "character": 28
+            }
+          },
+          "newText": "result"
+        }
       },
       {
         "label": "util_pkg",
@@ -229,7 +483,20 @@
         },
         "filterText": "util_pkg",
         "insertText": "util_pkg",
-        "insertTextFormat": "PlainText"
+        "insertTextFormat": "PlainText",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 56,
+              "character": 28
+            },
+            "end": {
+              "line": 56,
+              "character": 28
+            }
+          },
+          "newText": "util_pkg"
+        }
       }
     ]
   },
@@ -246,7 +513,20 @@
           "kind": "markdown",
           "value": "````systemverilog\ntypedef enum {\n    ADD,\n    SUBTRACT,\n    MULTIPLY\n} operation_t;\n````"
         },
-        "filterText": "ADD"
+        "filterText": "ADD",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 59,
+              "character": 12
+            },
+            "end": {
+              "line": 59,
+              "character": 12
+            }
+          },
+          "newText": "ADD"
+        }
       },
       {
         "label": "E_VALUE",
@@ -259,7 +539,20 @@
           "kind": "markdown",
           "value": "````systemverilog\nparameter int E_VALUE = 271\n````"
         },
-        "filterText": "E_VALUE"
+        "filterText": "E_VALUE",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 59,
+              "character": 12
+            },
+            "end": {
+              "line": 59,
+              "character": 12
+            }
+          },
+          "newText": "E_VALUE"
+        }
       },
       {
         "label": "MAX_SIZE",
@@ -272,7 +565,20 @@
           "kind": "markdown",
           "value": "````systemverilog\nparameter int MAX_SIZE = 1024\n````"
         },
-        "filterText": "MAX_SIZE"
+        "filterText": "MAX_SIZE",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 59,
+              "character": 12
+            },
+            "end": {
+              "line": 59,
+              "character": 12
+            }
+          },
+          "newText": "MAX_SIZE"
+        }
       },
       {
         "label": "MULTIPLY",
@@ -285,7 +591,20 @@
           "kind": "markdown",
           "value": "````systemverilog\ntypedef enum {\n    ADD,\n    SUBTRACT,\n    MULTIPLY\n} operation_t;\n````"
         },
-        "filterText": "MULTIPLY"
+        "filterText": "MULTIPLY",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 59,
+              "character": 12
+            },
+            "end": {
+              "line": 59,
+              "character": 12
+            }
+          },
+          "newText": "MULTIPLY"
+        }
       },
       {
         "label": "PI_VALUE",
@@ -298,7 +617,20 @@
           "kind": "markdown",
           "value": "````systemverilog\nparameter int PI_VALUE = 314\n````"
         },
-        "filterText": "PI_VALUE"
+        "filterText": "PI_VALUE",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 59,
+              "character": 12
+            },
+            "end": {
+              "line": 59,
+              "character": 12
+            }
+          },
+          "newText": "PI_VALUE"
+        }
       },
       {
         "label": "SUBTRACT",
@@ -311,7 +643,20 @@
           "kind": "markdown",
           "value": "````systemverilog\ntypedef enum {\n    ADD,\n    SUBTRACT,\n    MULTIPLY\n} operation_t;\n````"
         },
-        "filterText": "SUBTRACT"
+        "filterText": "SUBTRACT",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 59,
+              "character": 12
+            },
+            "end": {
+              "line": 59,
+              "character": 12
+            }
+          },
+          "newText": "SUBTRACT"
+        }
       },
       {
         "label": "base_pkg",
@@ -325,7 +670,20 @@
         },
         "filterText": "base_pkg",
         "insertText": "base_pkg",
-        "insertTextFormat": "PlainText"
+        "insertTextFormat": "PlainText",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 59,
+              "character": 12
+            },
+            "end": {
+              "line": 59,
+              "character": 12
+            }
+          },
+          "newText": "base_pkg"
+        }
       },
       {
         "label": "byte_t",
@@ -338,7 +696,20 @@
           "kind": "markdown",
           "value": "````systemverilog\ntypedef logic [7:0] byte_t;\n````"
         },
-        "filterText": "byte_t"
+        "filterText": "byte_t",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 59,
+              "character": 12
+            },
+            "end": {
+              "line": 59,
+              "character": 12
+            }
+          },
+          "newText": "byte_t"
+        }
       },
       {
         "label": "calculate",
@@ -353,7 +724,20 @@
         },
         "filterText": "calculate",
         "insertText": "calculate(${1:a /* real */}, ${2:b /* real */}, ${3:op /* math_pkg::operation_t */})",
-        "insertTextFormat": "Snippet"
+        "insertTextFormat": "Snippet",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 59,
+              "character": 12
+            },
+            "end": {
+              "line": 59,
+              "character": 12
+            }
+          },
+          "newText": "calculate(${1:a /* real */}, ${2:b /* real */}, ${3:op /* math_pkg::operation_t */})"
+        }
       },
       {
         "label": "data",
@@ -361,7 +745,24 @@
           "detail": " byte_t"
         },
         "kind": "Variable",
-        "filterText": "data"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nbyte_t data = 8'hFF;\n````"
+        },
+        "filterText": "data",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 59,
+              "character": 12
+            },
+            "end": {
+              "line": 59,
+              "character": 12
+            }
+          },
+          "newText": "data"
+        }
       },
       {
         "label": "find_max",
@@ -376,7 +777,20 @@
         },
         "filterText": "find_max",
         "insertText": "find_max(${1:array /* int\\$[] */}, ${2:size /* int */})",
-        "insertTextFormat": "Snippet"
+        "insertTextFormat": "Snippet",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 59,
+              "character": 12
+            },
+            "end": {
+              "line": 59,
+              "character": 12
+            }
+          },
+          "newText": "find_max(${1:array /* int\\$[] */}, ${2:size /* int */})"
+        }
       },
       {
         "label": "max_val",
@@ -384,7 +798,24 @@
           "detail": " int"
         },
         "kind": "Variable",
-        "filterText": "max_val"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nint max_val = find_max();\n````"
+        },
+        "filterText": "max_val",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 59,
+              "character": 12
+            },
+            "end": {
+              "line": 59,
+              "character": 12
+            }
+          },
+          "newText": "max_val"
+        }
       },
       {
         "label": "my_point",
@@ -392,7 +823,24 @@
           "detail": " point_t"
         },
         "kind": "Variable",
-        "filterText": "my_point"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\npoint_t my_point;\n````"
+        },
+        "filterText": "my_point",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 59,
+              "character": 12
+            },
+            "end": {
+              "line": 59,
+              "character": 12
+            }
+          },
+          "newText": "my_point"
+        }
       },
       {
         "label": "op",
@@ -400,7 +848,24 @@
           "detail": " operation_t"
         },
         "kind": "Variable",
-        "filterText": "op"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\noperation_t op = ADD;\n````"
+        },
+        "filterText": "op",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 59,
+              "character": 12
+            },
+            "end": {
+              "line": 59,
+              "character": 12
+            }
+          },
+          "newText": "op"
+        }
       },
       {
         "label": "operation_t",
@@ -413,7 +878,20 @@
           "kind": "markdown",
           "value": "````systemverilog\ntypedef enum {\n    ADD,\n    SUBTRACT,\n    MULTIPLY\n} operation_t;\n````"
         },
-        "filterText": "operation_t"
+        "filterText": "operation_t",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 59,
+              "character": 12
+            },
+            "end": {
+              "line": 59,
+              "character": 12
+            }
+          },
+          "newText": "operation_t"
+        }
       },
       {
         "label": "point_t",
@@ -426,7 +904,20 @@
           "kind": "markdown",
           "value": "````systemverilog\ntypedef struct {\n    real x;\n    real y;\n} point_t;\n````"
         },
-        "filterText": "point_t"
+        "filterText": "point_t",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 59,
+              "character": 12
+            },
+            "end": {
+              "line": 59,
+              "character": 12
+            }
+          },
+          "newText": "point_t"
+        }
       },
       {
         "label": "print_result",
@@ -441,7 +932,20 @@
         },
         "filterText": "print_result",
         "insertText": "print_result(${1:value /* real */})",
-        "insertTextFormat": "Snippet"
+        "insertTextFormat": "Snippet",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 59,
+              "character": 12
+            },
+            "end": {
+              "line": 59,
+              "character": 12
+            }
+          },
+          "newText": "print_result(${1:value /* real */})"
+        }
       },
       {
         "label": "result",
@@ -449,7 +953,24 @@
           "detail": " real"
         },
         "kind": "Variable",
-        "filterText": "result"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\n// Test completions with wildcard imports\nreal result = calculate(PI_VALUE, E_VALUE, op);\n````"
+        },
+        "filterText": "result",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 59,
+              "character": 12
+            },
+            "end": {
+              "line": 59,
+              "character": 12
+            }
+          },
+          "newText": "result"
+        }
       },
       {
         "label": "util_pkg",
@@ -463,7 +984,20 @@
         },
         "filterText": "util_pkg",
         "insertText": "util_pkg",
-        "insertTextFormat": "PlainText"
+        "insertTextFormat": "PlainText",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 59,
+              "character": 12
+            },
+            "end": {
+              "line": 59,
+              "character": 12
+            }
+          },
+          "newText": "util_pkg"
+        }
       }
     ]
   }

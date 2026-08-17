@@ -304,9 +304,12 @@ add_library(
   src/codeactions/AddDefine.cpp
   src/codeactions/CodeActionDispatch.cpp
   src/codeactions/ExpandMacro.cpp
-  src/completions/Completions.cpp
   src/completions/CompletionContext.cpp
   src/completions/CompletionDispatch.cpp
+  src/completions/InstanceCompletions.cpp
+  src/completions/KeywordCompletions.cpp
+  src/completions/MacroCompletions.cpp
+  src/completions/MemberCompletions.cpp
   src/completions/SystemTaskCompletions.cpp
   src/lsp/URI.cpp
   src/util/Converters.cpp

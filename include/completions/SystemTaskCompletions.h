@@ -6,7 +6,9 @@
 // SPDX-License-Identifier: MIT
 //------------------------------------------------------------------------------
 #pragma once
+#include "completions/CompletionContext.h"
 #include "lsp/LspTypes.h"
+#include <memory>
 #include <string_view>
 #include <vector>
 
@@ -16,14 +18,19 @@
 
 namespace server::completions {
 
+class SystemSubroutineCompletionQuery : public CompletionQuery {
+public:
+    static std::unique_ptr<CompletionQuery> create(lsp::Range replacementRange,
+                                                   bool followedByCall);
+
+protected:
+    using CompletionQuery::CompletionQuery;
+};
+
 lsp::CompletionItem getSystemSubroutineCompletion(slang::parsing::KnownSystemName name,
                                                   const slang::ast::SystemSubroutine& subroutine);
 
 void addSystemSubroutineCompletions(std::vector<lsp::CompletionItem>& results,
                                     const slang::ast::Compilation& compilation);
-
-/// Returns true if `prevText` ends inside a `$identifier` token — i.e., walking back from the
-/// cursor through word characters (alnum / `_`) hits a `$`.
-bool inSystemTaskIdent(std::string_view prevText);
 
 } // namespace server::completions

@@ -13,7 +13,20 @@
         },
         "filterText": "base_pkg",
         "insertText": "base_pkg",
-        "insertTextFormat": "PlainText"
+        "insertTextFormat": "PlainText",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 3,
+              "character": 8
+            },
+            "end": {
+              "line": 3,
+              "character": 8
+            }
+          },
+          "newText": "base_pkg"
+        }
       },
       {
         "label": "test_intf",
@@ -26,7 +39,20 @@
           "value": "````systemverilog\ninterface test_intf;\n````"
         },
         "filterText": "test_intf",
-        "insertText": "test_intf"
+        "insertText": "test_intf",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 3,
+              "character": 8
+            },
+            "end": {
+              "line": 3,
+              "character": 8
+            }
+          },
+          "newText": "test_intf"
+        }
       },
       {
         "label": "util_pkg",
@@ -40,7 +66,20 @@
         },
         "filterText": "util_pkg",
         "insertText": "util_pkg",
-        "insertTextFormat": "PlainText"
+        "insertTextFormat": "PlainText",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 3,
+              "character": 8
+            },
+            "end": {
+              "line": 3,
+              "character": 8
+            }
+          },
+          "newText": "util_pkg"
+        }
       }
     ]
   },
@@ -52,6 +91,19 @@
         "documentation": {
           "kind": "markdown",
           "value": "````systemverilog\nmodport follower\n````"
+        },
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 10,
+              "character": 18
+            },
+            "end": {
+              "line": 10,
+              "character": 18
+            }
+          },
+          "newText": "follower"
         }
       },
       {
@@ -60,6 +112,19 @@
         "documentation": {
           "kind": "markdown",
           "value": "````systemverilog\nmodport leader\n````"
+        },
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 10,
+              "character": 18
+            },
+            "end": {
+              "line": 10,
+              "character": 18
+            }
+          },
+          "newText": "leader"
         }
       }
     ]

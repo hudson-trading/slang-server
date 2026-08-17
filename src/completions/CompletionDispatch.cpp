@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 // CompletionDispatch.cpp
-// Completion dispatch implementation for handling completion requests
+// Completion site classification and shared query dispatch.
 //
 // SPDX-FileCopyrightText: Hudson River Trading
 // SPDX-License-Identifier: MIT
@@ -8,25 +8,19 @@
 
 #include "completions/CompletionDispatch.h"
 
-#include "ServerDriver.h"
-#include "completions/CompletionContext.h"
-#include "completions/Completions.h"
+#include "completions/InstanceCompletions.h"
+#include "completions/MacroCompletions.h"
+#include "completions/MemberCompletions.h"
 #include "completions/SystemTaskCompletions.h"
 #include "document/ShallowAnalysis.h"
-#include "lsp/LspTypes.h"
+#include "lsp/SnippetString.h"
 #include "util/Converters.h"
-#include "util/Formatting.h"
 #include "util/Logging.h"
-#include <filesystem>
+#include <algorithm>
+#include <string>
 
-#include "slang/ast/Compilation.h"
-#include "slang/ast/Lookup.h"
-#include "slang/syntax/SyntaxTree.h"
-#include "slang/text/SourceLocation.h"
-#include "slang/util/Util.h"
-
-namespace fs = std::filesystem;
-namespace ast = slang::ast;
+#include "slang/parsing/Token.h"
+#include "slang/parsing/TokenKind.h"
 
 namespace server {
 
@@ -47,224 +41,197 @@ const std::vector<std::string>& completionTriggerCharacters() {
 
 } // namespace completions
 
+namespace {
+
+struct CompletionSite {
+    lsp::Range replacementRange;
+    const slang::parsing::Token* targetToken = nullptr;
+    const slang::parsing::Token* tokenBefore = nullptr;
+    const slang::parsing::Token* tokenAfter = nullptr;
+    std::string typedPrefix;
+};
+
+CompletionSite getCompletionSite(const SlangDoc& doc, const ShallowAnalysis& analysis,
+                                 slang::SourceLocation cursor) {
+    using slang::parsing::TokenKind;
+
+    // Probe the previous byte because a cursor at a token's end can fall outside token lookup.
+    auto* targetToken = analysis.getWordTokenAt(cursor);
+    if (!targetToken && cursor.offset() > 0)
+        targetToken = analysis.getWordTokenAt(cursor - 1);
+
+    // The fallback probe is valid only within the token or exactly at its end.
+    if (targetToken &&
+        (cursor < targetToken->range().start() || targetToken->range().end() < cursor)) {
+        targetToken = nullptr;
+    }
+
+    // Replace the whole token so completion in its middle also removes the existing suffix.
+    auto start = cursor;
+    auto end = cursor;
+    if (targetToken) {
+        start = targetToken->range().start();
+        end = targetToken->range().end();
+    }
+
+    auto* tokenBefore = analysis.syntaxes.getTokenBefore(start);
+    if (!targetToken) {
+        // Standalone `$` and backtick markers are not words but belong to the replacement range.
+        auto* marker = analysis.syntaxes.getTokenBefore(cursor);
+        if (marker && marker->range().end() == cursor &&
+            (marker->kind == TokenKind::Dollar || marker->rawText() == "`")) {
+            targetToken = marker;
+            start = marker->range().start();
+            end = marker->range().end();
+            tokenBefore = analysis.syntaxes.getTokenBefore(start);
+        }
+    }
+
+    // Filtering uses only text before the cursor even though replacement spans the whole token.
+    std::string typedPrefix;
+    if (targetToken) {
+        auto length = std::min<size_t>(cursor.offset() - start.offset(),
+                                       targetToken->rawText().size());
+        typedPrefix = targetToken->rawText().substr(0, length);
+    }
+
+    // Neighboring tokens are measured outside the replacement range for query classification.
+    return CompletionSite{
+        .replacementRange = lsp::Range{.start = toPosition(start, doc.getSourceManager()),
+                                       .end = toPosition(end, doc.getSourceManager())},
+        .targetToken = targetToken,
+        .tokenBefore = tokenBefore,
+        .tokenAfter = analysis.syntaxes.getTokenAfter(end),
+        .typedPrefix = std::move(typedPrefix),
+    };
+}
+
+bool isSeparatedOnlyByWhitespace(const slang::parsing::Token& token) {
+    return std::ranges::all_of(token.trivia(), [](const slang::parsing::Trivia& trivia) {
+        return trivia.kind == slang::parsing::TriviaKind::Whitespace ||
+               trivia.kind == slang::parsing::TriviaKind::EndOfLine;
+    });
+}
+
+void setCompletionEdit(lsp::CompletionItem& item, const lsp::Range& replacementRange,
+                       bool followedByCall, bool followedByInstantiation) {
+    // Existing calls and instances still resolve documentation but retain their source shape.
+    if ((followedByCall && item.kind == lsp::CompletionItemKind::Constant) ||
+        (followedByInstantiation && item.kind == lsp::CompletionItemKind::Module)) {
+        item.insertText = item.label;
+        item.insertTextFormat = lsp::InsertTextFormat::PlainText;
+    }
+
+    auto newText = item.insertText.value_or(item.label);
+    auto useLabelOnly = (followedByCall &&
+                         item.insertTextFormat == lsp::InsertTextFormat::Snippet) ||
+                        (followedByInstantiation && item.kind == lsp::CompletionItemKind::Module);
+    if (useLabelOnly && item.insertTextFormat == lsp::InsertTextFormat::Snippet) {
+        SnippetString escapedLabel;
+        escapedLabel.appendText(item.label);
+        newText = escapedLabel.getValue();
+    }
+    else if (useLabelOnly) {
+        newText = item.label;
+    }
+    item.textEdit = lsp::TextEdit{.range = replacementRange, .newText = std::move(newText)};
+}
+
+} // namespace
+
+std::unique_ptr<CompletionQuery> CompletionQuery::fromLocation(
+    const SlangDoc& doc, const std::shared_ptr<ShallowAnalysis>& analysis,
+    slang::SourceLocation cursor) {
+    using slang::parsing::TokenKind;
+
+    auto site = getCompletionSite(doc, *analysis, cursor);
+    auto followedByCall = site.tokenAfter && site.tokenAfter->kind == TokenKind::OpenParenthesis &&
+                          isSeparatedOnlyByWhitespace(*site.tokenAfter);
+    auto followedByInstantiation = site.tokenAfter &&
+                                   isSeparatedOnlyByWhitespace(*site.tokenAfter) &&
+                                   (site.tokenAfter->kind == TokenKind::Identifier ||
+                                    site.tokenAfter->kind == TokenKind::Hash);
+
+    if (site.targetToken && site.targetToken->rawText().starts_with('$')) {
+        return completions::SystemSubroutineCompletionQuery::create(
+            std::move(site.replacementRange), followedByCall);
+    }
+    if (site.targetToken && site.targetToken->rawText().starts_with('`')) {
+        return completions::MacroCompletionQuery::create(std::move(site.replacementRange),
+                                                         std::move(site.typedPrefix),
+                                                         followedByCall);
+    }
+    if (site.tokenBefore && site.tokenBefore->kind == TokenKind::DoubleColon) {
+        return completions::MemberCompletionQuery::createScopedAccess(
+            std::move(site.replacementRange),
+            analysis->syntaxes.getTokenBefore(site.tokenBefore->location()), followedByCall);
+    }
+    if (site.tokenBefore && site.tokenBefore->kind == TokenKind::Dot) {
+        return completions::MemberCompletionQuery::createMemberAccess(
+            std::move(site.replacementRange),
+            analysis->syntaxes.getTokenBefore(site.tokenBefore->location()), followedByCall);
+    }
+    if (!site.targetToken && site.tokenBefore && site.tokenBefore->kind == TokenKind::Hash) {
+        return completions::InstanceCompletionQuery::create(std::move(site.replacementRange),
+                                                            analysis->syntaxes.getTokenBefore(
+                                                                site.tokenBefore->location()));
+    }
+
+    return completions::MemberCompletionQuery::createLexical(std::move(site.replacementRange),
+                                                             followedByCall,
+                                                             followedByInstantiation);
+}
+
+void CompletionQuery::setCompletionEdit(lsp::CompletionItem& item) const {
+    server::setCompletionEdit(item, replacementRange, followedByCall, followedByInstantiation);
+}
+
+ServerDriver& CompletionQuery::getDriver(CompletionDispatch& dispatch) {
+    return dispatch.m_driver;
+}
+
+const Indexer& CompletionQuery::getIndexer(const CompletionDispatch& dispatch) {
+    return dispatch.m_indexer;
+}
+
+slang::SourceManager& CompletionQuery::getSourceManager(CompletionDispatch& dispatch) {
+    return dispatch.m_sourceManager;
+}
+
+slang::Bag& CompletionQuery::getOptions(CompletionDispatch& dispatch) {
+    return dispatch.m_options;
+}
+
+bool CompletionQuery::resolvesCompletionEdits(const CompletionDispatch& dispatch) {
+    return dispatch.resolveEdits;
+}
+
+void CompletionQuery::updateCompletionEditText(lsp::CompletionItem& item) {
+    if (!item.insertText || !item.textEdit)
+        return;
+
+    if (rfl::holds_alternative<lsp::TextEdit>(*item.textEdit))
+        rfl::get<lsp::TextEdit>(*item.textEdit).newText = *item.insertText;
+    else
+        rfl::get<lsp::InsertReplaceEdit>(*item.textEdit).newText = *item.insertText;
+}
+
 CompletionDispatch::CompletionDispatch(ServerDriver& driver, const Indexer& indexer,
                                        SourceManager& sourceManager, slang::Bag& options) :
     m_driver(driver), m_indexer(indexer), m_sourceManager(sourceManager), m_options(options) {
 }
 
 void CompletionDispatch::getCompletions(std::vector<lsp::CompletionItem>& results,
-                                        std::shared_ptr<SlangDoc> doc, slang::SourceLocation loc,
-                                        const CompletionContext& ctx) {
-    char triggerChar = ctx.triggerChar();
-    char prevChar = ctx.prev2Char();
+                                        std::shared_ptr<SlangDoc> doc,
+                                        const CompletionContext& context) {
+    SLANG_ASSERT(context.query);
+    context.query->getCompletions(results, *this, doc, context);
 
-    if (triggerChar == '#') {
-        // This branch will get hit if the resolve request was not responded to in time, and the
-        // user continues with the module inst
-        auto analysis = doc->getAnalysis();
-        auto moduleToken = analysis->getTokenAt(loc - 3);
+    for (auto& item : results)
+        context.query->setCompletionEdit(item);
 
-        if (!moduleToken) {
-            WARN("No module token found at location {}", loc);
-            WARN("With line {}", doc->getPrevText(toPosition(loc, m_sourceManager)));
-            return;
-        }
-        auto name = moduleToken->valueText();
-        auto symbolLoc = m_indexer.getFirstSymbolLoc(name);
-        if (!symbolLoc) {
-            ERROR("No module found for {}", name);
-            WARN("With line {}", doc->getPrevText(toPosition(loc, m_sourceManager)));
-            return;
-        }
-
-        auto completion = completions::getInstanceCompletion(std::string{name}, symbolLoc->kind);
-        resolveModuleCompletion(completion, *symbolLoc->uri, true);
-        results.push_back(completion);
-    }
-    else if (triggerChar == ':' && prevChar == ':') {
-        // We only want '::', a single colon can be used for wire slicing
-
-        // Capture analysis once to avoid repeated getAnalysis() calls
-        auto analysis = doc->getAnalysis();
-        if (!analysis || !analysis->getCompilation()) {
-            ERROR("No analysis or compilation available for document {}", doc->getPath());
-            return;
-        }
-
-        // The triggerChar is the second ':', so we need to look before the first ':'
-        auto packageToken = analysis->getTokenAt(loc - 3);
-        if (!packageToken) {
-            WARN("No package token found before '::'");
-            return;
-        }
-
-        auto packageName = std::string{packageToken->valueText()};
-        INFO("Looking for package members in package: {}", packageName);
-
-        auto& compilation = analysis->getCompilation();
-        auto pkg = compilation->getPackage(packageName);
-        if (!pkg) {
-            ERROR("No package found for {}", packageName);
-            return;
-        }
-        m_lastDoc = doc;
-        m_lastScope = pkg->getHierarchicalPath();
-        auto originalScope = analysis->getScopeAt(loc);
-        completions::addMemberCompletions(results, pkg, CompletionContextKind::Expression,
-                                          originalScope);
-    }
-    else if (triggerChar == '`') {
-        // Add local macros
-        for (auto& macro : doc->getSyntaxTree()->getDefinedMacros()) {
-            if (macro->name.location() == slang::SourceLocation::NoLocation) {
-                // Only show macros that are defined before the cursor
-                continue;
-            }
-            results.push_back(completions::getMacroCompletion(*macro));
-        }
-        // Add global macros
-        for (const auto& name : m_indexer.getAllMacroNames()) {
-            results.push_back(completions::getMacroCompletion(name));
-        }
-    }
-    else if (triggerChar == '.') {
-        // Member completions
-        // Capture analysis once to avoid invalidation from repeated getAnalysis() calls.
-        auto analysis = doc->getAnalysis();
-        auto exprToken = analysis->getTokenAt(loc - 2);
-        if (!exprToken) {
-            WARN("No expression token found before '.'");
-            return;
-        }
-        auto sym = analysis->getSymbolAtToken(exprToken);
-        if (!sym) {
-            WARN("No symbol found for token {}, checking index.", exprToken->valueText());
-            // return;
-            auto symbolLoc = m_indexer.getFirstSymbolLoc(exprToken->valueText());
-            if (!symbolLoc) {
-                WARN("No symbol found in index for {}", exprToken->valueText());
-                return;
-            }
-            auto doc = m_driver.getDocument(URI::fromFile(*symbolLoc->uri));
-            if (!doc) {
-                return;
-            }
-            sym = doc->getAnalysis()->getDefinition(exprToken->valueText());
-            if (!sym) {
-                WARN("No symbol found in compilation for {}", exprToken->valueText());
-                return;
-            }
-        }
-        if (ast::DefinitionSymbol::isKind(sym->kind)) {
-            auto& def = sym->as<ast::DefinitionSymbol>();
-            if (def.definitionKind == ast::DefinitionKind::Interface) {
-                for (auto& modport : def.modports) {
-                    results.push_back(lsp::CompletionItem{.label = std::string(modport),
-                                                          .kind = lsp::CompletionItemKind::Field,
-                                                          .documentation = svCodeBlock(
-                                                              fmt::format("modport {}", modport))});
-                }
-            }
-            else {
-                WARN("Definition {} is not an interface, can't get hierarchical completions",
-                     def.name);
-            }
-            return;
-        }
-        auto scope = ShallowAnalysis::getScopeFromSym(sym);
-        if (!scope) {
-            WARN("No scope found for sym {}: {}", sym->getHierarchicalPath(), toString(sym->kind));
-            return;
-        }
-        m_lastDoc = doc;
-        m_lastScope = scope ? scope->asSymbol().getHierarchicalPath() : "";
-        INFO("Getting hier completions for symbol {} in scope {}", sym->name,
-             sym->getHierarchicalPath());
-        std::string_view prevLabel;
-        for (auto& member : scope->members()) {
-            if (member.name.empty() || member.name == prevLabel) {
-                continue;
-            }
-            prevLabel = member.name;
-            results.push_back(completions::getHierarchicalCompletion(*sym, member));
-        }
-    }
-    else {
-        // Generic scope-based completions: members in scope + workspace-indexed symbols.
-        auto scope = ctx.scope;
-        if (scope) {
-            m_lastScope = scope->asSymbol().getHierarchicalPath();
-            m_lastDoc = doc;
-        }
-        INFO("General completions with context: {}", toString(ctx.kind));
-
-        completions::addIndexedCompletions(results, m_indexer, ctx);
-        if (scope) {
-            completions::addMemberCompletions(results, scope, ctx.kind, scope);
-        }
-
-        // System tasks/functions are gated by the cursor sitting inside a `$identifier` token,
-        // not by syntactic position — `$` can appear in expressions, statements, queue dims
-        // (`int q[$]`), array selectors (`q[$]`), etc. Triggering once the user types `$` lets
-        // the editor's client-side filter narrow as they type more.
-        if (completions::inSystemTaskIdent(ctx.prevText)) {
-            if (auto analysis = doc->getAnalysis(); analysis && analysis->getCompilation()) {
-                completions::addSystemSubroutineCompletions(results, *analysis->getCompilation());
-            }
-        }
-
-        INFO("Returning {} completions in {} context", results.size(), toString(ctx.kind));
-    }
-}
-
-void CompletionDispatch::resolveModuleCompletion(lsp::CompletionItem& item,
-                                                 std::optional<fs::path> modulePath,
-                                                 bool excludeName) {
-    auto name = item.label;
-    if (modulePath == std::nullopt) {
-        auto files = m_indexer.getFilesForSymbol(name);
-        if (files.size() == 0) {
-            WARN("No files found for module {}", name);
-            return;
-        }
-        if (files.size() > 1) {
-            WARN("Multiple files found for module {}: {}", name, rfl::json::write(files));
-        }
-        modulePath = files[0];
-    }
-    auto& file = modulePath.value();
-
-    auto maybeTree = slang::syntax::SyntaxTree::fromFile(file.string(), m_sourceManager, m_options);
-    if (!maybeTree) {
-        WARN("Failed to load syntax tree for module {} from {}", name, file.string());
-        return;
-    }
-    completions::resolveModule(*maybeTree.value(), name, item, excludeName);
-}
-
-void CompletionDispatch::resolveMacroCompletion(lsp::CompletionItem& item) {
-    // Parse the file to get the macro args
-    auto path = m_indexer.getFilesForMacro(item.label.substr(1));
-
-    if (path.size() == 0) {
-        WARN("No macro files found for {}", item.label);
-        return;
-    }
-
-    auto maybeTree = slang::syntax::SyntaxTree::fromFile(path[0].string(), m_sourceManager,
-                                                         m_options);
-
-    if (!maybeTree) {
-        return;
-    }
-    auto tree = maybeTree.value();
-    for (auto macro : tree->getDefinedMacros()) {
-        if (macro->name.valueText() == item.label.substr(1)) {
-            completions::resolveMacro(*macro, item);
-            return;
-        }
-    };
-    WARN("Didn't find macro for {} in {}", item.label, path[0].string());
+    INFO("Returning {} completions for {} query in {} context", results.size(),
+         toString(context.query->kind()), toString(context.kind));
 }
 
 void CompletionDispatch::getCompletionItemResolve(lsp::CompletionItem& item) {
@@ -273,39 +240,16 @@ void CompletionDispatch::getCompletionItemResolve(lsp::CompletionItem& item) {
         return;
 
     switch (*item.kind) {
-        case lsp::CompletionItemKind::Constant: {
-            resolveMacroCompletion(item);
+        case lsp::CompletionItemKind::Constant:
+            completions::MacroCompletionQuery::resolve(*this, item);
             break;
-        }
-        case lsp::CompletionItemKind::Module: {
-            resolveModuleCompletion(item);
+        case lsp::CompletionItemKind::Module:
+            completions::InstanceCompletionQuery::resolve(*this, item);
             break;
-        }
-        default: {
-            SLANG_ASSERT(m_lastDoc != nullptr);
-            auto& comp = m_lastDoc->getCompilation();
-            if (!comp) {
-                ERROR("No compilation available for completion resolution");
-                return;
-            }
-            const ast::Scope* scope = nullptr;
-            for (auto member : comp->getRootNoFinalize().topInstances) {
-                if (member->name == m_lastScope) {
-                    scope = &(member->body.as<ast::Scope>());
-                    break;
-                }
-            }
-            if (scope == nullptr) {
-                scope = comp->getPackage(m_lastScope);
-            }
-            if (scope == nullptr) {
-                ERROR("No scope found for last scope {}", m_lastScope);
-                return;
-            }
-            completions::resolveMemberCompletion(*scope, item);
+        default:
+            completions::MemberCompletionQuery::resolve(*this, item);
             break;
-        }
     }
-    return;
 }
+
 } // namespace server

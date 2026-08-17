@@ -348,6 +348,16 @@ lsp::Position DocumentHandle::getPosition(lsp::uint offset) {
     return lsp::Position{line, col};
 }
 
+lsp::uint DocumentHandle::getOffset(const lsp::Position& position) const {
+    lsp::uint line = 0;
+    lsp::uint offset = 0;
+    while (offset < m_text.size() && line < position.line) {
+        if (m_text[offset++] == '\n')
+            line++;
+    }
+    return std::min<lsp::uint>(offset + position.character, m_text.size());
+}
+
 std::vector<lsp::DocumentSymbol> DocumentHandle::getSymbolTree() {
     auto params = lsp::DocumentSymbolParams{
         .textDocument = lsp::TextDocumentIdentifier{.uri = m_uri}};
@@ -379,22 +389,43 @@ std::vector<CompletionHandle> Cursor::getCompletions(std::optional<std::string> 
         .position = m_doc.getPosition(m_offset),
     });
 
-    if (rfl::holds_alternative<std::vector<lsp::CompletionItem>>(ret)) {
-        auto res = rfl::get<std::vector<lsp::CompletionItem>>(ret);
-        std::vector<CompletionHandle> handles;
-        handles.reserve(res.size());
-        for (auto& item : res) {
-            handles.emplace_back(*this, item);
-        }
-        return handles;
-    }
-    else if (rfl::holds_alternative<lsp::CompletionList>(ret)) {
-        SLANG_ASSERT(false && "CompletionList not supported in this context");
+    std::vector<lsp::CompletionItem> items;
+    if (rfl::holds_alternative<std::vector<lsp::CompletionItem>>(ret))
+        items = rfl::get<std::vector<lsp::CompletionItem>>(std::move(ret));
+    else if (rfl::holds_alternative<lsp::CompletionList>(ret))
+        items = rfl::get<lsp::CompletionList>(std::move(ret)).items;
+    else
         return {};
+
+    std::vector<CompletionHandle> handles;
+    handles.reserve(items.size());
+    for (auto& item : items) {
+        handles.emplace_back(*this, std::move(item));
+    }
+    return handles;
+}
+
+void CompletionHandle::insert() {
+    if (!m_item.textEdit) {
+        m_cursor.write(m_item.insertText.value_or(m_item.label));
+        return;
+    }
+
+    lsp::TextEdit edit;
+    if (rfl::holds_alternative<lsp::TextEdit>(*m_item.textEdit)) {
+        edit = rfl::get<lsp::TextEdit>(*m_item.textEdit);
     }
     else {
-        return {};
+        auto insertReplace = rfl::get<lsp::InsertReplaceEdit>(*m_item.textEdit);
+        edit = lsp::TextEdit{.range = insertReplace.replace,
+                             .newText = std::move(insertReplace.newText)};
     }
+
+    auto start = m_cursor.m_doc.getOffset(edit.range.start);
+    auto end = m_cursor.m_doc.getOffset(edit.range.end);
+    m_cursor.m_doc.erase(start, end);
+    m_cursor.m_doc.insert(start, edit.newText);
+    m_cursor.m_offset = start + static_cast<lsp::uint>(edit.newText.size());
 }
 
 std::vector<lsp::CompletionItem> Cursor::getResolvedCompletions(

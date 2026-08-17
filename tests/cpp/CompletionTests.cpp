@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Hudson River Trading
 // SPDX-License-Identifier: MIT
 
-#include "completions/Completions.h"
+#include "completions/InstanceCompletions.h"
 #include "completions/SystemTaskCompletions.h"
 #include "lsp/LspTypes.h"
 #include "util/Logging.h"
@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <optional>
+#include <rfl/Variant.hpp>
 #include <string>
 #include <vector>
 
@@ -27,6 +28,26 @@ bool isSystemVerilogFile(const std::filesystem::path& path) {
     return ext == ".sv" || ext == ".v";
 }
 
+const lsp::TextEdit& getCompletionTextEdit(const lsp::CompletionItem& item) {
+    REQUIRE(item.textEdit.has_value());
+    REQUIRE(rfl::holds_alternative<lsp::TextEdit>(*item.textEdit));
+    return rfl::get<lsp::TextEdit>(*item.textEdit);
+}
+
+lsp::InitializeParams makeCompletionResolveParams(std::vector<std::string> properties,
+                                                  std::string_view repoRoot = "repo1") {
+    lsp::InitializeParams params;
+    params.capabilities.textDocument.emplace();
+    params.capabilities.textDocument->completion.emplace();
+    params.capabilities.textDocument->completion->completionItem.emplace();
+    params.capabilities.textDocument->completion->completionItem->resolveSupport =
+        lsp::ClientCompletionItemResolveOptions{.properties = std::move(properties)};
+    auto repoDir = findSlangRoot() / "tests/data" / repoRoot;
+    params.workspaceFolders = {
+        {lsp::WorkspaceFolder{.uri = URI::fromFile(repoDir), .name = "test"}}};
+    return params;
+}
+
 } // namespace
 
 TEST_CASE("MacroCompletion") {
@@ -35,18 +56,34 @@ TEST_CASE("MacroCompletion") {
     auto doc = server.openFile("test1.svh", R"(
     `define TEST_MACRO(arg1, arg2) \
         $display("arg1: %s, arg2: %s", arg1, arg2);
+    `
     )");
-    // For simplicity we add all defines in the current file
-    CHECK(doc.begin().getCompletions("`").size() == 2);
-    CHECK(doc.end().getCompletions("`").size() == 2);
+    // For simplicity we add all defines in the current file.
+    CHECK(doc.before("define").getCompletions("`").size() == 2);
+    CHECK(doc.after(";\n    `").getCompletions("`").size() == 2);
 
     // Only return the indexed one
-    auto doc2 = server.openFile("test2.sv", R"()");
-    CHECK(doc2.begin().getCompletions("`").size() == 1);
+    auto doc2 = server.openFile("test2.sv", "`");
+    CHECK(doc2.end().getCompletions("`").size() == 1);
 
     // Now that it's saved, it should be indexed
     doc.save();
-    CHECK(doc2.begin().getCompletions("`").size() == 2);
+    auto indexedCompletions = doc2.end().getCompletions("`");
+    CHECK(indexedCompletions.size() == 2);
+    auto testMacro = std::ranges::find(indexedCompletions, "`TEST_MACRO",
+                                       [](const CompletionHandle& item) {
+                                           return item.m_item.label;
+                                       });
+    REQUIRE(testMacro != indexedCompletions.end());
+    CHECK(!testMacro->m_item.insertText);
+    CHECK(getCompletionTextEdit(testMacro->m_item).newText == "`TEST_MACRO");
+    CHECK(!testMacro->m_item.documentation);
+
+    testMacro->resolve();
+    CHECK(testMacro->m_item.insertText == "`TEST_MACRO(${1:arg1}, ${2:arg2})");
+    CHECK(testMacro->m_item.insertTextFormat == lsp::InsertTextFormat::Snippet);
+    CHECK(testMacro->m_item.documentation);
+    CHECK(getCompletionTextEdit(testMacro->m_item).newText == "`TEST_MACRO(${1:arg1}, ${2:arg2})");
 }
 
 TEST_CASE("MacroArgumentCompletion") {
@@ -99,69 +136,112 @@ TEST_CASE("SystemTaskCompletion") {
     endmodule
     )");
 
-    auto comps = doc.after("$").getCompletions("$");
+    auto cursor = doc.after("$");
+    auto comps = cursor.getCompletions("$");
 
-    auto findByLabel = [&](std::string_view label) {
-        return std::find_if(comps.begin(), comps.end(), [&](const CompletionHandle& item) {
+    auto findByLabel = [](std::vector<CompletionHandle>& items, std::string_view label) {
+        return std::find_if(items.begin(), items.end(), [&](const CompletionHandle& item) {
             return item.m_item.label == label;
         });
     };
+    auto checkSystemTaskTextEdit = [](const CompletionHandle& item, const Cursor& cursor,
+                                      std::string_view newText, lsp::uint replaceWidth) {
+        auto edit = getCompletionTextEdit(item.m_item);
+        auto cursorPosition = cursor.getPosition();
+        CHECK(edit.newText == newText);
+        CHECK(edit.range.end.line == cursorPosition.line);
+        CHECK(edit.range.end.character == cursorPosition.character);
+        CHECK(edit.range.start.line == cursorPosition.line);
+        CHECK(edit.range.start.character == cursorPosition.character - replaceWidth);
+    };
 
-    auto display = findByLabel("$display");
+    auto display = findByLabel(comps, "$display");
     REQUIRE(display != comps.end());
-    CHECK(display->m_item.filterText == "display");
-    CHECK(display->m_item.insertText == "display(\"${1:format}\", $0)");
+    CHECK(display->m_item.filterText == "$display");
+    CHECK(display->m_item.insertText == "\\$display(\"${1:format}\", $0)");
+    checkSystemTaskTextEdit(*display, cursor, "\\$display(\"${1:format}\", $0)", 1);
     CHECK(display->m_item.insertTextFormat == lsp::InsertTextFormat::Snippet);
     REQUIRE(display->m_item.labelDetails);
     CHECK(display->m_item.labelDetails->detail == " task $display(string format = \"\", ...)");
     CHECK(display->m_item.documentation.has_value());
 
-    auto fdisplay = findByLabel("$fdisplay");
+    auto fdisplay = findByLabel(comps, "$fdisplay");
     REQUIRE(fdisplay != comps.end());
-    CHECK(fdisplay->m_item.filterText == "fdisplay");
-    CHECK(fdisplay->m_item.insertText == "fdisplay(${1:fd}, \"${2:format}\", $0)");
+    CHECK(fdisplay->m_item.filterText == "$fdisplay");
+    CHECK(fdisplay->m_item.insertText == "\\$fdisplay(${1:fd}, \"${2:format}\", $0)");
     CHECK(fdisplay->m_item.insertTextFormat == lsp::InsertTextFormat::Snippet);
 
-    auto fatal = findByLabel("$fatal");
+    auto fatal = findByLabel(comps, "$fatal");
     REQUIRE(fatal != comps.end());
-    CHECK(fatal->m_item.insertText == "fatal()");
+    CHECK(fatal->m_item.insertText == "\\$fatal()");
     REQUIRE(fatal->m_item.labelDetails);
     CHECK(fatal->m_item.labelDetails->detail ==
           " task $fatal(int finish_number = 1, string format = \"\", ...)");
 
-    auto clog2 = findByLabel("$clog2");
+    auto clog2 = findByLabel(comps, "$clog2");
     REQUIRE(clog2 != comps.end());
-    CHECK(clog2->m_item.filterText == "clog2");
-    CHECK(clog2->m_item.insertText == "clog2(${1:integer_value})");
+    CHECK(clog2->m_item.filterText == "$clog2");
+    CHECK(clog2->m_item.insertText == "\\$clog2(${1:integer_value})");
     CHECK(clog2->m_item.insertTextFormat == lsp::InsertTextFormat::Snippet);
     REQUIRE(clog2->m_item.labelDetails);
     CHECK(clog2->m_item.labelDetails->detail == " function int $clog2(integer_value)");
 
-    auto testPlusArgs = findByLabel("$test$plusargs");
+    auto testPlusArgs = findByLabel(comps, "$test$plusargs");
     REQUIRE(testPlusArgs != comps.end());
-    CHECK(testPlusArgs->m_item.filterText == "test$plusargs");
-    CHECK(testPlusArgs->m_item.insertText == "test\\$plusargs(${1:user_string})");
+    CHECK(testPlusArgs->m_item.filterText == "$test$plusargs");
+    CHECK(testPlusArgs->m_item.insertText == "\\$test\\$plusargs(${1:user_string})");
     CHECK(testPlusArgs->m_item.insertTextFormat == lsp::InsertTextFormat::Snippet);
 
-    auto fopen = findByLabel("$fopen");
+    auto fopen = findByLabel(comps, "$fopen");
     REQUIRE(fopen != comps.end());
-    CHECK(fopen->m_item.insertText == "fopen(${1:filename})");
+    CHECK(fopen->m_item.insertText == "\\$fopen(${1:filename})");
     REQUIRE(fopen->m_item.labelDetails);
     CHECK(fopen->m_item.labelDetails->detail ==
           " function int $fopen(string filename[, string type])");
 
-    auto urandomRange = findByLabel("$urandom_range");
+    auto urandomRange = findByLabel(comps, "$urandom_range");
     REQUIRE(urandomRange != comps.end());
-    CHECK(urandomRange->m_item.insertText == "urandom_range(${1:maxval})");
+    CHECK(urandomRange->m_item.insertText == "\\$urandom_range(${1:maxval})");
     REQUIRE(urandomRange->m_item.labelDetails);
     CHECK(urandomRange->m_item.labelDetails->detail ==
           " function bit [31:0] $urandom_range(bit [31:0] maxval[, bit [31:0] minval])");
 
-    auto fflush = findByLabel("$fflush");
+    auto fflush = findByLabel(comps, "$fflush");
     REQUIRE(fflush != comps.end());
-    CHECK(fflush->m_item.insertText == "fflush()");
+    CHECK(fflush->m_item.insertText == "\\$fflush()");
 
-    CHECK(findByLabel("randomize") == comps.end());
+    CHECK(findByLabel(comps, "randomize") == comps.end());
+
+    auto prefixDoc = server.openFile("system_task_prefix_completion.sv", R"(
+    module top;
+        initial begin
+            $dis
+        end
+    endmodule
+    )");
+
+    auto prefixCursor = prefixDoc.after("$dis");
+    auto prefixComps = prefixCursor.getCompletions();
+    auto prefixDisplay = findByLabel(prefixComps, "$display");
+    REQUIRE(prefixDisplay != prefixComps.end());
+    CHECK(prefixDisplay->m_item.filterText == "$display");
+    checkSystemTaskTextEdit(*prefixDisplay, prefixCursor, "\\$display(\"${1:format}\", $0)", 4);
+
+    auto internalDollarDoc = server.openFile("system_task_internal_dollar_completion.sv", R"(
+    module top;
+        initial begin
+            $test$p
+        end
+    endmodule
+    )");
+
+    auto internalDollarCursor = internalDollarDoc.after("$test$p");
+    auto internalDollarComps = internalDollarCursor.getCompletions();
+    auto internalDollarTestPlusArgs = findByLabel(internalDollarComps, "$test$plusargs");
+    REQUIRE(internalDollarTestPlusArgs != internalDollarComps.end());
+    CHECK(internalDollarTestPlusArgs->m_item.filterText == "$test$plusargs");
+    checkSystemTaskTextEdit(*internalDollarTestPlusArgs, internalDollarCursor,
+                            "\\$test\\$plusargs(${1:user_string})", 7);
 }
 
 TEST_CASE("SystemMethodCompletionSnippets") {
@@ -247,9 +327,9 @@ TEST_CASE("ModuleCompletionInvalidUtf8") {
     text += "\nmodule invalid_encoding(input logic value); endmodule";
 
     auto tree = syntax::SyntaxTree::fromText(text);
-    auto item = completions::getInstanceCompletion("invalid_encoding",
-                                                   syntax::SyntaxKind::ModuleDeclaration);
-    completions::resolveModule(*tree, "invalid_encoding", item);
+    auto item = completions::InstanceCompletionQuery::getCompletion(
+        "invalid_encoding", syntax::SyntaxKind::ModuleDeclaration);
+    completions::InstanceCompletionQuery::resolve(*tree, "invalid_encoding", item);
 
     REQUIRE(item.documentation);
     auto& documentation = rfl::get<lsp::MarkupContent>(*item.documentation);
@@ -296,16 +376,270 @@ TEST_CASE("PackageCompletion") {
         import test_pkg::*;
 
         initial begin
-            // Try to get completions after test_pkg::
-            int x = test_pkg:
+            // package completion cursor
+            int x = test_pkg::
         end
     endmodule
     )");
 
     // Test completions after test_pkg:: - automatically resolves all completions
-    auto completionItems = doc.after("test_pkg::").getResolvedCompletions(":");
+    auto completionItems = doc.after("int x = test_pkg::").getResolvedCompletions(":");
 
     golden.record(completionItems);
+}
+
+TEST_CASE("MidIdentifierCompletion") {
+    ServerHarness server("repo1");
+
+    auto doc = server.openFile("mid_identifier_completion.sv", R"(
+    `define MID_MACRO(arg) arg
+
+    package completion_pkg;
+        parameter int PKG_PARAM = 10;
+        parameter int PKG_OTHER = 20;
+
+        function int get_value();
+            return PKG_PARAM;
+        endfunction
+    endpackage
+
+    module source_module #(parameter int WIDTH = 1) (input logic clk);
+    endmodule
+
+    module mid_identifier_completion;
+        typedef struct {
+            logic valid;
+            logic value;
+        } data_t;
+
+        data_t obj;
+        int local_only;
+        source_modULE existing_instance (.clk());
+        source_modULE #(.WIDTH(2)) existing_parameterized_instance (.clk());
+
+        initial begin
+            int from_pkg = completion_pkg::PKG_PARAM;
+            int from_call = completion_pkg::get_vaLUE();
+            int from_member = obj.vaLID;
+            int from_scope = local_onLY;
+            $disPLAY("hello");
+            `MID_MARCO(1);
+        end
+    endmodule
+    )");
+    doc.save();
+
+    auto findByLabel = [](std::vector<CompletionHandle>& items, std::string_view label) {
+        return std::find_if(items.begin(), items.end(), [&](const CompletionHandle& item) {
+            return item.m_item.label == label;
+        });
+    };
+    auto hasLabel = [&](std::vector<CompletionHandle>& items, std::string_view label) {
+        return findByLabel(items, label) != items.end();
+    };
+
+    SECTION("scoped access") {
+        auto cursor = doc.after("completion_pkg::PKG_");
+        auto items = cursor.getCompletions();
+        CHECK(hasLabel(items, "PKG_PARAM"));
+        CHECK(hasLabel(items, "PKG_OTHER"));
+        CHECK(!hasLabel(items, "local_only"));
+
+        auto item = findByLabel(items, "PKG_PARAM");
+        REQUIRE(item != items.end());
+        item->insert();
+        CHECK(doc.getText().find("completion_pkg::PKG_PARAM") != std::string::npos);
+        CHECK(doc.getText().find("completion_pkg::PKG_PARAMPARAM") == std::string::npos);
+    }
+
+    SECTION("member access") {
+        auto cursor = doc.after("obj.va");
+        auto items = cursor.getCompletions();
+        CHECK(hasLabel(items, "valid"));
+        CHECK(hasLabel(items, "value"));
+        CHECK(!hasLabel(items, "local_only"));
+
+        auto item = findByLabel(items, "valid");
+        REQUIRE(item != items.end());
+        item->insert();
+        CHECK(doc.getText().find("obj.valid") != std::string::npos);
+        CHECK(doc.getText().find("obj.validLID") == std::string::npos);
+    }
+
+    SECTION("existing call suffix") {
+        auto cursor = doc.after("completion_pkg::get_va");
+        auto items = cursor.getCompletions();
+        auto item = findByLabel(items, "get_value");
+        REQUIRE(item != items.end());
+        CHECK(!item->m_item.documentation);
+        REQUIRE(item->m_item.insertText);
+        CHECK(*item->m_item.insertText == "get_value()");
+        CHECK(item->m_item.data);
+        CHECK(getCompletionTextEdit(item->m_item).newText == "get_value");
+        item->resolve();
+        CHECK(item->m_item.documentation);
+        REQUIRE(item->m_item.insertText);
+        CHECK(*item->m_item.insertText == "get_value()");
+        CHECK(!item->m_item.data);
+        CHECK(getCompletionTextEdit(item->m_item).newText == "get_value");
+        item->insert();
+        CHECK(doc.getText().find("completion_pkg::get_value();") != std::string::npos);
+        CHECK(doc.getText().find("get_value()();") == std::string::npos);
+    }
+
+    SECTION("lexical access") {
+        auto cursor = doc.after("from_scope = local_on");
+        auto items = cursor.getCompletions();
+        auto item = findByLabel(items, "local_only");
+        REQUIRE(item != items.end());
+        item->insert();
+        CHECK(doc.getText().find("from_scope = local_only;") != std::string::npos);
+    }
+
+    SECTION("existing module instantiation") {
+        auto moduleBody = doc.getText().find("module mid_identifier_completion");
+        REQUIRE(moduleBody != std::string::npos);
+        auto cursor = doc.after("source_mod", moduleBody);
+        auto items = cursor.getCompletions();
+        std::vector<std::string> labels;
+        std::ranges::transform(items, std::back_inserter(labels),
+                               [](const CompletionHandle& entry) { return entry.m_item.label; });
+        CAPTURE(labels);
+        auto item = findByLabel(items, "source_module");
+        REQUIRE(item != items.end());
+        CHECK(item->m_item.insertTextFormat == lsp::InsertTextFormat::PlainText);
+        CHECK(getCompletionTextEdit(item->m_item).newText == "source_module");
+        item->insert();
+        CHECK(doc.getText().find("source_module existing_instance") != std::string::npos);
+        CHECK(doc.getText().find("source_moduleULE existing_instance") == std::string::npos);
+    }
+
+    SECTION("existing parameterized module instantiation") {
+        auto parameterized = doc.getText().find("source_modULE #");
+        REQUIRE(parameterized != std::string::npos);
+        auto cursor = doc.after("source_mod", static_cast<lsp::uint>(parameterized));
+        auto items = cursor.getCompletions();
+        auto item = findByLabel(items, "source_module");
+        REQUIRE(item != items.end());
+        CHECK(item->m_item.insertTextFormat == lsp::InsertTextFormat::PlainText);
+        item->resolve();
+        CHECK(getCompletionTextEdit(item->m_item).newText == "source_module");
+        item->insert();
+        CHECK(doc.getText().find("source_module #(.WIDTH(2)) existing_parameterized_instance") !=
+              std::string::npos);
+        CHECK(doc.getText().find("existing_parameterized_instance") ==
+              doc.getText().rfind("existing_parameterized_instance"));
+    }
+
+    SECTION("system subroutine") {
+        auto cursor = doc.after("$dis");
+        auto items = cursor.getCompletions();
+        auto item = findByLabel(items, "$display");
+        REQUIRE(item != items.end());
+        CHECK(getCompletionTextEdit(item->m_item).newText == "\\$display");
+        CHECK(!hasLabel(items, "local_only"));
+    }
+
+    SECTION("macro") {
+        auto cursor = doc.after("`MID_MA");
+        auto items = cursor.getCompletions();
+        auto item = findByLabel(items, "`MID_MACRO");
+        REQUIRE(item != items.end());
+        CHECK(getCompletionTextEdit(item->m_item).newText == "`MID_MACRO");
+        item->insert();
+        CHECK(doc.getText().find("`MID_MACRO(1)") != std::string::npos);
+        CHECK(doc.getText().find("`MID_MACRORCO(1)") == std::string::npos);
+    }
+}
+
+TEST_CASE("DeferredMemberCompletionResolution") {
+    ServerHarness server(
+        makeCompletionResolveParams({"documentation", "detail", "additionalTextEdits"}));
+
+    auto doc = server.openFile("deferred_member_completion.sv", R"(
+    class completion_class #(parameter int WIDTH);
+        function void run(input logic [WIDTH-1:0] arg);
+        endfunction
+    endclass
+
+    module deferred_member_completion;
+        completion_class #(8) wide;
+        completion_class #(2) narrow;
+        struct {
+            logic field_a;
+        } value;
+
+        initial begin
+            wide.;
+            narrow.;
+            value.;
+        end
+    endmodule
+    )");
+
+    auto findByLabel = [](std::vector<CompletionHandle>& items, std::string_view label) {
+        return std::find_if(items.begin(), items.end(), [&](const CompletionHandle& item) {
+            return item.m_item.label == label;
+        });
+    };
+
+    auto wideItems = doc.after("wide.").getCompletions(".");
+    auto wideRun = findByLabel(wideItems, "run");
+    REQUIRE(wideRun != wideItems.end());
+    REQUIRE(wideRun->m_item.insertText);
+    CHECK(*wideRun->m_item.insertText == "run(${1:arg /* logic[7:0] */})");
+    CHECK(getCompletionTextEdit(wideRun->m_item).newText == "run(${1:arg /* logic[7:0] */})");
+    wideRun->resolve();
+
+    auto narrowItems = doc.after("narrow.").getCompletions(".");
+    auto narrowRun = findByLabel(narrowItems, "run");
+    REQUIRE(narrowRun != narrowItems.end());
+    REQUIRE(narrowRun->m_item.insertText);
+    CHECK(*narrowRun->m_item.insertText == "run(${1:arg /* logic[1:0] */})");
+    narrowRun->resolve();
+    REQUIRE(narrowRun->m_item.insertText);
+    CHECK(*narrowRun->m_item.insertText == "run(${1:arg /* logic[1:0] */})");
+    CHECK(getCompletionTextEdit(narrowRun->m_item).newText == "run(${1:arg /* logic[1:0] */})");
+    CHECK(narrowRun->m_item.documentation);
+
+    auto fieldItems = doc.after("value.").getCompletions(".");
+    auto field = findByLabel(fieldItems, "field_a");
+    REQUIRE(field != fieldItems.end());
+    CHECK(!field->m_item.documentation);
+    field->resolve();
+    REQUIRE(field->m_item.documentation);
+    auto documentation = rfl::get<lsp::MarkupContent>(*field->m_item.documentation);
+    CHECK(documentation.value.find("logic field_a") != std::string::npos);
+}
+
+TEST_CASE("AdvertisedMemberEditResolution") {
+    ServerHarness server(makeCompletionResolveParams(
+        {"documentation", "insertText", "insertTextFormat", "textEdit"}));
+
+    auto doc = server.openFile("advertised_member_edit_resolution.sv", R"(
+    module advertised_member_edit_resolution;
+        function void run(input logic [1:0] arg);
+        endfunction
+
+        initial begin
+            run;
+        end
+    endmodule
+    )");
+
+    auto items = doc.before("run;").getCompletions();
+    auto run = std::ranges::find(items, "run",
+                                 [](const CompletionHandle& item) { return item.m_item.label; });
+    REQUIRE(run != items.end());
+    CHECK(!run->m_item.insertText);
+    CHECK(!run->m_item.insertTextFormat);
+    CHECK(getCompletionTextEdit(run->m_item).newText == "run");
+
+    run->resolve();
+    REQUIRE(run->m_item.insertText);
+    CHECK(*run->m_item.insertText == "run(${1:arg /* logic[1:0] */})");
+    CHECK(run->m_item.insertTextFormat == lsp::InsertTextFormat::Snippet);
+    CHECK(getCompletionTextEdit(run->m_item).newText == "run(${1:arg /* logic[1:0] */})");
 }
 
 TEST_CASE("MultidimensionalInstanceArrayCompletion") {
@@ -499,7 +833,7 @@ TEST_CASE("ModuleMemberCompletion") {
     )");
 
     // Test completions for module members - automatically resolves all completions
-    auto lhs = doc.before("sub_module u_sub (").getResolvedCompletions();
+    auto lhs = doc.before("// Instance of another module").getResolvedCompletions();
     auto rhs = doc.after("wide_signal =").getResolvedCompletions();
 
     golden.record("lhs", lhs);

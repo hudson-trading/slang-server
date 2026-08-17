@@ -31,7 +31,7 @@ private:
     std::vector<const slang::parsing::Token*> m_currentExpansionTokens;
 
 public:
-    /// Collected declared tokens in order (tokens in the actual file)
+    /// Collected source tokens in order, including parser-skipped tokens from the actual file.
     std::vector<const slang::parsing::Token*> collected;
 
     /// Collected disabled regions from preprocessor conditionals in the file
@@ -66,6 +66,12 @@ public:
 
     /// Get the token at the given location, or nullptr if none
     const slang::parsing::Token* getTokenAt(slang::SourceLocation loc) const;
+
+    /// Get the nearest token ending at or before the given location.
+    const slang::parsing::Token* getTokenBefore(slang::SourceLocation loc) const;
+
+    /// Get the nearest token starting at or after the given location.
+    const slang::parsing::Token* getTokenAfter(slang::SourceLocation loc) const;
 
     /// Get the syntax parent of a given token
     const slang::syntax::SyntaxNode* getTokenParent(const slang::parsing::Token* tok) const;

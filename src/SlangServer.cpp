@@ -166,7 +166,10 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
         WARN("No workspace folder or root provided");
     }
 
+    auto resolveCompletionEdits = m_client.supportsCompletionEditResolve(params.capabilities);
+
     loadConfig();
+    m_driver->completions.resolveEdits = resolveCompletionEdits;
 
     if (params.capabilities.experimental) {
         auto exp = rfl::from_generic<lsp::ExperimentalClientCapabilities>(
@@ -797,13 +800,12 @@ rfl::Variant<std::vector<lsp::CompletionItem>, lsp::CompletionList, std::monosta
     }
     auto loc = maybeLoc.value();
 
-    auto prevText = doc->getPrevText(params.position);
-    auto ctx = CompletionContext::fromLocation(*doc, loc, *params.context, prevText);
+    auto ctx = CompletionContext::fromLocation(*doc, loc, *params.context);
 
-    INFO("Completion: kind={} trigger='{}' prev='{}{}'", toString(ctx.lspContext.triggerKind),
-         ctx.triggerChar(), ctx.prev2Char(), ctx.lastChar());
+    INFO("Completion: kind={} trigger='{}' query={}", toString(ctx.lspContext.triggerKind),
+         ctx.lspContext.triggerCharacter.value_or(""), toString(ctx.query->kind()));
 
-    m_driver->completions.getCompletions(results, doc, loc, ctx);
+    m_driver->completions.getCompletions(results, doc, ctx);
 
     // TODO: rank results using order- the lsp is pretty stupid with this.
     // We need to hack around with client side middileware like in clangd-

@@ -10,9 +10,10 @@
 #include "lsp/LspTypes.h"
 #include <memory>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 #include "slang/ast/Lookup.h"
-#include "slang/parsing/Token.h"
 #include "slang/syntax/SyntaxKind.h"
 #include "slang/text/SourceLocation.h"
 
@@ -20,18 +21,72 @@ namespace slang::ast {
 class Scope;
 }
 
+namespace slang {
+class Bag;
+class SourceManager;
+} // namespace slang
+
 namespace slang::syntax {
 class SyntaxNode;
 }
 
+struct Indexer;
+
 namespace server {
 
+class CompletionDispatch;
+class ServerDriver;
+struct CompletionContext;
 class SlangDoc;
 class ShallowAnalysis;
 
 #define CCK(x) x(PortList) x(Expression) x(ModuleMember) x(Procedural) x(Unknown)
 SLANG_ENUM(CompletionContextKind, CCK)
 #undef CCK
+
+#define CQK(x) \
+    x(Lexical) x(MemberAccess) x(ScopedAccess) x(Macro) x(SystemSubroutine) x(InstantiationSuffix)
+SLANG_ENUM(CompletionQueryKind, CQK)
+#undef CQK
+
+/// A semantic completion operation derived from the lexer tokens around the cursor.
+class CompletionQuery {
+public:
+    virtual ~CompletionQuery() = default;
+
+    virtual CompletionQueryKind kind() const = 0;
+
+    virtual void getCompletions(std::vector<lsp::CompletionItem>& results,
+                                CompletionDispatch& dispatch, const std::shared_ptr<SlangDoc>& doc,
+                                const CompletionContext& context) const = 0;
+
+    virtual bool isIncomplete() const { return false; }
+
+    /// Apply the query's replacement range and existing-source shape to a completion item.
+    void setCompletionEdit(lsp::CompletionItem& item) const;
+
+    /// Create the appropriate query from the lexer tokens surrounding the cursor.
+    static std::unique_ptr<CompletionQuery> fromLocation(
+        const SlangDoc& doc, const std::shared_ptr<ShallowAnalysis>& analysis,
+        slang::SourceLocation cursor);
+
+protected:
+    CompletionQuery(lsp::Range replacementRange, bool followedByCall = false,
+                    bool followedByInstantiation = false) :
+        replacementRange(std::move(replacementRange)), followedByCall(followedByCall),
+        followedByInstantiation(followedByInstantiation) {}
+
+    static ServerDriver& getDriver(CompletionDispatch& dispatch);
+    static const Indexer& getIndexer(const CompletionDispatch& dispatch);
+    static slang::SourceManager& getSourceManager(CompletionDispatch& dispatch);
+    static slang::Bag& getOptions(CompletionDispatch& dispatch);
+    static bool resolvesCompletionEdits(const CompletionDispatch& dispatch);
+    static void updateCompletionEditText(lsp::CompletionItem& item);
+
+    lsp::Range replacementRange;
+    bool followedByCall;
+    bool followedByInstantiation;
+};
 
 /// Represents the completion context at a specific location in the source
 struct CompletionContext {
@@ -50,30 +105,16 @@ struct CompletionContext {
     /// The LSP request context (triggerKind + triggerCharacter).
     lsp::CompletionContext lspContext;
 
-    /// Source text from the start of the document up to the cursor.
-    std::string_view prevText;
-
-    /// Char immediately before the cursor (the just-typed char), or ' ' if at start.
-    char lastChar() const { return prevText.empty() ? ' ' : prevText.back(); }
-
-    /// Char two positions before the cursor, or ' ' if not enough text. Used to detect
-    /// two-character trigger sequences like `::`.
-    char prev2Char() const { return prevText.size() >= 2 ? prevText[prevText.size() - 2] : ' '; }
-
-    /// LSP trigger character, or ' ' if `triggerKind` is `Invoked`.
-    char triggerChar() const {
-        return lspContext.triggerCharacter ? lspContext.triggerCharacter->at(0) : ' ';
-    }
+    /// The semantic operation and state specific to this completion site.
+    std::unique_ptr<CompletionQuery> query;
 
     /// Determine completion context from a document location and LSP request.
     /// @param doc The document containing the location
     /// @param loc The source location to analyze
     /// @param lspContext The LSP completion-request context
-    /// @param prevText Text from start-of-doc to the cursor (used for trigger-char detection)
     /// @returns The completion context at that location
     static CompletionContext fromLocation(SlangDoc& doc, slang::SourceLocation loc,
-                                          lsp::CompletionContext lspContext = {},
-                                          std::string_view prevText = {});
+                                          lsp::CompletionContext lspContext = {});
 };
 
 } // namespace server

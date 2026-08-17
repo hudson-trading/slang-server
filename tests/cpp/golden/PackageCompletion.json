@@ -11,7 +11,20 @@
         "kind": "markdown",
         "value": "````systemverilog\nparameter int PKG_PARAM = 10\n````"
       },
-      "filterText": "PKG_PARAM"
+      "filterText": "PKG_PARAM",
+      "textEdit": {
+        "range": {
+          "start": {
+            "line": 36,
+            "character": 30
+          },
+          "end": {
+            "line": 36,
+            "character": 30
+          }
+        },
+        "newText": "PKG_PARAM"
+      }
     },
     {
       "label": "VALUE_A",
@@ -24,7 +37,20 @@
         "kind": "markdown",
         "value": "````systemverilog\ntypedef enum {\n    VALUE_A,\n    VALUE_B\n} my_enum_t;\n````"
       },
-      "filterText": "VALUE_A"
+      "filterText": "VALUE_A",
+      "textEdit": {
+        "range": {
+          "start": {
+            "line": 36,
+            "character": 30
+          },
+          "end": {
+            "line": 36,
+            "character": 30
+          }
+        },
+        "newText": "VALUE_A"
+      }
     },
     {
       "label": "VALUE_B",
@@ -37,7 +63,20 @@
         "kind": "markdown",
         "value": "````systemverilog\ntypedef enum {\n    VALUE_A,\n    VALUE_B\n} my_enum_t;\n````"
       },
-      "filterText": "VALUE_B"
+      "filterText": "VALUE_B",
+      "textEdit": {
+        "range": {
+          "start": {
+            "line": 36,
+            "character": 30
+          },
+          "end": {
+            "line": 36,
+            "character": 30
+          }
+        },
+        "newText": "VALUE_B"
+      }
     },
     {
       "label": "gen_block",
@@ -50,7 +89,20 @@
         "kind": "markdown",
         "value": "````systemverilog\nfor (i = 0; i < 4; i++) begin : gen_block\n    logic [7:0] gen_var;\nend\n````"
       },
-      "filterText": "gen_block"
+      "filterText": "gen_block",
+      "textEdit": {
+        "range": {
+          "start": {
+            "line": 36,
+            "character": 30
+          },
+          "end": {
+            "line": 36,
+            "character": 30
+          }
+        },
+        "newText": "gen_block"
+      }
     },
     {
       "label": "get_value",
@@ -65,7 +117,20 @@
       },
       "filterText": "get_value",
       "insertText": "get_value()",
-      "insertTextFormat": "Snippet"
+      "insertTextFormat": "Snippet",
+      "textEdit": {
+        "range": {
+          "start": {
+            "line": 36,
+            "character": 30
+          },
+          "end": {
+            "line": 36,
+            "character": 30
+          }
+        },
+        "newText": "get_value()"
+      }
     },
     {
       "label": "global_var",
@@ -78,7 +143,20 @@
         "kind": "markdown",
         "value": "````systemverilog\nint global_var = 5;\n````"
       },
-      "filterText": "global_var"
+      "filterText": "global_var",
+      "textEdit": {
+        "range": {
+          "start": {
+            "line": 36,
+            "character": 30
+          },
+          "end": {
+            "line": 36,
+            "character": 30
+          }
+        },
+        "newText": "global_var"
+      }
     },
     {
       "label": "i",
@@ -91,7 +169,20 @@
         "kind": "markdown",
         "value": "````systemverilog\ni\n````"
       },
-      "filterText": "i"
+      "filterText": "i",
+      "textEdit": {
+        "range": {
+          "start": {
+            "line": 36,
+            "character": 30
+          },
+          "end": {
+            "line": 36,
+            "character": 30
+          }
+        },
+        "newText": "i"
+      }
     },
     {
       "label": "my_enum_t",
@@ -104,7 +195,20 @@
         "kind": "markdown",
         "value": "````systemverilog\ntypedef enum {\n    VALUE_A,\n    VALUE_B\n} my_enum_t;\n````"
       },
-      "filterText": "my_enum_t"
+      "filterText": "my_enum_t",
+      "textEdit": {
+        "range": {
+          "start": {
+            "line": 36,
+            "character": 30
+          },
+          "end": {
+            "line": 36,
+            "character": 30
+          }
+        },
+        "newText": "my_enum_t"
+      }
     },
     {
       "label": "my_struct_t",
@@ -117,7 +221,20 @@
         "kind": "markdown",
         "value": "````systemverilog\ntypedef struct {\n    int field1;\n    logic field2;\n} my_struct_t;\n````"
       },
-      "filterText": "my_struct_t"
+      "filterText": "my_struct_t",
+      "textEdit": {
+        "range": {
+          "start": {
+            "line": 36,
+            "character": 30
+          },
+          "end": {
+            "line": 36,
+            "character": 30
+          }
+        },
+        "newText": "my_struct_t"
+      }
     },
     {
       "label": "port_signal",
@@ -130,7 +247,20 @@
         "kind": "markdown",
         "value": "````systemverilog\nlogic [7:0] port_signal;\n````"
       },
-      "filterText": "port_signal"
+      "filterText": "port_signal",
+      "textEdit": {
+        "range": {
+          "start": {
+            "line": 36,
+            "character": 30
+          },
+          "end": {
+            "line": 36,
+            "character": 30
+          }
+        },
+        "newText": "port_signal"
+      }
     }
   ]
 ]

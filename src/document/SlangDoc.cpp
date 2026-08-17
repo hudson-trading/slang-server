@@ -125,16 +125,6 @@ std::shared_ptr<ShallowAnalysis> SlangDoc::getAnalysis(bool refreshDependencies)
     return m_analysis;
 }
 
-std::string SlangDoc::getPrevText(const lsp::Position& position) {
-    auto start = m_sourceManager.getSourceLocation(m_buffer.id, position.line + 1, 1);
-    auto end = m_sourceManager.getSourceLocation(m_buffer.id, position.line + 1,
-                                                 position.character + 1);
-    if (!start || !end)
-        return "";
-
-    return std::string(m_sourceManager.getSourceText(SourceRange(*start, *end)));
-}
-
 bool SlangDoc::textMatches(std::string_view text) {
     // Just compute line offsets to validate UTF-8
     auto bufText = getText();

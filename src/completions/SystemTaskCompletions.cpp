@@ -8,10 +8,10 @@
 #include "completions/SystemTaskCompletions.h"
 
 #include "SystemTaskDocs.h"
+#include "document/ShallowAnalysis.h"
 #include "lsp/LspTypes.h"
 #include "lsp/SnippetString.h"
 #include "util/Markdown.h"
-#include <cctype>
 #include <optional>
 #include <rfl/Result.hpp>
 #include <string>
@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "slang/ast/SystemSubroutine.h"
+#include "slang/text/CharInfo.h"
 
 namespace server::completions {
 using namespace slang;
@@ -33,15 +34,15 @@ struct SignatureArgs {
 };
 
 static std::string_view trim(std::string_view value) {
-    while (!value.empty() && std::isspace(static_cast<unsigned char>(value.front())))
+    while (!value.empty() && isWhitespace(value.front()))
         value.remove_prefix(1);
-    while (!value.empty() && std::isspace(static_cast<unsigned char>(value.back())))
+    while (!value.empty() && isWhitespace(value.back()))
         value.remove_suffix(1);
     return value;
 }
 
 static bool isNameChar(char c) {
-    return std::isalnum(static_cast<unsigned char>(c)) || c == '_' || c == '$';
+    return isAlphaNumeric(c) || c == '_' || c == '$';
 }
 
 static bool hasNameBoundaryBefore(std::string_view value, size_t pos) {
@@ -53,8 +54,8 @@ static bool hasNameBoundaryAfter(std::string_view value, size_t pos) {
 }
 
 static std::string getSystemSubroutineInsertText(std::string_view label) {
-    // Strip the leading `$`: the editor's default word pattern excludes `$`, so the prefix
-    // sits outside the replacement range when accepting. Leaving it in produces `$$display(...)`.
+    // Build the snippet body without the leading `$`; the caller restores it as an escaped
+    // literal because the completion text edit replaces the full `$identifier` range.
     if (!label.empty() && label.front() == '$')
         label.remove_prefix(1);
     return std::string(label);
@@ -365,7 +366,29 @@ static std::string getSystemSubroutineSnippet(std::string_view label, const Syst
     return std::string(snippet.getValue());
 }
 
+class SystemSubroutineCompletionQueryImpl final : public SystemSubroutineCompletionQuery {
+public:
+    SystemSubroutineCompletionQueryImpl(lsp::Range replacementRange, bool followedByCall) :
+        SystemSubroutineCompletionQuery(std::move(replacementRange), followedByCall) {}
+
+    CompletionQueryKind kind() const final { return CompletionQueryKind::SystemSubroutine; }
+
+    void getCompletions(std::vector<lsp::CompletionItem>& results, CompletionDispatch&,
+                        const std::shared_ptr<SlangDoc>&,
+                        const CompletionContext& context) const final {
+        if (context.analysis && context.analysis->getCompilation()) {
+            addSystemSubroutineCompletions(results, *context.analysis->getCompilation());
+        }
+    }
+};
+
 } // namespace
+
+std::unique_ptr<CompletionQuery> SystemSubroutineCompletionQuery::create(
+    lsp::Range replacementRange, bool followedByCall) {
+    return std::make_unique<SystemSubroutineCompletionQueryImpl>(std::move(replacementRange),
+                                                                 followedByCall);
+}
 
 lsp::CompletionItem getSystemSubroutineCompletion(parsing::KnownSystemName name,
                                                   const ast::SystemSubroutine& subroutine) {
@@ -384,6 +407,10 @@ lsp::CompletionItem getSystemSubroutineCompletion(parsing::KnownSystemName name,
         documentation = md.build();
     }
 
+    auto insertText = getSystemSubroutineSnippet(label, doc);
+    if (label.starts_with('$'))
+        insertText.insert(0, "\\$");
+
     return lsp::CompletionItem{
         .label = label,
         .labelDetails =
@@ -392,8 +419,8 @@ lsp::CompletionItem getSystemSubroutineCompletion(parsing::KnownSystemName name,
             },
         .kind = lsp::CompletionItemKind::Function,
         .documentation = documentation,
-        .filterText = getSystemSubroutineInsertText(label),
-        .insertText = getSystemSubroutineSnippet(label, doc),
+        .filterText = label,
+        .insertText = std::move(insertText),
         .insertTextFormat = lsp::InsertTextFormat::Snippet,
     };
 }
@@ -422,17 +449,6 @@ void addSystemSubroutineCompletions(std::vector<lsp::CompletionItem>& results,
     }();
 
     results.insert(results.end(), cached.begin(), cached.end());
-}
-
-bool inSystemTaskIdent(std::string_view prevText) {
-    for (auto it = prevText.rbegin(); it != prevText.rend(); ++it) {
-        char c = *it;
-        if (c == '$')
-            return true;
-        if (!std::isalnum(static_cast<unsigned char>(c)) && c != '_')
-            return false;
-    }
-    return false;
 }
 
 } // namespace server::completions
