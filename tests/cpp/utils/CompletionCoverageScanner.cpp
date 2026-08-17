@@ -64,7 +64,7 @@ std::optional<std::string> CompletionCoverageScanner::triggerForToken(
     return trigger;
 }
 
-std::optional<CompletionCoverageScanner::MissingCompletion> CompletionCoverageScanner::checkToken(
+std::optional<CompletionCoverageScanner::CompletionIssue> CompletionCoverageScanner::checkToken(
     DocumentHandle& hdl, const slang::parsing::Token& token) {
     if (token.kind != slang::parsing::TokenKind::Identifier) {
         return std::nullopt;
@@ -90,23 +90,72 @@ std::optional<CompletionCoverageScanner::MissingCompletion> CompletionCoverageSc
         .triggerCharacter = trigger,
     };
     auto ctx = server::CompletionContext::fromLocation(*hdl.doc, token.location(), lspContext);
-    auto completions = cursor.getCompletions(trigger);
-    auto hasCompletion = std::ranges::any_of(completions, [&](const CompletionHandle& completion) {
+    auto items = cursor.getCompletions(trigger);
+    auto completion = std::ranges::find_if(items, [&](const CompletionHandle& completion) {
         return completion.m_item.label == label;
     });
-    if (hasCompletion) {
-        return std::nullopt;
+    if (completion != items.end()) {
+        if (trigger != "." || !completion->m_item.data)
+            return std::nullopt;
+
+        auto expected = completion->m_item;
+        server::completions::MemberCompletionQuery::resolve(*definition->symbol(), expected, true);
+        completion->resolve();
+
+        auto documentationText = [](const lsp::CompletionItem& item) -> std::optional<std::string> {
+            if (!item.documentation)
+                return std::nullopt;
+            return rfl::visit(
+                [](const auto& documentation) {
+                    using T = std::decay_t<decltype(documentation)>;
+                    if constexpr (std::is_same_v<T, std::string>)
+                        return documentation;
+                    else
+                        return documentation.value;
+                },
+                *item.documentation);
+        };
+
+        std::string mismatches;
+        auto addMismatch = [&](std::string_view field) {
+            if (!mismatches.empty())
+                mismatches += ",";
+            mismatches += field;
+        };
+        if (documentationText(completion->m_item) != documentationText(expected))
+            addMismatch("documentation");
+        if (completion->m_item.insertText != expected.insertText)
+            addMismatch("insertText");
+        if (completion->m_item.insertTextFormat != expected.insertTextFormat)
+            addMismatch("insertTextFormat");
+
+        if (mismatches.empty())
+            return std::nullopt;
+
+        auto line = hdl.m_server.sourceManager().getLineNumber(token.location());
+        auto column = hdl.m_server.sourceManager().getColumnNumber(token.location()) - 1;
+        return CompletionIssue{
+            .line = static_cast<lsp::uint>(line),
+            .column = static_cast<lsp::uint>(column),
+            .length = static_cast<lsp::uint>(std::max<size_t>(label.size(), 1)),
+            .label = std::move(label),
+            .contextKind = std::string(toString(ctx.kind)),
+            .triggerKind = *trigger,
+            .completionCount = items.size(),
+            .resolutionMismatch = std::move(mismatches),
+        };
     }
 
     auto line = hdl.m_server.sourceManager().getLineNumber(token.location());
     auto column = hdl.m_server.sourceManager().getColumnNumber(token.location()) - 1;
-    return MissingCompletion{.line = static_cast<lsp::uint>(line),
-                             .column = static_cast<lsp::uint>(column),
-                             .length = static_cast<lsp::uint>(std::max<size_t>(label.size(), 1)),
-                             .label = std::move(label),
-                             .contextKind = std::string(toString(ctx.kind)),
-                             .triggerKind = trigger.value_or("Invoked"),
-                             .completionCount = completions.size()};
+    return CompletionIssue{.line = static_cast<lsp::uint>(line),
+                           .column = static_cast<lsp::uint>(column),
+                           .length = static_cast<lsp::uint>(std::max<size_t>(label.size(), 1)),
+                           .label = std::move(label),
+                           .contextKind = std::string(toString(ctx.kind)),
+                           .triggerKind = trigger.value_or("Invoked"),
+                           .completionCount = items.size(),
+                           .resolutionMismatch = std::nullopt};
 }
 
 void CompletionCoverageScanner::scanDocument(DocumentHandle hdl,
@@ -117,7 +166,7 @@ void CompletionCoverageScanner::scanDocument(DocumentHandle hdl,
                     Catch::getCurrentContext().getResultCapture()->getCurrentTestName() /
                     goldenPath);
 
-    std::vector<MissingCompletion> misses;
+    std::vector<CompletionIssue> issues;
     std::unordered_set<size_t> seenTokenOffsets;
     auto text = hdl.getText();
     for (lsp::uint offset = 0; offset < text.size(); offset++) {
@@ -132,12 +181,12 @@ void CompletionCoverageScanner::scanDocument(DocumentHandle hdl,
             continue;
         }
 
-        if (auto missing = checkToken(hdl, *token)) {
-            misses.push_back(std::move(*missing));
+        if (auto issue = checkToken(hdl, *token)) {
+            issues.push_back(std::move(*issue));
         }
     }
 
-    auto missIt = misses.begin();
+    auto issueIt = issues.begin();
     lsp::uint lineNumber = 1;
     size_t lineStart = 0;
     while (lineStart < text.size()) {
@@ -149,16 +198,24 @@ void CompletionCoverageScanner::scanDocument(DocumentHandle hdl,
             test.record("\n");
         }
 
-        while (missIt != misses.end() && missIt->line == lineNumber) {
+        while (issueIt != issues.end() && issueIt->line == lineNumber) {
             test.record("//");
-            if (missIt->column > 2) {
-                test.record(std::string(missIt->column - 2, ' '));
+            if (issueIt->column > 2) {
+                test.record(std::string(issueIt->column - 2, ' '));
             }
-            test.record(std::string(missIt->length, '^'));
-            test.record(fmt::format(" MissingCompletion[{}] Context[{}] Trigger[{}] Items[{}]\n",
-                                    missIt->label, missIt->contextKind, missIt->triggerKind,
-                                    missIt->completionCount));
-            ++missIt;
+            test.record(std::string(issueIt->length, '^'));
+            if (issueIt->resolutionMismatch) {
+                test.record(fmt::format(
+                    " MismatchedCompletion[{}] Fields[{}] Context[{}] Trigger[{}] Items[{}]\n",
+                    issueIt->label, *issueIt->resolutionMismatch, issueIt->contextKind,
+                    issueIt->triggerKind, issueIt->completionCount));
+            }
+            else {
+                test.record(fmt::format(
+                    " MissingCompletion[{}] Context[{}] Trigger[{}] Items[{}]\n", issueIt->label,
+                    issueIt->contextKind, issueIt->triggerKind, issueIt->completionCount));
+            }
+            ++issueIt;
         }
 
         lineStart = nextLineStart;
