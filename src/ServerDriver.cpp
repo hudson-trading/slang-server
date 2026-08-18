@@ -29,6 +29,7 @@
 #include "slang/ast/Compilation.h"
 #include "slang/ast/Symbol.h"
 #include "slang/ast/SystemSubroutine.h"
+#include "slang/ast/symbols/ClassSymbols.h"
 #include "slang/ast/symbols/CompilationUnitSymbols.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
 #include "slang/ast/symbols/ParameterSymbols.h"
@@ -929,6 +930,76 @@ std::vector<lsp::LocationLink> ServerDriver::getDocDefinition(const URI& uri,
     if (!maybeInfo)
         return {};
     return maybeInfo->getDefinition(sm);
+}
+
+namespace {
+
+/// Given a type it checks if the type is an array and if so it unwraps it.
+/// The loop is for recusively unwrapping nested arrays.
+/// If the type is not an array then it returns the type
+const ast::Type* unwrapArrayType(const ast::Type* type) {
+    while (type) {
+        switch (type->kind) {
+            case ast::SymbolKind::PackedArrayType:
+                type = &type->as<ast::PackedArrayType>().elementType;
+                break;
+            case ast::SymbolKind::FixedSizeUnpackedArrayType:
+                type = &type->as<ast::FixedSizeUnpackedArrayType>().elementType;
+                break;
+            case ast::SymbolKind::DynamicArrayType:
+                type = &type->as<ast::DynamicArrayType>().elementType;
+                break;
+            case ast::SymbolKind::DPIOpenArrayType:
+                type = &type->as<ast::DPIOpenArrayType>().elementType;
+                break;
+            case ast::SymbolKind::AssociativeArrayType:
+                type = &type->as<ast::AssociativeArrayType>().elementType;
+                break;
+            case ast::SymbolKind::QueueType:
+                type = &type->as<ast::QueueType>().elementType;
+                break;
+            default:
+                return type;
+        }
+    }
+    return nullptr;
+}
+
+} // namespace
+
+std::vector<lsp::LocationLink> ServerDriver::getDocTypeDefinition(const URI& uri,
+                                                                  const lsp::Position& position) {
+    const auto info = getDefinitionInfoAt(uri, position);
+    if (!info || !info->symbol())
+        return {};
+
+    const auto* declaredType = info->symbol()->getDeclaredType();
+    if (!declaredType)
+        return {};
+
+    // If its an array then we grab the underlying type
+    // ie: type_t thing[2]
+    // would return type_t as the underlying type
+    const auto* typeDefinition = unwrapArrayType(&declaredType->getType());
+
+    if (!typeDefinition || typeDefinition->name.empty() || !typeDefinition->location)
+        return {};
+
+    // Only typedef and classes are valid destinations
+    if (!ast::TypeAliasType::isKind(typeDefinition->kind) &&
+        !ast::ClassType::isKind(typeDefinition->kind))
+        return {};
+
+    // Get the range in the code that the type name is defined at
+    const auto range = toRange(SourceRange(typeDefinition->location,
+                                           typeDefinition->location + typeDefinition->name.size()),
+                               sm);
+
+    // There can't be more than one type returned
+    return {lsp::LocationLink{.targetUri = URI::fromFile(
+                                  sm.getFullPath(typeDefinition->location.buffer())),
+                              .targetRange = range,
+                              .targetSelectionRange = range}};
 }
 
 std::optional<std::vector<lsp::DocumentHighlight>> ServerDriver::getDocDocumentHighlight(

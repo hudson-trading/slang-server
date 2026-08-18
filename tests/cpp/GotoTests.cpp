@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Hudson River Trading
 // SPDX-License-Identifier: MIT
 
+#include "utils/GoldenTest.h"
 #include "utils/ServerHarness.h"
 
 using namespace slang;
@@ -127,6 +128,92 @@ TEST_CASE("GotoDefinition_IfdefUndefinedMacro") {
     auto cursor = doc.after("`ifdef ");
     auto defs = cursor.getDefinitions();
     CHECK(defs.empty());
+}
+
+namespace {
+void recordTypeDefinition(DocumentHandle& doc, JsonGoldenTest& golden,
+                          std::vector<lsp::LocationLink> links) {
+    REQUIRE(links.size() == 1);
+    const auto& start = links[0].targetSelectionRange.start;
+    auto line = doc.getLine(start.line + 1);
+    if (line.ends_with('\n'))
+        line.remove_suffix(1);
+    golden.record(std::string(line), links[0]);
+};
+} // namespace
+
+TEST_CASE("GotoTypeDefinition_TypedefStuct") {
+    ServerHarness server;
+    JsonGoldenTest golden;
+    auto doc = server.openFile("test.sv", R"(
+package p;
+    typedef struct packed { logic [7:0] data; } payload_t;
+endpackage
+module top;
+    p::payload_t payload;
+endmodule
+)");
+
+    recordTypeDefinition(doc, golden, doc.before("payload;").getTypeDefinitions());
+}
+
+TEST_CASE("GotoTypeDefinition_ArrayTypedefStruct") {
+    ServerHarness server;
+    JsonGoldenTest golden;
+    auto doc = server.openFile("test.sv", R"(
+package p;
+    typedef struct packed { logic [7:0] data; } payload_t;
+endpackage
+module top;
+    p::payload_t payloads [2];
+endmodule
+)");
+    recordTypeDefinition(doc, golden, doc.before("payloads [2]").getTypeDefinitions());
+}
+
+TEST_CASE("GotoTypeDefinition_Typedef") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+package p;
+    typedef struct packed { logic [7:0] data; } payload_t;
+endpackage
+)");
+
+    const auto links = doc.before("payload_t").getTypeDefinitions();
+
+    // No links for typedefs themselves
+    CHECK(links.size() == 0);
+}
+
+TEST_CASE("GotoTypeDefinition_BuiltinType") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+module m;
+    logic subject;
+endmodule
+)");
+
+    const auto links = doc.before("subject").getTypeDefinitions();
+
+    // builtins don't have a type we can go to
+    CHECK(links.size() == 0);
+}
+
+TEST_CASE("GotoTypeDefinition_BuiltinTypeBitArray") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+module m;
+    bit [7:0] subject;
+endmodule
+)");
+
+    const auto links = doc.before("subject").getTypeDefinitions();
+
+    // builtins don't have a type we can go to
+    CHECK(links.size() == 0);
 }
 
 TEST_CASE("GotoDefinition_AllIndexedModuleDefinitions") {
