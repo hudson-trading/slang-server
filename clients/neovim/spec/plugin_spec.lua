@@ -162,6 +162,7 @@ describe("SlangServer", function()
       end
       assert(item)
       assert.are.same("foo.a", item.name)
+      assert.are_not.same(item.selectionRange.start, item.selectionRange["end"])
 
       local outgoing = vim.lsp.buf_request_sync(0, "callHierarchy/outgoingCalls", { item = item }, 5000)
       assert(outgoing)

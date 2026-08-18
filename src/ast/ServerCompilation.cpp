@@ -148,9 +148,22 @@ std::optional<std::vector<lsp::CallHierarchyItem>> ServerCompilation::getDocPrep
         if (!isWcpVariable(instance)) {
             continue;
         }
-        // TODO: change to doc of actual symbol, not the declToken
-        result.emplace_back(
-            lsp::CallHierarchyItem{.name = instance, .uri = params.textDocument.uri});
+        slang::ast::LookupResult lookup;
+        slang::ast::ASTContext context(m_analysis->compilation.getRoot(),
+                                       slang::ast::LookupLocation::max);
+        slang::ast::Lookup::name(m_analysis->compilation.parseName(instance), context,
+                                 slang::ast::LookupFlags::None, lookup);
+        if (!lookup.found || !lookup.found->location.valid()) {
+            continue;
+        }
+
+        const auto location = lookup.found->location;
+        const auto fullPath = fs::absolute(m_sourceManager.getFileName(location));
+        const auto range = toRange(location, m_sourceManager, lookup.found->name.length());
+        result.emplace_back(lsp::CallHierarchyItem{.name = instance,
+                                                   .uri = URI::fromFile(fullPath),
+                                                   .range = range,
+                                                   .selectionRange = range});
     }
     return std::optional(result);
 }

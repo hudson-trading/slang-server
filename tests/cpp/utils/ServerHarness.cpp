@@ -111,6 +111,9 @@ void ServerHarness::checkPrepareCallHierarchy(const Cursor& cursor,
 
     std::set<std::string> got;
     for (const auto& item : *result) {
+        CHECK(item.uri.str() != "");
+        CHECK(item.range == item.selectionRange);
+        CHECK(item.selectionRange.start != item.selectionRange.end);
         got.insert(item.name);
     }
     CHECK(got == expected);
