@@ -106,7 +106,9 @@ public:
                                              .uri = URI::fromFile(fullPath),
                                              .range = range,
                                              .selectionRange = range},
-                                      .fromRanges = {{range}}});
+                                      // LSP requires these ranges to belong to the caller
+                                      // (`params.item.uri`), not the outgoing target document.
+                                      .fromRanges = {{params.item.selectionRange}}});
                 }
             }
         }

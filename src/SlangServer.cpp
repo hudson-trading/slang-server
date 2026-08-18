@@ -480,15 +480,13 @@ std::optional<std::vector<lsp::CallHierarchyIncomingCall>> SlangServer::
 }
 
 std::optional<std::vector<lsp::CallHierarchyOutgoingCall>> SlangServer::
-    getCallHierarchyOutgoingCalls(const lsp::CallHierarchyOutgoingCallsParams&) {
+    getCallHierarchyOutgoingCalls(const lsp::CallHierarchyOutgoingCallsParams& params) {
     if (!m_driver->comp) {
         ERROR("No compilation available, cannot trace cones");
         return std::nullopt;
     }
-    // Loads do not map to LSP outgoing calls: the protocol requires the call site's URI and
-    // ranges, while a load cone edge only carries the queried signal's URI. Returning those
-    // edges here makes clients navigate to a range in the wrong document.
-    return std::vector<lsp::CallHierarchyOutgoingCall>{};
+    return m_driver->comp->getCallHierarchyCalls<lsp::CallHierarchyOutgoingCallsParams,
+                                                 lsp::CallHierarchyOutgoingCall>(params);
 }
 
 std::vector<std::string> SlangServer::getDrivers(const std::string& path) {

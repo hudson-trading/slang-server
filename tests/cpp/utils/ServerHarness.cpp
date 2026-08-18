@@ -138,9 +138,19 @@ static void checkCallHierarchyGeneric(const std::string& path,
     for (const auto& call : *result) {
         CHECK(call.fromRanges.size() == 1);
         auto [name, uri, range, selectionRange] = extractFunc(call);
-        CHECK(range == call.fromRanges[0]);
-        CHECK(selectionRange == call.fromRanges[0]);
-        gotStarts.insert({.name = name, .uri = uri.str(), .start = call.fromRanges[0].start});
+        CHECK(range == selectionRange);
+        if constexpr (std::is_same_v<ResultType, lsp::CallHierarchyIncomingCall>) {
+            CHECK(range == call.fromRanges[0]);
+        }
+        const auto& expectedRange = [&]() -> const lsp::Range& {
+            if constexpr (std::is_same_v<ResultType, lsp::CallHierarchyIncomingCall>) {
+                return call.fromRanges[0];
+            }
+            else {
+                return selectionRange;
+            }
+        }();
+        gotStarts.insert({.name = name, .uri = uri.str(), .start = expectedRange.start});
     }
     CHECK(result->size() == expected.size());
     CHECK(gotStarts == expStarts);
@@ -162,9 +172,17 @@ void ServerHarness::checkIncomingCalls(const std::string& path,
 
 void ServerHarness::checkOutgoingCalls(const std::string& path,
                                        const std::set<ExpectedHierResult>& expected) {
-    auto getCall = [this](const std::string& path) {
-        return getCallHierarchyOutgoingCalls(
-            lsp::CallHierarchyOutgoingCallsParams{.item = {.name = path}});
+    const lsp::Range callerRange{.start = {.line = 17, .character = 3},
+                                 .end = {.line = 17, .character = 4}};
+    auto getCall = [this, callerRange](const std::string& path) {
+        auto result = getCallHierarchyOutgoingCalls(lsp::CallHierarchyOutgoingCallsParams{
+            .item = {.name = path, .selectionRange = callerRange}});
+        if (result) {
+            for (const auto& call : *result) {
+                CHECK(call.fromRanges == std::vector{callerRange});
+            }
+        }
+        return result;
     };
     auto extract = [](const auto& outgoing) {
         return std::tuple(outgoing.to.name, outgoing.to.uri, outgoing.to.range,

@@ -143,6 +143,42 @@ describe("SlangServer", function()
       assert.are.same(expected, table.concat(lines, "\n"))
       vim.api.nvim_buf_delete(0, { force = true })
    end)
+
+   it("Vanilla call hierarchy keeps outgoing loads navigable", function()
+      local line = vim.api.nvim_buf_get_lines(0, 3, 4, false)[1]
+      local character = assert(string.find(line, "a;", 1, true)) - 1
+      local prepare = vim.lsp.buf_request_sync(0, "textDocument/prepareCallHierarchy", {
+         textDocument = { uri = vim.uri_from_bufnr(0) },
+         position = { line = 3, character = character },
+      }, 5000)
+      assert(prepare)
+
+      local item
+      for _, response in pairs(prepare) do
+         if response.result and response.result[1] then
+            item = response.result[1]
+            break
+         end
+      end
+      assert(item)
+      assert.are.same("foo.a", item.name)
+
+      local outgoing = vim.lsp.buf_request_sync(0, "callHierarchy/outgoingCalls", { item = item }, 5000)
+      assert(outgoing)
+
+      local calls
+      for _, response in pairs(outgoing) do
+         if response.result then
+            calls = response.result
+            break
+         end
+      end
+      assert(calls)
+      assert.are.same(1, #calls)
+      assert.are.same("foo.b", calls[1].to.name)
+      assert.are.same(item.uri, calls[1].to.uri)
+      assert.are.same(item.selectionRange, calls[1].fromRanges[1])
+   end)
 end)
 
 -- TODO (tests)
