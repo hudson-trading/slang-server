@@ -107,10 +107,6 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     registerCommand<waves::ItemToWaveform, std::monostate, &SlangServer::addToWaveform>(
         "slang.addToWaveform");
     registerCommand<std::string, std::monostate, &SlangServer::openWaveform>("slang.openWaveform");
-    registerCommand<std::string, std::vector<std::string>, &SlangServer::getDrivers>(
-        "slang.getDrivers");
-    registerCommand<std::string, std::vector<std::string>, &SlangServer::getLoads>(
-        "slang.getLoads");
     registerCommand<std::string, std::optional<std::vector<server::ConeEntry>>,
                     &SlangServer::getDriversWithLocation>("slang.getDriversWithLocation");
     registerCommand<std::string, std::optional<std::vector<server::ConeEntry>>,
