@@ -91,6 +91,32 @@ TEST_CASE("InactiveRegions_ParseError") {
     CHECK(text.find("`ASDF") != std::string::npos);
 }
 
+TEST_CASE("SyntaxIndexer retains synthesized recovery tokens for context") {
+    using namespace slang;
+
+    SourceManager sm;
+    Bag options;
+    std::string_view text = R"(
+module top;
+    logic value;
+
+    assign
+    endmodule
+)";
+    auto tree = syntax::SyntaxTree::fromText(text, sm, "test", "", options);
+
+    server::SyntaxIndexer indexer(*tree);
+    auto missing = std::ranges::find_if(indexer.collected,
+                                        [](const auto* token) { return token->isMissing(); });
+    REQUIRE(missing != indexer.collected.end());
+    CHECK(indexer.getTokenParent(*missing) != nullptr);
+
+    auto cursor = SourceLocation(tree->getSourceBufferIds()[0], text.find("assign\n") + 7);
+    auto context = indexer.getSyntaxAt(cursor);
+    REQUIRE(context);
+    CHECK(context->kind == syntax::SyntaxKind::ContinuousAssign);
+}
+
 TEST_CASE("InactiveRegions_MacroInDisabledBranch") {
     using namespace slang;
 
