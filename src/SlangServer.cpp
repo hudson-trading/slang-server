@@ -107,10 +107,15 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     registerCommand<waves::ItemToWaveform, std::monostate, &SlangServer::addToWaveform>(
         "slang.addToWaveform");
     registerCommand<std::string, std::monostate, &SlangServer::openWaveform>("slang.openWaveform");
-    registerCommand<std::string, std::optional<std::vector<server::ConeEntry>>,
-                    &SlangServer::getDriversWithLocation>("slang.getDriversWithLocation");
-    registerCommand<std::string, std::optional<std::vector<server::ConeEntry>>,
-                    &SlangServer::getLoadsWithLocation>("slang.getLoadsWithLocation");
+
+    registerDesignCommand<std::string, std::vector<server::ConeEntry>>(
+        "slang.getDriversWithLocation", [](ServerCompilation& comp, const std::string& hierPath) {
+            return comp.getConeLocations<true>(hierPath);
+        });
+    registerDesignCommand<std::string, std::vector<server::ConeEntry>>(
+        "slang.getLoadsWithLocation", [](ServerCompilation& comp, const std::string& hierPath) {
+            return comp.getConeLocations<false>(hierPath);
+        });
 
     // Hierarchy View (sidebar)
     registerCommand<std::string, std::vector<hier::HierItem_t>, &SlangServer::getScope>(
@@ -507,24 +512,6 @@ std::vector<std::string> SlangServer::getLoads(const std::string& path) {
         return {};
     }
     return m_driver->comp->getConePaths<false>(path);
-}
-
-std::optional<std::vector<server::ConeEntry>> SlangServer::getDriversWithLocation(
-    const std::string& hierPath) {
-    if (!m_driver->comp) {
-        ERROR("No compilation available, cannot trace cones");
-        return std::nullopt;
-    }
-    return m_driver->comp->getConeLocations<true>(hierPath);
-}
-
-std::optional<std::vector<server::ConeEntry>> SlangServer::getLoadsWithLocation(
-    const std::string& hierPath) {
-    if (!m_driver->comp) {
-        ERROR("No compilation available, cannot trace cones");
-        return std::nullopt;
-    }
-    return m_driver->comp->getConeLocations<false>(hierPath);
 }
 
 void SlangServer::loadConfig(const Config& config, bool forceIndexing) {
