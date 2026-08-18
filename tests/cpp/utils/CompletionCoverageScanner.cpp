@@ -73,7 +73,7 @@ std::optional<CompletionCoverageScanner::MissingCompletion> CompletionCoverageSc
     }
 
     auto definition = hdl.getDefinitionInfoAt(static_cast<lsp::uint>(token.location().offset()));
-    if (!definition || !definition->symbolTarget()) {
+    if (!definition || !definition->symbol()) {
         return std::nullopt;
     }
     if (definition->nameToken().location() == token.location()) {
