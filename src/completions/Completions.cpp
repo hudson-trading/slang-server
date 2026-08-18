@@ -293,6 +293,24 @@ lsp::CompletionItemKind getCompletionKind(const slang::ast::Symbol& symbol) {
     }
 };
 
+std::string getInstanceArrayCompletionDetail(const ast::InstanceArraySymbol& array) {
+    const ast::Symbol* element = &array;
+    std::string dimensions;
+
+    while (auto nestedArray = element->as_if<ast::InstanceArraySymbol>()) {
+        if (nestedArray->elements.empty())
+            return std::string(toString(array.kind));
+
+        dimensions += fmt::format("[{}]", nestedArray->elements.size());
+        element = nestedArray->elements.front();
+    }
+
+    if (auto instance = element->as_if<ast::InstanceSymbol>())
+        return std::string(instance->getDefinition().name) + dimensions;
+
+    return std::string(toString(element->kind)) + dimensions;
+}
+
 std::string getMemberCompletionDetail(const slang::ast::Symbol& symbol) {
     // Detail str is shown in the dropdown next to the names; show brief type information, fall back
     // to kind. The kind is already revealed in the icon (completionKind above), so we don't need to
@@ -330,15 +348,7 @@ std::string getMemberCompletionDetail(const slang::ast::Symbol& symbol) {
         detailStr = std::string{defName};
     }
     else if (slang::ast::InstanceArraySymbol::isKind(symbol.kind)) {
-        auto& arr = symbol.as<slang::ast::InstanceArraySymbol>();
-        if (arr.elements.empty()) {
-            detailStr = toString(symbol.kind);
-        }
-        else {
-            auto& defName =
-                arr.elements.front()->as<slang::ast::InstanceSymbol>().getDefinition().name;
-            detailStr = fmt::format("{}[{}]", defName, arr.elements.size());
-        }
+        detailStr = getInstanceArrayCompletionDetail(symbol.as<ast::InstanceArraySymbol>());
     }
     else {
         bool supportsDeclaredTypeDetail = slang::ast::ValueSymbol::isKind(symbol.kind) ||
