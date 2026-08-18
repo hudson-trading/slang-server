@@ -168,66 +168,56 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
         }
     }
 
-    auto result =
-        lsp::InitializeResult{
-            .capabilities =
-                lsp::ServerCapabilities{
-                    .textDocumentSync =
-                        lsp::TextDocumentSyncOptions{
-                            .openClose = true,
-                            .change = lsp::TextDocumentSyncKind::Incremental,
-                            .save =
-                                lsp::SaveOptions{
-                                    .includeText = true,
-                                },
-                        },
-                    .completionProvider =
-                        lsp::CompletionOptions{
-                            .triggerCharacters =
-                                std::vector<std::string>{
-                                    "`", // macros
-                                    "#", // hierarchial inst- modules and interfaces
-                                    ".", // hierarchical references. TODO: params, ports
-                                    "(", // function calls
-                                    ":", // pkg scope (::), wire width
-                                    "[", // wire width, array indexing
-                                    "$", // system tasks and functions
-                                },
-                            .resolveProvider = true,
-                            .completionItem =
-                                lsp::ServerCompletionItemOptions{
-                                    .labelDetailsSupport = true,
-                                }},
-                    .hoverProvider = true,
-                    .definitionProvider = true,
-                    .referencesProvider = true,
-                    .documentHighlightProvider = true,
-                    .documentSymbolProvider = true,
-                    .codeActionProvider = true,
-                    .documentLinkProvider =
-                        lsp::DocumentLinkOptions{
-                            .resolveProvider = false,
-                            .workDoneProgress = false,
-                        },
-                    .workspaceSymbolProvider = true,
-                    .renameProvider = true,
-                    .executeCommandProvider =
-                        lsp::ExecuteCommandOptions{
-                            .commands = getCommandList(),
-                        },
-                    .callHierarchyProvider = true,
-                    .inlayHintProvider =
-                        lsp::InlayHintOptions{
-                            .resolveProvider = false,
-                        },
+    auto result = lsp::InitializeResult{
+        .capabilities =
+            lsp::ServerCapabilities{
+                .textDocumentSync =
+                    lsp::TextDocumentSyncOptions{
+                        .openClose = true,
+                        .change = lsp::TextDocumentSyncKind::Incremental,
+                        .save =
+                            lsp::SaveOptions{
+                                .includeText = true,
+                            },
+                    },
+                .completionProvider =
+                    lsp::CompletionOptions{.triggerCharacters =
+                                               completions::completionTriggerCharacters(),
+                                           .resolveProvider = true,
+                                           .completionItem =
+                                               lsp::ServerCompletionItemOptions{
+                                                   .labelDetailsSupport = true,
+                                               }},
+                .hoverProvider = true,
+                .definitionProvider = true,
+                .referencesProvider = true,
+                .documentHighlightProvider = true,
+                .documentSymbolProvider = true,
+                .codeActionProvider = true,
+                .documentLinkProvider =
+                    lsp::DocumentLinkOptions{
+                        .resolveProvider = false,
+                        .workDoneProgress = false,
+                    },
+                .workspaceSymbolProvider = true,
+                .renameProvider = true,
+                .executeCommandProvider =
+                    lsp::ExecuteCommandOptions{
+                        .commands = getCommandList(),
+                    },
+                .callHierarchyProvider = true,
+                .inlayHintProvider =
+                    lsp::InlayHintOptions{
+                        .resolveProvider = false,
+                    },
 
-                },
-            .serverInfo = lsp::ServerInfo{.name = "slang-server",
-                                          .version = fmt::format(
-                                              "{}.{}.{}+{}\n", VersionInfo::getMajor(),
-                                              VersionInfo::getMinor(), VersionInfo::getPatch(),
-                                              VersionInfo::getHash())},
-        };
+            },
+        .serverInfo =
+            lsp::ServerInfo{.name = "slang-server",
+                            .version = fmt::format("{}.{}.{}+{}\n", VersionInfo::getMajor(),
+                                                   VersionInfo::getMinor(), VersionInfo::getPatch(),
+                                                   VersionInfo::getHash())},
+    };
 
     INFO("Initialize result: {} ", rfl::json::write(result));
 

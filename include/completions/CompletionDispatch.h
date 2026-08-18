@@ -15,6 +15,8 @@
 #include <filesystem>
 #include <memory>
 #include <optional>
+#include <string>
+#include <vector>
 
 #include "slang/text/SourceLocation.h"
 #include "slang/util/Bag.h"
@@ -54,5 +56,12 @@ public:
 
     void getCompletionItemResolve(lsp::CompletionItem& item);
 };
+
+namespace completions {
+
+/// Characters that clients should use to trigger completion requests.
+const std::vector<std::string>& completionTriggerCharacters();
+
+} // namespace completions
 
 } // namespace server

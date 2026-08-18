@@ -5,15 +5,29 @@
 #include "completions/SystemTaskCompletions.h"
 #include "lsp/LspTypes.h"
 #include "util/Logging.h"
+#include "utils/CompletionCoverageScanner.h"
 #include "utils/GoldenTest.h"
 #include "utils/ServerHarness.h"
+#include <algorithm>
+#include <filesystem>
 #include <optional>
+#include <string>
+#include <vector>
 
 #include "slang/ast/Compilation.h"
 
 using namespace server;
 
 using namespace slang;
+
+namespace {
+
+bool isSystemVerilogFile(const std::filesystem::path& path) {
+    auto ext = path.extension().string();
+    return ext == ".sv" || ext == ".v";
+}
+
+} // namespace
 
 TEST_CASE("MacroCompletion") {
     ServerHarness server("repo1");
@@ -54,6 +68,24 @@ TEST_CASE("MacroArgumentCompletion") {
         return item.m_item.label == "source_signal";
     });
     REQUIRE(it != comps.end());
+}
+
+TEST_CASE("CompletionCoverageCompRepo") {
+    ServerHarness server("comp_repo");
+    CompletionCoverageScanner scanner;
+
+    auto root = findSlangRoot() / "tests" / "data" / "comp_repo";
+    std::vector<std::filesystem::path> files;
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(root)) {
+        if (entry.is_regular_file() && isSystemVerilogFile(entry.path())) {
+            files.push_back(std::filesystem::relative(entry.path(), root));
+        }
+    }
+
+    std::sort(files.begin(), files.end());
+    for (const auto& file : files) {
+        scanner.scanDocument(server.openFile(file.string()), file);
+    }
 }
 
 TEST_CASE("SystemTaskCompletion") {
