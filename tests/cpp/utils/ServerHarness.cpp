@@ -8,6 +8,7 @@
 #define CATCH_CONFIG_RUNNER
 #include "ServerHarness.h"
 #include <fstream>
+#include <rfl/from_generic.hpp>
 #include <unordered_set>
 
 DocumentHandle ServerHarness::openFile(std::string fileName) {
@@ -116,16 +117,16 @@ void ServerHarness::checkPrepareCallHierarchy(const Cursor& cursor,
     CHECK(got == expected);
 }
 
-template<typename ResultType, typename GetCallFunc, typename ExtractFunc>
-static void checkCallHierarchyGeneric(const std::string& path,
-                                      const std::set<ServerHarness::ExpectedHierResult>& expected,
-                                      GetCallFunc getCallFunc, ExtractFunc extractFunc) {
-    auto result = getCallFunc(path);
-
-    if (!result) {
-        CHECK(expected.empty());
-        return;
-    }
+void ServerHarness::checkConeCommand(const std::string& command, const std::string& path,
+                                     const std::set<ExpectedConeResult>& expected) {
+    auto response = getWorkspaceExecuteCommand(lsp::ExecuteCommandParams{
+        .command = command,
+        .arguments = std::vector<lsp::LSPAny>{rfl::to_generic(path)},
+    });
+    REQUIRE(response);
+    auto result = rfl::from_generic<std::vector<server::ConeEntry>>(*response);
+    REQUIRE(result);
+    CHECK(result.value().size() == expected.size());
 
     std::set<ExpectedStart> expStarts;
     for (const auto& expect : expected) {
@@ -135,38 +136,12 @@ static void checkCallHierarchyGeneric(const std::string& path,
     }
 
     std::set<ExpectedStart> gotStarts;
-    for (const auto& call : *result) {
-        CHECK(call.fromRanges.size() == 1);
-        auto [name, uri] = extractFunc(call);
-        gotStarts.insert({.name = name, .uri = uri.str(), .start = call.fromRanges[0].start});
+    for (const auto& entry : result.value()) {
+        gotStarts.insert({.name = entry.path,
+                          .uri = entry.location.uri.str(),
+                          .start = entry.location.range.start});
     }
     CHECK(gotStarts == expStarts);
-}
-
-void ServerHarness::checkIncomingCalls(const std::string& path,
-                                       const std::set<ExpectedHierResult>& expected) {
-    auto getCall = [this](const std::string& path) {
-        return getCallHierarchyIncomingCalls(
-            lsp::CallHierarchyIncomingCallsParams{.item = {.name = path}});
-    };
-    auto extract = [](const auto& incoming) -> std::pair<std::string, URI> {
-        return {incoming.from.name, incoming.from.uri};
-    };
-
-    checkCallHierarchyGeneric<lsp::CallHierarchyIncomingCall>(path, expected, getCall, extract);
-}
-
-void ServerHarness::checkOutgoingCalls(const std::string& path,
-                                       const std::set<ExpectedHierResult>& expected) {
-    auto getCall = [this](const std::string& path) {
-        return getCallHierarchyOutgoingCalls(
-            lsp::CallHierarchyOutgoingCallsParams{.item = {.name = path}});
-    };
-    auto extract = [](const auto& outgoing) -> std::pair<std::string, URI> {
-        return {outgoing.to.name, outgoing.to.uri};
-    };
-
-    checkCallHierarchyGeneric<lsp::CallHierarchyOutgoingCall>(path, expected, getCall, extract);
 }
 
 std::shared_ptr<server::SlangDoc> ServerHarness::getDoc(const URI& uri) {
