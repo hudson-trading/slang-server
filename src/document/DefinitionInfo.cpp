@@ -923,8 +923,9 @@ std::vector<lsp::LocationLink> DefinitionInfo::SystemSubroutineTarget::getDefini
     return {};
 }
 
-lsp::MarkupContent DefinitionInfo::getHover(const SourceManager& sm, BufferID docBuffer,
+lsp::MarkupContent DefinitionInfo::getHover(BufferID docBuffer,
                                             const Config::HoverConfig& hovers) const {
+    const auto& sm = sourceManager.get();
     if (auto parameterSummary = renderElaboratedParameterSummary(targets, sm, hovers))
         return std::move(*parameterSummary);
     if (auto parameterValues = renderElaboratedParameterValues(targets, sm, hovers))
@@ -951,7 +952,8 @@ lsp::MarkupContent DefinitionInfo::getHover(const SourceManager& sm, BufferID do
     return result.build();
 }
 
-std::vector<lsp::LocationLink> DefinitionInfo::getDefinition(const SourceManager& sm) const {
+std::vector<lsp::LocationLink> DefinitionInfo::getDefinitionLspLinks() const {
+    const auto& sm = sourceManager.get();
     std::vector<lsp::LocationLink> result;
     for (const auto& target : targets) {
         auto links = std::visit([&](const auto& t) { return t.getDefinition(sm); }, target);
@@ -964,6 +966,15 @@ std::vector<lsp::LocationLink> DefinitionInfo::getDefinition(const SourceManager
                 result.push_back(std::move(link));
         }
     }
+    return result;
+}
+
+std::vector<lsp::Location> DefinitionInfo::getDefinitionLspLocs() const {
+    auto links = getDefinitionLspLinks();
+    std::vector<lsp::Location> result;
+    result.reserve(links.size());
+    for (auto& link : links)
+        result.emplace_back(std::move(link.targetUri), link.targetRange);
     return result;
 }
 

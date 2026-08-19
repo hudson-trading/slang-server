@@ -11,6 +11,7 @@
 #include "document/ShallowAnalysis.h"
 #include "lsp/LspTypes.h"
 #include <cstddef>
+#include <functional>
 #include <string>
 #include <utility>
 #include <variant>
@@ -160,9 +161,14 @@ struct DefinitionInfo {
 
     // The things this token resolves to, in semantic / elaboration order.
     std::vector<Target> targets;
+    std::reference_wrapper<const slang::SourceManager> sourceManager;
 
-    explicit DefinitionInfo(Target target) { targets.push_back(std::move(target)); }
-    explicit DefinitionInfo(std::vector<Target> targets) : targets(std::move(targets)) {}
+    DefinitionInfo(const slang::SourceManager& sourceManager, Target target) :
+        sourceManager(sourceManager) {
+        targets.push_back(std::move(target));
+    }
+    DefinitionInfo(const slang::SourceManager& sourceManager, std::vector<Target> targets) :
+        targets(std::move(targets)), sourceManager(sourceManager) {}
 
     const Target& primaryTarget() const { return targets.front(); }
     Target& primaryTarget() { return targets.front(); }
@@ -194,11 +200,13 @@ struct DefinitionInfo {
     bool operator!=(const DefinitionInfo& other) const { return !(*this == other); }
 
     /// Render the hover markup for this definition.
-    lsp::MarkupContent getHover(const slang::SourceManager& sm, slang::BufferID docBuffer,
-                                const Config::HoverConfig& hovers) const;
+    lsp::MarkupContent getHover(slang::BufferID docBuffer, const Config::HoverConfig& hovers) const;
 
     /// Resolve and deduplicate goto-definition links for every target and declaration site.
-    std::vector<lsp::LocationLink> getDefinition(const slang::SourceManager& sm) const;
+    std::vector<lsp::LocationLink> getDefinitionLspLinks() const;
+
+    /// Resolve and deduplicate legacy goto-definition locations.
+    std::vector<lsp::Location> getDefinitionLspLocs() const;
 };
 
 } // namespace server

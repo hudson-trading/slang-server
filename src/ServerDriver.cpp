@@ -571,7 +571,7 @@ std::optional<DefinitionInfo> ServerDriver::getMacroDefinitionInfo(
         targets.emplace_back(
             DefinitionInfo::MacroTarget{std::move(macroDefinition), referenceSyntax, analysis});
     }
-    return DefinitionInfo{std::move(targets)};
+    return DefinitionInfo{sm, std::move(targets)};
 }
 
 std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
@@ -626,8 +626,8 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
         if (!sub || !sysDoc)
             return {};
 
-        return DefinitionInfo{DefinitionInfo::SystemSubroutineTarget{
-            *declTok, sysDoc, sub->kind == ast::SubroutineKind::Task}};
+        return DefinitionInfo{sm, DefinitionInfo::SystemSubroutineTarget{
+                                      *declTok, sysDoc, sub->kind == ast::SubroutineKind::Task}};
     }
     auto symbolsEquivalent = [&](const ast::Symbol* left, const ast::Symbol* right) {
         if (left == right)
@@ -870,7 +870,7 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
             }
         }
         if (!targets.empty())
-            return DefinitionInfo{std::move(targets)};
+            return DefinitionInfo{sm, std::move(targets)};
     }
 
     std::vector<DefinitionInfo::Target> targets;
@@ -897,7 +897,7 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
 
     if (targets.empty())
         return {};
-    return DefinitionInfo{std::move(targets)};
+    return DefinitionInfo{sm, std::move(targets)};
 }
 
 std::optional<lsp::Hover> ServerDriver::getDocHover(const URI& uri, const lsp::Position& position) {
@@ -921,15 +921,7 @@ std::optional<lsp::Hover> ServerDriver::getDocHover(const URI& uri, const lsp::P
         return {};
     }
     const auto& info = *maybeInfo;
-    return lsp::Hover{.contents = info.getHover(sm, doc->getBuffer(), m_config.hovers.value())};
-}
-
-std::vector<lsp::LocationLink> ServerDriver::getDocDefinition(const URI& uri,
-                                                              const lsp::Position& position) {
-    auto maybeInfo = getDefinitionInfoAt(uri, position);
-    if (!maybeInfo)
-        return {};
-    return maybeInfo->getDefinition(sm);
+    return lsp::Hover{.contents = info.getHover(doc->getBuffer(), m_config.hovers.value())};
 }
 
 std::optional<std::vector<lsp::DocumentHighlight>> ServerDriver::getDocDocumentHighlight(
@@ -1284,7 +1276,7 @@ std::optional<lsp::WorkspaceEdit> ServerDriver::getDocRename(const URI& uri,
 }
 
 void ServerDriver::publishInactiveRegions(SlangDoc& doc) {
-    if (!client.experimentalCapabilities.inactiveRegionsSupported)
+    if (!client.capabilities.inactiveRegionsSupported)
         return;
 
     auto regions = doc.getInactiveRegions();
