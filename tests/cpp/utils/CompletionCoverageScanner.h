@@ -19,7 +19,7 @@ public:
     void scanDocument(DocumentHandle hdl, std::filesystem::path relativePath);
 
 private:
-    struct MissingCompletion {
+    struct CompletionIssue {
         lsp::uint line;
         lsp::uint column;
         lsp::uint length;
@@ -27,11 +27,12 @@ private:
         std::string contextKind;
         std::string triggerKind;
         size_t completionCount;
+        std::optional<std::string> resolutionMismatch;
     };
 
     static std::optional<std::string> triggerForToken(const DocumentHandle& hdl,
                                                       const slang::parsing::Token& token);
 
-    std::optional<MissingCompletion> checkToken(DocumentHandle& hdl,
-                                                const slang::parsing::Token& token);
+    std::optional<CompletionIssue> checkToken(DocumentHandle& hdl,
+                                              const slang::parsing::Token& token);
 };

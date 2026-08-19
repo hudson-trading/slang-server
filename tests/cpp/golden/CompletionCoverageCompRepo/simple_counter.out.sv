@@ -17,4 +17,23 @@ module simple_counter #(
             count <= count + 1'b1;
     end
 
+    class completion_class #(parameter int MEMBER_WIDTH);
+        function void run(input logic [MEMBER_WIDTH-1:0] arg);
+        endfunction
+    endclass
+
+    completion_class #(8) wide;
+//  ^^^^^^^^^^^^^^^^ MissingCompletion[completion_class] Context[ModuleMember] Trigger[Invoked] Items[17]
+    completion_class #(2) narrow;
+//  ^^^^^^^^^^^^^^^^ MissingCompletion[completion_class] Context[ModuleMember] Trigger[Invoked] Items[17]
+    struct {
+        logic field_a;
+    } value;
+
+    initial begin
+        wide.run('0);
+        narrow.run('0);
+        value.field_a = '0;
+    end
+
 endmodule

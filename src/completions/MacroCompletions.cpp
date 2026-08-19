@@ -13,6 +13,8 @@
 #include "lsp/SnippetString.h"
 #include "util/Formatting.h"
 #include "util/Logging.h"
+#include <cctype>
+#include <unordered_set>
 
 #include "slang/syntax/AllSyntax.h"
 #include "slang/syntax/SyntaxTree.h"
@@ -21,6 +23,21 @@ namespace server::completions {
 using namespace slang;
 
 namespace {
+
+bool matchesPrefix(std::string_view name, std::string_view typedPrefix) {
+    if (typedPrefix.starts_with('`'))
+        typedPrefix.remove_prefix(1);
+    if (typedPrefix.size() > name.size())
+        return false;
+
+    for (size_t i = 0; i < typedPrefix.size(); i++) {
+        auto actual = static_cast<unsigned char>(name[i]);
+        auto expected = static_cast<unsigned char>(typedPrefix[i]);
+        if (std::tolower(actual) != std::tolower(expected))
+            return false;
+    }
+    return true;
+}
 
 lsp::CompletionItem getCompletion(std::string name) {
     auto spelling = "`" + name;
@@ -75,17 +92,33 @@ public:
 
     CompletionQueryKind kind() const final { return CompletionQueryKind::Macro; }
 
+    bool isIncomplete() const final { return true; }
+
     void getCompletions(std::vector<lsp::CompletionItem>& results, CompletionDispatch& dispatch,
                         const std::shared_ptr<SlangDoc>& doc,
                         const CompletionContext&) const final {
+        std::unordered_set<std::string> seenLabels;
+        // Filter before building rich items because compilations can contain thousands of macros.
         for (auto& macro : doc->getSyntaxTree()->getDefinedMacros()) {
             if (macro->name.location() == SourceLocation::NoLocation)
+                continue;
+            auto name = macro->name.valueText();
+            if (!matchesPrefix(name, typedPrefix))
+                continue;
+            auto label = "`" + std::string(name);
+            if (!seenLabels.insert(label).second)
                 continue;
             results.push_back(getCompletion(*macro));
         }
 
-        for (const auto& name : getIndexer(dispatch).getAllMacroNames())
-            results.push_back(getCompletion(name));
+        for (auto& name : getIndexer(dispatch).getAllMacroNames()) {
+            if (!matchesPrefix(name, typedPrefix))
+                continue;
+            auto item = getCompletion(std::move(name));
+            if (!seenLabels.insert(item.label).second)
+                continue;
+            results.push_back(std::move(item));
+        }
     }
 
 private:

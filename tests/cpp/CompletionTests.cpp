@@ -64,7 +64,19 @@ TEST_CASE("MacroCompletion") {
 
     // Only return the indexed one
     auto doc2 = server.openFile("test2.sv", "`");
-    CHECK(doc2.end().getCompletions("`").size() == 1);
+    auto macroCursor = doc2.end();
+    auto rawResult = server.getDocCompletion(lsp::CompletionParams{
+        .context =
+            lsp::CompletionContext{
+                .triggerKind = lsp::CompletionTriggerKind::TriggerCharacter,
+                .triggerCharacter = "`",
+            },
+        .textDocument = lsp::TextDocumentIdentifier{macroCursor.getUri()},
+        .position = macroCursor.getPosition(),
+    });
+    REQUIRE(rfl::holds_alternative<lsp::CompletionList>(rawResult));
+    CHECK(rfl::get<lsp::CompletionList>(rawResult).isIncomplete);
+    CHECK(rfl::get<lsp::CompletionList>(rawResult).items.size() == 1);
 
     // Now that it's saved, it should be indexed
     doc.save();
@@ -108,7 +120,8 @@ TEST_CASE("MacroArgumentCompletion") {
 }
 
 TEST_CASE("CompletionCoverageCompRepo") {
-    ServerHarness server("comp_repo");
+    ServerHarness server(makeCompletionResolveParams(
+        {"documentation", "insertText", "insertTextFormat", "textEdit"}, "comp_repo"));
     CompletionCoverageScanner scanner;
 
     auto root = findSlangRoot() / "tests" / "data" / "comp_repo";
@@ -543,6 +556,9 @@ TEST_CASE("MidIdentifierCompletion") {
     SECTION("macro") {
         auto cursor = doc.after("`MID_MA");
         auto items = cursor.getCompletions();
+        CHECK(std::ranges::all_of(items, [](const CompletionHandle& item) {
+            return item.m_item.label.starts_with("`MID_MA");
+        }));
         auto item = findByLabel(items, "`MID_MACRO");
         REQUIRE(item != items.end());
         CHECK(getCompletionTextEdit(item->m_item).newText == "`MID_MACRO");

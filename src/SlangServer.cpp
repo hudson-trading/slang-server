@@ -811,6 +811,12 @@ rfl::Variant<std::vector<lsp::CompletionItem>, lsp::CompletionList, std::monosta
     // We need to hack around with client side middileware like in clangd-
     // https://github.com/clangd/vscode-clangd/blob/master/src/clangd-context.ts
 
+    if (ctx.query->isIncomplete()) {
+        // Macro results are server-filtered and bounded. Mark the list incomplete so clients ask
+        // again as the user types instead of treating omitted candidates as unavailable.
+        return lsp::CompletionList{.isIncomplete = true, .items = std::move(results)};
+    }
+
     return results;
 }
 
