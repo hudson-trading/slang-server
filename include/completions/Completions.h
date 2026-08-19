@@ -42,6 +42,14 @@ void resolveModuleInstance(const slang::syntax::ModuleHeaderSyntax& header,
 void resolveModule(const slang::syntax::SyntaxTree& tree, std::string_view moduleName,
                    lsp::CompletionItem& ret, bool excludeName = false);
 
+/// Add completions for named parameter assignments inside `#(...)`.
+void addNamedParameterCompletions(std::vector<lsp::CompletionItem>& results,
+                                  const slang::syntax::ModuleHeaderSyntax& header);
+
+/// Add completions for named port connections inside an instance `(...)`.
+void addNamedPortCompletions(std::vector<lsp::CompletionItem>& results,
+                             const slang::syntax::ModuleHeaderSyntax& header);
+
 /// Index based completions
 void addIndexedCompletions(std::vector<lsp::CompletionItem>& results, const Indexer& indexer,
                            const CompletionContext& ctx);
