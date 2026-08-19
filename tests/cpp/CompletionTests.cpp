@@ -957,6 +957,96 @@ TEST_CASE("HierarchicalInterfacePortCompletion") {
     CHECK(!hasCompletion(producerCompletions, "hidden"));
 }
 
+TEST_CASE("HierarchicalInterfacePortArrayCompletionWithUnresolvedBounds") {
+    ServerHarness server("repo1");
+
+    auto doc = server.openFile("invalid_iface_port_completion.sv", R"(
+    interface valid_data_if #(
+        parameter type data_type,
+        parameter int data_width = 8
+    );
+        data_type data;
+        logic [data_width - 1:0] payload;
+        logic valid;
+
+        modport source(output data, payload, valid);
+    endinterface
+
+    module iface_port_completion #(
+        parameter int num_ports
+    ) (
+        valid_data_if.source requests[num_ports],
+        valid_data_if.source matrix[num_ports][num_ports]
+    );
+        for (genvar index = 0; index < num_ports; index++) begin
+            always_comb begin
+                requests[index].valid;
+                requests[index].payload;
+                requests[index][index].valid;
+                requests[index:index].valid;
+                matrix[index].valid;
+                matrix[index][index].valid;
+            end
+        end
+    endmodule
+    )");
+
+    auto findCompletion = [](auto& items, std::string_view label) {
+        return std::find_if(items.begin(), items.end(), [label](const CompletionHandle& item) {
+            return item.m_item.label == label;
+        });
+    };
+
+    auto members = doc.after("requests[index].").getCompletions(".");
+    CHECK(findCompletion(members, "data") != members.end());
+    CHECK(findCompletion(members, "payload") != members.end());
+    CHECK(findCompletion(members, "valid") != members.end());
+
+    auto matrixMembers = doc.after("matrix[index][index].").getCompletions(".");
+    CHECK(findCompletion(matrixMembers, "valid") != matrixMembers.end());
+
+    for (auto invalidAccess :
+         {"requests[index][index].", "requests[index:index].", "matrix[index]."}) {
+        auto invalidMembers = doc.after(invalidAccess).getCompletions(".");
+        CHECK(findCompletion(invalidMembers, "valid") == invalidMembers.end());
+    }
+
+    auto lexical = doc.before("requests[index].valid").getCompletions();
+    auto requests = findCompletion(lexical, "requests");
+    REQUIRE(requests != lexical.end());
+    REQUIRE(requests->m_item.labelDetails);
+    CHECK(requests->m_item.labelDetails->detail == " valid_data_if.source[num_ports]");
+
+    auto matrix = findCompletion(lexical, "matrix");
+    REQUIRE(matrix != lexical.end());
+    REQUIRE(matrix->m_item.labelDetails);
+    CHECK(matrix->m_item.labelDetails->detail == " valid_data_if.source[num_ports][num_ports]");
+
+    auto prefixed = doc.after("requests[index].valid").getCompletions();
+    auto valid = findCompletion(prefixed, "valid");
+    REQUIRE(valid != prefixed.end());
+    valid->resolve();
+    CHECK(valid->m_item.documentation);
+
+    auto validUse = doc.after("requests[index].");
+    auto hover = doc.getHoverAt(validUse.m_offset);
+    REQUIRE(hover);
+    auto hoverContent = rfl::get<lsp::MarkupContent>(hover->contents);
+    CHECK(hoverContent.value.find("output data, payload, valid") != std::string::npos);
+
+    auto payloadUse = doc.before("requests[index].payload");
+    auto payloadHover = doc.getHoverAt(payloadUse.m_offset +
+                                       std::string_view("requests[index].").size());
+    REQUIRE(payloadHover);
+    auto payloadContent = rfl::get<lsp::MarkupContent>(payloadHover->contents);
+    CHECK(payloadContent.value.find("Type: `logic[7:0]`") != std::string::npos);
+
+    auto definitions = validUse.getDefinitions();
+    REQUIRE(definitions.size() == 2);
+    CHECK(definitions[0].targetSelectionRange.start.line == 9);
+    CHECK(definitions[1].targetSelectionRange.start.line == 7);
+}
+
 TEST_CASE("HierarchicalStructCompletion") {
     ServerHarness server("repo1");
     JsonGoldenTest golden;

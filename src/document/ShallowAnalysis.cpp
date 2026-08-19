@@ -207,7 +207,7 @@ const ast::Symbol* ShallowAnalysis::handleInterfacePortHeader(const parsing::Tok
     return inst.body.lookupName(header.modport->member.valueText());
 }
 
-const ast::Scope* ShallowAnalysis::getScopeFromSym(const ast::Symbol* symbol) {
+const ast::Scope* ShallowAnalysis::getScopeFromSym(const ast::Symbol* symbol) const {
     if (!symbol) {
         return nullptr;
     }
@@ -235,6 +235,29 @@ const ast::Scope* ShallowAnalysis::getScopeFromSym(const ast::Symbol* symbol) {
         auto& port = symbol->as<ast::InterfacePortSymbol>();
         auto [connSym, modport] = port.getConnection();
         auto scope = getScopeFromSym(connSym);
+
+        auto instanceArray = connSym ? connSym->as_if<ast::InstanceArraySymbol>() : nullptr;
+        if ((!connSym || (instanceArray && instanceArray->elements.empty())) && port.interfaceDef) {
+            auto parentScope = port.getParentScope();
+            if (!parentScope)
+                return nullptr;
+
+            auto [it, inserted] = m_interfaceFallbackScopes.try_emplace(port.interfaceDef, nullptr);
+            if (inserted) {
+                auto& fallback = ast::InstanceSymbol::createDefault(parentScope->getCompilation(),
+                                                                    *port.interfaceDef);
+                fallback.name = "";
+                it->second = &fallback.body;
+            }
+            scope = it->second;
+            if (!port.modport.empty()) {
+                auto fallbackModport = scope->find(port.modport);
+                if (fallbackModport && fallbackModport->kind == ast::SymbolKind::Modport)
+                    return &fallbackModport->as<ast::Scope>();
+            }
+            return scope;
+        }
+
         if (!modport) {
             return scope;
         }
@@ -467,6 +490,32 @@ slang::SmallVector<const ast::Symbol*, 2> ShallowAnalysis::getSymbolsAtToken(
         return symbols;
     }
 
+    auto recoverMembers = [&](const syntax::SyntaxNode& left, std::string_view name) {
+        auto leftToken = syntaxes.getTokenAt(left.getLastToken().location());
+        for (auto* receiver : getSymbolsAtToken(leftToken)) {
+            if (auto* receiverScope = getScopeFromSym(receiver))
+                addSymbol(receiverScope->find(name));
+        }
+    };
+
+    if (syntax->kind == syntax::SyntaxKind::MemberAccessExpression) {
+        auto& access = syntax->as<syntax::MemberAccessExpressionSyntax>();
+        if (access.name == *declTok) {
+            recoverMembers(*access.left, access.name.valueText());
+            if (!symbols.empty())
+                return symbols;
+        }
+    }
+    else if (syntax->kind == syntax::SyntaxKind::IdentifierName && syntax->parent) {
+        auto scoped = syntax->parent->as_if<syntax::ScopedNameSyntax>();
+        if (scoped && scoped->right == syntax &&
+            scoped->separator.kind == parsing::TokenKind::Dot) {
+            recoverMembers(*scoped->left, declTok->valueText());
+            if (!symbols.empty())
+                return symbols;
+        }
+    }
+
     auto scopes = m_symbolIndexer.getScopesForSyntax(*syntax);
 
     if (syntax->kind == syntax::SyntaxKind::LoopGenerate &&
@@ -510,12 +559,34 @@ slang::SmallVector<const ast::Symbol*, 2> ShallowAnalysis::getSymbolsAtToken(
         if (result.found) {
             if (isOverSelector(declTok, result)) {
                 const slang::ast::Symbol* cur = result.found;
+                size_t remainingInterfaceDimensions = 0;
+                bool hasInterfaceDimensions = false;
+
+                auto loadInterfaceDimensions = [&] {
+                    if (hasInterfaceDimensions)
+                        return true;
+
+                    auto portSyntax = cur->getSyntax();
+                    auto declarator = portSyntax ? portSyntax->as_if<syntax::DeclaratorSyntax>()
+                                                 : nullptr;
+                    if (!declarator)
+                        return false;
+
+                    remainingInterfaceDimensions = declarator->dimensions.size();
+                    hasInterfaceDimensions = true;
+                    return true;
+                };
 
                 // Proper selector resolution is in
                 // Expression::bindLookupResult, however that modifies the compilation at the
                 // moment
                 for (auto& sel : result.selectors) {
                     if (auto member = std::get_if<ast::LookupResult::MemberSelector>(&sel)) {
+                        if (ast::InterfacePortSymbol::isKind(cur->kind) &&
+                            (!loadInterfaceDimensions() || remainingInterfaceDimensions != 0)) {
+                            return nullptr;
+                        }
+
                         const ast::Scope* scope = getScopeFromSym(cur);
                         if (!scope) {
                             INFO("No scope found for sym {} : {}", cur->getHierarchicalPath(),
@@ -523,12 +594,25 @@ slang::SmallVector<const ast::Symbol*, 2> ShallowAnalysis::getSymbolsAtToken(
                             return nullptr;
                         }
                         cur = scope->find(member->name);
+                        hasInterfaceDimensions = false;
 
                         if (member->nameRange == declTok->range()) {
                             return cur;
                         }
                     }
                     else {
+                        if (ast::InterfacePortSymbol::isKind(cur->kind)) {
+                            // Preserve the port while consuming unevaluated interface dimensions.
+                            auto* select = std::get<const syntax::ElementSelectSyntax*>(sel);
+                            if (!loadInterfaceDimensions() || remainingInterfaceDimensions == 0 ||
+                                !select->selector ||
+                                select->selector->kind != syntax::SyntaxKind::BitSelect) {
+                                return nullptr;
+                            }
+                            remainingInterfaceDimensions--;
+                            continue;
+                        }
+
                         const ast::Type* type = nullptr;
                         if (cur->isType()) {
                             type = &cur->as<ast::Type>();
@@ -543,6 +627,7 @@ slang::SmallVector<const ast::Symbol*, 2> ShallowAnalysis::getSymbolsAtToken(
                         else {
                             return nullptr;
                         }
+                        hasInterfaceDimensions = false;
                     }
                     if (!cur) {
                         WARN("No members found in scope {}",
@@ -550,6 +635,8 @@ slang::SmallVector<const ast::Symbol*, 2> ShallowAnalysis::getSymbolsAtToken(
                         return nullptr;
                     }
                 }
+                if (hasInterfaceDimensions && remainingInterfaceDimensions != 0)
+                    return nullptr;
                 return cur;
             }
             // with IdentifierSelectNameSyntax (instance arrays) result.found will be the final
