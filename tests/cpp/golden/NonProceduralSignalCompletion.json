@@ -11,7 +11,20 @@
           "kind": "markdown",
           "value": "````systemverilog\ninput logic a\n````"
         },
-        "filterText": "a"
+        "filterText": "a",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 10,
+              "character": 0
+            },
+            "end": {
+              "line": 10,
+              "character": 0
+            }
+          },
+          "newText": "a"
+        }
       },
       {
         "label": "b",
@@ -23,7 +36,20 @@
           "kind": "markdown",
           "value": "````systemverilog\noutput logic b\n````"
         },
-        "filterText": "b"
+        "filterText": "b",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 10,
+              "character": 0
+            },
+            "end": {
+              "line": 10,
+              "character": 0
+            }
+          },
+          "newText": "b"
+        }
       },
       {
         "label": "base_pkg",
@@ -37,7 +63,20 @@
         },
         "filterText": "base_pkg",
         "insertText": "base_pkg",
-        "insertTextFormat": "PlainText"
+        "insertTextFormat": "PlainText",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 10,
+              "character": 0
+            },
+            "end": {
+              "line": 10,
+              "character": 0
+            }
+          },
+          "newText": "base_pkg"
+        }
       },
       {
         "label": "clk",
@@ -49,7 +88,20 @@
           "kind": "markdown",
           "value": "````systemverilog\ninput logic clk\n````"
         },
-        "filterText": "clk"
+        "filterText": "clk",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 10,
+              "character": 0
+            },
+            "end": {
+              "line": 10,
+              "character": 0
+            }
+          },
+          "newText": "clk"
+        }
       },
       {
         "label": "internal_sig",
@@ -61,7 +113,20 @@
           "kind": "markdown",
           "value": "````systemverilog\nlogic internal_sig;\n````"
         },
-        "filterText": "internal_sig"
+        "filterText": "internal_sig",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 10,
+              "character": 0
+            },
+            "end": {
+              "line": 10,
+              "character": 0
+            }
+          },
+          "newText": "internal_sig"
+        }
       },
       {
         "label": "my_wire",
@@ -73,7 +138,20 @@
           "kind": "markdown",
           "value": "````systemverilog\nwire my_wire;\n````"
         },
-        "filterText": "my_wire"
+        "filterText": "my_wire",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 10,
+              "character": 0
+            },
+            "end": {
+              "line": 10,
+              "character": 0
+            }
+          },
+          "newText": "my_wire"
+        }
       },
       {
         "label": "util_pkg",
@@ -87,7 +165,20 @@
         },
         "filterText": "util_pkg",
         "insertText": "util_pkg",
-        "insertTextFormat": "PlainText"
+        "insertTextFormat": "PlainText",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 10,
+              "character": 0
+            },
+            "end": {
+              "line": 10,
+              "character": 0
+            }
+          },
+          "newText": "util_pkg"
+        }
       }
     ]
   }

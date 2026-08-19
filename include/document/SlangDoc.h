@@ -152,9 +152,6 @@ public:
 
     std::optional<slang::SourceLocation> getLocation(const lsp::Position& position);
 
-    // Previous text on and before a position
-    std::string getPrevText(const lsp::Position& position);
-
     std::vector<lsp::DocumentLink> getDocLinks() { return getAnalysis()->getDocLinks(); }
 
     std::vector<lsp::Range> getInactiveRegions();

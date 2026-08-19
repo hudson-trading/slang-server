@@ -8,7 +8,24 @@
           "description": "simple_struct_t"
         },
         "kind": "Property",
-        "filterText": "addr"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic [7:0] addr;\n````"
+        },
+        "filterText": "addr",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 25,
+              "character": 22
+            },
+            "end": {
+              "line": 25,
+              "character": 22
+            }
+          },
+          "newText": "addr"
+        }
       },
       {
         "label": "data",
@@ -17,7 +34,24 @@
           "description": "simple_struct_t"
         },
         "kind": "Property",
-        "filterText": "data"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic [31:0] data;\n````"
+        },
+        "filterText": "data",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 25,
+              "character": 22
+            },
+            "end": {
+              "line": 25,
+              "character": 22
+            }
+          },
+          "newText": "data"
+        }
       },
       {
         "label": "valid",
@@ -26,7 +60,24 @@
           "description": "simple_struct_t"
         },
         "kind": "Property",
-        "filterText": "valid"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic valid;\n````"
+        },
+        "filterText": "valid",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 25,
+              "character": 22
+            },
+            "end": {
+              "line": 25,
+              "character": 22
+            }
+          },
+          "newText": "valid"
+        }
       }
     ]
   },
@@ -39,7 +90,24 @@
           "description": "nested_struct_t"
         },
         "kind": "Property",
-        "filterText": "inner"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nsimple_struct_t inner;\n````"
+        },
+        "filterText": "inner",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 27,
+              "character": 27
+            },
+            "end": {
+              "line": 27,
+              "character": 27
+            }
+          },
+          "newText": "inner"
+        }
       },
       {
         "label": "ready",
@@ -48,7 +116,24 @@
           "description": "nested_struct_t"
         },
         "kind": "Property",
-        "filterText": "ready"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic ready;\n````"
+        },
+        "filterText": "ready",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 27,
+              "character": 27
+            },
+            "end": {
+              "line": 27,
+              "character": 27
+            }
+          },
+          "newText": "ready"
+        }
       },
       {
         "label": "tag",
@@ -57,7 +142,24 @@
           "description": "nested_struct_t"
         },
         "kind": "Property",
-        "filterText": "tag"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic [15:0] tag;\n````"
+        },
+        "filterText": "tag",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 27,
+              "character": 27
+            },
+            "end": {
+              "line": 27,
+              "character": 27
+            }
+          },
+          "newText": "tag"
+        }
       }
     ]
   },
@@ -70,7 +172,24 @@
           "description": "deep_nested_struct_t"
         },
         "kind": "Property",
-        "filterText": "enable"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic enable;\n````"
+        },
+        "filterText": "enable",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 29,
+              "character": 32
+            },
+            "end": {
+              "line": 29,
+              "character": 32
+            }
+          },
+          "newText": "enable"
+        }
       },
       {
         "label": "id",
@@ -79,7 +198,24 @@
           "description": "deep_nested_struct_t"
         },
         "kind": "Property",
-        "filterText": "id"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic [3:0] id;\n````"
+        },
+        "filterText": "id",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 29,
+              "character": 32
+            },
+            "end": {
+              "line": 29,
+              "character": 32
+            }
+          },
+          "newText": "id"
+        }
       },
       {
         "label": "level1",
@@ -88,7 +224,24 @@
           "description": "deep_nested_struct_t"
         },
         "kind": "Property",
-        "filterText": "level1"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nnested_struct_t level1;\n````"
+        },
+        "filterText": "level1",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 29,
+              "character": 32
+            },
+            "end": {
+              "line": 29,
+              "character": 32
+            }
+          },
+          "newText": "level1"
+        }
       }
     ]
   },
@@ -101,7 +254,24 @@
           "description": "simple_struct_t"
         },
         "kind": "Property",
-        "filterText": "addr"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic [7:0] addr;\n````"
+        },
+        "filterText": "addr",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 31,
+              "character": 33
+            },
+            "end": {
+              "line": 31,
+              "character": 33
+            }
+          },
+          "newText": "addr"
+        }
       },
       {
         "label": "data",
@@ -110,7 +280,24 @@
           "description": "simple_struct_t"
         },
         "kind": "Property",
-        "filterText": "data"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic [31:0] data;\n````"
+        },
+        "filterText": "data",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 31,
+              "character": 33
+            },
+            "end": {
+              "line": 31,
+              "character": 33
+            }
+          },
+          "newText": "data"
+        }
       },
       {
         "label": "valid",
@@ -119,7 +306,24 @@
           "description": "simple_struct_t"
         },
         "kind": "Property",
-        "filterText": "valid"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic valid;\n````"
+        },
+        "filterText": "valid",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 31,
+              "character": 33
+            },
+            "end": {
+              "line": 31,
+              "character": 33
+            }
+          },
+          "newText": "valid"
+        }
       }
     ]
   },
@@ -132,7 +336,24 @@
           "description": "nested_struct_t"
         },
         "kind": "Property",
-        "filterText": "inner"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nsimple_struct_t inner;\n````"
+        },
+        "filterText": "inner",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 33,
+              "character": 39
+            },
+            "end": {
+              "line": 33,
+              "character": 39
+            }
+          },
+          "newText": "inner"
+        }
       },
       {
         "label": "ready",
@@ -141,7 +362,24 @@
           "description": "nested_struct_t"
         },
         "kind": "Property",
-        "filterText": "ready"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic ready;\n````"
+        },
+        "filterText": "ready",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 33,
+              "character": 39
+            },
+            "end": {
+              "line": 33,
+              "character": 39
+            }
+          },
+          "newText": "ready"
+        }
       },
       {
         "label": "tag",
@@ -150,7 +388,24 @@
           "description": "nested_struct_t"
         },
         "kind": "Property",
-        "filterText": "tag"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic [15:0] tag;\n````"
+        },
+        "filterText": "tag",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 33,
+              "character": 39
+            },
+            "end": {
+              "line": 33,
+              "character": 39
+            }
+          },
+          "newText": "tag"
+        }
       }
     ]
   },
@@ -163,7 +418,24 @@
           "description": "simple_struct_t"
         },
         "kind": "Property",
-        "filterText": "addr"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic [7:0] addr;\n````"
+        },
+        "filterText": "addr",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 35,
+              "character": 45
+            },
+            "end": {
+              "line": 35,
+              "character": 45
+            }
+          },
+          "newText": "addr"
+        }
       },
       {
         "label": "data",
@@ -172,7 +444,24 @@
           "description": "simple_struct_t"
         },
         "kind": "Property",
-        "filterText": "data"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic [31:0] data;\n````"
+        },
+        "filterText": "data",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 35,
+              "character": 45
+            },
+            "end": {
+              "line": 35,
+              "character": 45
+            }
+          },
+          "newText": "data"
+        }
       },
       {
         "label": "valid",
@@ -181,7 +470,24 @@
           "description": "simple_struct_t"
         },
         "kind": "Property",
-        "filterText": "valid"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic valid;\n````"
+        },
+        "filterText": "valid",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 35,
+              "character": 45
+            },
+            "end": {
+              "line": 35,
+              "character": 45
+            }
+          },
+          "newText": "valid"
+        }
       }
     ]
   }

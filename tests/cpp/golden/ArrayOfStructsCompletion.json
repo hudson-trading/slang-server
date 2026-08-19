@@ -8,7 +8,24 @@
           "description": "transaction_t"
         },
         "kind": "Property",
-        "filterText": "addr"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic [7:0] addr;\n````"
+        },
+        "filterText": "addr",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 19,
+              "character": 28
+            },
+            "end": {
+              "line": 19,
+              "character": 28
+            }
+          },
+          "newText": "addr"
+        }
       },
       {
         "label": "data",
@@ -17,7 +34,24 @@
           "description": "transaction_t"
         },
         "kind": "Property",
-        "filterText": "data"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic [31:0] data;\n````"
+        },
+        "filterText": "data",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 19,
+              "character": 28
+            },
+            "end": {
+              "line": 19,
+              "character": 28
+            }
+          },
+          "newText": "data"
+        }
       },
       {
         "label": "valid",
@@ -26,7 +60,24 @@
           "description": "transaction_t"
         },
         "kind": "Property",
-        "filterText": "valid"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic valid;\n````"
+        },
+        "filterText": "valid",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 19,
+              "character": 28
+            },
+            "end": {
+              "line": 19,
+              "character": 28
+            }
+          },
+          "newText": "valid"
+        }
       }
     ]
   },
@@ -39,7 +90,24 @@
           "description": "transaction_t"
         },
         "kind": "Property",
-        "filterText": "addr"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic [7:0] addr;\n````"
+        },
+        "filterText": "addr",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 22,
+              "character": 34
+            },
+            "end": {
+              "line": 22,
+              "character": 34
+            }
+          },
+          "newText": "addr"
+        }
       },
       {
         "label": "data",
@@ -48,7 +116,24 @@
           "description": "transaction_t"
         },
         "kind": "Property",
-        "filterText": "data"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic [31:0] data;\n````"
+        },
+        "filterText": "data",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 22,
+              "character": 34
+            },
+            "end": {
+              "line": 22,
+              "character": 34
+            }
+          },
+          "newText": "data"
+        }
       },
       {
         "label": "valid",
@@ -57,7 +142,24 @@
           "description": "transaction_t"
         },
         "kind": "Property",
-        "filterText": "valid"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic valid;\n````"
+        },
+        "filterText": "valid",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 22,
+              "character": 34
+            },
+            "end": {
+              "line": 22,
+              "character": 34
+            }
+          },
+          "newText": "valid"
+        }
       }
     ]
   },
@@ -70,7 +172,24 @@
           "description": "nested_transaction_t"
         },
         "kind": "Property",
-        "filterText": "id"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic [15:0] id;\n````"
+        },
+        "filterText": "id",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 25,
+              "character": 26
+            },
+            "end": {
+              "line": 25,
+              "character": 26
+            }
+          },
+          "newText": "id"
+        }
       },
       {
         "label": "txn",
@@ -79,7 +198,24 @@
           "description": "nested_transaction_t"
         },
         "kind": "Property",
-        "filterText": "txn"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\ntransaction_t txn;\n````"
+        },
+        "filterText": "txn",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 25,
+              "character": 26
+            },
+            "end": {
+              "line": 25,
+              "character": 26
+            }
+          },
+          "newText": "txn"
+        }
       }
     ]
   },
@@ -92,7 +228,24 @@
           "description": "transaction_t"
         },
         "kind": "Property",
-        "filterText": "addr"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic [7:0] addr;\n````"
+        },
+        "filterText": "addr",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 28,
+              "character": 30
+            },
+            "end": {
+              "line": 28,
+              "character": 30
+            }
+          },
+          "newText": "addr"
+        }
       },
       {
         "label": "data",
@@ -101,7 +254,24 @@
           "description": "transaction_t"
         },
         "kind": "Property",
-        "filterText": "data"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic [31:0] data;\n````"
+        },
+        "filterText": "data",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 28,
+              "character": 30
+            },
+            "end": {
+              "line": 28,
+              "character": 30
+            }
+          },
+          "newText": "data"
+        }
       },
       {
         "label": "valid",
@@ -110,7 +280,24 @@
           "description": "transaction_t"
         },
         "kind": "Property",
-        "filterText": "valid"
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic valid;\n````"
+        },
+        "filterText": "valid",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 28,
+              "character": 30
+            },
+            "end": {
+              "line": 28,
+              "character": 30
+            }
+          },
+          "newText": "valid"
+        }
       }
     ]
   }

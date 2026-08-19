@@ -9,6 +9,7 @@
 #include "document/SyntaxIndexer.h"
 
 #include "util/Logging.h"
+#include <algorithm>
 
 #include "slang/parsing/Token.h"
 #include "slang/parsing/TokenKind.h"
@@ -123,6 +124,11 @@ void SyntaxIndexer::processTrivia(std::span<const slang::parsing::Trivia> trivia
         if (trivia.kind == parsing::TriviaKind::SkippedTokens) {
             for (const auto& skippedTok : trivia.getSkippedTokens()) {
                 processTrivia(skippedTok.trivia(), parent);
+                if (skippedTok.location().buffer() == m_buffer && !skippedTok.isMissing() &&
+                    skippedTok.kind != parsing::TokenKind::Placeholder) {
+                    collected.push_back(&skippedTok);
+                    tokenToParent[&skippedTok] = &parent;
+                }
             }
             continue;
         }
@@ -230,6 +236,26 @@ const slang::parsing::Token* SyntaxIndexer::getTokenAt(slang::SourceLocation loc
         return tok;
     }
     return nullptr;
+}
+
+const slang::parsing::Token* SyntaxIndexer::getTokenBefore(slang::SourceLocation loc) const {
+    auto index = tokenIndexBefore(loc);
+    while (index >= 0 && collected[index]->location() >= loc)
+        index--;
+    if (index >= 0 && loc < collected[index]->range().end())
+        index--;
+    return index >= 0 ? collected[index] : nullptr;
+}
+
+const slang::parsing::Token* SyntaxIndexer::getTokenAfter(slang::SourceLocation loc) const {
+    if (loc.buffer() != m_buffer || collected.empty())
+        return nullptr;
+
+    auto it = std::lower_bound(collected.begin(), collected.end(), loc,
+                               [](const parsing::Token* token, SourceLocation location) {
+                                   return token->location() < location;
+                               });
+    return it != collected.end() ? *it : nullptr;
 }
 
 const syntax::SyntaxNode* SyntaxIndexer::getTokenParent(const parsing::Token* tok) const {

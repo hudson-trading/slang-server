@@ -7,6 +7,7 @@
 #include "ServerHarness.h"
 #include "completions/CompletionContext.h"
 #include "completions/CompletionDispatch.h"
+#include "completions/MemberCompletions.h"
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
 #include <fmt/format.h>
@@ -88,8 +89,7 @@ std::optional<CompletionCoverageScanner::MissingCompletion> CompletionCoverageSc
                                : lsp::CompletionTriggerKind::Invoked,
         .triggerCharacter = trigger,
     };
-    auto ctx = server::CompletionContext::fromLocation(*hdl.doc, token.location(), lspContext,
-                                                       hdl.doc->getPrevText(cursor.getPosition()));
+    auto ctx = server::CompletionContext::fromLocation(*hdl.doc, token.location(), lspContext);
     auto completions = cursor.getCompletions(trigger);
     auto hasCompletion = std::ranges::any_of(completions, [&](const CompletionHandle& completion) {
         return completion.m_item.label == label;

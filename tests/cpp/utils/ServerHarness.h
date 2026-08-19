@@ -161,6 +161,7 @@ public:
     }
 
     lsp::Position getPosition(lsp::uint offset);
+    lsp::uint getOffset(const lsp::Position& position) const;
     std::vector<lsp::DocumentSymbol> getSymbolTree();
     std::vector<lsp::Diagnostic> getDiagnostics();
 
@@ -257,7 +258,8 @@ public:
         }
     }
 
-    void insert() { m_cursor.write(m_item.insertText.value_or(m_item.label)); }
+    /// Apply the completion exactly as an LSP client would, preferring its authoritative textEdit.
+    void insert();
 };
 
 template<typename ElementT>

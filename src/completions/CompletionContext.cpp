@@ -103,16 +103,15 @@ bool isProceduralBlockContext(SyntaxKind kind) {
 } // anonymous namespace
 
 CompletionContext CompletionContext::fromLocation(SlangDoc& doc, SourceLocation loc,
-                                                  lsp::CompletionContext lspContext,
-                                                  std::string_view prevText) {
+                                                  lsp::CompletionContext lspContext) {
     CompletionContext ctx;
     ctx.lspContext = std::move(lspContext);
-    ctx.prevText = prevText;
     // Hold analysis alive so that scope/syntax pointers remain valid
     // for the entire lifetime of the CompletionContext.
     ctx.analysis = doc.getAnalysis();
     ctx.scope = ctx.analysis->getScopeAt(loc);
     ctx.syntax = ctx.analysis->syntaxes.getSyntaxAt(loc);
+    ctx.query = CompletionQuery::fromLocation(doc, ctx.analysis, loc);
 
     if (!ctx.syntax) {
         // No syntax node at location - assume module item context if we have a scope

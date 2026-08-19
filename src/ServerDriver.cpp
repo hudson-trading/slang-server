@@ -170,6 +170,7 @@ std::unique_ptr<ServerDriver> ServerDriver::create(Indexer& indexer, SlangLspCli
 
     // Copy only open documents from old driver if provided
     if (oldDriver) {
+        newDriver->completions.resolveEdits = oldDriver->completions.resolveEdits;
         oldDriver->diagClient->clearAndPush();
         for (const auto& uri : oldDriver->m_openDocs) {
             auto docIt = oldDriver->docs.find(uri);
