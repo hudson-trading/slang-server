@@ -7,6 +7,7 @@
 //------------------------------------------------------------------------------
 #pragma once
 
+#include "util/Log.h"
 #include <chrono>
 #include <fmt/color.h>
 #include <fmt/format.h>
@@ -14,14 +15,11 @@
 
 #include "slang/text/SourceLocation.h"
 
-#define INFO(format_string, ...) \
-    fmt::print(stderr, "INFO: {}\n", fmt::format(format_string __VA_OPT__(, ) __VA_ARGS__));
+#define INFO(format_string, ...) server::logging::info(format_string __VA_OPT__(, ) __VA_ARGS__);
 
-#define WARN(format_string, ...) \
-    fmt::print(stderr, "WARN: {}\n", fmt::format(format_string __VA_OPT__(, ) __VA_ARGS__));
+#define WARN(format_string, ...) server::logging::warn(format_string __VA_OPT__(, ) __VA_ARGS__);
 
-#define ERROR(format_string, ...) \
-    fmt::print(stderr, "ERROR: {}\n", fmt::format(format_string __VA_OPT__(, ) __VA_ARGS__));
+#define ERROR(format_string, ...) server::logging::error(format_string __VA_OPT__(, ) __VA_ARGS__);
 
 #define RFL_INFO(some_struct)                                      \
     fmt::print(stderr, "{}\n",                                     \
