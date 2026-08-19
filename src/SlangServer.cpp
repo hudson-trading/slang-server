@@ -67,6 +67,7 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
 
     // Doc Features
     registerDocDefinition();
+    registerDocTypeDefinition();
     registerDocHover();
     registerDocDocumentSymbol();
     registerDocDocumentLink();
@@ -199,6 +200,7 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
                                                }},
                 .hoverProvider = true,
                 .definitionProvider = true,
+                .typeDefinitionProvider = true,
                 .referencesProvider = true,
                 .documentHighlightProvider = true,
                 .documentSymbolProvider = true,
@@ -636,6 +638,11 @@ std::monostate SlangServer::addDefine(const std::string& macroName) {
 rfl::Variant<lsp::Definition, std::vector<lsp::DefinitionLink>, std::monostate> SlangServer::
     getDocDefinition(const lsp::DefinitionParams& params) {
     return m_driver->getDocDefinition(params.textDocument.uri, params.position);
+}
+
+rfl::Variant<lsp::Definition, std::vector<lsp::DefinitionLink>, std::monostate> SlangServer::
+    getDocTypeDefinition(const lsp::TypeDefinitionParams& params) {
+    return m_driver->getDocTypeDefinition(params.textDocument.uri, params.position);
 }
 
 std::optional<lsp::Hover> SlangServer::getDocHover(const lsp::HoverParams& params) {
