@@ -11,18 +11,15 @@
 #include "JsonRpc.h"
 #include "lsp/LspTypes.h"
 #include "rfl/Generic.hpp"
-#include "util/Log.h"
-#include <chrono>
 #include <concepts>
 #include <functional>
+#include <iostream>
 #include <mutex>
 #include <optional>
 #include <rfl/json/write.hpp>
 #include <rfl/visit.hpp>
 #include <string>
-#include <string_view>
 #include <unordered_map>
-#include <utility>
 #include <variant>
 
 namespace lsp {
@@ -87,50 +84,13 @@ protected:
     }
 
     std::variant<rfl::Generic, RpcError, std::nullopt_t> processMessage(RpcRequest request) {
-        struct MessageLog {
-            MessageLog(std::string_view method, std::optional<std::string> id) :
-                method(method), id(std::move(id)), start(std::chrono::steady_clock::now()) {
-                if (this->id) {
-                    server::logging::info("<--- {} {}", method, *this->id);
-                }
-                else {
-                    server::logging::info("<--- {}", method);
-                }
-            }
-
-            ~MessageLog() {
-                const server::logging::Milliseconds latency(std::chrono::steady_clock::now() -
-                                                            start);
-                if (error) {
-                    if (id) {
-                        server::logging::error("-/-> {} {} ({}) Error: {}", method, *id, latency,
-                                               *error);
-                    }
-                    else {
-                        server::logging::error("-/-> {} ({}) Error: {}", method, latency, *error);
-                    }
-                }
-                else if (id) {
-                    server::logging::info("---> {} {} ({})", method, *id, latency);
-                }
-                else {
-                    server::logging::info("---- {} (notification finished) ({})", method, latency);
-                }
-            }
-
-            void setError(std::string message) { error = std::move(message); }
-
-            std::string_view method;
-            std::optional<std::string> id;
-            std::optional<std::string> error;
-            std::chrono::steady_clock::time_point start;
-        };
-
         if (!request.id) {
             // Notification
             auto it = notifications.find(request.method);
             if (it != notifications.end()) {
-                MessageLog messageLog(request.method, std::nullopt);
+                std::cerr << "<--- " << request.method << std::endl;
+                // std::cerr << rfl::json::write(request.params, rfl::json::pretty) <<
+                // std::endl;
                 try {
                     if (request.params.has_value()) {
                         it->second(request.params.value());
@@ -138,16 +98,18 @@ protected:
                     else {
                         it->second(std::nullopt);
                     }
+                    std::cerr << "---- " << request.method << " (notification finished)"
+                              << std::endl;
                 }
                 catch (const std::exception& e) {
-                    messageLog.setError(e.what());
+                    std::cerr << "-/-> " << request.method << " Error: " << e.what() << '\n';
                 }
             }
             else if (request.method.find("$/") == 0) {
-                server::logging::warn("<-/- {} (ignoring threaded req)", request.method);
+                std::cerr << "<-/- " << request.method << " (ignoring threaded req)" << '\n';
             }
             else {
-                server::logging::warn("<-/- {} (method not found)", request.method);
+                std::cerr << "<-/- " << request.method << " (method not found)" << '\n';
             }
             return std::nullopt;
         }
@@ -171,8 +133,8 @@ protected:
         auto it = requests.find(request.method);
 
         if (it != requests.end()) {
-            MessageLog messageLog(request.method, std::move(id));
             try {
+                std::cerr << "<--- " << request.method << " " << id << '\n';
                 rfl::Generic req_response;
                 if (request.params.has_value()) {
                     req_response = it->second(request.params.value());
@@ -180,15 +142,17 @@ protected:
                 else {
                     req_response = it->second(rfl::Generic{});
                 }
+                std::cerr << "---> " << request.method << " " << id << '\n';
                 return req_response;
             }
             catch (const std::exception& e) {
-                messageLog.setError(e.what());
+                std::cerr << "-/-> " << request.method << " " << id << " Error: " << e.what()
+                          << "\n\n";
                 return RpcError{.code = 1, .message = e.what()};
             }
         }
         else {
-            server::logging::warn("<-/- {} (not found)", request.method);
+            std::cerr << "<-/- " << request.method << " (not found)" << '\n';
         }
 
         return std::nullopt;
@@ -216,7 +180,7 @@ protected:
                 }
             },
             result);
-        server::logging::blankLine();
+        std::cerr << '\n';
     }
 
     std::string line;
