@@ -15,6 +15,7 @@
 #include <iostream>
 #include <optional>
 #include <rfl/json.hpp>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -29,10 +30,11 @@ protected:
 
     // LspServer<Impl>(LspClient& lspClient) : m_lspClient(lspClient) {}
 
-    /// Register an rpc method with the given Params, Return, and Method (name)
-    template<typename P, typename R, auto Method>
-    void registerCommand(const std::string& name) {
-        m_commands[name] = [this](std::optional<rfl::Generic> paramsJson) -> rfl::Generic {
+    /// Register an rpc command with the given Params, Return, and handler
+    template<typename P, typename R, typename Func>
+    void registerCommand(const std::string& name, Func&& func) {
+        m_commands[name] = [func = std::forward<Func>(func)](
+                               std::optional<rfl::Generic> paramsJson) -> rfl::Generic {
             // Deserialize params
             R result;
             if constexpr (!std::is_same_v<P, std::nullopt_t>) {
@@ -41,10 +43,10 @@ protected:
                 if (!params) {
                     throw std::runtime_error(params.error().what());
                 }
-                result = (static_cast<Impl*>(this)->*Method)(params.value());
+                result = func(params.value());
             }
             else {
-                result = (static_cast<Impl*>(this)->*Method)(std::monostate{});
+                result = func(std::monostate{});
             }
 
             if constexpr (std::is_same_v<R, std::monostate>) {
@@ -55,6 +57,14 @@ protected:
             }
         };
         std::cerr << "Registered command: " << name << "\n";
+    }
+
+    /// Register an rpc method with the given Params, Return, and Method (name)
+    template<typename P, typename R, auto Method>
+    void registerCommand(const std::string& name) {
+        registerCommand<P, R>(name, [this](const auto& params) {
+            return (static_cast<Impl*>(this)->*Method)(params);
+        });
     }
 
     /// A request send from the client to the server to execute a command. The request might return

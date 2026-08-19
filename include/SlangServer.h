@@ -17,6 +17,7 @@
 #include "document/SlangDoc.h"
 #include "lsp/LspServer.h"
 #include "lsp/LspTypes.h"
+#include <functional>
 #include <memory>
 #include <rfl.hpp>
 #include <rfl/Generic.hpp>
@@ -43,6 +44,19 @@ protected:
     /// Manages open docuemnts and a single compilation
     /// Created each time config/flags are changed, including switching between explore/build mode
     std::unique_ptr<ServerDriver> m_driver;
+
+    template<typename Params, typename Result>
+    void registerDesignCommand(
+        const std::string& name,
+        const std::function<Result(ServerCompilation&, const Params&)>& func) {
+        registerCommand<Params, std::optional<Result>>(
+            name, [this, func](const Params& params) -> std::optional<Result> {
+                if (!m_driver || !m_driver->comp) {
+                    return std::nullopt;
+                }
+                return func(*m_driver->comp, params);
+            });
+    }
 
     /// The diag client
     std::shared_ptr<ServerDiagClient> m_diagClient;

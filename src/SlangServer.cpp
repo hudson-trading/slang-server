@@ -108,6 +108,15 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
         "slang.addToWaveform");
     registerCommand<std::string, std::monostate, &SlangServer::openWaveform>("slang.openWaveform");
 
+    registerDesignCommand<std::string, std::vector<server::ConeEntry>>(
+        "slang.getDriversWithLocation", [](ServerCompilation& comp, const std::string& hierPath) {
+            return comp.getConeLocations<true>(hierPath);
+        });
+    registerDesignCommand<std::string, std::vector<server::ConeEntry>>(
+        "slang.getLoadsWithLocation", [](ServerCompilation& comp, const std::string& hierPath) {
+            return comp.getConeLocations<false>(hierPath);
+        });
+
     // Hierarchy View (sidebar)
     registerCommand<std::string, std::vector<hier::HierItem_t>, &SlangServer::getScope>(
         "slang.getScope");
@@ -465,8 +474,13 @@ std::optional<std::vector<lsp::CallHierarchyIncomingCall>> SlangServer::
         ERROR("No compilation available, cannot trace cones");
         return std::nullopt;
     }
-    return m_driver->comp->getCallHierarchyCalls<lsp::CallHierarchyIncomingCallsParams,
-                                                 lsp::CallHierarchyIncomingCall>(params);
+    // Drivers are presented as "incoming calls" in the call hierarchy view.
+    std::vector<lsp::CallHierarchyIncomingCall> result;
+    for (const auto& entry : m_driver->comp->getConeLocations<true>(params.item.name)) {
+        result.push_back({.from = {.name = entry.path, .uri = entry.location.uri},
+                          .fromRanges = {entry.location.range}});
+    }
+    return result;
 }
 
 std::optional<std::vector<lsp::CallHierarchyOutgoingCall>> SlangServer::
@@ -475,8 +489,13 @@ std::optional<std::vector<lsp::CallHierarchyOutgoingCall>> SlangServer::
         ERROR("No compilation available, cannot trace cones");
         return std::nullopt;
     }
-    return m_driver->comp->getCallHierarchyCalls<lsp::CallHierarchyOutgoingCallsParams,
-                                                 lsp::CallHierarchyOutgoingCall>(params);
+    // Loads are presented as "outgoing calls" in the call hierarchy view.
+    std::vector<lsp::CallHierarchyOutgoingCall> result;
+    for (const auto& entry : m_driver->comp->getConeLocations<false>(params.item.name)) {
+        result.push_back({.to = {.name = entry.path, .uri = entry.location.uri},
+                          .fromRanges = {entry.location.range}});
+    }
+    return result;
 }
 
 std::vector<std::string> SlangServer::getDrivers(const std::string& path) {
