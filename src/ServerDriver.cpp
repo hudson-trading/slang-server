@@ -543,7 +543,8 @@ std::optional<DefinitionInfo> ServerDriver::getMacroDefinitionInfo(
     for (auto* macroDef : macroDefs) {
         auto nameToken = macroDef->name;
         auto macroUsageRange = SourceRange::NoLocation;
-        if (sm.isMacroLoc(nameToken.location())) {
+        const bool isMacroGenerated = sm.isMacroLoc(nameToken.location());
+        if (isMacroGenerated) {
             auto tokenRange = SourceRange(nameToken.location(),
                                           nameToken.location() + nameToken.rawText().length());
             auto expansionRange = sm.getFullyExpandedRange(tokenRange);
@@ -560,7 +561,7 @@ std::optional<DefinitionInfo> ServerDriver::getMacroDefinitionInfo(
 
         const auto defPath = sm.getFullPath(nameToken.location().buffer());
         const auto defPathStr = defPath.filename().string();
-        if (defPathStr.empty() || defPathStr[0] == '<') {
+        if (!isMacroGenerated && (defPathStr.empty() || defPathStr[0] == '<')) {
             std::string defineSourceFile;
             const auto srcIt = m_defineSources.find(std::string(nameToken.valueText()));
             if (srcIt != m_defineSources.end())

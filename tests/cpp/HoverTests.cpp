@@ -53,6 +53,54 @@ endmodule
     CHECK(sigContent.value.find("sig_foo") != std::string::npos);
 }
 
+TEST_CASE("HoverMacroDefinedByMacroExpansion") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+`define DEFINE_DEFAULT(NAME, VALUE) \
+`ifndef NAME \
+`define NAME VALUE \
+`endif
+
+`DEFINE_DEFAULT(FEATURE_ENABLE, 1)
+module top;
+    parameter bit feature_enable = `FEATURE_ENABLE;
+endmodule
+)");
+
+    auto usage = doc.before("`FEATURE_ENABLE;");
+    auto hover = doc.getHoverAt(usage.m_offset);
+    REQUIRE(hover.has_value());
+    auto content = rfl::get<lsp::MarkupContent>(hover->contents);
+    CHECK(content.value.find("DefineDirective FEATURE_ENABLE") != std::string::npos);
+    CHECK(content.value.find("Defined via command-line flags") == std::string::npos);
+
+    auto defs = usage.getDefinitions();
+    REQUIRE(defs.size() == 1);
+    CHECK(defs[0].targetUri == doc.m_uri);
+    CHECK(defs[0].targetSelectionRange.start ==
+          doc.before("`DEFINE_DEFAULT(FEATURE_ENABLE").getPosition());
+}
+
+TEST_CASE("HoverCommandLineDefine") {
+    ServerHarness server;
+    Config config;
+    config.flagsByFile.value().push_back({"test_flags.f", "-DFEATURE_ENABLE=1"});
+    server.loadConfig(config);
+
+    auto doc = server.openFile("test.sv", R"(
+module top;
+    parameter bit feature_enable = `FEATURE_ENABLE;
+endmodule
+)");
+
+    auto usage = doc.before("`FEATURE_ENABLE;");
+    auto info = doc.getDefinitionInfoAt(usage.m_offset);
+    REQUIRE(info.has_value());
+    REQUIRE(info->macro());
+    CHECK(info->macro()->commandLineDefine());
+}
+
 TEST_CASE("HoverMacroNotFollowingTypedef") {
     // Regression for #425: define directives are trivia on the following token, so
     // selectDisplayNode must not promote to a trailing TypedefDeclaration.
