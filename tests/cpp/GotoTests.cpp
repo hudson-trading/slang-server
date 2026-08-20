@@ -129,6 +129,38 @@ TEST_CASE("GotoDefinition_IfdefUndefinedMacro") {
     CHECK(defs.empty());
 }
 
+TEST_CASE("GotoDefinition_HonorsLinkSupport") {
+    auto checkResultType = [](std::optional<bool> linkSupport) {
+        lsp::InitializeParams params;
+        params.capabilities.textDocument.emplace();
+        params.capabilities.textDocument->definition = lsp::DefinitionClientCapabilities{
+            .linkSupport = linkSupport};
+        ServerHarness server(std::move(params));
+
+        auto doc = server.openFile("test.sv", R"(
+module top;
+    int value;
+    initial value = value;
+endmodule
+)");
+        auto cursor = doc.after("initial value = ");
+        auto result = server.getDocDefinition(lsp::DefinitionParams{
+            .textDocument = {.uri = doc.m_uri}, .position = cursor.getPosition()});
+
+        if (linkSupport.value_or(false)) {
+            CHECK(rfl::holds_alternative<std::vector<lsp::DefinitionLink>>(result));
+        }
+        else {
+            CHECK(rfl::holds_alternative<lsp::Definition>(result));
+            const auto& definition = rfl::get<lsp::Definition>(result);
+            CHECK(rfl::holds_alternative<std::vector<lsp::Location>>(definition));
+        }
+    };
+
+    checkResultType(std::nullopt);
+    checkResultType(true);
+}
+
 TEST_CASE("GotoDefinition_AllIndexedModuleDefinitions") {
     ServerHarness server;
 

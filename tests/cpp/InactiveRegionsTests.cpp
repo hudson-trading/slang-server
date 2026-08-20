@@ -15,6 +15,32 @@ struct RegionInfo {
     std::string text;
 };
 
+TEST_CASE("ClientCapabilities_ExtractsSupportedFeatures") {
+    auto capabilities = rfl::json::read<lsp::ClientCapabilities>(R"(
+{
+  "textDocument": {
+    "definition": {"linkSupport": true},
+    "completion": {
+      "completionItem": {
+        "resolveSupport": {
+          "properties": ["insertText", "insertTextFormat", "textEdit"]
+        }
+      }
+    }
+  },
+  "experimental": {
+    "inactiveRegions": {"inactiveRegions": true}
+  }
+}
+)");
+    REQUIRE(capabilities);
+
+    SlangLspClient::Capabilities extracted(*capabilities);
+    CHECK(extracted.definitionLinksSupported);
+    CHECK(extracted.completionEditResolveSupported);
+    CHECK(extracted.inactiveRegionsSupported);
+}
+
 TEST_CASE("InactiveRegions_SyntaxIndexer") {
     using namespace slang;
 

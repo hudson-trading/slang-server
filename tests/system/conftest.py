@@ -268,7 +268,13 @@ async def client(my_options: Flags) -> AsyncGenerator[SlangClient, None]:
 
     response = await client.initialize_async(
         types.InitializeParams(
-            capabilities=types.ClientCapabilities(),  # Ignored for now
+            capabilities=types.ClientCapabilities(
+                text_document=types.TextDocumentClientCapabilities(
+                    definition=types.DefinitionClientCapabilities(
+                        link_support=True,
+                    ),
+                ),
+            ),
             root_uri=client.get_root_uri(),
         )
     )

@@ -13,7 +13,6 @@
 #include "ast/WcpClient.h"
 #include "completions/CompletionContext.h"
 #include "completions/CompletionDispatch.h"
-#include "lsp/LspTypeExtensions.h"
 #include "lsp/LspTypes.h"
 #include "lsp/URI.h"
 #include "util/Converters.h"
@@ -27,7 +26,6 @@
 #include <optional>
 #include <ranges>
 #include <rfl/Variant.hpp>
-#include <rfl/from_generic.hpp>
 #include <string>
 #include <string_view>
 #include <variant>
@@ -166,19 +164,10 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
         WARN("No workspace folder or root provided");
     }
 
-    auto resolveCompletionEdits = m_client.supportsCompletionEditResolve(params.capabilities);
+    m_client.capabilities = SlangLspClient::Capabilities(params.capabilities);
 
     loadConfig();
-    m_driver->completions.resolveEdits = resolveCompletionEdits;
-
-    if (params.capabilities.experimental) {
-        auto exp = rfl::from_generic<lsp::ExperimentalClientCapabilities>(
-            *params.capabilities.experimental);
-
-        if (exp && exp->inactiveRegions && exp->inactiveRegions->inactiveRegions.value_or(false)) {
-            m_client.experimentalCapabilities.inactiveRegionsSupported = true;
-        }
-    }
+    m_driver->completions.resolveEdits = m_client.capabilities.completionEditResolveSupported;
 
     auto result = lsp::InitializeResult{
         .capabilities =
@@ -638,7 +627,11 @@ std::monostate SlangServer::addDefine(const std::string& macroName) {
 
 rfl::Variant<lsp::Definition, std::vector<lsp::DefinitionLink>, std::monostate> SlangServer::
     getDocDefinition(const lsp::DefinitionParams& params) {
-    return m_driver->getDocDefinition(params.textDocument.uri, params.position);
+    auto info = m_driver->getDefinitionInfoAt(params.textDocument.uri, params.position);
+    if (m_client.capabilities.definitionLinksSupported)
+        return info ? info->getDefinitionLspLinks() : std::vector<lsp::DefinitionLink>{};
+
+    return lsp::Definition(info ? info->getDefinitionLspLocs() : std::vector<lsp::Location>{});
 }
 
 std::optional<lsp::Hover> SlangServer::getDocHover(const lsp::HoverParams& params) {
