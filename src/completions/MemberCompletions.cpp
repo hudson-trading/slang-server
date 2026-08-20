@@ -18,6 +18,7 @@
 #include "util/Converters.h"
 #include "util/Formatting.h"
 #include "util/Logging.h"
+#include "util/SlangExtensions.h"
 #include <fmt/format.h>
 #include <rfl/UnderlyingEnums.hpp>
 #include <rfl/from_generic.hpp>
@@ -62,9 +63,9 @@ public:
         if (!inspect(symbol))
             return;
         if constexpr (std::is_base_of_v<ast::ValueSymbol, T>) {
-            auto type = &symbol.getType().getCanonicalType();
+            auto type = &unwrapErrorType(symbol.getType());
             while (type->isArray())
-                type = &type->getArrayElementType()->getCanonicalType();
+                type = &unwrapErrorType(*type->getArrayElementType());
             if (type->isStruct() || type->isUnion())
                 type->visit(*this);
         }
@@ -328,7 +329,7 @@ std::string getMemberCompletionDetail(const slang::ast::Symbol& symbol) {
     }
     else if (symbol.kind == slang::ast::SymbolKind::TypeAlias) {
         auto& typeAlias = symbol.as<slang::ast::TypeAliasType>();
-        auto& unwrapped = typeAlias.getCanonicalType();
+        auto& unwrapped = unwrapErrorType(typeAlias);
         if (unwrapped.kind != ast::SymbolKind::ErrorType) {
             detailStr = toString(unwrapped.kind);
         }

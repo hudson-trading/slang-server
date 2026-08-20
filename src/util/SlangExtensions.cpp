@@ -8,6 +8,8 @@
 
 #include "util/SlangExtensions.h"
 
+#include "slang/ast/types/AllTypes.h"
+
 namespace server {
 
 using namespace slang;
@@ -25,6 +27,15 @@ bool hasValidBuffers(const SourceManager& sm, const std::shared_ptr<syntax::Synt
     }
 
     return true;
+}
+
+const ast::Type& unwrapErrorType(const ast::Type& type) {
+    auto& canonicalType = type.getCanonicalType();
+    if (canonicalType.kind == ast::SymbolKind::ErrorType) {
+        if (auto* child = canonicalType.as<ast::ErrorType>().child)
+            return child->getCanonicalType();
+    }
+    return canonicalType;
 }
 
 } // namespace server
