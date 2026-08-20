@@ -181,15 +181,19 @@ std::unique_ptr<ServerDriver> ServerDriver::create(Indexer& indexer, SlangLspCli
             // Only copy if the URI isn't already in the new driver's docs
             auto newDocit = newDriver->docs.find(uri);
             if (newDocit == newDriver->docs.end()) {
-                // Open the document in the new driver using the text from the old document
-                newDriver->openDocument(uri, docIt->second->getText());
-                // Trigger diagnostics for the newly opened document
+                // Open the document in the new driver using the text from the old document.
+                // getText() includes the trailing NUL that SourceManager stores.
+                auto text = docIt->second->getText();
+                if (!text.empty() && text.back() == '\0')
+                    text.remove_suffix(1);
+                newDriver->openDocument(uri, text);
             }
             else {
-                // Publish diags for the existing document
-                // Add to open doc set
+                // Already loaded from the build — keep design diagnostics. createCompilation()
+                // (if the caller makes one) will publish them; a shallow pass here would
+                // overwrite them first.
                 newDriver->m_openDocs.insert(uri);
-                newDriver->updateDoc(*newDocit->second, FileUpdateType::OPEN);
+                newDriver->publishInactiveRegions(*newDocit->second);
             }
         }
     }
@@ -200,14 +204,18 @@ std::unique_ptr<ServerDriver> ServerDriver::create(Indexer& indexer, SlangLspCli
 void ServerDriver::openDocument(const URI& uri, const std::string_view text) {
     auto docIter = docs.find(uri);
     std::shared_ptr<SlangDoc> doc;
-    bool alreadyInBuild = false;
-    if (docIter != docs.end() && docIter->second->textMatches(text)) {
+    // A document loaded from the build is already in `docs`, even if the editor buffer
+    // doesn't byte-match (trailing newline, restored dirty tabs, SourceManager's NUL).
+    const bool alreadyInBuild = docIter != docs.end();
+    if (alreadyInBuild) {
         doc = docIter->second;
-        alreadyInBuild = true;
+        if (!doc->textMatches(text)) {
+            WARN("Document {} text does not match, updating", uri.getPath());
+            doc = SlangDoc::fromText(*this, uri, text);
+            docs[uri] = doc;
+        }
     }
     else {
-        if (docIter != docs.end())
-            WARN("Document {} text does not match, updating", uri.getPath());
         doc = SlangDoc::fromText(*this, uri, text);
         docs[uri] = doc;
     }

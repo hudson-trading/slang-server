@@ -126,17 +126,12 @@ std::shared_ptr<ShallowAnalysis> SlangDoc::getAnalysis(bool refreshDependencies)
 }
 
 bool SlangDoc::textMatches(std::string_view text) {
-    // Just compute line offsets to validate UTF-8
-    auto bufText = getText();
-    if (bufText.size() != text.size() + 1) {
-        ERROR("Text size mismatch: have {}, expected {}", bufText.size(), text.size() + 1);
-        return false;
-    }
-    if (std::memcmp(bufText.data(), text.data(), bufText.size()) != 0) {
-        ERROR("Text content mismatch");
-        return false;
-    }
-    return true;
+    auto stripNul = [](std::string_view s) {
+        if (!s.empty() && s.back() == '\0')
+            s.remove_suffix(1);
+        return s;
+    };
+    return stripNul(getText()) == stripNul(text);
 }
 
 void SlangDoc::onChange(const std::vector<lsp::TextDocumentContentChangeEvent>& contentChanges) {
