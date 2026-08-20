@@ -365,6 +365,27 @@ TEST_CASE("OpenBuildFileDoesNotOverwriteCompilationDiags") {
     }
 }
 
+TEST_CASE("OpenBuildFileMismatchedTextDoesNotOverwriteCompilationDiags") {
+    ServerHarness server("comp_repo");
+    server.setBuildFile("cpu_design.f");
+
+    auto cpuUri = URI::fromFile(fs::current_path() / "cpu.sv");
+    auto compDiags = server.client.getDiagnostics(cpuUri);
+    REQUIRE(!compDiags.empty());
+
+    // didOpen after a window reload can send a buffer that doesn't byte-match what the
+    // build loaded (final newline, unsaved restore). That used to force a shallow
+    // re-analysis and wipe the design diagnostics.
+    server.openFile("cpu.sv", "module cpu; endmodule\n");
+    auto afterOpenDiags = server.client.getDiagnostics(cpuUri);
+
+    REQUIRE(afterOpenDiags.size() == compDiags.size());
+    for (size_t i = 0; i < compDiags.size(); i++) {
+        CHECK(compDiags[i].message == afterOpenDiags[i].message);
+        CHECK(compDiags[i].range.start.line == afterOpenDiags[i].range.start.line);
+    }
+}
+
 TEST_CASE("OpenNonBuildFileGetsShallowDiags") {
     ServerHarness server("comp_repo");
     server.setBuildFile("cpu_design.f");
