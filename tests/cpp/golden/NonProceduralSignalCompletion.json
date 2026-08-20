@@ -154,6 +154,31 @@
         }
       },
       {
+        "label": "randomize",
+        "labelDetails": {
+          "detail": " function",
+          "description": "std"
+        },
+        "kind": "Function",
+        "documentation": "int randomize(...)",
+        "filterText": "randomize",
+        "insertText": "randomize()",
+        "insertTextFormat": "Snippet",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 10,
+              "character": 0
+            },
+            "end": {
+              "line": 10,
+              "character": 0
+            }
+          },
+          "newText": "randomize()"
+        }
+      },
+      {
         "label": "util_pkg",
         "labelDetails": {
           "detail": " Package"

@@ -12,7 +12,6 @@ module unused_mod
     logic [31:0] alu_b [4];
     logic [31:0] alu_result [4];
     alu_op_t alu_op [4];
-//  ^^^^^^^^ MissingCompletion[alu_op_t] Context[ModuleMember] Trigger[Invoked] Items[17]
     logic alu_zero [4];
     logic alu_overflow [4];
 
@@ -21,7 +20,6 @@ module unused_mod
     logic [31:0] single_alu_b [1];
     logic [31:0] single_alu_result [1];
     alu_op_t single_alu_op [1];
-//  ^^^^^^^^ MissingCompletion[alu_op_t] Context[ModuleMember] Trigger[Invoked] Items[17]
     logic single_alu_zero [1];
     logic single_alu_overflow [1];
 
@@ -69,7 +67,6 @@ module unused_mod
         for (i = 0; i < 3; i++) begin : gen_alu_array
             logic [31:0] gen_alu_a, gen_alu_b, gen_alu_result;
             alu_op_t gen_alu_op;
-//          ^^^^^^^^ MissingCompletion[alu_op_t] Context[ModuleMember] Trigger[Invoked] Items[17]
             logic gen_alu_zero, gen_alu_overflow;
 
             alu #(

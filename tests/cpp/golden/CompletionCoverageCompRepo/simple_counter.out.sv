@@ -23,9 +23,7 @@ module simple_counter #(
     endclass
 
     completion_class #(8) wide;
-//  ^^^^^^^^^^^^^^^^ MissingCompletion[completion_class] Context[ModuleMember] Trigger[Invoked] Items[17]
     completion_class #(2) narrow;
-//  ^^^^^^^^^^^^^^^^ MissingCompletion[completion_class] Context[ModuleMember] Trigger[Invoked] Items[17]
     struct {
         logic field_a;
     } value;

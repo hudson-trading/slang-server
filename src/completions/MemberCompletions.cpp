@@ -49,6 +49,10 @@ using namespace slang;
 
 namespace {
 
+bool hasSourceLocation(const ast::Symbol& symbol) {
+    return symbol.location && symbol.location != SourceLocation::NoLocation;
+}
+
 class CompletionSymbolFinder
     : public ast::ASTVisitor<CompletionSymbolFinder, ast::VisitFlags::Symbols> {
 public:
@@ -278,6 +282,9 @@ lsp::CompletionItemKind MemberCompletionQuery::getCompletionKind(const slang::as
         }
         case slang::ast::SymbolKind::TypeParameter:
             return lsp::CompletionItemKind::Struct;
+        case slang::ast::SymbolKind::ClassType:
+        case slang::ast::SymbolKind::GenericClassDef:
+            return lsp::CompletionItemKind::Class;
         case slang::ast::SymbolKind::Subroutine:
             return lsp::CompletionItemKind::Function;
         case slang::ast::SymbolKind::Port:
@@ -416,7 +423,7 @@ lsp::CompletionItem MemberCompletionQuery::getHierarchicalCompletion(
                 .labelOnly = labelOnly,
             }),
         };
-        if (!symbol.location) {
+        if (!hasSourceLocation(symbol)) {
             resolve(symbol, item);
             item.data.reset();
         }
@@ -489,10 +496,10 @@ lsp::CompletionItem MemberCompletionQuery::getCompletion(const slang::ast::Symbo
     };
 
     if (slang::ast::SubroutineSymbol::isKind(symbol.kind) &&
-        (!deferCallableEdit || !symbol.location))
+        (!deferCallableEdit || !hasSourceLocation(symbol)))
         setSubroutineCompletionEdit(symbol.as<slang::ast::SubroutineSymbol>(), item);
 
-    if (!symbol.location) {
+    if (!hasSourceLocation(symbol)) {
         resolve(symbol, item, true);
         item.data.reset();
     }
@@ -547,7 +554,7 @@ void MemberCompletionQuery::resolve(const slang::ast::Symbol& symbol, lsp::Compl
     }
 }
 
-/// Get completions for members in a scope, recursing up until hitting a module instance
+/// Get completions for members in a scope, including the enclosing compilation unit
 void MemberCompletionQuery::addCompletions(std::vector<lsp::CompletionItem>& results,
                                            const slang::ast::Scope* scope,
                                            CompletionContextKind contextKind,
@@ -555,7 +562,7 @@ void MemberCompletionQuery::addCompletions(std::vector<lsp::CompletionItem>& res
                                            std::string_view documentUri, bool labelOnly,
                                            bool deferCallableEdit, bool isOriginalCall) {
 
-    if (contextKind == CompletionContextKind::ModuleMember) {
+    if (isOriginalCall && contextKind == CompletionContextKind::ModuleMember) {
         addKeywordCompletions(results);
     }
 
@@ -569,7 +576,7 @@ void MemberCompletionQuery::addCompletions(std::vector<lsp::CompletionItem>& res
     bool typesOnly = (contextKind == CompletionContextKind::ModuleMember ||
                       contextKind == CompletionContextKind::PortList);
 
-    // Walk up the scope hierarchy until we hit a module instance or run out of scopes
+    // Walk up through the compilation unit, but don't include the root's design hierarchy.
     const slang::ast::Scope* currentScope = scope;
     const slang::ast::Symbol* prevSym = nullptr;
     while (currentScope) {
@@ -579,10 +586,17 @@ void MemberCompletionQuery::addCompletions(std::vector<lsp::CompletionItem>& res
                 // Skip the previous scope, as we should have no reason to reference it
                 continue;
             }
-            if (member.name.empty()) {
+            if (member.name.empty() || member.kind == slang::ast::SymbolKind::Package) {
                 continue;
             }
-            if (typesOnly && !slang::ast::Type::isKind(member.kind)) {
+            if (contextKind == CompletionContextKind::Expression &&
+                (member.kind == slang::ast::SymbolKind::ClassType ||
+                 member.kind == slang::ast::SymbolKind::GenericClassDef)) {
+                continue;
+            }
+            if (typesOnly && !slang::ast::Type::isKind(member.kind) &&
+                member.kind != slang::ast::SymbolKind::GenericClassDef &&
+                member.kind != slang::ast::SymbolKind::TypeParameter) {
                 continue;
             }
 
@@ -626,9 +640,9 @@ void MemberCompletionQuery::addCompletions(std::vector<lsp::CompletionItem>& res
             }
         }
 
-        // Check if this scope belongs to a module instance - if so, stop here
+        // Package members are only available through imports or scoped access.
         auto& parentSymbol = currentScope->asSymbol();
-        if (parentSymbol.kind == slang::ast::SymbolKind::InstanceBody ||
+        if (parentSymbol.kind == slang::ast::SymbolKind::CompilationUnit ||
             parentSymbol.kind == slang::ast::SymbolKind::Package) {
             break;
         }

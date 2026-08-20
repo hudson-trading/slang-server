@@ -15,7 +15,6 @@ module cpu_testbench;
     logic        mem_req;
     logic        mem_ack;
     cpu_state_t  cpu_state;
-//  ^^^^^^^^^^^ MissingCompletion[cpu_state_t] Context[ModuleMember] Trigger[Invoked] Items[17]
     logic        halted;
 
     // Clock generation

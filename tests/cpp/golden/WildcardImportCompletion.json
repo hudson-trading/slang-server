@@ -447,6 +447,31 @@
         }
       },
       {
+        "label": "randomize",
+        "labelDetails": {
+          "detail": " function",
+          "description": "std"
+        },
+        "kind": "Function",
+        "documentation": "int randomize(...)",
+        "filterText": "randomize",
+        "insertText": "randomize()",
+        "insertTextFormat": "Snippet",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 56,
+              "character": 28
+            },
+            "end": {
+              "line": 56,
+              "character": 28
+            }
+          },
+          "newText": "randomize()"
+        }
+      },
+      {
         "label": "result",
         "labelDetails": {
           "detail": " real"
@@ -793,6 +818,29 @@
         }
       },
       {
+        "label": "mailbox",
+        "labelDetails": {
+          "detail": " ",
+          "description": "std"
+        },
+        "kind": "Class",
+        "documentation": "",
+        "filterText": "mailbox",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 59,
+              "character": 12
+            },
+            "end": {
+              "line": 59,
+              "character": 12
+            }
+          },
+          "newText": "mailbox"
+        }
+      },
+      {
         "label": "max_val",
         "labelDetails": {
           "detail": " int"
@@ -948,6 +996,54 @@
         }
       },
       {
+        "label": "process",
+        "labelDetails": {
+          "detail": " ",
+          "description": "std"
+        },
+        "kind": "Class",
+        "documentation": "",
+        "filterText": "process",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 59,
+              "character": 12
+            },
+            "end": {
+              "line": 59,
+              "character": 12
+            }
+          },
+          "newText": "process"
+        }
+      },
+      {
+        "label": "randomize",
+        "labelDetails": {
+          "detail": " function",
+          "description": "std"
+        },
+        "kind": "Function",
+        "documentation": "int randomize(...)",
+        "filterText": "randomize",
+        "insertText": "randomize()",
+        "insertTextFormat": "Snippet",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 59,
+              "character": 12
+            },
+            "end": {
+              "line": 59,
+              "character": 12
+            }
+          },
+          "newText": "randomize()"
+        }
+      },
+      {
         "label": "result",
         "labelDetails": {
           "detail": " real"
@@ -970,6 +1066,29 @@
             }
           },
           "newText": "result"
+        }
+      },
+      {
+        "label": "semaphore",
+        "labelDetails": {
+          "detail": " ",
+          "description": "std"
+        },
+        "kind": "Class",
+        "documentation": "",
+        "filterText": "semaphore",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 59,
+              "character": 12
+            },
+            "end": {
+              "line": 59,
+              "character": 12
+            }
+          },
+          "newText": "semaphore"
         }
       },
       {
@@ -997,6 +1116,29 @@
             }
           },
           "newText": "util_pkg"
+        }
+      },
+      {
+        "label": "weak_reference",
+        "labelDetails": {
+          "detail": " ",
+          "description": "std"
+        },
+        "kind": "Class",
+        "documentation": "",
+        "filterText": "weak_reference",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 59,
+              "character": 12
+            },
+            "end": {
+              "line": 59,
+              "character": 12
+            }
+          },
+          "newText": "weak_reference"
         }
       }
     ]
