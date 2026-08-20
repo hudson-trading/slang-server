@@ -1047,6 +1047,67 @@ TEST_CASE("HierarchicalInterfacePortArrayCompletionWithUnresolvedBounds") {
     CHECK(definitions[1].targetSelectionRange.start.line == 7);
 }
 
+TEST_CASE("HierarchicalStructCompletionWithUnresolvedWidth") {
+    ServerHarness server("comp_repo");
+    auto doc = server.openFile("unused_mod.sv");
+
+    auto findCompletion = [](auto& items, std::string_view label) {
+        return std::ranges::find(items, label,
+                                 [](const CompletionHandle& item) { return item.m_item.label; });
+    };
+
+    auto rootMembers = doc.after("partial_value.").getCompletions(".");
+    CHECK(findCompletion(rootMembers, "middle") != rootMembers.end());
+    CHECK(findCompletion(rootMembers, "root_known") != rootMembers.end());
+
+    auto middleMembers = doc.after("partial_value.middle.").getCompletions(".");
+    CHECK(findCompletion(middleMembers, "leaf") != middleMembers.end());
+    CHECK(findCompletion(middleMembers, "middle_known") != middleMembers.end());
+
+    auto leafMembers = doc.after("partial_value.middle.leaf.").getCompletions(".");
+    CHECK(findCompletion(leafMembers, "variable_width") != leafMembers.end());
+    auto knownCompletion = findCompletion(leafMembers, "known");
+    REQUIRE(knownCompletion != leafMembers.end());
+    knownCompletion->resolve();
+    CHECK(knownCompletion->m_item.documentation);
+
+    auto middleUse = doc.before("middle.leaf.known");
+    auto middleHover = doc.getHoverAt(middleUse.m_offset);
+    REQUIRE(middleHover);
+    auto middleContent = rfl::get<lsp::MarkupContent>(middleHover->contents).value;
+    CHECK(middleContent.find("**Field** `middle`") != std::string::npos);
+    CHECK(middleContent.find("Type:") != std::string::npos);
+    CHECK(middleContent.find("middle_t") != std::string::npos);
+    CHECK(middleContent.find("PackedStruct") != std::string::npos);
+    CHECK(middleContent.find("Incomplete subtypes:") == std::string::npos);
+    CHECK(middleContent.find("Incomplete type") == std::string::npos);
+
+    auto rootTypeUse = doc.before("root_t partial_value");
+    auto rootTypeHover = doc.getHoverAt(rootTypeUse.m_offset);
+    REQUIRE(rootTypeHover);
+    auto rootTypeContent = rfl::get<lsp::MarkupContent>(rootTypeHover->contents).value;
+    CHECK(rootTypeContent.find("**TypeAlias** `root_t`") != std::string::npos);
+    CHECK(rootTypeContent.find("Resolved Type: PackedStruct `root_t`") != std::string::npos);
+    CHECK(rootTypeContent.find("Incomplete subtypes: [`variable_width_t`](<file:") !=
+          std::string::npos);
+    CHECK(rootTypeContent.find("unused_mod.sv#L72,45") != std::string::npos);
+    auto subtypeLineStart = rootTypeContent.find("Incomplete subtypes:");
+    REQUIRE(subtypeLineStart != std::string::npos);
+    auto subtypeLineEnd = rootTypeContent.find('\n', subtypeLineStart);
+    auto subtypeLine = rootTypeContent.substr(subtypeLineStart, subtypeLineEnd - subtypeLineStart);
+    auto firstSubtype = subtypeLine.find("variable_width_t");
+    REQUIRE(firstSubtype != std::string::npos);
+    CHECK(subtypeLine.find("variable_width_t", firstSubtype + 1) == std::string::npos);
+    CHECK(rootTypeContent.find("middle.leaf.variable_width") == std::string::npos);
+
+    auto knownUse = doc.before("leaf.known").after("leaf.");
+    auto knownHover = doc.getHoverAt(knownUse.m_offset);
+    REQUIRE(knownHover);
+    auto knownContent = rfl::get<lsp::MarkupContent>(knownHover->contents).value;
+    CHECK(knownContent.find("**Field** `known`") != std::string::npos);
+    CHECK(knownContent.find("Type: `logic`") != std::string::npos);
+}
+
 TEST_CASE("HierarchicalStructCompletion") {
     ServerHarness server("repo1");
     JsonGoldenTest golden;

@@ -217,13 +217,13 @@ const ast::Scope* ShallowAnalysis::getScopeFromSym(const ast::Symbol* symbol) co
     }
 
     if (symbol->isType()) {
-        auto& type = symbol->as<ast::Type>().getCanonicalType();
+        auto& type = unwrapErrorType(symbol->as<ast::Type>());
         if (type.isScope()) {
             return &type.as<ast::Scope>();
         }
     }
     else if (ast::ValueSymbol::isKind(symbol->kind)) {
-        auto& type = symbol->as<ast::ValueSymbol>().getType().getCanonicalType();
+        auto& type = unwrapErrorType(symbol->as<ast::ValueSymbol>().getType());
         if (type.isScope()) {
             return &type.as<ast::Scope>();
         }

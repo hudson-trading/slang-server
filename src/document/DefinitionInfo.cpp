@@ -13,6 +13,7 @@
 #include "util/Converters.h"
 #include "util/Formatting.h"
 #include "util/Markdown.h"
+#include "util/SlangExtensions.h"
 #include <algorithm>
 #include <filesystem>
 #include <type_traits>
@@ -32,6 +33,7 @@
 #include "slang/text/SourceLocation.h"
 #include "slang/text/SourceManager.h"
 #include "slang/util/OS.h"
+#include "slang/util/SmallMap.h"
 #include "slang/util/SmallVector.h"
 
 namespace server {
@@ -127,6 +129,77 @@ void renderSymbolHeaderName(markup::Paragraph& infoPg, const ast::Symbol& symbol
     }
 
     infoPg.appendBold(toString(symbol.kind)).appendCode(symbol.name);
+}
+
+void appendSourceLink(markup::Paragraph& paragraph, SourceLocation location,
+                      const SourceManager& sourceManager, std::string_view label = {});
+
+struct IncompleteSubtype {
+    std::string type;
+    SourceLocation location;
+};
+
+bool collectIncompleteSubtypes(const ast::Type& type, std::vector<IncompleteSubtype>& subtypes,
+                               SmallSet<const ast::Type*, 8>& seenTypes,
+                               std::vector<const ast::Type*>& activeTypes) {
+    if (!type.isError())
+        return false;
+
+    const auto& recoveredType = unwrapErrorType(type);
+    if ((!recoveredType.isStruct() && !recoveredType.isUnion()) ||
+        std::ranges::find(activeTypes, &recoveredType) != activeTypes.end()) {
+        return false;
+    }
+
+    bool found = false;
+    activeTypes.push_back(&recoveredType);
+    for (const auto& member : recoveredType.as<ast::Scope>().members()) {
+        auto* field = member.as_if<ast::FieldSymbol>();
+        if (!field || !field->getType().isError())
+            continue;
+
+        if (!collectIncompleteSubtypes(field->getType(), subtypes, seenTypes, activeTypes)) {
+            std::string typeText = "Incomplete type";
+            SourceLocation typeLocation = field->location;
+            if (auto* fieldSyntax = field->getSyntax()) {
+                if (auto* declarator = fieldSyntax->as_if<syntax::DeclaratorSyntax>()) {
+                    if (auto* memberSyntax =
+                            declarator->parent->as_if<syntax::StructUnionMemberSyntax>()) {
+                        typeText = detailFormat(*memberSyntax->type);
+                        typeLocation = memberSyntax->type->getFirstToken().location();
+                    }
+                }
+            }
+            if (field->getType().kind == ast::SymbolKind::TypeAlias)
+                typeLocation = field->getType().location;
+            if (seenTypes.insert(&field->getType()).second)
+                subtypes.emplace_back(std::move(typeText), typeLocation);
+        }
+        found = true;
+    }
+    activeTypes.pop_back();
+    return found;
+}
+
+void renderIncompleteSubtypes(markup::Paragraph& infoPg, const ast::Type& type,
+                              const SourceManager& sourceManager) {
+    if (!type.isError())
+        return;
+
+    std::vector<IncompleteSubtype> subtypes;
+    SmallSet<const ast::Type*, 8> seenTypes;
+    std::vector<const ast::Type*> activeTypes;
+    collectIncompleteSubtypes(type, subtypes, seenTypes, activeTypes);
+    if (subtypes.empty())
+        return;
+
+    infoPg.appendText("Incomplete subtypes: ");
+    for (size_t i = 0; i < subtypes.size(); i++) {
+        if (i > 0)
+            infoPg.appendText(", ");
+        appendSourceLink(infoPg, subtypes[i].location, sourceManager, subtypes[i].type);
+    }
+    infoPg.newLine();
 }
 
 void renderSymbolType(markup::Paragraph& infoPg, const ast::Symbol& symbol) {
@@ -291,7 +364,7 @@ const syntax::SyntaxNode* getDriverDisplayNode(const analysis::ValueDriver& driv
 }
 
 void appendSourceLink(markup::Paragraph& paragraph, SourceLocation location,
-                      const SourceManager& sourceManager) {
+                      const SourceManager& sourceManager, std::string_view label) {
     const auto originalLoc = sourceManager.getFullyOriginalLoc(location);
     if (!sourceManager.isFileLoc(originalLoc))
         return;
@@ -302,9 +375,13 @@ void appendSourceLink(markup::Paragraph& paragraph, SourceLocation location,
 
     const auto line = sourceManager.getRawLineNumber(originalLoc);
     const auto column = sourceManager.getColumnNumber(originalLoc);
-    const auto label = fmt::format("{}:{}:{}", path.filename().string(), line, column);
+    const auto linkLabel = label.empty()
+                               ? fmt::format("{}:{}:{}", path.filename().string(), line, column)
+                               : fmt::format("`{}`", label);
     const auto target = fmt::format("{}#L{},{}", URI::fromFile(path), line, column);
-    paragraph.appendText(" at ").appendText(fmt::format("[{}](<{}>)", label, target));
+    if (label.empty())
+        paragraph.appendText(" at ");
+    paragraph.appendText(fmt::format("[{}](<{}>)", linkLabel, target));
 }
 
 void renderDrivers(markup::Document& doc, const ast::Symbol& symbol, ShallowAnalysis& analysis,
@@ -408,7 +485,8 @@ void renderDrivers(markup::Document& doc, const ast::Symbol& symbol, ShallowAnal
                       renderedGroupSyntaxes);
 }
 
-void renderSymbolValue(markup::Paragraph& infoPg, const ast::Symbol& symbol) {
+void renderSymbolValue(markup::Paragraph& infoPg, const ast::Symbol& symbol,
+                       const SourceManager& sourceManager) {
     auto appendTypeParameterValue = [&](const ast::Type& type) {
         if (!type.isError()) {
             infoPg.appendText("Value: ").appendText(getHoverTypeString(type)).newLine();
@@ -436,10 +514,13 @@ void renderSymbolValue(markup::Paragraph& infoPg, const ast::Symbol& symbol) {
     }
     else if (ast::Type::isKind(symbol.kind)) {
         auto& type = symbol.as<ast::Type>();
-        if (!type.isError()) {
+        if (!unwrapErrorType(type).isError()) {
             auto typeString = getHoverTypeString(type);
             infoPg.appendText("Resolved Type: ").appendText(typeString).newLine();
-            if (type.getBitWidth() > 0) {
+            if (type.isError()) {
+                renderIncompleteSubtypes(infoPg, type, sourceManager);
+            }
+            else if (type.getBitWidth() > 0) {
                 infoPg.appendText("Resolved Width: ")
                     .appendCode(fmt::format("{}", type.getBitWidth()))
                     .newLine();
@@ -529,7 +610,7 @@ RenderedSymbolHover renderSymbolHover(const DefinitionInfo::SymbolTarget& target
             .appendCode(fmt::format("{}", target.generatedSignalCount))
             .newLine();
     }
-    renderSymbolValue(result.value, *target.symbol);
+    renderSymbolValue(result.value, *target.symbol, sm);
     renderSymbolSyntaxes(result.syntaxes, target, sm, hovers);
     renderDrivers(result.drivers, getDriverSymbol(target), *target.analysis, sm,
                   target.renderInputPortDriver, followPortDriver);
