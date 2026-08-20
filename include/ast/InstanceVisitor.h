@@ -7,6 +7,7 @@
 //------------------------------------------------------------------------------
 #pragma once
 
+#include "util/ScopedRestore.h"
 #include <set>
 #include <type_traits>
 
@@ -22,20 +23,7 @@
 
 namespace inst {
 
-// TODO -- move some place more common
-template<typename T>
-class Restorer {
-private:
-    T& originalRef;
-    T backupValue;
-
-public:
-    explicit Restorer(T& original) : originalRef(original), backupValue(original) {}
-    ~Restorer() { originalRef = backupValue; }
-
-    Restorer(const Restorer&) = delete;
-    Restorer& operator=(const Restorer&) = delete;
-};
+using server::utils::ScopedRestore;
 
 class InstanceVisitor
     : public slang::ast::ASTVisitor<InstanceVisitor, slang::ast::VisitFlags::AllGood> {
@@ -108,7 +96,7 @@ public:
     template<typename T>
         requires std::is_base_of_v<slang::ast::MemberAccessExpression, T>
     void handle(const T& symbol) {
-        Restorer accessRestorer(access);
+        ScopedRestore accessScope(access);
         if (symbol.sourceRange.contains(location)) {
             const slang::ast::Symbol& member = symbol.member;
             auto valueSymbol = member.as_if<slang::ast::ValueSymbol>();

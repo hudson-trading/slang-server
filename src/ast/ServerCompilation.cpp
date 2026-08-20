@@ -10,6 +10,7 @@
 
 #include "ast/HierarchicalView.h"
 #include "ast/InstanceVisitor.h"
+#include "lsp/LspClient.h"
 #include "util/Converters.h"
 #include "util/Logging.h"
 #include <memory>
@@ -22,9 +23,10 @@ namespace fs = std::filesystem;
 namespace server {
 
 ServerCompilation::ServerCompilation(std::vector<std::shared_ptr<SlangDoc>> documents, Bag options,
-                                     SourceManager& sourceManager, std::optional<std::string> top) :
+                                     SourceManager& sourceManager, lsp::LspClient& client,
+                                     std::optional<std::string> top) :
     m_documents(std::move(documents)), m_options(std::move(options)), m_top(std::move(top)),
-    m_sourceManager(sourceManager) {
+    m_sourceManager(sourceManager), m_client(client) {
 
     if (m_top) {
         m_options.insertOrGet<slang::ast::CompilationOptions>().topModules = {*m_top};
@@ -135,14 +137,19 @@ std::vector<std::string> ServerCompilation::getInstances(
     return {};
 }
 
-std::optional<std::vector<lsp::CallHierarchyItem>> ServerCompilation::getDocPrepareCallHierarchy(
+std::vector<lsp::CallHierarchyItem> ServerCompilation::getDocPrepareCallHierarchy(
     const lsp::CallHierarchyPrepareParams& params) {
-    lsp::TextDocumentPositionParams posParams{
+    auto instances = getInstances(lsp::TextDocumentPositionParams{
         .textDocument = params.textDocument,
         .position = params.position,
-    };
+    });
+    if (instances.empty()) {
+        m_client.showWarning("The selected signal is not part of the current design");
+        return {};
+    }
+
     std::vector<lsp::CallHierarchyItem> result;
-    for (const auto& instance : getInstances(posParams)) {
+    for (const auto& instance : instances) {
         // TODO -- trace aggregates too
         // TODO -- remove isWcpVariable once not needed here
         if (!isWcpVariable(instance)) {
@@ -152,7 +159,10 @@ std::optional<std::vector<lsp::CallHierarchyItem>> ServerCompilation::getDocPrep
         result.emplace_back(
             lsp::CallHierarchyItem{.name = instance, .uri = params.textDocument.uri});
     }
-    return std::optional(result);
+    if (result.empty()) {
+        m_client.showWarning("Only simple logic vectors are currently supported");
+    }
+    return result;
 }
 
 bool ServerCompilation::isWcpVariable(const std::string& path) {

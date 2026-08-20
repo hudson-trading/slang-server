@@ -70,19 +70,19 @@ public:
     // Cone helpers
     void checkPrepareCallHierarchy(const Cursor& cursor, const std::set<std::string>& expected);
 
-    struct ExpectedHierResult {
+    struct ExpectedConeResult {
         std::string name;
         const Cursor* cursor;
 
-        auto operator<=>(const ExpectedHierResult& other) const {
+        auto operator<=>(const ExpectedConeResult& other) const {
             if (auto cmp = name <=> other.name; cmp != 0)
                 return cmp;
             return cursor <=> other.cursor;
         }
-        bool operator==(const ExpectedHierResult& other) const = default;
+        bool operator==(const ExpectedConeResult& other) const = default;
     };
-    void checkIncomingCalls(const std::string& path, const std::set<ExpectedHierResult>& expected);
-    void checkOutgoingCalls(const std::string& path, const std::set<ExpectedHierResult>& expected);
+    void checkConeCommand(const std::string& command, const std::string& path,
+                          const std::set<ExpectedConeResult>& expected);
 
     std::shared_ptr<server::SlangDoc> getDoc(const URI& uri);
 

@@ -441,7 +441,8 @@ bool ServerDriver::createCompilation(std::shared_ptr<SlangDoc> doc, std::string_
         docs[doc->getURI()] = doc;
     }
 
-    comp = std::make_unique<ServerCompilation>(documents, this->options, sm, std::string(top));
+    comp = std::make_unique<ServerCompilation>(documents, this->options, sm, client,
+                                               std::string(top));
 
     // Apply pragma mappings for all buffers (including newly loaded ones)
     diagEngine.setMappingsFromPragmas();
@@ -474,7 +475,7 @@ bool ServerDriver::createCompilation() {
         return false;
     }
 
-    comp = std::make_unique<ServerCompilation>(std::move(documents), this->options, sm);
+    comp = std::make_unique<ServerCompilation>(std::move(documents), this->options, sm, client);
 
     // Apply pragma mappings for all buffers
     diagEngine.setMappingsFromPragmas();

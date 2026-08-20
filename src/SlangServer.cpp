@@ -457,9 +457,11 @@ std::optional<std::vector<lsp::CallHierarchyItem>> SlangServer::getDocPrepareCal
         ERROR("No compilation available, cannot trace cones");
         return std::nullopt;
     }
+
     return m_driver->comp->getDocPrepareCallHierarchy(params);
 }
 
+// TODO: Use custom client code to render drivers/loads
 std::optional<std::vector<lsp::CallHierarchyIncomingCall>> SlangServer::
     getCallHierarchyIncomingCalls(const lsp::CallHierarchyIncomingCallsParams& params) {
     if (!m_driver->comp) {
@@ -469,25 +471,34 @@ std::optional<std::vector<lsp::CallHierarchyIncomingCall>> SlangServer::
     // Drivers are presented as "incoming calls" in the call hierarchy view.
     std::vector<lsp::CallHierarchyIncomingCall> result;
     for (const auto& entry : m_driver->comp->getConeLocations<true>(params.item.name)) {
-        result.push_back({.from = {.name = entry.path, .uri = entry.location.uri},
-                          .fromRanges = {entry.location.range}});
+        result.push_back({
+            .from =
+                {
+                    .name = entry.path,
+                    .uri = entry.location.uri,
+                    .range = entry.location.range,
+                    .selectionRange = entry.location.range,
+                },
+            // This is intended to show the 'edge', which would be where this driver
+            // connects to the current item. This could be multiple locations in a
+            // process. For the default neovim UI, these need a location.
+            .fromRanges = {entry.location.range},
+        });
     }
     return result;
 }
 
 std::optional<std::vector<lsp::CallHierarchyOutgoingCall>> SlangServer::
-    getCallHierarchyOutgoingCalls(const lsp::CallHierarchyOutgoingCallsParams& params) {
-    if (!m_driver->comp) {
-        ERROR("No compilation available, cannot trace cones");
-        return std::nullopt;
-    }
-    // Loads are presented as "outgoing calls" in the call hierarchy view.
-    std::vector<lsp::CallHierarchyOutgoingCall> result;
-    for (const auto& entry : m_driver->comp->getConeLocations<false>(params.item.name)) {
-        result.push_back({.to = {.name = entry.path, .uri = entry.location.uri},
-                          .fromRanges = {entry.location.range}});
-    }
-    return result;
+    getCallHierarchyOutgoingCalls(const lsp::CallHierarchyOutgoingCallsParams&) {
+    m_client.showWarning("Load tracing through the call hierarchy is not currently supported");
+
+    // This was removed since showing loads through this route can't work accross files - it doesn't
+    // fit this lsp method.
+
+    // In the future we can add:
+    // - Actual call hierarchies, although these won't be very deep/useful in hdl, but perhaps dv
+    // - Module Hierarchies
+    return std::nullopt;
 }
 
 std::vector<std::string> SlangServer::getDrivers(const std::string& path) {

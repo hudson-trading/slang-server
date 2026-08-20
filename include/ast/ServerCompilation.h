@@ -10,9 +10,11 @@
 #include "HierarchicalView.h"
 #include "ServerCompilationAnalysis.h"
 #include "document/SlangDoc.h"
+#include "lsp/LspClient.h"
 #include "util/Converters.h"
 #include <filesystem>
 #include <memory>
+#include <set>
 #include <vector>
 
 #include "slang/util/Bag.h"
@@ -20,10 +22,11 @@
 namespace server {
 using namespace slang;
 
-/// @brief A single endpoint of a driver/load cone: the hierarchical RTL path of the
-/// driver/load and the source location where it appears.
+/// @brief A single endpoint of a driver/load cone.
 struct ConeEntry {
+    // The hierarchical RTL path of the signal
     std::string path;
+    // The declaration location of the signal
     lsp::Location location;
 };
 
@@ -38,9 +41,11 @@ public:
     /// @brief Constructs a new ServerCompilation instance
     /// @param documents Vector of weak pointers to SlangDocuments this compilation is based on
     /// @param options Copy of the options bag for this compilation
+    /// @param client LSP client used for user-facing notifications
     /// @param top Optional top module name (owned by this compilation)
     ServerCompilation(std::vector<std::shared_ptr<SlangDoc>> documents, Bag options,
-                      SourceManager& sourceManager, std::optional<std::string> top = std::nullopt);
+                      SourceManager& sourceManager, lsp::LspClient& client,
+                      std::optional<std::string> top = std::nullopt);
 
     ~ServerCompilation() = default;
 
@@ -63,7 +68,7 @@ public:
     std::vector<std::string> getInstances(const lsp::TextDocumentPositionParams&);
 
     /// Prepare cone tracing using LSP call hierarchy API
-    std::optional<std::vector<lsp::CallHierarchyItem>> getDocPrepareCallHierarchy(
+    std::vector<lsp::CallHierarchyItem> getDocPrepareCallHierarchy(
         const lsp::CallHierarchyPrepareParams& params);
 
     /// Deduce WCP variable vs scope
@@ -84,7 +89,7 @@ public:
         auto cone = m_analysis->getCone<isDrivers>(path);
         std::vector<ConeEntry> result;
         for (const auto leaf : cone) {
-            auto range = leaf.getSourceRange();
+            auto range = leaf.getDeclarationRange();
             if (range.start().valid()) {
                 auto fullPath = std::filesystem::absolute(
                     m_sourceManager.getFileName(range.start()));
@@ -126,6 +131,9 @@ private:
     /// Reference to the source manager for this compilation,
     /// owned by the driver
     SourceManager& m_sourceManager;
+
+    /// LSP client owned by the server
+    lsp::LspClient& m_client;
 
     /// The analysis state, rebuilt on refresh()
     std::unique_ptr<ServerCompilationAnalysis> m_analysis;
