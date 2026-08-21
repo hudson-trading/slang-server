@@ -44,8 +44,6 @@ struct DefinitionInfo {
         // Optional original source range; exists if it's behind a macro expansion.
         slang::SourceRange macroUsageRange;
 
-        // Don't default-init macroUsageRange in-class: GCC 13 can't see that initializer when
-        // SyntaxTarget is used in a std::variant of the enclosing type.
         SyntaxTarget(const slang::syntax::SyntaxNode* node, slang::parsing::Token nameToken,
                      slang::SourceRange macroUsageRange = slang::SourceRange::NoLocation) :
             node(node), nameToken(nameToken), macroUsageRange(macroUsageRange) {}

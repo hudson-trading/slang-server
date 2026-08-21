@@ -83,9 +83,7 @@ jobs:
             preset: gcc-release
             os: ubuntu-24.04
             skip_upload: true
-          # Explicit GCC 13 coverage: gcc-release presets g++-14, so without this
-          # job we would not catch nested-class / std::variant default-init bugs
-          # that only fail on GCC 13 (see #407).
+          # gcc-release pins g++-14; keep explicit GCC 13 coverage (#407).
           - name: linux-x64-ubuntu-24.04-gcc-13
             preset: gcc-release
             os: ubuntu-24.04
