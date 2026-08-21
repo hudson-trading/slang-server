@@ -171,6 +171,8 @@ All configuration options are optional and have sensible defaults. In VSCode, th
     interface InlayHints {
       /** Hints for port types */
       portTypes?: boolean           // default: false
+      /** Hints for inferred assignment pattern types */
+      assignmentPatternTypes?: boolean // default: true
       /** Hints for names of ordered ports and params */
       orderedInstanceNames?: boolean // default: true
       /** Hints for port names in wildcard (.*) ports */
@@ -185,6 +187,7 @@ All configuration options are optional and have sensible defaults. In VSCode, th
     Controls inline hints displayed in the editor for things like ordered arguments, wildcard ports, and others.
 
     - **`portTypes`**: Show type hints on ports. Off by default.
+    - **`assignmentPatternTypes`**: Show the inferred struct or union type before untyped assignment patterns.
     - **`orderedInstanceNames`**: Show parameter/port name hints on ordered (positional) instance connections.
     - **`wildcardNames`**: Show port name hints on wildcard (`.*`) connections.
     - **`funcArgNames`**: Show argument name hints on function calls. Set to `0` to disable, or `N` to only show hints for calls with N or more arguments.

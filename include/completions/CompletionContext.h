@@ -44,8 +44,9 @@ class ShallowAnalysis;
 SLANG_ENUM(CompletionContextKind, CCK)
 #undef CCK
 
-#define CQK(x) \
-    x(Lexical) x(MemberAccess) x(ScopedAccess) x(Macro) x(SystemSubroutine) x(InstantiationSuffix)
+#define CQK(x)                                                                                   \
+    x(Lexical) x(MemberAccess) x(ScopedAccess) x(AssignmentPattern) x(Macro) x(SystemSubroutine) \
+        x(InstantiationSuffix)
 SLANG_ENUM(CompletionQueryKind, CQK)
 #undef CQK
 

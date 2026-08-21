@@ -38,6 +38,10 @@ public:
         lsp::Range replacementRange, const slang::parsing::Token* receiverToken,
         bool followedByCall);
 
+    static std::unique_ptr<CompletionQuery> createAssignmentPattern(lsp::Range replacementRange,
+                                                                    slang::SourceLocation cursor,
+                                                                    bool followedByColon);
+
     /// Resolve a member completion received through completionItem/resolve.
     static void resolve(CompletionDispatch& dispatch, lsp::CompletionItem& item);
 

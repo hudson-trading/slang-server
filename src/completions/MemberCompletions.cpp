@@ -39,6 +39,7 @@
 #include "slang/ast/symbols/VariableSymbols.h"
 #include "slang/ast/types/AllTypes.h"
 #include "slang/parsing/TokenKind.h"
+#include "slang/syntax/SyntaxFacts.h"
 #include "slang/syntax/SyntaxKind.h"
 #include "slang/syntax/SyntaxNode.h"
 #include "slang/syntax/SyntaxPrinter.h"
@@ -245,6 +246,236 @@ private:
     const parsing::Token* receiverToken;
 };
 
+class AssignmentPatternCompletionQuery final : public MemberCompletionQuery {
+public:
+    AssignmentPatternCompletionQuery(lsp::Range replacementRange, SourceLocation cursor,
+                                     bool followedByColon) :
+        MemberCompletionQuery(replacementRange), cursor(cursor), followedByColon(followedByColon) {}
+
+    CompletionQueryKind kind() const final { return CompletionQueryKind::AssignmentPattern; }
+
+    void getCompletions(std::vector<lsp::CompletionItem>& results, CompletionDispatch& dispatch,
+                        const std::shared_ptr<SlangDoc>& doc,
+                        const CompletionContext& context) const final {
+        auto* targetScope = context.analysis->getAssignmentPatternCompletionScope(cursor);
+        if (!targetScope)
+            return;
+
+        bool emptyPattern = false;
+        SourceLocation patternStart;
+        const syntax::AssignmentPatternExpressionSyntax* patternExpression = nullptr;
+        const syntax::SimpleAssignmentPatternSyntax* simplePattern = nullptr;
+        auto* syntax = context.analysis->syntaxes.getSyntaxAt(cursor);
+        if (!syntax) {
+            auto* previous = context.analysis->syntaxes.getTokenBefore(cursor);
+            syntax = context.analysis->syntaxes.getTokenParent(previous);
+        }
+        for (; syntax; syntax = syntax->parent) {
+            if (auto* expression = syntax->as_if<syntax::AssignmentPatternExpressionSyntax>()) {
+                patternExpression = expression;
+                patternStart = expression->pattern->getFirstToken().location();
+                if (auto* pattern =
+                        expression->pattern->as_if<syntax::SimpleAssignmentPatternSyntax>()) {
+                    simplePattern = pattern;
+                    emptyPattern = std::ranges::all_of(pattern->items, [](const auto* item) {
+                        return item->getFirstToken().isMissing();
+                    });
+                }
+                break;
+            }
+        }
+
+        auto* targetType = targetScope->asSymbol().as_if<ast::Type>();
+        if (emptyPattern && targetType && unwrapErrorType(*targetType).isStruct()) {
+            SnippetString snippet;
+            auto& sourceManager = context.analysis->getSourceManager();
+            auto position = toPosition(cursor, sourceManager);
+            auto openPosition = toPosition(patternStart, sourceManager);
+            auto openLine = sourceManager.getSourceLine(patternStart);
+            auto indentEnd = openLine.find_first_not_of(" \t");
+            auto baseIndent = std::string(openLine.substr(0, indentEnd));
+            auto fieldIndent = baseIndent + std::string(FORMATTING_INDENT, ' ');
+
+            auto needsComma = [&]() {
+                auto* item =
+                    patternExpression->parent
+                        ? patternExpression->parent->as_if<syntax::AssignmentPatternItemSyntax>()
+                        : nullptr;
+                auto* outerPattern =
+                    item && item->parent
+                        ? item->parent->as_if<syntax::StructuredAssignmentPatternSyntax>()
+                        : nullptr;
+                return item && item->expr.get() == patternExpression && outerPattern &&
+                       outerPattern->closeBrace.isMissing();
+            }();
+            auto needsSemicolon = [&]() {
+                auto* parent = patternExpression->parent.get();
+                if (!parent)
+                    return false;
+                if (auto* assignment = parent->as_if<syntax::BinaryExpressionSyntax>();
+                    assignment && assignment->right.get() == patternExpression &&
+                    syntax::SyntaxFacts::isAssignmentOperator(assignment->kind)) {
+                    parent = assignment->parent.get();
+                    if (!parent)
+                        return false;
+                    if (auto* continuous = parent->as_if<syntax::ContinuousAssignSyntax>())
+                        return continuous->semi.isMissing();
+                    if (auto* statement = parent->as_if<syntax::ExpressionStatementSyntax>())
+                        return statement->semi.isMissing();
+                    return false;
+                }
+
+                auto* value = parent->as_if<syntax::EqualsValueClauseSyntax>();
+                if (!value || value->expr.get() != patternExpression || !value->parent)
+                    return false;
+                auto* declarator = value->parent->as_if<syntax::DeclaratorSyntax>();
+                if (!declarator || !declarator->parent)
+                    return false;
+                parent = declarator->parent.get();
+                if (auto* declaration = parent->as_if<syntax::DataDeclarationSyntax>())
+                    return declaration->semi.isMissing();
+                if (auto* declaration = parent->as_if<syntax::NetDeclarationSyntax>())
+                    return declaration->semi.isMissing();
+                if (auto* declaration = parent->as_if<syntax::LocalVariableDeclarationSyntax>())
+                    return declaration->semi.isMissing();
+                return false;
+            }();
+            std::string_view trailingDelimiter;
+            if (needsComma)
+                trailingDelimiter = ",";
+            else if (needsSemicolon)
+                trailingDelimiter = ";";
+
+            auto cursorLine = sourceManager.getSourceLine(cursor);
+            auto cursorPrefix = cursorLine.substr(0, std::min<size_t>(position.character,
+                                                                      cursorLine.size()));
+            auto prefixIsWhitespace = std::ranges::all_of(cursorPrefix, [](char c) {
+                return c == ' ' || c == '\t';
+            });
+            if (position.line == openPosition.line || !prefixIsWhitespace) {
+                snippet.appendText("\n\t");
+            }
+            else if (fieldIndent.starts_with(cursorPrefix)) {
+                auto missingIndent = fieldIndent.size() - cursorPrefix.size();
+                snippet.appendText(std::string(missingIndent / FORMATTING_INDENT, '\t'));
+                snippet.appendText(std::string(missingIndent % FORMATTING_INDENT, ' '));
+            }
+
+            bool first = true;
+            for (auto& member : targetScope->members()) {
+                if (!ast::FieldSymbol::isKind(member.kind) || member.name.empty())
+                    continue;
+                if (!first) {
+                    snippet.appendText(",\n\t");
+                }
+                first = false;
+                snippet.appendText(member.name).appendText(": ").appendTabstop();
+            }
+            if (!first) {
+                auto closeBraceMissing = simplePattern->closeBrace.isMissing();
+                if (closeBraceMissing ||
+                    toPosition(simplePattern->closeBrace.location(), sourceManager).line ==
+                        position.line) {
+                    snippet.appendText("\n");
+                    if (closeBraceMissing) {
+                        snippet.appendText("}");
+                        snippet.appendText(trailingDelimiter);
+                    }
+                }
+                lsp::CompletionItem item{
+                    .label = "all fields",
+                    .kind = lsp::CompletionItemKind::Snippet,
+                    .sortText = "0",
+                    .filterText = "all fields",
+                    .insertText = std::string(snippet.getValue()),
+                    .insertTextFormat = lsp::InsertTextFormat::Snippet,
+                    .insertTextMode = lsp::InsertTextMode::adjustIndentation,
+                };
+                auto* tokenAfterClose = closeBraceMissing
+                                            ? nullptr
+                                            : context.analysis->syntaxes.getTokenAfter(
+                                                  simplePattern->closeBrace.range().end());
+                auto hasTrailingDelimiter = tokenAfterClose && !tokenAfterClose->isMissing() &&
+                                            ((trailingDelimiter == "," &&
+                                              tokenAfterClose->kind == parsing::TokenKind::Comma) ||
+                                             (trailingDelimiter == ";" &&
+                                              tokenAfterClose->kind ==
+                                                  parsing::TokenKind::Semicolon));
+                if (!trailingDelimiter.empty() && !closeBraceMissing && !hasTrailingDelimiter) {
+                    auto insertPosition = toPosition(simplePattern->closeBrace.range().end(),
+                                                     sourceManager);
+                    item.additionalTextEdits = std::vector<lsp::TextEdit>{lsp::TextEdit{
+                        .range = lsp::Range{.start = insertPosition, .end = insertPosition},
+                        .newText = std::string(trailingDelimiter),
+                    }};
+                }
+                results.push_back(std::move(item));
+                return;
+            }
+        }
+
+        std::unordered_set<std::string_view> existingFields;
+        bool hasDefault = false;
+        if (patternExpression) {
+            if (auto* pattern = patternExpression->pattern
+                                    ->as_if<syntax::StructuredAssignmentPatternSyntax>()) {
+                for (auto* item : pattern->items) {
+                    auto range = item->key->sourceRange();
+                    if (range.start() <= cursor && cursor <= range.end())
+                        continue;
+
+                    if (item->key->kind == syntax::SyntaxKind::DefaultPatternKeyExpression) {
+                        hasDefault = true;
+                        continue;
+                    }
+
+                    auto* key = item->key->as_if<syntax::IdentifierNameSyntax>();
+                    if (!key || key->identifier.isMissing())
+                        continue;
+                    existingFields.emplace(key->identifier.valueText());
+                }
+            }
+        }
+
+        for (auto& member : targetScope->members()) {
+            if (!ast::FieldSymbol::isKind(member.kind) || member.name.empty() ||
+                existingFields.contains(member.name)) {
+                continue;
+            }
+
+            auto item = getHierarchicalCompletion(targetScope->asSymbol(), member,
+                                                  doc->getURI().str(), false,
+                                                  resolvesCompletionEdits(dispatch));
+            item.kind = lsp::CompletionItemKind::Field;
+            if (!followedByColon) {
+                SnippetString snippet;
+                snippet.appendText(member.name).appendText(": ").appendTabstop();
+                item.insertText = snippet.getValue();
+                item.insertTextFormat = lsp::InsertTextFormat::Snippet;
+            }
+            results.push_back(std::move(item));
+        }
+
+        if (!hasDefault) {
+            lsp::CompletionItem item{
+                .label = "default",
+                .kind = lsp::CompletionItemKind::Keyword,
+            };
+            if (!followedByColon) {
+                SnippetString snippet;
+                snippet.appendText("default: ").appendTabstop();
+                item.insertText = snippet.getValue();
+                item.insertTextFormat = lsp::InsertTextFormat::Snippet;
+            }
+            results.push_back(std::move(item));
+        }
+    }
+
+private:
+    SourceLocation cursor;
+    bool followedByColon;
+};
+
 } // namespace
 
 std::unique_ptr<CompletionQuery> MemberCompletionQuery::createLexical(
@@ -263,6 +494,12 @@ std::unique_ptr<CompletionQuery> MemberCompletionQuery::createScopedAccess(
     lsp::Range replacementRange, const parsing::Token* receiverToken, bool followedByCall) {
     return std::make_unique<ScopedAccessCompletionQuery>(std::move(replacementRange), receiverToken,
                                                          followedByCall);
+}
+
+std::unique_ptr<CompletionQuery> MemberCompletionQuery::createAssignmentPattern(
+    lsp::Range replacementRange, SourceLocation cursor, bool followedByColon) {
+    return std::make_unique<AssignmentPatternCompletionQuery>(std::move(replacementRange), cursor,
+                                                              followedByColon);
 }
 
 lsp::CompletionItemKind MemberCompletionQuery::getCompletionKind(const slang::ast::Symbol& symbol) {

@@ -55,6 +55,7 @@ void SyntaxIndexer::visit(const slang::syntax::SyntaxNode& node) {
         case syntax::SyntaxKind::InvocationExpression:
         case syntax::SyntaxKind::HierarchyInstantiation:
         case syntax::SyntaxKind::ClassName:
+        case syntax::SyntaxKind::AssignmentPatternExpression:
             collectedHints.emplace(static_cast<uint32_t>(node.getFirstToken().location().offset()),
                                    &node);
             break;
@@ -277,7 +278,8 @@ const syntax::SyntaxNode* SyntaxIndexer::getSyntaxAt(slang::SourceLocation loc) 
     auto beforeToken = collected[beforeIndex];
 
     // Inside a token
-    if (loc < beforeToken->range().end()) {
+    if (loc < beforeToken->range().end() ||
+        (beforeToken->isMissing() && loc == beforeToken->location())) {
         return getTokenParent(beforeToken);
     }
 

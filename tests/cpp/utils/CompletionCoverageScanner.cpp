@@ -33,6 +33,8 @@ std::optional<std::string> triggerForTokenKind(slang::parsing::TokenKind kind) {
             return "[";
         case slang::parsing::TokenKind::Dollar:
             return "$";
+        case slang::parsing::TokenKind::ApostropheOpenBrace:
+            return "{";
         default:
             return std::nullopt;
     }

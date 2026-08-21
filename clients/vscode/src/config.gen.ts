@@ -64,6 +64,8 @@ export interface Config__IndexConfig {
 export interface Config__InlayHints {
   /** Hints for port types */
   portTypes?: boolean
+  /** Hints for inferred assignment pattern types */
+  assignmentPatternTypes?: boolean
   /** Hints for names of ordered ports and params */
   orderedInstanceNames?: boolean
   /** Hints for port names in wildcard (.*) ports */
