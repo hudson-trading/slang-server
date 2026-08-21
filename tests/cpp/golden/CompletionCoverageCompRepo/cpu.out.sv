@@ -17,7 +17,6 @@ module cpu #(
 
     // Status
     output cpu_state_t              state,
-//         ^^^^^^^^^^^ MissingCompletion[cpu_state_t] Context[Expression] Trigger[Invoked] Items[33]
     output logic                    halted
 );
 
@@ -78,7 +77,6 @@ module cpu #(
     logic [DATA_WIDTH-1:0] alu_array_b [4];
     logic [DATA_WIDTH-1:0] alu_array_result [4];
     alu_op_t alu_array_op [4];
-//  ^^^^^^^^ MissingCompletion[alu_op_t] Context[ModuleMember] Trigger[Invoked] Items[17]
     logic alu_array_zero [4];
     logic alu_array_overflow [4];
 
@@ -124,7 +122,6 @@ module cpu #(
         for (i = 0; i < 3; i++) begin : gen_alu_array
             logic [DATA_WIDTH-1:0] gen_alu_a, gen_alu_b, gen_alu_result;
             alu_op_t gen_alu_op;
-//          ^^^^^^^^ MissingCompletion[alu_op_t] Context[ModuleMember] Trigger[Invoked] Items[17]
             logic gen_alu_zero, gen_alu_overflow;
 
             alu #(
@@ -152,47 +149,36 @@ module cpu #(
         if (!rst_n) begin
             pc <= '0;
             state <= CPU_RESET;
-//                   ^^^^^^^^^ MissingCompletion[CPU_RESET] Context[Expression] Trigger[Invoked] Items[33]
             halted <= 1'b0;
         end else begin
             case (state)
                 CPU_RESET: begin
-//              ^^^^^^^^^ MissingCompletion[CPU_RESET] Context[Procedural] Trigger[Invoked] Items[33]
                     state <= CPU_FETCH;
-//                           ^^^^^^^^^ MissingCompletion[CPU_FETCH] Context[Expression] Trigger[Invoked] Items[33]
                 end
                 CPU_FETCH: begin
-//              ^^^^^^^^^ MissingCompletion[CPU_FETCH] Context[Procedural] Trigger[Invoked] Items[33]
                     mem_addr <= pc;
                     mem_req <= 1'b1;
                     if (mem_ack) begin
                         instruction <= mem_rdata;
                         state <= CPU_DECODE;
-//                               ^^^^^^^^^^ MissingCompletion[CPU_DECODE] Context[Expression] Trigger[Invoked] Items[33]
                         mem_req <= 1'b0;
                     end
                 end
                 CPU_DECODE: begin
-//              ^^^^^^^^^^ MissingCompletion[CPU_DECODE] Context[Procedural] Trigger[Invoked] Items[33]
                     state <= CPU_EXECUTE;
-//                           ^^^^^^^^^^^ MissingCompletion[CPU_EXECUTE] Context[Expression] Trigger[Invoked] Items[33]
                 end
                 CPU_EXECUTE: begin
-//              ^^^^^^^^^^^ MissingCompletion[CPU_EXECUTE] Context[Procedural] Trigger[Invoked] Items[33]
                     // Execute instruction
                     pc <= pc + 4;
                     state <= CPU_FETCH;
-//                           ^^^^^^^^^ MissingCompletion[CPU_FETCH] Context[Expression] Trigger[Invoked] Items[33]
 
                     // Check for halt instruction
                     if (instruction[31:26] == HALT_OPCODE) begin
                         halted <= 1'b1;
                         state <= CPU_HALT;
-//                               ^^^^^^^^ MissingCompletion[CPU_HALT] Context[Expression] Trigger[Invoked] Items[33]
                     end
                 end
                 CPU_HALT: begin
-//              ^^^^^^^^ MissingCompletion[CPU_HALT] Context[Procedural] Trigger[Invoked] Items[33]
                     // Stay halted
                 end
             endcase

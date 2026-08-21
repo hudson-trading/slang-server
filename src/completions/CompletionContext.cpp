@@ -24,6 +24,9 @@ namespace {
 
 /// Check if a syntax kind represents an expression (value context)
 bool isExpressionContext(SyntaxKind kind) {
+    if (SelectorSyntax::isKind(kind))
+        return true;
+
     switch (kind) {
         // Port connections - values
         case SyntaxKind::OrderedPortConnection:
@@ -40,6 +43,7 @@ bool isExpressionContext(SyntaxKind kind) {
         // Various expressions
         case SyntaxKind::ParenthesizedExpression:
         case SyntaxKind::InvocationExpression:
+        case SyntaxKind::ExpressionStatement:
 
         // Value initializers
         case SyntaxKind::EqualsValueClause:
@@ -59,6 +63,8 @@ bool isPortListContext(SyntaxKind kind) {
         case SyntaxKind::AnsiPortList:
         case SyntaxKind::NonAnsiPortList:
         case SyntaxKind::WildcardPortList:
+        case SyntaxKind::ImplicitAnsiPort:
+        case SyntaxKind::PortDeclaration:
             return true;
         default:
             return false;

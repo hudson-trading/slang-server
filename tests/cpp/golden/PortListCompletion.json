@@ -29,6 +29,75 @@
         }
       },
       {
+        "label": "mailbox",
+        "labelDetails": {
+          "detail": " ",
+          "description": "std"
+        },
+        "kind": "Class",
+        "documentation": "",
+        "filterText": "mailbox",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 3,
+              "character": 8
+            },
+            "end": {
+              "line": 3,
+              "character": 8
+            }
+          },
+          "newText": "mailbox"
+        }
+      },
+      {
+        "label": "process",
+        "labelDetails": {
+          "detail": " ",
+          "description": "std"
+        },
+        "kind": "Class",
+        "documentation": "",
+        "filterText": "process",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 3,
+              "character": 8
+            },
+            "end": {
+              "line": 3,
+              "character": 8
+            }
+          },
+          "newText": "process"
+        }
+      },
+      {
+        "label": "semaphore",
+        "labelDetails": {
+          "detail": " ",
+          "description": "std"
+        },
+        "kind": "Class",
+        "documentation": "",
+        "filterText": "semaphore",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 3,
+              "character": 8
+            },
+            "end": {
+              "line": 3,
+              "character": 8
+            }
+          },
+          "newText": "semaphore"
+        }
+      },
+      {
         "label": "test_intf",
         "labelDetails": {
           "detail": " Interface"
@@ -79,6 +148,29 @@
             }
           },
           "newText": "util_pkg"
+        }
+      },
+      {
+        "label": "weak_reference",
+        "labelDetails": {
+          "detail": " ",
+          "description": "std"
+        },
+        "kind": "Class",
+        "documentation": "",
+        "filterText": "weak_reference",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 3,
+              "character": 8
+            },
+            "end": {
+              "line": 3,
+              "character": 8
+            }
+          },
+          "newText": "weak_reference"
         }
       }
     ]

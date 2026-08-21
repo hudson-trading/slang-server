@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Hudson River Trading
 // SPDX-License-Identifier: MIT
 
+#include "completions/CompletionContext.h"
 #include "completions/InstanceCompletions.h"
 #include "completions/SystemTaskCompletions.h"
 #include "lsp/LspTypes.h"
@@ -1186,7 +1187,12 @@ TEST_CASE("PortListCompletion") {
     )");
 
     // Test completions in port list - should have interfaces but NOT modules
-    auto portListCompletions = doc.before("// cursor in port list").getResolvedCompletions();
+    auto portListCursor = doc.before("// cursor in port list");
+    auto portListLoc = doc.getLocation(portListCursor.m_offset);
+    REQUIRE(portListLoc);
+    CHECK(CompletionContext::fromLocation(*doc.doc, *portListLoc).kind ==
+          CompletionContextKind::PortList);
+    auto portListCompletions = portListCursor.getResolvedCompletions();
 
     // Test completions after "intf_inst." - should show interface members/modports
     auto modportCompletions = doc.after("test_intf.").getResolvedCompletions(".");
@@ -1208,6 +1214,21 @@ TEST_CASE("PortListCompletion") {
 
     // Port list SHOULD have packages
     CHECK(findByLabel(portListCompletions, "base_pkg") != nullptr);
+
+    auto dimensionDoc = server.openFile("port_dimension_test.sv", R"(
+    module port_dimension_test #(
+        parameter int WIDTH = 8
+    ) (
+        input logic [WIDTH-1:0] data
+    );
+    endmodule
+    )");
+    auto dimensionCursor = dimensionDoc.after("input logic [");
+    auto dimensionLoc = dimensionDoc.getLocation(dimensionCursor.m_offset);
+    REQUIRE(dimensionLoc);
+    CHECK(CompletionContext::fromLocation(*dimensionDoc.doc, *dimensionLoc).kind ==
+          CompletionContextKind::Expression);
+    CHECK(findByLabel(dimensionCursor.getResolvedCompletions(), "WIDTH") != nullptr);
 
     // Interface member completions should have signals and modports
 
@@ -1232,7 +1253,12 @@ TEST_CASE("NonProceduralSignalCompletion") {
     endmodule
     )");
 
-    auto comps = doc.after("assign\n").getResolvedCompletions();
+    auto assignCursor = doc.after("assign\n");
+    auto assignLoc = doc.getLocation(assignCursor.m_offset);
+    REQUIRE(assignLoc);
+    CHECK(CompletionContext::fromLocation(*doc.doc, *assignLoc).kind ==
+          CompletionContextKind::Expression);
+    auto comps = assignCursor.getResolvedCompletions();
     golden.record("assign_lhs", comps);
 
     // An unfinished continuous assign still needs signals from the surrounding module body.
@@ -1244,6 +1270,7 @@ TEST_CASE("NonProceduralSignalCompletion") {
     CHECK(findByLabel("my_wire") != comps.end());
     CHECK(findByLabel("a") != comps.end());
     CHECK(findByLabel("b") != comps.end());
+    CHECK(findByLabel("mailbox") == comps.end());
 }
 
 TEST_CASE("ProceduralBlockSignalCompletion") {
