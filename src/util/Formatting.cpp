@@ -6,6 +6,7 @@
 #include "Config.h"
 #include "lsp/LspTypes.h"
 #include "util/Markdown.h"
+#include "util/SlangExtensions.h"
 #include <cctype>
 #include <fmt/format.h>
 #include <sstream>
@@ -493,7 +494,8 @@ std::string toCamelCase(std::string_view str) {
 
 template<bool ForHover>
 std::string getTypeStringImpl(const ast::Type& declType) {
-    if (declType.isError()) {
+    auto& type = unwrapErrorType(declType);
+    if (type.isError()) {
         return "Incomplete type";
     }
 
@@ -506,9 +508,7 @@ std::string getTypeStringImpl(const ast::Type& declType) {
     printer.options.skipTypeDefs = true;
     printer.options.printAKA = true;
     printer.options.printIntegralRange = true;
-    printer.append(declType);
-
-    auto& type = declType.getCanonicalType();
+    printer.append(declType.kind == ast::SymbolKind::ErrorType ? type : declType);
 
     if (type.isStruct() || type.isUnion() || type.isEnum()) {
         auto kindStr = toString(type.kind);

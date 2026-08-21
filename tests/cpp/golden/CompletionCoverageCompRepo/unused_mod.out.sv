@@ -90,6 +90,28 @@ module unused_mod
     endgenerate
 
     initial begin
+        typedef logic [unknown_width - 1:0] variable_width_t;
+
+        typedef struct packed {
+            variable_width_t variable_width;
+            variable_width_t second_variable_width;
+            logic known;
+        } leaf_t;
+
+        typedef struct packed {
+            leaf_t leaf;
+            logic middle_known;
+        } middle_t;
+
+        typedef struct packed {
+            middle_t middle;
+            logic root_known;
+        } root_t;
+
+        root_t partial_value;
+
         $display("This module is not instantiated");
+        partial_value.root_known = partial_value.middle.middle_known;
+        partial_value.middle.leaf.known = partial_value.middle.leaf.variable_width[0];
     end
 endmodule
