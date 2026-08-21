@@ -304,6 +304,7 @@ add_library(
   src/codeactions/AddDefine.cpp
   src/codeactions/CodeActionDispatch.cpp
   src/codeactions/ExpandMacro.cpp
+  src/completions/AssignmentPatternCompletions.cpp
   src/completions/CompletionContext.cpp
   src/completions/CompletionDispatch.cpp
   src/completions/InstanceCompletions.cpp

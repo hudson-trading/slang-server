@@ -44,8 +44,9 @@ class ShallowAnalysis;
 SLANG_ENUM(CompletionContextKind, CCK)
 #undef CCK
 
-#define CQK(x) \
-    x(Lexical) x(MemberAccess) x(ScopedAccess) x(Macro) x(SystemSubroutine) x(InstantiationSuffix)
+#define CQK(x)                                                                          \
+    x(Lexical) x(MemberAccess) x(ScopedAccess) x(StructAssign) x(StructMember) x(Macro) \
+        x(SystemSubroutine) x(InstantiationSuffix)
 SLANG_ENUM(CompletionQueryKind, CQK)
 #undef CQK
 
@@ -65,10 +66,10 @@ public:
     /// Apply the query's replacement range and existing-source shape to a completion item.
     void setCompletionEdit(lsp::CompletionItem& item) const;
 
-    /// Create the appropriate query from the lexer tokens surrounding the cursor.
+    /// Create the appropriate query from the request context and tokens surrounding the cursor.
     static std::unique_ptr<CompletionQuery> fromLocation(
         const SlangDoc& doc, const std::shared_ptr<ShallowAnalysis>& analysis,
-        slang::SourceLocation cursor);
+        slang::SourceLocation cursor, const lsp::CompletionContext& lspContext);
 
 protected:
     CompletionQuery(lsp::Range replacementRange, bool followedByCall = false,

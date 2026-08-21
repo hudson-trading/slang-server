@@ -15,7 +15,6 @@
 #include "lsp/LspTypes.h"
 #include "lsp/SnippetString.h"
 #include "lsp/URI.h"
-#include "util/Converters.h"
 #include "util/Formatting.h"
 #include "util/Logging.h"
 #include "util/SlangExtensions.h"
