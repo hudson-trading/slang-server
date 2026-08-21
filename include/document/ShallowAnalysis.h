@@ -149,6 +149,12 @@ public:
     /// @return Pointer to the scope, or nullptr if the symbol doesn't have an accessible scope
     const slang::ast::Scope* getScopeFromSym(const slang::ast::Symbol* symbol) const;
 
+    /// Gets the target struct scope when the location is an assignment pattern key.
+    const slang::ast::Scope* getAssignmentPatternKeyScope(slang::SourceLocation loc) const;
+
+    /// Gets the target struct scope at a possible assignment pattern key completion site.
+    const slang::ast::Scope* getAssignmentPatternCompletionScope(slang::SourceLocation loc) const;
+
     std::vector<lsp::InlayHint> getInlayHints(lsp::Range range,
                                               const struct Config::InlayHints& config);
 
@@ -209,6 +215,15 @@ private:
         m_interfaceFallbackScopes;
 
     const GenvarElaboration* getGenvarElaborationAtToken(const slang::parsing::Token* node) const;
+
+    const slang::ast::Symbol* getAssignmentPatternTargetSymbol(
+        const slang::syntax::AssignmentPatternExpressionSyntax& pattern) const;
+
+    const slang::ast::Scope* getAssignmentPatternTargetScope(
+        const slang::syntax::AssignmentPatternExpressionSyntax& pattern) const;
+
+    const slang::ast::Scope* getAssignmentPatternScopeAt(slang::SourceLocation loc,
+                                                         bool allowIncompleteKey) const;
 
     /// @brief Helper method to check if a token is positioned over a selector
     bool isOverSelector(const slang::parsing::Token* node,

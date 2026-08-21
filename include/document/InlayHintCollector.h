@@ -43,6 +43,7 @@ private:
 
     // Cached config values
     bool m_portTypes;
+    bool m_assignmentPatternTypes;
     bool m_orderedInstanceNames;
     bool m_wildcardNames;
     int m_funcArgNames;
@@ -59,6 +60,8 @@ private:
     void handle(const slang::syntax::MacroUsageSyntax& syntax);
 
     void handle(const slang::syntax::ClassNameSyntax& syntax);
+
+    void handle(const slang::syntax::AssignmentPatternExpressionSyntax& syntax);
 };
 
 } // namespace server

@@ -8,6 +8,7 @@
 #include "util/Converters.h"
 #include "util/Formatting.h"
 #include "util/Logging.h"
+#include "util/SlangExtensions.h"
 
 #include "slang/ast/Symbol.h"
 #include "slang/ast/symbols/ClassSymbols.h"
@@ -37,6 +38,7 @@ static SourceLocation getArgumentHintLoc(const ArgumentSyntax& syntax,
 InlayHintCollector::InlayHintCollector(const ShallowAnalysis& analysis, lsp::Range range,
                                        const Config::InlayHints& config) :
     m_analysis(analysis), m_range(range), m_portTypes(config.portTypes.value()),
+    m_assignmentPatternTypes(config.assignmentPatternTypes.value()),
     m_orderedInstanceNames(config.orderedInstanceNames.value()),
     m_wildcardNames(config.wildcardNames.value()), m_funcArgNames(config.funcArgNames.value()),
     m_macroArgNames(config.macroArgNames.value()) {
@@ -357,6 +359,58 @@ void InlayHintCollector::handle(const ClassNameSyntax& syntax) {
     }
 }
 
+void InlayHintCollector::handle(const AssignmentPatternExpressionSyntax& syntax) {
+    if (!m_assignmentPatternTypes || syntax.type)
+        return;
+
+    auto* target = m_analysis.getAssignmentPatternTargetSymbol(syntax);
+    if (!target)
+        return;
+
+    const ast::Type* type = nullptr;
+    if (target->isType())
+        type = &target->as<ast::Type>();
+    else if (ast::ValueSymbol::isKind(target->kind))
+        type = &target->as<ast::ValueSymbol>().getType();
+    if (!type || (!unwrapErrorType(*type).isStruct() && !unwrapErrorType(*type).isUnion()))
+        return;
+
+    const ast::Symbol* namedType = nullptr;
+    if (auto* declaredType = target->getDeclaredType()) {
+        if (auto* typeSyntax = declaredType->getTypeSyntax()) {
+            auto* token = m_analysis.syntaxes.getTokenAt(typeSyntax->getLastToken().location());
+            namedType = m_analysis.getSymbolAtToken(token);
+        }
+    }
+    if (!namedType && !type->name.empty())
+        namedType = type;
+    if (!namedType || !namedType->isType() || namedType->name.empty())
+        return;
+
+    auto label = std::string(namedType->name);
+    if (auto* parent = namedType->getParentScope()) {
+        auto parentKind = parent->asSymbol().kind;
+        if (parentKind == ast::SymbolKind::Package || parentKind == ast::SymbolKind::ClassType)
+            label = namedType->getLexicalPath();
+    }
+
+    auto location = syntax.pattern->getFirstToken().location();
+    auto position = toPosition(location, m_analysis.m_sourceManager);
+    auto typeLocation = toLocation(SourceRange(namedType->location,
+                                               namedType->location + namedType->name.size()),
+                                   m_analysis.m_sourceManager);
+    result.push_back(lsp::InlayHint{
+        .position = position,
+        .label = std::vector<lsp::InlayHintLabelPart>{lsp::InlayHintLabelPart{
+            .value = label,
+            .location = std::move(typeLocation),
+        }},
+        .kind = lsp::InlayHintKind::Type,
+        .textEdits = std::vector<lsp::TextEdit>{lsp::TextEdit{
+            .range = lsp::Range{.start = position, .end = position}, .newText = std::move(label)}},
+    });
+}
+
 void InlayHintCollector::collectHints() {
 
     auto slangStart = toSourceLocation(m_analysis.m_buffer, m_range.start,
@@ -392,6 +446,10 @@ void InlayHintCollector::collectHints() {
                 break;
             case syntax::SyntaxKind::ClassName:
                 handle(it->second->as<ClassNameSyntax>());
+                break;
+            case syntax::SyntaxKind::AssignmentPatternExpression:
+                handle(it->second->as<AssignmentPatternExpressionSyntax>());
+                break;
             default:
                 break;
         }

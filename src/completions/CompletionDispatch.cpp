@@ -35,6 +35,7 @@ const std::vector<std::string>& completionTriggerCharacters() {
         ":", // package scope (::), wire width
         "[", // wire width, array indexing
         "$", // system tasks and functions
+        "{", // assignment patterns
     };
     return triggerCharacters;
 }
@@ -151,6 +152,7 @@ std::unique_ptr<CompletionQuery> CompletionQuery::fromLocation(
                                    isSeparatedOnlyByWhitespace(*site.tokenAfter) &&
                                    (site.tokenAfter->kind == TokenKind::Identifier ||
                                     site.tokenAfter->kind == TokenKind::Hash);
+    auto followedByColon = site.tokenAfter && site.tokenAfter->kind == TokenKind::Colon;
 
     if (site.targetToken && site.targetToken->rawText().starts_with('$')) {
         return completions::SystemSubroutineCompletionQuery::create(
@@ -175,6 +177,10 @@ std::unique_ptr<CompletionQuery> CompletionQuery::fromLocation(
         return completions::InstanceCompletionQuery::create(std::move(site.replacementRange),
                                                             analysis->syntaxes.getTokenBefore(
                                                                 site.tokenBefore->location()));
+    }
+    if (analysis->getAssignmentPatternCompletionScope(cursor)) {
+        return completions::MemberCompletionQuery::createAssignmentPattern(
+            std::move(site.replacementRange), cursor, followedByColon);
     }
 
     return completions::MemberCompletionQuery::createLexical(std::move(site.replacementRange),
@@ -225,6 +231,12 @@ void CompletionDispatch::getCompletions(std::vector<lsp::CompletionItem>& result
                                         std::shared_ptr<SlangDoc> doc,
                                         const CompletionContext& context) {
     SLANG_ASSERT(context.query);
+    if (context.lspContext.triggerKind == lsp::CompletionTriggerKind::TriggerCharacter &&
+        context.lspContext.triggerCharacter == "{" &&
+        context.query->kind() != CompletionQueryKind::AssignmentPattern) {
+        return;
+    }
+
     context.query->getCompletions(results, *this, doc, context);
 
     for (auto& item : results)

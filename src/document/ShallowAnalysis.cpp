@@ -35,6 +35,7 @@
 #include "slang/parsing/Token.h"
 #include "slang/parsing/TokenKind.h"
 #include "slang/syntax/AllSyntax.h"
+#include "slang/syntax/SyntaxFacts.h"
 #include "slang/syntax/SyntaxKind.h"
 #include "slang/syntax/SyntaxTree.h"
 #include "slang/text/SourceLocation.h"
@@ -274,6 +275,148 @@ const ast::Scope* ShallowAnalysis::getScopeFromSym(const ast::Symbol* symbol) co
     return nullptr;
 }
 
+const ast::Symbol* ShallowAnalysis::getAssignmentPatternTargetSymbol(
+    const syntax::AssignmentPatternExpressionSyntax& pattern) const {
+    auto getSymbolFromSyntax = [&](const syntax::SyntaxNode& target) {
+        auto* token = syntaxes.getTokenAt(target.getLastToken().location());
+        return getSymbolAtToken(token);
+    };
+
+    if (pattern.type)
+        return getSymbolFromSyntax(*pattern.type);
+
+    auto* parent = pattern.parent.get();
+    if (!parent)
+        return nullptr;
+
+    if (auto* assignment = parent->as_if<syntax::BinaryExpressionSyntax>();
+        assignment && assignment->right.get() == &pattern &&
+        syntax::SyntaxFacts::isAssignmentOperator(assignment->kind)) {
+        return getSymbolFromSyntax(*assignment->left);
+    }
+
+    if (auto* value = parent->as_if<syntax::EqualsValueClauseSyntax>();
+        value && value->expr.get() == &pattern && value->parent) {
+        if (auto* declarator = value->parent->as_if<syntax::DeclaratorSyntax>())
+            return getSymbolAtToken(&declarator->name);
+    }
+
+    if (auto* item = parent->as_if<syntax::AssignmentPatternItemSyntax>();
+        item && item->expr.get() == &pattern && item->parent && item->parent->parent) {
+        auto* outerPattern =
+            item->parent->parent->as_if<syntax::AssignmentPatternExpressionSyntax>();
+        auto* key = item->key->as_if<syntax::IdentifierNameSyntax>();
+        if (!outerPattern || !key)
+            return nullptr;
+
+        auto* outerScope = getAssignmentPatternTargetScope(*outerPattern);
+        return outerScope ? outerScope->find(key->identifier.valueText()) : nullptr;
+    }
+
+    const syntax::SyntaxNode* node = parent;
+    if (auto* sequence = node->as_if<syntax::SimpleSequenceExprSyntax>();
+        sequence && sequence->expr.get() == &pattern) {
+        node = sequence->parent.get();
+    }
+    if (auto* property = node ? node->as_if<syntax::SimplePropertyExprSyntax>() : nullptr;
+        property && property->expr.get() == parent) {
+        node = property->parent.get();
+    }
+
+    auto* argument = node ? node->as_if<syntax::ArgumentSyntax>() : nullptr;
+    auto* arguments = argument && argument->parent
+                          ? argument->parent->as_if<syntax::ArgumentListSyntax>()
+                          : nullptr;
+    auto* invocation = arguments && arguments->parent
+                           ? arguments->parent->as_if<syntax::InvocationExpressionSyntax>()
+                           : nullptr;
+    if (!argument || !arguments || !invocation)
+        return nullptr;
+
+    auto* targetToken = invocation->left->getLastTokenPtr();
+    auto* target = getSymbolAtToken(targetToken);
+    auto* subroutine = target ? target->as_if<ast::SubroutineSymbol>() : nullptr;
+    if (!subroutine)
+        return nullptr;
+
+    auto formals = subroutine->getArguments();
+    if (auto* named = argument->as_if<syntax::NamedArgumentSyntax>()) {
+        auto formal = std::ranges::find(formals, named->name.valueText(),
+                                        [](const auto* arg) { return arg->name; });
+        return formal != formals.end() ? *formal : nullptr;
+    }
+
+    for (size_t index = 0; index < arguments->parameters.size(); index++) {
+        if (arguments->parameters[index] == argument)
+            return index < formals.size() ? formals[index] : nullptr;
+    }
+    return nullptr;
+}
+
+const ast::Scope* ShallowAnalysis::getAssignmentPatternTargetScope(
+    const syntax::AssignmentPatternExpressionSyntax& pattern) const {
+    return getScopeFromSym(getAssignmentPatternTargetSymbol(pattern));
+}
+
+const ast::Scope* ShallowAnalysis::getAssignmentPatternKeyScope(SourceLocation loc) const {
+    return getAssignmentPatternScopeAt(loc, false);
+}
+
+const ast::Scope* ShallowAnalysis::getAssignmentPatternCompletionScope(SourceLocation loc) const {
+    return getAssignmentPatternScopeAt(loc, true);
+}
+
+const ast::Scope* ShallowAnalysis::getAssignmentPatternScopeAt(SourceLocation loc,
+                                                               bool allowIncompleteKey) const {
+    auto* syntax = syntaxes.getSyntaxAt(loc);
+    if (!syntax) {
+        auto* previous = syntaxes.getTokenBefore(loc);
+        syntax = syntaxes.getTokenParent(previous);
+        if (!syntax)
+            return nullptr;
+    }
+
+    const syntax::AssignmentPatternExpressionSyntax* expression = nullptr;
+    const syntax::AssignmentPatternSyntax* pattern = nullptr;
+    const syntax::SyntaxNode* child = syntax;
+    bool isKey = false;
+    bool isValue = false;
+
+    for (auto* node = syntax; node; child = node, node = node->parent) {
+        if (auto* item = node->as_if<syntax::AssignmentPatternItemSyntax>()) {
+            isKey = child == item->key.get() || (child == item && loc <= item->colon.location());
+            isValue = !isKey;
+        }
+        if (syntax::AssignmentPatternSyntax::isKind(node->kind))
+            pattern = &node->as<syntax::AssignmentPatternSyntax>();
+        if (auto* candidate = node->as_if<syntax::AssignmentPatternExpressionSyntax>()) {
+            expression = candidate;
+            break;
+        }
+    }
+
+    if (!expression || !pattern || isValue)
+        return nullptr;
+
+    if (!isKey && allowIncompleteKey) {
+        auto* previous = syntaxes.getTokenBefore(loc);
+        isKey = previous && (previous->kind == parsing::TokenKind::ApostropheOpenBrace ||
+                             previous->kind == parsing::TokenKind::OpenBrace ||
+                             previous->kind == parsing::TokenKind::Comma);
+
+        if (!isKey && pattern->kind == syntax::SyntaxKind::SimpleAssignmentPattern) {
+            for (auto* node = syntax; node && node != pattern; node = node->parent) {
+                if (node->parent.get() == pattern && syntax::ExpressionSyntax::isKind(node->kind)) {
+                    isKey = true;
+                    break;
+                }
+            }
+        }
+    }
+
+    return isKey ? getAssignmentPatternTargetScope(*expression) : nullptr;
+}
+
 /// @brief Visitor that finds and stores a specific token and its syntax node at an offset
 struct OffsetFinder {
     OffsetFinder(uint32_t targetOffset) : targetOffset(targetOffset) {}
@@ -466,6 +609,13 @@ slang::SmallVector<const ast::Symbol*, 2> ShallowAnalysis::getSymbolsAtToken(
             addSymbol(pkg->find(declTok->valueText()));
         }
         return symbols;
+    }
+    else if (auto* patternScope = getAssignmentPatternKeyScope(declTok->location())) {
+        auto* member = patternScope->find(declTok->valueText());
+        if (member && ast::FieldSymbol::isKind(member->kind)) {
+            addSymbol(member);
+            return symbols;
+        }
     }
     else if (auto indexed = m_symbolIndexer.getSymbols(declTok); !indexed.empty()) {
         if (syntax->kind == syntax::SyntaxKind::NamedPortConnection &&
