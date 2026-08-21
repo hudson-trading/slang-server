@@ -83,6 +83,16 @@ jobs:
             preset: gcc-release
             os: ubuntu-24.04
             skip_upload: true
+          # Explicit GCC 13 coverage: gcc-release presets g++-14, so without this
+          # job we would not catch nested-class / std::variant default-init bugs
+          # that only fail on GCC 13 (see #407).
+          - name: linux-x64-ubuntu-24.04-gcc-13
+            preset: gcc-release
+            os: ubuntu-24.04
+            cmake_args: -DCMAKE_CXX_COMPILER=g++-13
+            skip_pytests: true
+            skip_neovim_tests: true
+            skip_upload: true
           - name: macos
             preset: macos-release
             os: macos-15
@@ -115,6 +125,11 @@ jobs:
           sudo add-apt-repository "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-21 main"
           sudo apt-get update
           sudo apt-get install -y clang-21
+      - name: Install GCC 13 (Ubuntu)
+        if: contains(matrix.name, 'gcc-13')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++-13
       - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref || github.ref }}
