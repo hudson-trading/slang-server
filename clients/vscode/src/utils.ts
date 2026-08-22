@@ -30,6 +30,10 @@ export function isAnyVerilog(langid: string): boolean {
   return AnyVerilogLanguages.includes(langid)
 }
 
+export function isSystemVerilog(langid: string): boolean {
+  return langid === 'systemverilog' || langid === 'systemverilogheader'
+}
+
 /**
  * Get the basename of a path without extension
  * @param filePath - Path string to extract basename from

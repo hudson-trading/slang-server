@@ -18,6 +18,7 @@ import {
   CommandNode,
   ConfigObject,
   EditorButton,
+  ExtensionComponent,
   ViewContainerSpec,
 } from './lib/libconfig'
 import { PathConfigObject } from './lib/pathConfig'
@@ -32,8 +33,16 @@ import {
 } from './utils'
 import { glob } from 'glob'
 import { InactiveRegionsFeature } from './lib/inactiveRegions'
+import { LintManager } from './linter/LintManager'
 
 export var ext: SlangExtension
+
+class LintComponent extends ExtensionComponent {
+  enabled: ConfigObject<boolean> = new ConfigObject({
+    default: true,
+    description: 'Enable diagnostics from the slang language server',
+  })
+}
 
 export class SlangExtension extends ActivityBarComponent {
   ////////////////////////////////////////////////
@@ -88,6 +97,9 @@ File input is sent to stdin, and formatted output is read from stdout.',
 
   // Inactive preprocessor region highlighting
   inactiveRegions: InactiveRegionsFeature = new InactiveRegionsFeature()
+
+  // External linters (e.g. verilator)
+  lintManager: LintManager = new LintManager()
 
   // Side bar
   project: ProjectComponent = new ProjectComponent()
@@ -161,6 +173,8 @@ File input is sent to stdin, and formatted output is read from stdout.',
     description: 'Arguments to pass to slang-server when debugging',
   })
 
+  lint: LintComponent = new LintComponent()
+
   /// The final config from slang-server json files
   slangConfig: slang.Config = {}
 
@@ -179,6 +193,15 @@ File input is sent to stdin, and formatted output is read from stdout.',
 
     const clientOptions: LanguageClientOptions = {
       documentSelector: anyVerilogSelector,
+      middleware: {
+        handleDiagnostics: (uri, diagnostics, next) => {
+          if (this.lint.enabled.getValue()) {
+            next(uri, diagnostics)
+          } else {
+            this.client?.diagnostics?.delete(uri)
+          }
+        },
+      },
     }
 
     this.client = new LanguageClient('slang-server', serverOptions, clientOptions)
@@ -352,6 +375,17 @@ File input is sent to stdin, and formatted output is read from stdout.',
       })
     )
     await this.setupLanguageClient()
+
+    // Clear slang diagnostics when lint is disabled
+    context.subscriptions.push(
+      vscode.workspace.onDidChangeConfiguration((e) => {
+        if (e.affectsConfiguration('slang.lint.enabled')) {
+          if (!this.lint.enabled.getValue() && this.client) {
+            this.client.diagnostics?.clear()
+          }
+        }
+      })
+    )
 
     if (context.storageUri !== undefined) {
       this.expandDir = vscode.Uri.joinPath(context.storageUri, 'expanded')

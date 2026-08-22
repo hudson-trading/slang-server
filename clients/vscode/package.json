@@ -2,7 +2,7 @@
   "name": "vscode-slang",
   "displayName": "slang-server: Verilog/SystemVerilog LSP",
   "description": "Verilog and SystemVerilog support via the slang language server.",
-  "version": "0.2.17",
+  "version": "0.2.17-test.5",
   "publisher": "Hudson-River-Trading",
   "keywords": [
     "verilog",
@@ -378,6 +378,29 @@
         "slang.debugArgs": {
           "default": [],
           "description": "Arguments to pass to slang-server when debugging",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "slang.lint.enabled": {
+          "default": true,
+          "description": "Enable diagnostics from the slang language server",
+          "type": "boolean"
+        },
+        "slang.lintManager.verilator.enabled": {
+          "default": false,
+          "description": "Enable verilator lint",
+          "type": "boolean"
+        },
+        "slang.lintManager.verilator.path": {
+          "default": "verilator",
+          "description": "Path to the verilator executable",
+          "type": "string"
+        },
+        "slang.lintManager.verilator.args": {
+          "default": [],
+          "description": "Additional arguments to pass to verilator",
           "type": "array",
           "items": {
             "type": "string"
