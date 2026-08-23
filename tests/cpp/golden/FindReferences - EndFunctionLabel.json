@@ -1,0 +1,30 @@
+[
+  [
+    {
+      "uri": "file://test.sv",
+      "range": {
+        "start": {
+          "line": 2,
+          "character": 29
+        },
+        "end": {
+          "line": 2,
+          "character": 36
+        }
+      }
+    },
+    {
+      "uri": "file://test.sv",
+      "range": {
+        "start": {
+          "line": 7,
+          "character": 20
+        },
+        "end": {
+          "line": 7,
+          "character": 27
+        }
+      }
+    }
+  ]
+]

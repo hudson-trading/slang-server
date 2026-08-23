@@ -4,7 +4,7 @@
 
 
 module test_module #(
-       ^^^^^^^^^^^ Refs[2]
+       ^^^^^^^^^^^ Refs[1]
 
     parameter WIDTH = 8
               ^^^^^ Refs[4]
@@ -71,4 +71,4 @@ module test_module #(
 
 
 endmodule : test_module
-            ^^^^^^^^^^^ Refs[2]
+            ^^^^^^^^^^^ Refs[1]

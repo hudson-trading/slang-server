@@ -154,6 +154,95 @@ TEST_CASE("FindReferences - Module Name") {
     CHECK(refs->size() >= 1);
 }
 
+TEST_CASE("FindReferences - EndModuleLabel") {
+    JsonGoldenTest golden;
+    ServerHarness server;
+    auto hdl = server.openFile("test.sv", R"(
+module child;
+endmodule : child
+
+module top;
+    child instance();
+endmodule : top
+)");
+
+    auto refs = server.getDocReferences(lsp::ReferenceParams{
+        .context = {.includeDeclaration = true},
+        .textDocument = {.uri = hdl.m_uri},
+        .position = hdl.after("module ").getPosition(),
+    });
+
+    REQUIRE(refs.has_value());
+    golden.record(*refs);
+}
+
+TEST_CASE("FindReferences - EndInterfaceLabel") {
+    JsonGoldenTest golden;
+    ServerHarness server;
+    auto hdl = server.openFile("test.sv", R"(
+interface bus;
+endinterface : bus
+
+module top;
+    bus bus_instance();
+endmodule : top
+)");
+
+    auto refs = server.getDocReferences(lsp::ReferenceParams{
+        .context = {.includeDeclaration = true},
+        .textDocument = {.uri = hdl.m_uri},
+        .position = hdl.after("interface ").getPosition(),
+    });
+
+    REQUIRE(refs.has_value());
+    golden.record(*refs);
+}
+
+TEST_CASE("FindReferences - EndFunctionLabel") {
+    JsonGoldenTest golden;
+    ServerHarness server;
+    auto hdl = server.openFile("test.sv", R"(
+module top;
+    function automatic logic compute(input logic value);
+        return value;
+    endfunction : compute
+
+    logic result;
+    assign result = compute(1'b1);
+endmodule : top
+)");
+
+    auto refs = server.getDocReferences(lsp::ReferenceParams{
+        .context = {.includeDeclaration = true},
+        .textDocument = {.uri = hdl.m_uri},
+        .position = hdl.after("function automatic logic ").getPosition(),
+    });
+
+    REQUIRE(refs.has_value());
+    golden.record(*refs);
+}
+
+TEST_CASE("FindReferences - BeginEndBlockLabels") {
+    JsonGoldenTest golden;
+    ServerHarness server;
+    auto hdl = server.openFile("test.sv", R"(
+module top;
+    initial begin : work
+        disable work;
+    end : work
+endmodule : top
+)");
+
+    auto refs = server.getDocReferences(lsp::ReferenceParams{
+        .context = {.includeDeclaration = true},
+        .textDocument = {.uri = hdl.m_uri},
+        .position = hdl.after("begin : ").getPosition(),
+    });
+
+    REQUIRE(refs.has_value());
+    golden.record(*refs);
+}
+
 TEST_CASE("Rename - Simple Variable") {
     ServerHarness server("indexer_test");
     auto hdl = server.openFile("references_test.sv");

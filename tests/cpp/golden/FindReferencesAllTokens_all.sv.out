@@ -151,12 +151,12 @@ endinterface
 
 
 extern macromodule m3;
-                   ^^ Refs[10]
+                   ^^ Refs[9]
 
 
 
 macromodule m3;
-            ^^ Refs[10]
+            ^^ Refs[9]
 
     wire b;
          ^ Refs[5]
@@ -280,7 +280,7 @@ macromodule m3;
         wait fork;
 
         wait_order (m3.ev) f++;
-                    ^^ Refs[10]
+                    ^^ Refs[9]
                        ^^ Refs[2]
                            ^ Refs[7]
 
@@ -299,7 +299,7 @@ macromodule m3;
 
 
         disable m3.foo;
-                ^^ Refs[10]
+                ^^ Refs[9]
                    ^^^ Refs[3]
 
 
@@ -656,7 +656,7 @@ macromodule m3;
 
 
     defparam m3.m.i = 1:1:1;
-             ^^ Refs[10]
+             ^^ Refs[9]
                 ^ Refs[3]
                   ^ Refs[4]
 
@@ -690,17 +690,17 @@ macromodule m3;
 
 
 endmodule : m3
-            ^^ Refs[10]
+            ^^ Refs[9]
 
 
 
 extern program p(a, b);
-               ^ Refs[4]
+               ^ Refs[3]
 
 
 
 program p(a, b);
-        ^ Refs[4]
+        ^ Refs[3]
           ^ Refs[2]
              ^ Refs[2]
 
@@ -709,7 +709,7 @@ program p(a, b);
              ^ Refs[2]
 
 endprogram : p
-             ^ Refs[4]
+             ^ Refs[3]
 
 
 
@@ -736,7 +736,7 @@ endprimitive
 
 
 (* attr = 3.14 *) bind m3.m m1 #(1) bound('x, , , );
-                       ^^ Refs[10]
+                       ^^ Refs[9]
                           ^ Refs[3]
                             ^^ Refs[2]
                                     ^^^^^ Refs[1]
@@ -750,13 +750,13 @@ config cfg;
                ^ Refs[1]
 
     design work.m3;
-                ^^ Refs[10]
+                ^^ Refs[9]
 
     default liblist a b;
 
     cell m3 use work.m3;
-         ^^ Refs[10]
-                     ^^ Refs[10]
+         ^^ Refs[9]
+                     ^^ Refs[9]
 
 endconfig
 
@@ -970,7 +970,7 @@ typedef enum {
 
 
 checker assert_window1 (
-        ^^^^^^^^^^^^^^ Refs[3]
+        ^^^^^^^^^^^^^^ Refs[2]
 
     logic test_expr,
           ^^^^^^^^^ Refs[2]
@@ -1103,7 +1103,7 @@ checker assert_window1 (
     endgenerate
 
 endchecker : assert_window1
-             ^^^^^^^^^^^^^^ Refs[3]
+             ^^^^^^^^^^^^^^ Refs[2]
 
 
 
@@ -1135,7 +1135,7 @@ module m5;
     initial begin
 
         assert_window1 aw2(1 + 1, a, b);
-        ^^^^^^^^^^^^^^ Refs[3]
+        ^^^^^^^^^^^^^^ Refs[2]
                        ^^^ Refs[1]
                                   ^ Refs[4]
                                      ^ Refs[4]
@@ -1273,7 +1273,7 @@ endfunction
 
 class H #(int p);
       ^ Refs[1]
-              ^ Refs[4]
+              ^ Refs[3]
 
     extern function int foo;
 

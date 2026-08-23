@@ -964,8 +964,15 @@ void ShallowAnalysis::addLocalReferences(std::vector<lsp::Location>& references,
         // module MODULE_NAME;
         //   ...
         // endmodule : MODULE_NAME <-- Skip this token
+        //
+        // However it does not skip references for begin...end blocks.
         auto* tokenParent = syntaxes.getTokenParent(token);
-        if (tokenParent && tokenParent->kind == syntax::SyntaxKind::NamedBlockClause) {
+        auto parentKind = tokenParent && tokenParent->parent ? tokenParent->parent->kind
+                                                             : syntax::SyntaxKind::Unknown;
+        if (tokenParent && tokenParent->kind == syntax::SyntaxKind::NamedBlockClause &&
+            parentKind != syntax::SyntaxKind::SequentialBlockStatement &&
+            parentKind != syntax::SyntaxKind::ParallelBlockStatement &&
+            parentKind != syntax::SyntaxKind::GenerateBlock) {
             continue;
         }
 
