@@ -121,7 +121,25 @@ public:
     explicit GoldenTest(std::filesystem::path goldenFilePath) :
         GoldenTestBase(std::move(goldenFilePath)) {}
     // We set actual output in the test
-    void record(const std::string_view actual) { m_actual << actual; }
+    void record(const std::string_view actual) {
+        size_t lineStart = 0;
+        while (lineStart < actual.size()) {
+            auto lineEnd = actual.find('\n', lineStart);
+            const bool hasNewline = lineEnd != std::string_view::npos;
+            if (!hasNewline)
+                lineEnd = actual.size();
+
+            auto contentEnd = lineEnd;
+            while (contentEnd > lineStart &&
+                   (actual[contentEnd - 1] == ' ' || actual[contentEnd - 1] == '\t')) {
+                contentEnd--;
+            }
+            m_actual << actual.substr(lineStart, contentEnd - lineStart);
+            if (hasNewline)
+                m_actual << '\n';
+            lineStart = lineEnd + size_t(hasNewline);
+        }
+    }
 };
 
 class JsonGoldenTest : public GoldenTestBase {
