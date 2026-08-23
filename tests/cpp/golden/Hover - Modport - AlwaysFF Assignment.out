@@ -1,0 +1,22 @@
+**ModportPort** `hblank_req` in `interrupt_if.PPU_side`
+Type: `logic`
+
+
+---
+
+````systemverilog
+output hblank_req
+````
+
+---
+
+````systemverilog
+logic hblank_req;
+````
+
+---
+
+Driven through port by always_ff at [test.sv:10:5](<file:///test.sv#L10,5>)
+````systemverilog
+always_ff @(posedge cycle) interrupt_bus.hblank_req <= (scan_x == 240 && cycle == 0);
+````

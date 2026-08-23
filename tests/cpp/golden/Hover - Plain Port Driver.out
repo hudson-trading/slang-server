@@ -1,0 +1,16 @@
+**Variable** `value` in `top`
+Type: `logic`
+
+
+---
+
+````systemverilog
+logic value;
+````
+
+---
+
+Driven via port from `child u` at [test.sv:7:13](<file:///test.sv#L7,13>)
+````systemverilog
+.data(value)
+````

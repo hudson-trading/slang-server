@@ -14,6 +14,24 @@ static size_t countSubstring(std::string_view text, std::string_view substring) 
     return count;
 }
 
+static void normalizeHoverOutput(std::string& text, const DocumentHandle& doc) {
+    const auto uri = doc.m_uri.str();
+    for (size_t pos = 0; (pos = text.find(uri, pos)) != std::string::npos;) {
+        text.replace(pos, uri.size(), "file:///test.sv");
+        pos += std::string_view("file:///test.sv").size();
+    }
+
+    for (size_t newline = 0; (newline = text.find('\n', newline)) != std::string::npos;) {
+        auto whitespaceStart = newline;
+        while (whitespaceStart > 0 &&
+               (text[whitespaceStart - 1] == ' ' || text[whitespaceStart - 1] == '\t')) {
+            whitespaceStart--;
+        }
+        text.erase(whitespaceStart, newline - whitespaceStart);
+        newline = whitespaceStart + 1;
+    }
+}
+
 TEST_CASE("HoverMacroExpansion") {
     ServerHarness server;
 
@@ -621,6 +639,92 @@ endmodule
     CHECK(countSubstring(content, "Type: `logic[7:0]`") == 1);
     CHECK(countSubstring(content, "Width: `8`") == 1);
     CHECK(countSubstring(content, "Driven by continuous assignment") == 1);
+}
+
+TEST_CASE("Hover - Modport - Continuous Assignment") {
+    ServerHarness server;
+    GoldenTest golden;
+
+    auto doc = server.openFile("test.sv", R"(
+interface interrupt_if;
+    logic hblank_req;
+    modport PPU_side(output hblank_req);
+endinterface
+
+module PPU(interrupt_if.PPU_side interrupt_bus, interrupt_if.PPU_side interrupt_bus2);
+    logic [8:0] scan_x;
+    logic cycle;
+    assign interrupt_bus.hblank_req = (scan_x == 240 && cycle == 0);
+    assign interrupt_bus2.hblank_req = (scan_x == 240 && cycle == 0);
+endmodule
+
+module top;
+    interrupt_if interrupt_bus();
+    PPU ppu(interrupt_bus);
+endmodule
+)");
+
+    auto cursor = doc.before("hblank_req);");
+    auto hover = doc.getHoverAt(cursor.m_offset);
+    REQUIRE(hover);
+    auto content = rfl::get<lsp::MarkupContent>(hover->contents).value;
+    normalizeHoverOutput(content, doc);
+    golden.record(content);
+    golden.record("\n");
+}
+
+TEST_CASE("Hover - Modport - AlwaysFF Assignment") {
+    ServerHarness server;
+    GoldenTest golden;
+
+    auto doc = server.openFile("test.sv", R"(
+interface interrupt_if;
+    logic hblank_req;
+    modport PPU_side(output hblank_req);
+endinterface
+
+module PPU(interrupt_if.PPU_side interrupt_bus);
+    logic [8:0] scan_x;
+    logic cycle;
+    always_ff @(posedge cycle) interrupt_bus.hblank_req <= (scan_x == 240 && cycle == 0);
+endmodule
+
+module top;
+    interrupt_if interrupt_bus();
+    PPU ppu(interrupt_bus);
+endmodule
+)");
+
+    auto cursor = doc.before("hblank_req);");
+    auto hover = doc.getHoverAt(cursor.m_offset);
+    REQUIRE(hover);
+    auto content = rfl::get<lsp::MarkupContent>(hover->contents).value;
+    normalizeHoverOutput(content, doc);
+    golden.record(content);
+    golden.record("\n");
+}
+
+TEST_CASE("Hover - Plain Port Driver") {
+    ServerHarness server;
+    GoldenTest golden;
+
+    auto doc = server.openFile("test.sv", R"(
+module child(output logic data);
+endmodule
+
+module top;
+    logic value;
+    child u(.data(value));
+endmodule
+)");
+
+    auto cursor = doc.before("value;");
+    auto hover = doc.getHoverAt(cursor.m_offset);
+    REQUIRE(hover);
+    auto content = rfl::get<lsp::MarkupContent>(hover->contents).value;
+    normalizeHoverOutput(content, doc);
+    golden.record(content);
+    golden.record("\n");
 }
 
 TEST_CASE("HoverAndGotoExplicitModportPrototypeRetainsDeclaration") {
