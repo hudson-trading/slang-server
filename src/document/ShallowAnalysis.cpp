@@ -959,6 +959,16 @@ void ShallowAnalysis::addLocalReferences(std::vector<lsp::Location>& references,
             continue;
         }
 
+        // Skip tokens that are part of a module declaration's named block clause
+        // ie:
+        // module MODULE_NAME;
+        //   ...
+        // endmodule : MODULE_NAME <-- Skip this token
+        auto* tokenParent = syntaxes.getTokenParent(token);
+        if (tokenParent && tokenParent->kind == syntax::SyntaxKind::NamedBlockClause) {
+            continue;
+        }
+
         references.push_back(lsp::Location{
             .uri = URI::fromFile(path),
             .range = toRange(token->range(), m_sourceManager),
