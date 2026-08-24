@@ -21,6 +21,7 @@ patterns:
   - include: '#all-types'
   - include: '#assertion'
   - include: '#module-parameters'
+  - include: '#assignment-concatenation'
   - include: '#module-no-parameters-split'
   - include: '#module-no-parameters'
   - include: '#port-net-parameter'
@@ -36,6 +37,30 @@ patterns:
   - include: '#identifiers'
   - include: '#selects'
 repository:
+  assignment-concatenation:
+    begin: '(?<==)[ \t]*\{'
+    end: \}
+    patterns:
+      - include: '#concatenation-body'
+      - include: '#comments'
+      - include: '#strings'
+      - include: '#operators'
+      - include: '#constants'
+      - include: '#identifiers'
+      - include: '#selects'
+    name: meta.concatenation.assignment.systemverilog
+  concatenation-body:
+    begin: \{
+    end: \}
+    patterns:
+      - include: '#concatenation-body'
+      - include: '#comments'
+      - include: '#strings'
+      - include: '#operators'
+      - include: '#constants'
+      - include: '#identifiers'
+      - include: '#selects'
+    name: meta.concatenation.systemverilog
   function-task:
     begin: '[ \t\r\n]*(?:\b(virtual)[ \t\r\n]+)?(?:\b(function|task)\b)(?:[ \t\r\n]+\b(static|automatic)\b)?'
     beginCaptures:
