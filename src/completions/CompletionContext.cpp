@@ -117,7 +117,7 @@ CompletionContext CompletionContext::fromLocation(SlangDoc& doc, SourceLocation 
     ctx.analysis = doc.getAnalysis();
     ctx.scope = ctx.analysis->getScopeAt(loc);
     ctx.syntax = ctx.analysis->syntaxes.getSyntaxAt(loc);
-    ctx.query = CompletionQuery::fromLocation(doc, ctx.analysis, loc);
+    ctx.query = CompletionQuery::fromLocation(doc, ctx.analysis, loc, ctx.lspContext);
 
     if (!ctx.syntax) {
         // No syntax node at location - assume module item context if we have a scope

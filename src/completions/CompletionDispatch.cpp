@@ -8,6 +8,7 @@
 
 #include "completions/CompletionDispatch.h"
 
+#include "completions/AssignmentPatternCompletions.h"
 #include "completions/InstanceCompletions.h"
 #include "completions/MacroCompletions.h"
 #include "completions/MemberCompletions.h"
@@ -35,6 +36,7 @@ const std::vector<std::string>& completionTriggerCharacters() {
         ":", // package scope (::), wire width
         "[", // wire width, array indexing
         "$", // system tasks and functions
+        "{", // assignment patterns
     };
     return triggerCharacters;
 }
@@ -141,7 +143,7 @@ void setCompletionEdit(lsp::CompletionItem& item, const lsp::Range& replacementR
 
 std::unique_ptr<CompletionQuery> CompletionQuery::fromLocation(
     const SlangDoc& doc, const std::shared_ptr<ShallowAnalysis>& analysis,
-    slang::SourceLocation cursor) {
+    slang::SourceLocation cursor, const lsp::CompletionContext& lspContext) {
     using slang::parsing::TokenKind;
 
     auto site = getCompletionSite(doc, *analysis, cursor);
@@ -151,6 +153,7 @@ std::unique_ptr<CompletionQuery> CompletionQuery::fromLocation(
                                    isSeparatedOnlyByWhitespace(*site.tokenAfter) &&
                                    (site.tokenAfter->kind == TokenKind::Identifier ||
                                     site.tokenAfter->kind == TokenKind::Hash);
+    auto followedByColon = site.tokenAfter && site.tokenAfter->kind == TokenKind::Colon;
 
     if (site.targetToken && site.targetToken->rawText().starts_with('$')) {
         return completions::SystemSubroutineCompletionQuery::create(
@@ -175,6 +178,15 @@ std::unique_ptr<CompletionQuery> CompletionQuery::fromLocation(
         return completions::InstanceCompletionQuery::create(std::move(site.replacementRange),
                                                             analysis->syntaxes.getTokenBefore(
                                                                 site.tokenBefore->location()));
+    }
+    if (analysis->getAssignmentPatternCompletionScope(cursor)) {
+        if (lspContext.triggerKind == lsp::CompletionTriggerKind::TriggerCharacter &&
+            lspContext.triggerCharacter == "{") {
+            return completions::StructAssignCompletionQuery::create(
+                std::move(site.replacementRange), cursor);
+        }
+        return completions::StructMemberCompletionQuery::create(std::move(site.replacementRange),
+                                                                cursor, followedByColon);
     }
 
     return completions::MemberCompletionQuery::createLexical(std::move(site.replacementRange),
@@ -225,6 +237,12 @@ void CompletionDispatch::getCompletions(std::vector<lsp::CompletionItem>& result
                                         std::shared_ptr<SlangDoc> doc,
                                         const CompletionContext& context) {
     SLANG_ASSERT(context.query);
+    if (context.lspContext.triggerKind == lsp::CompletionTriggerKind::TriggerCharacter &&
+        context.lspContext.triggerCharacter == "{" &&
+        context.query->kind() != CompletionQueryKind::StructAssign) {
+        return;
+    }
+
     context.query->getCompletions(results, *this, doc, context);
 
     for (auto& item : results)
