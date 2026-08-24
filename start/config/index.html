@@ -1368,6 +1368,8 @@
 <div class="language-typescript highlight"><pre><span></span><code><span class="kd">interface</span><span class="w"> </span><span class="nx">InlayHints</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="cm">/** Hints for port types */</span>
 <span class="w">  </span><span class="nx">portTypes?</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="w">           </span><span class="c1">// default: false</span>
+<span class="w">  </span><span class="cm">/** Hints for inferred assignment pattern types */</span>
+<span class="w">  </span><span class="nx">assignmentPatternTypes?</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="w"> </span><span class="c1">// default: true</span>
 <span class="w">  </span><span class="cm">/** Hints for names of ordered ports and params */</span>
 <span class="w">  </span><span class="nx">orderedInstanceNames?</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="w"> </span><span class="c1">// default: true</span>
 <span class="w">  </span><span class="cm">/** Hints for port names in wildcard (.*) ports */</span>
@@ -1381,6 +1383,7 @@
 <p>Controls inline hints displayed in the editor for things like ordered arguments, wildcard ports, and others.</p>
 <ul>
 <li><strong><code>portTypes</code></strong>: Show type hints on ports. Off by default.</li>
+<li><strong><code>assignmentPatternTypes</code></strong>: Show the inferred struct or union type before untyped assignment patterns.</li>
 <li><strong><code>orderedInstanceNames</code></strong>: Show parameter/port name hints on ordered (positional) instance connections.</li>
 <li><strong><code>wildcardNames</code></strong>: Show port name hints on wildcard (<code>.*</code>) connections.</li>
 <li><strong><code>funcArgNames</code></strong>: Show argument name hints on function calls. Set to <code>0</code> to disable, or <code>N</code> to only show hints for calls with N or more arguments.</li>
