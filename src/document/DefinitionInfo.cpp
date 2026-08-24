@@ -208,10 +208,20 @@ void renderSymbolType(markup::Paragraph& infoPg, const ast::Symbol& symbol,
     if (ast::ValueSymbol::isKind(symbol.kind) && symbol.kind != ast::SymbolKind::EnumValue) {
         const auto& valSym = symbol.as<ast::ValueSymbol>();
         const auto& type = valSym.getType();
-        infoPg.appendText("Type: ");
-        if (!appendSourceLink(infoPg, type.location, sourceManager,
-                              getTypeString(type, TypeStringMode::Friendly)))
-            infoPg.appendText(getTypeString(type, TypeStringMode::FriendlyMarkdownQuoted));
+        auto declaredType = type.isError() ? getDeclaredTypeString(valSym) : std::nullopt;
+        if (declaredType) {
+            infoPg.appendText("Declared Type: ");
+            if (!type.isAlias() ||
+                !appendSourceLink(infoPg, type.location, sourceManager, *declaredType)) {
+                infoPg.appendCode(*declaredType);
+            }
+        }
+        else {
+            infoPg.appendText("Type: ");
+            if (!appendSourceLink(infoPg, type.location, sourceManager,
+                                  getTypeString(type, TypeStringMode::Friendly)))
+                infoPg.appendText(getTypeString(type, TypeStringMode::FriendlyMarkdownQuoted));
+        }
         infoPg.newLine();
         if (!ast::ParameterSymbol::isKind(symbol.kind) && !type.isError() &&
             type.getBitWidth() > 1) {
@@ -551,7 +561,7 @@ void renderSymbolValue(markup::Paragraph& infoPg, const ast::Symbol& symbol,
     else if (ast::Type::isKind(symbol.kind)) {
         auto& type = symbol.as<ast::Type>();
         if (!unwrapErrorType(type).isError()) {
-            infoPg.appendText("Resolved Type: ");
+            infoPg.appendText(type.isError() ? "Declared Type: " : "Resolved Type: ");
             if (!appendSourceLink(infoPg, type.location, sourceManager,
                                   getTypeString(type, TypeStringMode::Friendly)))
                 infoPg.appendText(getTypeString(type, TypeStringMode::FriendlyMarkdownQuoted));

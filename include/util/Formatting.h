@@ -5,6 +5,7 @@
 
 #include "Config.h"
 #include "lsp/LspTypes.h"
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -43,6 +44,8 @@ void squashSpaces(std::string& s);
 bool isSingleLine(const std::string& s);
 
 std::string detailFormat(const syntax::SyntaxNode& node);
+
+std::optional<std::string> getDeclaredTypeString(const ast::ValueSymbol& value);
 
 /// Extract the leading doc comment text from a node, with comment markers stripped.
 /// In plaintext mode, markdown characters are escaped so the text renders as-is.

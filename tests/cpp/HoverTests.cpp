@@ -82,6 +82,39 @@ endmodule
           doc.before("`DEFINE_DEFAULT(FEATURE_ENABLE").getPosition());
 }
 
+TEST_CASE("HoverFieldsOfInvalidStructType") {
+    ServerHarness server;
+    auto doc = server.openFile("invalid_struct_field.sv", R"(
+module top;
+    typedef struct packed {
+        logic good;
+        real invalid;
+        logic other;
+    } partial_t;
+
+    partial_t value;
+    initial $display(value.good, value.invalid, value.other);
+endmodule
+)");
+
+    auto checkHover = [&](size_t offset, std::string_view name, std::string_view type) {
+        auto hover = doc.getHoverAt(offset);
+        REQUIRE(hover);
+        auto content = rfl::get<lsp::MarkupContent>(hover->contents).value;
+        CAPTURE(name, content);
+        CHECK(content.find("**Field** `" + std::string(name) + "`") != std::string::npos);
+        CHECK(content.find("Type: `" + std::string(type) + "`") != std::string::npos);
+        CHECK(content.find("Declared Type:") == std::string::npos);
+    };
+
+    checkHover(doc.before("good;").m_offset, "good", "logic");
+    checkHover(doc.before("invalid;").m_offset, "invalid", "real");
+    checkHover(doc.before("other;").m_offset, "other", "logic");
+    checkHover(doc.after("value.").m_offset, "good", "logic");
+    checkHover(doc.after("value.good, value.").m_offset, "invalid", "real");
+    checkHover(doc.after("value.invalid, value.").m_offset, "other", "logic");
+}
+
 TEST_CASE("HoverLinksUseFriendlyAnonymousTypeNames") {
     ServerHarness server;
     auto doc = server.openFile("anonymous_type.sv", R"(

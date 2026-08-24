@@ -1077,9 +1077,8 @@ TEST_CASE("HierarchicalStructCompletionWithUnresolvedWidth") {
     REQUIRE(middleHover);
     auto middleContent = rfl::get<lsp::MarkupContent>(middleHover->contents).value;
     CHECK(middleContent.find("**Field** `middle`") != std::string::npos);
-    CHECK(middleContent.find("Type:") != std::string::npos);
+    CHECK(middleContent.find("Declared Type:") != std::string::npos);
     CHECK(middleContent.find("middle_t") != std::string::npos);
-    CHECK(middleContent.find("PackedStruct") != std::string::npos);
     CHECK(middleContent.find("Incomplete subtypes:") == std::string::npos);
     CHECK(middleContent.find("Incomplete type") == std::string::npos);
 
@@ -1088,7 +1087,7 @@ TEST_CASE("HierarchicalStructCompletionWithUnresolvedWidth") {
     REQUIRE(rootTypeHover);
     auto rootTypeContent = rfl::get<lsp::MarkupContent>(rootTypeHover->contents).value;
     CHECK(rootTypeContent.find("**TypeAlias** `root_t`") != std::string::npos);
-    CHECK(rootTypeContent.find("Resolved Type: [`PackedStruct root_t`]") != std::string::npos);
+    CHECK(rootTypeContent.find("Declared Type: [`PackedStruct root_t`]") != std::string::npos);
     CHECK(rootTypeContent.find("Incomplete subtypes: [`variable_width_t`](<file:") !=
           std::string::npos);
     CHECK(rootTypeContent.find("unused_mod.sv#L72,45") != std::string::npos);
@@ -1418,6 +1417,65 @@ TEST_CASE("StructAssignmentCompletionForUnpackedArrayElement") {
     REQUIRE(completions.size() == 1);
     CHECK(completions.front().m_item.label == "'{value, valid}");
     CHECK(completions.front().m_item.insertText == "\n\tvalue: $1,\n\tvalid: $2\n");
+}
+
+TEST_CASE("IncompleteTypeCompletionAndHoverUseDeclaredSyntax") {
+    ServerHarness server;
+    auto doc = server.openFile("incomplete_type.sv", R"(
+    module top;
+        typedef struct packed {
+            logic [UNKNOWN_FIELD_WIDTH-1:0] field [UNKNOWN_FIELD_DEPTH-1:0];
+        } incomplete_t;
+
+        incomplete_t value;
+        logic [UNKNOWN_VALUE_WIDTH-1:0] direct [UNKNOWN_VALUE_DEPTH-1:0];
+
+        function void consume(
+            input logic [UNKNOWN_ARG_WIDTH-1:0] arg [UNKNOWN_ARG_DEPTH-1:0]
+        );
+        endfunction
+
+        initial begin
+            value.;
+            value.field; // field use
+            consume;
+            direct; // direct use
+        end
+    endmodule
+    )");
+
+    auto findByLabel = [](auto& items, std::string_view label) {
+        return std::ranges::find(items, label,
+                                 [](const CompletionHandle& item) { return item.m_item.label; });
+    };
+
+    auto fieldItems = doc.after("value.").getCompletions(".");
+    auto field = findByLabel(fieldItems, "field");
+    REQUIRE(field != fieldItems.end());
+    REQUIRE(field->m_item.labelDetails);
+    CHECK(field->m_item.labelDetails->detail ==
+          " logic [UNKNOWN_FIELD_WIDTH-1:0] [UNKNOWN_FIELD_DEPTH-1:0]");
+
+    auto callableItems = doc.before("consume;").getCompletions();
+    auto callable = findByLabel(callableItems, "consume");
+    REQUIRE(callable != callableItems.end());
+    REQUIRE(callable->m_item.insertText);
+    CHECK(*callable->m_item.insertText ==
+          "consume(${1:arg /* logic [UNKNOWN_ARG_WIDTH-1:0] [UNKNOWN_ARG_DEPTH-1:0] */})");
+
+    auto fieldHover = doc.getHoverAt(doc.before("field; // field use").m_offset);
+    REQUIRE(fieldHover);
+    auto fieldContent = rfl::get<lsp::MarkupContent>(fieldHover->contents).value;
+    CHECK(fieldContent.find("Declared Type: `logic [UNKNOWN_FIELD_WIDTH-1:0] "
+                            "[UNKNOWN_FIELD_DEPTH-1:0]`") != std::string::npos);
+    CHECK(fieldContent.find("Incomplete type") == std::string::npos);
+
+    auto directHover = doc.getHoverAt(doc.before("direct; // direct use").m_offset);
+    REQUIRE(directHover);
+    auto directContent = rfl::get<lsp::MarkupContent>(directHover->contents).value;
+    CHECK(directContent.find("Declared Type: `logic [UNKNOWN_VALUE_WIDTH-1:0] "
+                             "[UNKNOWN_VALUE_DEPTH-1:0]`") != std::string::npos);
+    CHECK(directContent.find("Incomplete type") == std::string::npos);
 }
 
 TEST_CASE("HierarchicalStructCompletion") {
