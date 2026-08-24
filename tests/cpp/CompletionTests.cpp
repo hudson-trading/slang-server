@@ -1088,7 +1088,7 @@ TEST_CASE("HierarchicalStructCompletionWithUnresolvedWidth") {
     REQUIRE(rootTypeHover);
     auto rootTypeContent = rfl::get<lsp::MarkupContent>(rootTypeHover->contents).value;
     CHECK(rootTypeContent.find("**TypeAlias** `root_t`") != std::string::npos);
-    CHECK(rootTypeContent.find("Resolved Type: PackedStruct `root_t`") != std::string::npos);
+    CHECK(rootTypeContent.find("Resolved Type: [`PackedStruct root_t`]") != std::string::npos);
     CHECK(rootTypeContent.find("Incomplete subtypes: [`variable_width_t`](<file:") !=
           std::string::npos);
     CHECK(rootTypeContent.find("unused_mod.sv#L72,45") != std::string::npos);

@@ -60,11 +60,11 @@ package pkg2;
 
     import pkg1::packet_t;
            ^^^^ Ref -> **Package** `pkg1`  \n\\n\\n\---\n\\n\`package pkg1;`
-                 ^^^^^^^^ Ref -> **TypeAlias** `packet_t` in `pkg1`  \n\Resolved Type: PackedStruct `packet_t` (`logic[8:0]`)  \n\Resolved Width: `9`  \n\\n\\n\---\n\\n\`typedef struct packed {\n\    logic [7:0] data;\n\    logic valid;\n\} packet_t;`
+                 ^^^^^^^^ Ref -> **TypeAlias** `packet_t` in `pkg1`  \n\Resolved Type: [`PackedStruct packet_t (logic[8:0])`](<file:///tests/data/all.sv#L19,7>)  \n\Resolved Width: `9`  \n\\n\\n\---\n\\n\`typedef struct packed {\n\    logic [7:0] data;\n\    logic valid;\n\} packet_t;`
 
     export pkg1::packet_t;
            ^^^^ Ref -> **Package** `pkg1`  \n\\n\\n\---\n\\n\`package pkg1;`
-                 ^^^^^^^^ Ref -> **TypeAlias** `packet_t` in `pkg1`  \n\Resolved Type: PackedStruct `packet_t` (`logic[8:0]`)  \n\Resolved Width: `9`  \n\\n\\n\---\n\\n\`typedef struct packed {\n\    logic [7:0] data;\n\    logic valid;\n\} packet_t;`
+                 ^^^^^^^^ Ref -> **TypeAlias** `packet_t` in `pkg1`  \n\Resolved Type: [`PackedStruct packet_t (logic[8:0])`](<file:///tests/data/all.sv#L19,7>)  \n\Resolved Width: `9`  \n\\n\\n\---\n\\n\`typedef struct packed {\n\    logic [7:0] data;\n\    logic valid;\n\} packet_t;`
 
 endpackage
 
@@ -92,7 +92,7 @@ module automatic m1 import p::*; #(int i = 1)
 
     localparam p::y d = {1'b0, 1'b1};
                ^ Ref -> **Package** `p`  \n\\n\\n\---\n\\n\`package static p;`
-                  ^ Ref -> **TypeAlias** `y` in `p`  \n\Value: `logic[1:0]`  \n\Resolved Type: `y` (aka `logic[1:0]`)  \n\Resolved Width: `2`  \n\\n\\n\---\n\\n\`parameter type y = logic[x:0]`
+                  ^ Ref -> **TypeAlias** `y` in `p`  \n\Value: `logic[1:0]`  \n\Resolved Type: [`y (aka logic[1:0])`](<file:///tests/data/all.sv#L9,20>)  \n\Resolved Width: `2`  \n\\n\\n\---\n\\n\`parameter type y = logic[x:0]`
                     ^ Sym d : Parameter
 
 endmodule
@@ -121,7 +121,7 @@ module m2 #(
 
     input p::y2 d2,
           ^ Ref -> **Package** `p`  \n\\n\\n\---\n\\n\`package static p;`
-             ^^ Ref -> **TypeAlias** `y2` in `p`  \n\Value: `logic[2:0]`  \n\Resolved Type: `y2` (aka `logic[2:0]`)  \n\Resolved Width: `3`  \n\\n\\n\---\n\\n\`parameter type y2 = logic[x2:0]`
+             ^^ Ref -> **TypeAlias** `y2` in `p`  \n\Value: `logic[2:0]`  \n\Resolved Type: [`y2 (aka logic[2:0])`](<file:///tests/data/all.sv#L10,20>)  \n\Resolved Width: `3`  \n\\n\\n\---\n\\n\`parameter type y2 = logic[x2:0]`
                 ^^ Sym d2 : Net
 
      interface.mod d, .e());
@@ -174,7 +174,7 @@ macromodule m3;
 
     typedef p::y_t y_t;
             ^ Ref -> **Package** `p`  \n\\n\\n\---\n\\n\`package static p;`
-               ^^^ Ref -> **TypeAlias** `y_t` in `p`  \n\Value: `logic[1:0]`  \n\Resolved Type: `y_t` (aka `logic[1:0]`)  \n\Resolved Width: `2`  \n\\n\\n\---\n\\n\`parameter type y_t = logic[x:0]`
+               ^^^ Ref -> **TypeAlias** `y_t` in `p`  \n\Value: `logic[1:0]`  \n\Resolved Type: [`y_t (aka logic[1:0])`](<file:///tests/data/all.sv#L7,20>)  \n\Resolved Width: `2`  \n\\n\\n\---\n\\n\`parameter type y_t = logic[x:0]`
                    ^^^ Sym y_t : TypeAlias
 
 
@@ -183,8 +183,8 @@ macromodule m3;
     ^^ Ref -> **Module** `m2`  \n\\n\\n\---\n\\n\`module m2 #(\n\    parameter i = 1,\n\    localparam j = i,\n\    parameter type x_t = bit\n\)\n\    (input int a[], (* bar = "asdf" *) output logic b = 1, ref c,\n\    input p::y2 d2,\n\     interface.mod d, .e());`
 
         .x_t(y_t)
-         ^^^ Ref -> **TypeAlias** `x_t` in `m2`  \n\Value: `y_t` (aka `logic[1:0]`)  \n\Resolved Type: `x_t` (aka `logic[1:0]`)  \n\Resolved Width: `2`  \n\\n\\n\---\n\\n\`parameter type x_t = bit`
-             ^^^ Ref -> **TypeAlias** `y_t` in `m3`  \n\Resolved Type: `y_t` (aka `logic[1:0]`)  \n\Resolved Width: `2`  \n\\n\\n\---\n\\n\`typedef p::y_t y_t;`
+         ^^^ Ref -> **TypeAlias** `x_t` in `m2`  \n\Value: `y_t` (aka `logic[1:0]`)  \n\Resolved Type: [`x_t (aka logic[1:0])`](<file:///tests/data/all.sv#L38,20>)  \n\Resolved Width: `2`  \n\\n\\n\---\n\\n\`parameter type x_t = bit`
+             ^^^ Ref -> **TypeAlias** `y_t` in `m3`  \n\Resolved Type: [`y_t (aka logic[1:0])`](<file:///tests/data/all.sv#L58,20>)  \n\Resolved Width: `2`  \n\\n\\n\---\n\\n\`typedef p::y_t y_t;`
 
     ) m (, b, c, d, );
       ^ Sym m : Instance
@@ -198,7 +198,7 @@ macromodule m3;
 
     typedef p::y2 y2;
             ^ Ref -> **Package** `p`  \n\\n\\n\---\n\\n\`package static p;`
-               ^^ Ref -> **TypeAlias** `y2` in `p`  \n\Value: `logic[2:0]`  \n\Resolved Type: `y2` (aka `logic[2:0]`)  \n\Resolved Width: `3`  \n\\n\\n\---\n\\n\`parameter type y2 = logic[x2:0]`
+               ^^ Ref -> **TypeAlias** `y2` in `p`  \n\Value: `logic[2:0]`  \n\Resolved Type: [`y2 (aka logic[2:0])`](<file:///tests/data/all.sv#L10,20>)  \n\Resolved Width: `3`  \n\\n\\n\---\n\\n\`parameter type y2 = logic[x2:0]`
                   ^^ Sym y2 : TypeAlias
 
 
@@ -210,8 +210,8 @@ macromodule m3;
          ^ Ref -> **Parameter** `i` in `m2`  \n\Type: `logic signed[31:0]`  \n\Value: `1`  \n\\n\\n\---\n\\n\`parameter i = 1`
 
         .x_t(y2)
-         ^^^ Ref -> **TypeAlias** `x_t` in `m2`  \n\Value: `y2` (aka `logic[2:0]`)  \n\Resolved Type: `x_t` (aka `logic[2:0]`)  \n\Resolved Width: `3`  \n\\n\\n\---\n\\n\`parameter type x_t = bit`
-             ^^ Ref -> **TypeAlias** `y2` in `m3`  \n\Resolved Type: `y2` (aka `logic[2:0]`)  \n\Resolved Width: `3`  \n\\n\\n\---\n\\n\`typedef p::y2 y2;`
+         ^^^ Ref -> **TypeAlias** `x_t` in `m2`  \n\Value: `y2` (aka `logic[2:0]`)  \n\Resolved Type: [`x_t (aka logic[2:0])`](<file:///tests/data/all.sv#L38,20>)  \n\Resolved Width: `3`  \n\\n\\n\---\n\\n\`parameter type x_t = bit`
+             ^^ Ref -> **TypeAlias** `y2` in `m3`  \n\Resolved Type: [`y2 (aka logic[2:0])`](<file:///tests/data/all.sv#L65,19>)  \n\Resolved Width: `3`  \n\\n\\n\---\n\\n\`typedef p::y2 y2;`
 
     ) m2_inst (
       ^^^^^^^ Sym m2_inst : Instance
@@ -419,11 +419,11 @@ macromodule m3;
 
 
         VInt v;
-        ^^^^ Ref -> **TypeAlias** `VInt` in `m3`  \n\Resolved Type: UnpackedUnion `VInt`  \n\\n\\n\---\n\\n\`typedef union tagged {\n\    void Invalid;\n\    int Valid;\n\} VInt;`
+        ^^^^ Ref -> **TypeAlias** `VInt` in `m3`  \n\Resolved Type: [`UnpackedUnion VInt`](<file:///tests/data/all.sv#L132,11>)  \n\\n\\n\---\n\\n\`typedef union tagged {\n\    void Invalid;\n\    int Valid;\n\} VInt;`
              ^ Sym v : Variable
 
         Instr instr;
-        ^^^^^ Ref -> **TypeAlias** `Instr` in `m3`  \n\Resolved Type: UnpackedUnion `Instr`  \n\\n\\n\---\n\\n\`typedef union tagged {\n\    struct {\n\        bit [4:0] reg1, reg2, regd;\n\    } Add;\n\    union tagged {\n\        bit [9:0] JmpU;\n\        struct {\n\            bit [1:0] cc;\n\            bit [9:0] addr;\n\        } JmpC;\n\    } Jmp;\n\} Instr;`
+        ^^^^^ Ref -> **TypeAlias** `Instr` in `m3`  \n\Resolved Type: [`UnpackedUnion Instr`](<file:///tests/data/all.sv#L145,11>)  \n\\n\\n\---\n\\n\`typedef union tagged {\n\    struct {\n\        bit [4:0] reg1, reg2, regd;\n\    } Add;\n\    union tagged {\n\        bit [9:0] JmpU;\n\        struct {\n\            bit [1:0] cc;\n\            bit [9:0] addr;\n\        } JmpC;\n\    } Jmp;\n\} Instr;`
               ^^^^^ Sym instr : Variable
 
         automatic int rf[] = new [3];
@@ -435,7 +435,7 @@ macromodule m3;
 
 
         case (v) matches
-              ^ Ref -> **Variable** `v` in `m3`  \n\Type: UnpackedUnion `VInt`  \n\\n\\n\---\n\\n\`VInt v;`
+              ^ Ref -> **Variable** `v` in `m3`  \n\Type: [`UnpackedUnion VInt`](<file:///tests/data/all.sv#L132,11>)  \n\\n\\n\---\n\\n\`VInt v;`
 
             tagged Invalid &&& ~w : $display ("v is Invalid");
                                 ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`\n\\n\---\n\\n\Driven by continuous assignment at [all.sv:81:5](<file:///tests/data/all.sv#L81,5>)  \n\`assign (supply0, weak1) #(1:0:1, 2:1:0) w = 2;`\n\\n\---\n\\n\Driven by initializer at [all.sv:80:5](<file:///tests/data/all.sv#L80,5>)  \n\`wor [1:0] w = 1;`
@@ -451,11 +451,11 @@ macromodule m3;
 
 
         case (instr) matches
-              ^^^^^ Ref -> **Variable** `instr` in `m3`  \n\Type: UnpackedUnion `Instr`  \n\\n\\n\---\n\\n\`Instr instr;`
+              ^^^^^ Ref -> **Variable** `instr` in `m3`  \n\Type: [`UnpackedUnion Instr`](<file:///tests/data/all.sv#L145,11>)  \n\\n\\n\---\n\\n\`Instr instr;`
 
             tagged Add .s: case (s) matches
                         ^ Sym s : PatternVar
-                                 ^ Ref -> **PatternVar** `s` in `m3`  \n\Type: UnpackedStruct `struct{bit[4:0] reg1, bit[4:0] reg2, bit[4:0] regd}`  \n\\n\\n\---\n\\n\`.s`
+                                 ^ Ref -> **PatternVar** `s` in `m3`  \n\Type: [`UnpackedStruct struct{bit[4:0] reg1, bit[4:0] reg2, bit[4:0] regd}`](<file:///tests/data/all.sv#L135,13>)  \n\\n\\n\---\n\\n\`.s`
 
                             '{.*, .*, 0} : ; // no op
 
@@ -474,7 +474,7 @@ macromodule m3;
 
             tagged Jmp .j: case (j) matches
                         ^ Sym j : PatternVar
-                                 ^ Ref -> **PatternVar** `j` in `m3`  \n\Type: UnpackedUnion `union{bit[9:0] JmpU, struct{bit[1:0] cc, bit[9:0] addr} JmpC}`  \n\\n\\n\---\n\\n\`.j`
+                                 ^ Ref -> **PatternVar** `j` in `m3`  \n\Type: [`UnpackedUnion union{bit[9:0] JmpU, struct{bit[1:0] cc, bit[9:0] addr} JmpC}`](<file:///tests/data/all.sv#L138,13>)  \n\\n\\n\---\n\\n\`.j`
 
                             tagged JmpU .a : pc = pc + a;
                                          ^ Sym a : PatternVar
@@ -497,11 +497,11 @@ macromodule m3;
 
 
         if (instr matches (tagged Jmp .j) &&&
-            ^^^^^ Ref -> **Variable** `instr` in `m3`  \n\Type: UnpackedUnion `Instr`  \n\\n\\n\---\n\\n\`Instr instr;`
+            ^^^^^ Ref -> **Variable** `instr` in `m3`  \n\Type: [`UnpackedUnion Instr`](<file:///tests/data/all.sv#L145,11>)  \n\\n\\n\---\n\\n\`Instr instr;`
                                        ^ Sym j : PatternVar
 
             j matches (tagged JmpC '{cc:.c,addr:.a})) begin
-            ^ Ref -> **PatternVar** `j` in `m3`  \n\Type: UnpackedUnion `union{bit[9:0] JmpU, struct{bit[1:0] cc, bit[9:0] addr} JmpC}`  \n\\n\\n\---\n\\n\`.j`
+            ^ Ref -> **PatternVar** `j` in `m3`  \n\Type: [`UnpackedUnion union{bit[9:0] JmpU, struct{bit[1:0] cc, bit[9:0] addr} JmpC}`](<file:///tests/data/all.sv#L138,13>)  \n\\n\\n\---\n\\n\`.j`
                                          ^ Sym c : PatternVar
                                                  ^ Sym a : PatternVar
 
@@ -512,10 +512,10 @@ macromodule m3;
 
             pc = instr matches (tagged Jmp .j) &&&
             ^^ Ref -> **Variable** `pc` in `m3`  \n\Type: `longint`  \n\Width: `64`  \n\\n\\n\---\n\\n\`static longint pc = 'x;`\n\\n\---\n\\n\Driven by always_comb at [all.sv:128:5](<file:///tests/data/all.sv#L128,5>)  \n\`always_comb begin\n\    typedef union tagged {\n\        void Invalid;\n\        int Valid;\n\    } VInt;\n\    typedef union tagged {\n\        struct {\n\            bit [4:0] reg1, reg2, regd;\n\        } Add;\n\        union tagged {\n\            bit [9:0] JmpU;\n\            struct {\n\                bit [1:0] cc;\n\                bit [9:0] addr;\n\            } JmpC;\n\        } Jmp;\n\    } Instr;\n\    VInt v;\n\    Instr instr;\n\    automatic int rf[] = new [3];\n\    static longint pc = 'x;\n\    case (v) matches\n\        tagged Invalid &&& ~w : $display ("v is Invalid");\n\        tagged Valid .n : $display ("v is Valid with value %d", n);\n\    endcase\n\    case (instr) matches\n\        tagged Add .s: case (s) matches\n\                        '{.*, .*, 0} : ; // no op\n\                        '{.r1, .r2, .rd} : rf[rd] = rf[r1] + rf[r2];\n\                      endcase\n\        tagged Jmp .j: case (j) matches\n\                        tagged JmpU .a : pc = pc + a;\n\                        tagged JmpC '{.c, .a} : if (rf[c]) pc = a;\n\                       endcase\n\    endcase\n\    if (instr matches (tagged Jmp .j) &&&\n\        j matches (tagged JmpC '{cc:.c,addr:.a})) begin\n\        pc = c[0] & a[0];\n\        pc = instr matches (tagged Jmp .j) &&&\n\              j matches (tagged JmpC '{cc:.c,addr:.a}) ? c[0] & a[0] : 0;\n\    end\n\    else begin\n\    end\n\end`\n\\n\---\n\\n\Driven by initializer at [all.sv:150:9](<file:///tests/data/all.sv#L150,9>)  \n\`static longint pc = 'x;`
-                 ^^^^^ Ref -> **Variable** `instr` in `m3`  \n\Type: UnpackedUnion `Instr`  \n\\n\\n\---\n\\n\`Instr instr;`
+                 ^^^^^ Ref -> **Variable** `instr` in `m3`  \n\Type: [`UnpackedUnion Instr`](<file:///tests/data/all.sv#L145,11>)  \n\\n\\n\---\n\\n\`Instr instr;`
 
                   j matches (tagged JmpC '{cc:.c,addr:.a}) ? c[0] & a[0] : 0;
-                  ^ Ref -> **PatternVar** `j` in `m3`  \n\Type: UnpackedUnion `union{bit[9:0] JmpU, struct{bit[1:0] cc, bit[9:0] addr} JmpC}`  \n\\n\\n\---\n\\n\`.j`
+                  ^ Ref -> **PatternVar** `j` in `m3`  \n\Type: [`UnpackedUnion union{bit[9:0] JmpU, struct{bit[1:0] cc, bit[9:0] addr} JmpC}`](<file:///tests/data/all.sv#L138,13>)  \n\\n\\n\---\n\\n\`.j`
                                                              ^ Ref -> **PatternVar** `c` in `m3`  \n\Type: `bit[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`.c`
                                                                     ^ Ref -> **PatternVar** `a` in `m3`  \n\Type: `bit[9:0]`  \n\Width: `10`  \n\\n\\n\---\n\\n\`.a`
 
@@ -994,7 +994,7 @@ checker assert_window1 (
            ^^^^^^^^^ Sym error_msg : AssertionPort
 
     coverage_level clevel = cover_all
-    ^^^^^^^^^^^^^^ Ref -> **TypeAlias** `coverage_level`  \n\Resolved Type: Enum `coverage_level` (`bit[31:0]`)  \n\Resolved Width: `32`  \n\\n\\n\---\n\\n\`typedef enum { cover_none, cover_all } coverage_level;`
+    ^^^^^^^^^^^^^^ Ref -> **TypeAlias** `coverage_level`  \n\Resolved Type: [`Enum coverage_level (bit[31:0])`](<file:///tests/data/all.sv#L314,40>)  \n\Resolved Width: `32`  \n\\n\\n\---\n\\n\`typedef enum { cover_none, cover_all } coverage_level;`
                    ^^^^^^ Sym clevel : AssertionPort
                             ^^^^^^^^^ Ref -> **EnumValue** `cover_all` in `coverage_level`  \n\Value: `1`  \n\\n\\n\---\n\\n\`typedef enum { cover_none, cover_all } coverage_level;`
 
@@ -1238,7 +1238,7 @@ localparam int k = 5;
 
 
 function int C::foo(int bar, int baz = 1);
-             ^ Ref -> **ClassType** `C`  \n\Resolved Type: `C`  \n\\n\\n\---\n\\n\`class C;\n\    int i;\n\    static int j;\n\    extern function int foo(int bar, int baz = 1);\n\endclass`
+             ^ Ref -> **ClassType** `C`  \n\Resolved Type: [`C`](<file:///tests/data/all.sv#L396,7>)  \n\\n\\n\---\n\\n\`class C;\n\    int i;\n\    static int j;\n\    extern function int foo(int bar, int baz = 1);\n\endclass`
                 ^^^ Sym foo : Subroutine
                         ^^^ Sym bar : FormalArgument
                                  ^^^ Sym baz : FormalArgument
@@ -1255,7 +1255,7 @@ endfunction
 
 
 function real D::foo;
-              ^ Ref -> **ClassType** `D`  \n\Resolved Type: `D`  \n\\n\\n\---\n\\n\`class D;\n\    extern static function real foo;\n\endclass`
+              ^ Ref -> **ClassType** `D`  \n\Resolved Type: [`D`](<file:///tests/data/all.sv#L402,7>)  \n\\n\\n\---\n\\n\`class D;\n\    extern static function real foo;\n\endclass`
                  ^^^ Sym foo : Subroutine
 
 endfunction
@@ -1299,23 +1299,23 @@ module m7;
        ^^ Sym m7 : Definition
 
     G #(real) g1;
-    ^ Ref -> **ClassType** `G`  \n\Resolved Type: `G#(real)`  \n\\n\\n\---\n\\n\`class G #(type T);\n\    extern function T foo;\n\endclass`
+    ^ Ref -> **ClassType** `G`  \n\Resolved Type: [`G#(real)`](<file:///tests/data/all.sv#L415,7>)  \n\\n\\n\---\n\\n\`class G #(type T);\n\    extern function T foo;\n\endclass`
               ^^ Sym g1 : Variable
 
     G #(int) g2;
-    ^ Ref -> **ClassType** `G`  \n\Resolved Type: `G#(int)`  \n\\n\\n\---\n\\n\`class G #(type T);\n\    extern function T foo;\n\endclass`
+    ^ Ref -> **ClassType** `G`  \n\Resolved Type: [`G#(int)`](<file:///tests/data/all.sv#L415,7>)  \n\\n\\n\---\n\\n\`class G #(type T);\n\    extern function T foo;\n\endclass`
              ^^ Sym g2 : Variable
 
 
 
     int i = g2.foo();
         ^ Sym i : Variable
-            ^^ Ref -> **Variable** `g2` in `m7`  \n\Type: `G#(int)`  \n\\n\\n\---\n\\n\`G #(int) g2;`
+            ^^ Ref -> **Variable** `g2` in `m7`  \n\Type: [`G#(int)`](<file:///tests/data/all.sv#L415,7>)  \n\\n\\n\---\n\\n\`G #(int) g2;`
                ^^^ Ref -> **Subroutine** `foo` in `G`  \n\\n\\n\---\n\\n\`function G::T G::foo;\n\    return 0;\n\endfunction`
 
     real r = D::foo();
          ^ Sym r : Variable
-             ^ Ref -> **ClassType** `D`  \n\Resolved Type: `D`  \n\\n\\n\---\n\\n\`class D;\n\    extern static function real foo;\n\endclass`
+             ^ Ref -> **ClassType** `D`  \n\Resolved Type: [`D`](<file:///tests/data/all.sv#L402,7>)  \n\\n\\n\---\n\\n\`class D;\n\    extern static function real foo;\n\endclass`
                 ^^^ Ref -> **Subroutine** `foo` in `D`  \n\\n\\n\---\n\\n\`function real D::foo;\n\endfunction`
 
 endmodule
@@ -1345,7 +1345,7 @@ endclass
 
 class B extends A;
       ^ Sym B : ClassType
-                ^ Ref -> **ClassType** `A`  \n\Resolved Type: `A`  \n\\n\\n\---\n\\n\`class A;\n\    integer i = 1;\n\    integer j = 2;\n\    function integer f();\n\        f = i;\n\    endfunction\n\endclass`
+                ^ Ref -> **ClassType** `A`  \n\Resolved Type: [`A`](<file:///tests/data/all.sv#L438,7>)  \n\\n\\n\---\n\\n\`class A;\n\    integer i = 1;\n\    integer j = 2;\n\    function integer f();\n\        f = i;\n\    endfunction\n\endclass`
 
     integer i = 2;
             ^ Sym i : ClassProperty
@@ -1377,7 +1377,7 @@ endclass
 
 class C2 extends B;
       ^^ Sym C2 : ClassType
-                 ^ Ref -> **ClassType** `B`  \n\Resolved Type: `B`  \n\\n\\n\---\n\\n\`class B extends A;\n\    integer i = 2;\n\    function void f();\n\        i = j;\n\        super.i = super.j;\n\        j = super.f();\n\        j = this.super.f();\n\    endfunction\n\endclass`
+                 ^ Ref -> **ClassType** `B`  \n\Resolved Type: [`B`](<file:///tests/data/all.sv#L446,7>)  \n\\n\\n\---\n\\n\`class B extends A;\n\    integer i = 2;\n\    function void f();\n\        i = j;\n\        super.i = super.j;\n\        j = super.f();\n\        j = this.super.f();\n\    endfunction\n\endclass`
 
     function void g();
                   ^ Sym g : Subroutine
@@ -1388,9 +1388,9 @@ class C2 extends B;
         i = j + C::j + A::f();
         ^ Ref -> **ClassProperty** `i` in `B`  \n\Type: `integer`  \n\Width: `32`  \n\\n\\n\---\n\\n\`integer i = 2;`
             ^ Ref -> **ClassProperty** `j` in `A`  \n\Type: `integer`  \n\Width: `32`  \n\\n\\n\---\n\\n\`integer j = 2;`
-                ^ Ref -> **ClassType** `C`  \n\Resolved Type: `C`  \n\\n\\n\---\n\\n\`class C;\n\    int i;\n\    static int j;\n\    extern function int foo(int bar, int baz = 1);\n\endclass`
+                ^ Ref -> **ClassType** `C`  \n\Resolved Type: [`C`](<file:///tests/data/all.sv#L396,7>)  \n\\n\\n\---\n\\n\`class C;\n\    int i;\n\    static int j;\n\    extern function int foo(int bar, int baz = 1);\n\endclass`
                    ^ Ref -> **ClassProperty** `j` in `C`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int j;`
-                       ^ Ref -> **ClassType** `A`  \n\Resolved Type: `A`  \n\\n\\n\---\n\\n\`class A;\n\    integer i = 1;\n\    integer j = 2;\n\    function integer f();\n\        f = i;\n\    endfunction\n\endclass`
+                       ^ Ref -> **ClassType** `A`  \n\Resolved Type: [`A`](<file:///tests/data/all.sv#L438,7>)  \n\\n\\n\---\n\\n\`class A;\n\    integer i = 1;\n\    integer j = 2;\n\    function integer f();\n\        f = i;\n\    endfunction\n\endclass`
                           ^ Ref -> **Subroutine** `f` in `A`  \n\\n\\n\---\n\\n\`function integer f();\n\    f = i;\n\endfunction`
 
     endfunction
@@ -1448,20 +1448,20 @@ module m6;
        ^^ Sym m6 : Definition
 
     A a = new;
-    ^ Ref -> **ClassType** `A`  \n\Resolved Type: `A`  \n\\n\\n\---\n\\n\`class A;\n\    integer i = 1;\n\    integer j = 2;\n\    function integer f();\n\        f = i;\n\    endfunction\n\endclass`
+    ^ Ref -> **ClassType** `A`  \n\Resolved Type: [`A`](<file:///tests/data/all.sv#L438,7>)  \n\\n\\n\---\n\\n\`class A;\n\    integer i = 1;\n\    integer j = 2;\n\    function integer f();\n\        f = i;\n\    endfunction\n\endclass`
       ^ Sym a : Variable
 
     A b1 = B::new;
-    ^ Ref -> **ClassType** `A`  \n\Resolved Type: `A`  \n\\n\\n\---\n\\n\`class A;\n\    integer i = 1;\n\    integer j = 2;\n\    function integer f();\n\        f = i;\n\    endfunction\n\endclass`
+    ^ Ref -> **ClassType** `A`  \n\Resolved Type: [`A`](<file:///tests/data/all.sv#L438,7>)  \n\\n\\n\---\n\\n\`class A;\n\    integer i = 1;\n\    integer j = 2;\n\    function integer f();\n\        f = i;\n\    endfunction\n\endclass`
       ^^ Sym b1 : Variable
-           ^ Ref -> **ClassType** `B`  \n\Resolved Type: `B`  \n\\n\\n\---\n\\n\`class B extends A;\n\    integer i = 2;\n\    function void f();\n\        i = j;\n\        super.i = super.j;\n\        j = super.f();\n\        j = this.super.f();\n\    endfunction\n\endclass`
+           ^ Ref -> **ClassType** `B`  \n\Resolved Type: [`B`](<file:///tests/data/all.sv#L446,7>)  \n\\n\\n\---\n\\n\`class B extends A;\n\    integer i = 2;\n\    function void f();\n\        i = j;\n\        super.i = super.j;\n\        j = super.f();\n\        j = this.super.f();\n\    endfunction\n\endclass`
 
     B b2 = new;
-    ^ Ref -> **ClassType** `B`  \n\Resolved Type: `B`  \n\\n\\n\---\n\\n\`class B extends A;\n\    integer i = 2;\n\    function void f();\n\        i = j;\n\        super.i = super.j;\n\        j = super.f();\n\        j = this.super.f();\n\    endfunction\n\endclass`
+    ^ Ref -> **ClassType** `B`  \n\Resolved Type: [`B`](<file:///tests/data/all.sv#L446,7>)  \n\\n\\n\---\n\\n\`class B extends A;\n\    integer i = 2;\n\    function void f();\n\        i = j;\n\        super.i = super.j;\n\        j = super.f();\n\        j = this.super.f();\n\    endfunction\n\endclass`
       ^^ Sym b2 : Variable
 
     C2 c = new;
-    ^^ Ref -> **ClassType** `C2`  \n\Resolved Type: `C2`  \n\\n\\n\---\n\\n\`class C2 extends B;\n\    function void g();\n\        f();\n\        i = j + C::j + A::f();\n\    endfunction\n\    rand bit [63:0] value;\n\    rand logic q;\n\    constraint value_c {\n\        value[63] dist {0 :/ 70, 1 :/ 30};\n\        value[0] == 1'b0;\n\        value[15:8] inside {\n\            8'h0,\n\            8'hF\n\        };\n\        solve value before q;\n\        soft value[3:1] > 1;\n\        q -> { value[4] == 0; }\n\        if (q) { foreach (value[b]) { value[b] == 0; } } else { disable soft value; }\n\    }\n\endclass`
+    ^^ Ref -> **ClassType** `C2`  \n\Resolved Type: [`C2`](<file:///tests/data/all.sv#L456,7>)  \n\\n\\n\---\n\\n\`class C2 extends B;\n\    function void g();\n\        f();\n\        i = j + C::j + A::f();\n\    endfunction\n\    rand bit [63:0] value;\n\    rand logic q;\n\    constraint value_c {\n\        value[63] dist {0 :/ 70, 1 :/ 30};\n\        value[0] == 1'b0;\n\        value[15:8] inside {\n\            8'h0,\n\            8'hF\n\        };\n\        solve value before q;\n\        soft value[3:1] > 1;\n\        q -> { value[4] == 0; }\n\        if (q) { foreach (value[b]) { value[b] == 0; } } else { disable soft value; }\n\    }\n\endclass`
        ^ Sym c : Variable
 
     int depth;
@@ -1469,23 +1469,23 @@ module m6;
 
     integer i = b1.f();
             ^ Sym i : Variable
-                ^^ Ref -> **Variable** `b1` in `m6`  \n\Type: `A`  \n\\n\\n\---\n\\n\`A b1 = B::new;`
+                ^^ Ref -> **Variable** `b1` in `m6`  \n\Type: [`A`](<file:///tests/data/all.sv#L438,7>)  \n\\n\\n\---\n\\n\`A b1 = B::new;`
                    ^ Ref -> **Subroutine** `f` in `A`  \n\\n\\n\---\n\\n\`function integer f();\n\    f = i;\n\endfunction`
 
     initial begin
 
         b2.f();
-        ^^ Ref -> **Variable** `b2` in `m6`  \n\Type: `B`  \n\\n\\n\---\n\\n\`B b2 = new;`
+        ^^ Ref -> **Variable** `b2` in `m6`  \n\Type: [`B`](<file:///tests/data/all.sv#L446,7>)  \n\\n\\n\---\n\\n\`B b2 = new;`
            ^ Ref -> **Subroutine** `f` in `B`  \n\\n\\n\---\n\\n\`function void f();\n\    i = j;\n\    super.i = super.j;\n\    j = super.f();\n\    j = this.super.f();\n\endfunction`
 
         a = b2;
-        ^ Ref -> **Variable** `a` in `m6`  \n\Type: `A`  \n\\n\\n\---\n\\n\`A a = new;`\n\\n\---\n\\n\Driven by initial at [all.sv:485:5](<file:///tests/data/all.sv#L485,5>)  \n\`initial begin\n\    b2.f();\n\    a = b2;\n\    c.i = c.j;\n\    randsequence(main)\n\        main : first second;\n\        first : add | dec := (1 + 1);\n\        second : repeat($urandom_range(2, 6)) first;\n\        add : if (depth < 2) first else second;\n\        dec : case (depth & 7)\n\            0 : add;\n\            1, 2 : dec;\n\            default : first;\n\        endcase;\n\        third : rand join first second;\n\        fourth(string s = "done") : { if (depth) break; };\n\    endsequence\n\end`\n\\n\---\n\\n\Driven by initializer at [all.sv:479:5](<file:///tests/data/all.sv#L479,5>)  \n\`A a = new;`
-            ^^ Ref -> **Variable** `b2` in `m6`  \n\Type: `B`  \n\\n\\n\---\n\\n\`B b2 = new;`
+        ^ Ref -> **Variable** `a` in `m6`  \n\Type: [`A`](<file:///tests/data/all.sv#L438,7>)  \n\\n\\n\---\n\\n\`A a = new;`\n\\n\---\n\\n\Driven by initial at [all.sv:485:5](<file:///tests/data/all.sv#L485,5>)  \n\`initial begin\n\    b2.f();\n\    a = b2;\n\    c.i = c.j;\n\    randsequence(main)\n\        main : first second;\n\        first : add | dec := (1 + 1);\n\        second : repeat($urandom_range(2, 6)) first;\n\        add : if (depth < 2) first else second;\n\        dec : case (depth & 7)\n\            0 : add;\n\            1, 2 : dec;\n\            default : first;\n\        endcase;\n\        third : rand join first second;\n\        fourth(string s = "done") : { if (depth) break; };\n\    endsequence\n\end`\n\\n\---\n\\n\Driven by initializer at [all.sv:479:5](<file:///tests/data/all.sv#L479,5>)  \n\`A a = new;`
+            ^^ Ref -> **Variable** `b2` in `m6`  \n\Type: [`B`](<file:///tests/data/all.sv#L446,7>)  \n\\n\\n\---\n\\n\`B b2 = new;`
 
         c.i = c.j;
-        ^ Ref -> **Variable** `c` in `m6`  \n\Type: `C2`  \n\\n\\n\---\n\\n\`C2 c = new;`
+        ^ Ref -> **Variable** `c` in `m6`  \n\Type: [`C2`](<file:///tests/data/all.sv#L456,7>)  \n\\n\\n\---\n\\n\`C2 c = new;`
           ^ Ref -> **ClassProperty** `i` in `B`  \n\Type: `integer`  \n\Width: `32`  \n\\n\\n\---\n\\n\`integer i = 2;`
-              ^ Ref -> **Variable** `c` in `m6`  \n\Type: `C2`  \n\\n\\n\---\n\\n\`C2 c = new;`
+              ^ Ref -> **Variable** `c` in `m6`  \n\Type: [`C2`](<file:///tests/data/all.sv#L456,7>)  \n\\n\\n\---\n\\n\`C2 c = new;`
                 ^ Ref -> **ClassProperty** `j` in `A`  \n\Type: `integer`  \n\Width: `32`  \n\\n\\n\---\n\\n\`integer j = 2;`
 
 
@@ -1699,19 +1699,19 @@ module m10;
              ^ Sym q : Variable
 
         automatic Packet p = new;
-                  ^^^^^^ Ref -> **ClassType** `Packet` in `m10`  \n\Resolved Type: `Packet`  \n\\n\\n\---\n\\n\`class Packet;\n\    rand int header;\n\    rand int len;\n\    rand byte payload[];\n\    int crc;\n\    constraint G { len > 1; payload.size == len ; }\n\    function void post_randomize; crc = payload.sum; endfunction\n\endclass`
+                  ^^^^^^ Ref -> **ClassType** `Packet` in `m10`  \n\Resolved Type: [`Packet`](<file:///tests/data/all.sv#L547,11>)  \n\\n\\n\---\n\\n\`class Packet;\n\    rand int header;\n\    rand int len;\n\    rand byte payload[];\n\    int crc;\n\    constraint G { len > 1; payload.size == len ; }\n\    function void post_randomize; crc = payload.sum; endfunction\n\endclass`
                          ^ Sym p : Variable
 
         {<< byte{ p.header, p.len, p.payload with [0 +: p.len], p.crc }} = stream;
-                  ^ Ref -> **Variable** `p` in `m10`  \n\Type: `Packet`  \n\\n\\n\---\n\\n\`automatic Packet p = new;`
+                  ^ Ref -> **Variable** `p` in `m10`  \n\Type: [`Packet`](<file:///tests/data/all.sv#L547,11>)  \n\\n\\n\---\n\\n\`automatic Packet p = new;`
                     ^^^^^^ Ref -> **ClassProperty** `header` in `m10.Packet`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int header;`
-                            ^ Ref -> **Variable** `p` in `m10`  \n\Type: `Packet`  \n\\n\\n\---\n\\n\`automatic Packet p = new;`
+                            ^ Ref -> **Variable** `p` in `m10`  \n\Type: [`Packet`](<file:///tests/data/all.sv#L547,11>)  \n\\n\\n\---\n\\n\`automatic Packet p = new;`
                               ^^^ Ref -> **ClassProperty** `len` in `m10.Packet`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int len;`
-                                   ^ Ref -> **Variable** `p` in `m10`  \n\Type: `Packet`  \n\\n\\n\---\n\\n\`automatic Packet p = new;`
+                                   ^ Ref -> **Variable** `p` in `m10`  \n\Type: [`Packet`](<file:///tests/data/all.sv#L547,11>)  \n\\n\\n\---\n\\n\`automatic Packet p = new;`
                                      ^^^^^^^ Ref -> **ClassProperty** `payload` in `m10.Packet`  \n\Type: `byte$[]`  \n\\n\\n\---\n\\n\`byte payload[];`
-                                                        ^ Ref -> **Variable** `p` in `m10`  \n\Type: `Packet`  \n\\n\\n\---\n\\n\`automatic Packet p = new;`
+                                                        ^ Ref -> **Variable** `p` in `m10`  \n\Type: [`Packet`](<file:///tests/data/all.sv#L547,11>)  \n\\n\\n\---\n\\n\`automatic Packet p = new;`
                                                           ^^^ Ref -> **ClassProperty** `len` in `m10.Packet`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int len;`
-                                                                ^ Ref -> **Variable** `p` in `m10`  \n\Type: `Packet`  \n\\n\\n\---\n\\n\`automatic Packet p = new;`
+                                                                ^ Ref -> **Variable** `p` in `m10`  \n\Type: [`Packet`](<file:///tests/data/all.sv#L547,11>)  \n\\n\\n\---\n\\n\`automatic Packet p = new;`
                                                                   ^^^ Ref -> **ClassProperty** `crc` in `m10.Packet`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int crc;`
                                                                            ^^^^^^ Ref -> **Variable** `stream` in `m10`  \n\Type: `byte$[$]`  \n\\n\\n\---\n\\n\`byte stream[$];`\n\\n\---\n\\n\Driven by initial at [all.sv:556:5](<file:///tests/data/all.sv#L556,5>)  \n\`initial begin\n\    byte q[$];\n\    automatic Packet p = new;\n\    {<< byte{ p.header, p.len, p.payload with [0 +: p.len], p.crc }} = stream;\n\    stream = stream[ $bits(p) / 8 : $ ];\n\end`
 
@@ -1719,7 +1719,7 @@ module m10;
         ^^^^^^ Ref -> **Variable** `stream` in `m10`  \n\Type: `byte$[$]`  \n\\n\\n\---\n\\n\`byte stream[$];`\n\\n\---\n\\n\Driven by initial at [all.sv:556:5](<file:///tests/data/all.sv#L556,5>)  \n\`initial begin\n\    byte q[$];\n\    automatic Packet p = new;\n\    {<< byte{ p.header, p.len, p.payload with [0 +: p.len], p.crc }} = stream;\n\    stream = stream[ $bits(p) / 8 : $ ];\n\end`
                  ^^^^^^ Ref -> **Variable** `stream` in `m10`  \n\Type: `byte$[$]`  \n\\n\\n\---\n\\n\`byte stream[$];`\n\\n\---\n\\n\Driven by initial at [all.sv:556:5](<file:///tests/data/all.sv#L556,5>)  \n\`initial begin\n\    byte q[$];\n\    automatic Packet p = new;\n\    {<< byte{ p.header, p.len, p.payload with [0 +: p.len], p.crc }} = stream;\n\    stream = stream[ $bits(p) / 8 : $ ];\n\end`
                          ^^^^^ Sym $bits : SystemName
-                               ^ Ref -> **Variable** `p` in `m10`  \n\Type: `Packet`  \n\\n\\n\---\n\\n\`automatic Packet p = new;`
+                               ^ Ref -> **Variable** `p` in `m10`  \n\Type: [`Packet`](<file:///tests/data/all.sv#L547,11>)  \n\\n\\n\---\n\\n\`automatic Packet p = new;`
 
     end
 

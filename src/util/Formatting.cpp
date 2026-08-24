@@ -492,16 +492,16 @@ std::string toCamelCase(std::string_view str) {
     return result;
 }
 
-template<bool ForHover>
-std::string getTypeStringImpl(const ast::Type& declType) {
+std::string getTypeString(const ast::Type& declType, TypeStringMode mode) {
     auto& type = unwrapErrorType(declType);
     if (type.isError()) {
         return "Incomplete type";
     }
 
     slang::ast::TypePrinter printer;
-    if constexpr (ForHover) {
-        printer.options.quoteChar = '`';
+    if (mode != TypeStringMode::Canonical) {
+        if (mode == TypeStringMode::FriendlyMarkdownQuoted)
+            printer.options.quoteChar = '`';
         printer.options.anonymousTypeStyle = ast::TypePrintingOptions::FriendlyName;
     }
     printer.options.elideScopeNames = true;
@@ -520,9 +520,6 @@ std::string getTypeStringImpl(const ast::Type& declType) {
     }
 }
 
-template std::string getTypeStringImpl<true>(const ast::Type& declType);
-template std::string getTypeStringImpl<false>(const ast::Type& declType);
-
 std::string portString(ast::ArgumentDirection dir) {
     switch (dir) {
         case ast::ArgumentDirection::In:
@@ -539,19 +536,14 @@ std::string portString(ast::ArgumentDirection dir) {
     return "unknown";
 }
 
-template<bool ForHover>
-std::string getTypeStringImpl(const ast::ValueSymbol& value) {
+std::string getTypeString(const ast::ValueSymbol& value, TypeStringMode mode) {
     const slang::ast::Type& decl = value.getType();
     auto port = value.getFirstPortBackref();
     if (port) {
-        return fmt::format("{} {}", portString(port->port->direction),
-                           getTypeStringImpl<ForHover>(decl));
+        return fmt::format("{} {}", portString(port->port->direction), getTypeString(decl, mode));
     }
-    return getTypeStringImpl<ForHover>(decl);
+    return getTypeString(decl, mode);
 }
-
-template std::string getTypeStringImpl<true>(const ast::ValueSymbol& value);
-template std::string getTypeStringImpl<false>(const ast::ValueSymbol& value);
 
 namespace {
 
