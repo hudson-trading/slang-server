@@ -32,7 +32,8 @@ struct SystemTaskDoc;
 
 namespace markup {
 class Document;
-}
+class Paragraph;
+} // namespace markup
 
 struct DefinitionInfo {
     struct SyntaxTarget {
@@ -44,14 +45,18 @@ struct DefinitionInfo {
         // Optional original source range; exists if it's behind a macro expansion.
         slang::SourceRange macroUsageRange = slang::SourceRange::NoLocation;
 
+        static SyntaxTarget fromNode(const slang::syntax::SyntaxNode* node,
+                                     slang::parsing::Token nameToken,
+                                     const slang::SourceManager& sourceManager);
+
         bool operator==(const SyntaxTarget& other) const {
             return node == other.node && nameToken.location() == other.nameToken.location() &&
                    macroUsageRange == other.macroUsageRange;
         }
 
-        /// Append the formatted code (with doc comments and macro usage) for this syntax to `doc`.
-        void renderCode(markup::Document& doc, const slang::SourceManager& sm,
-                        const Config::HoverConfig& hovers) const;
+        /// Append the formatted code and macro usage for this syntax to `paragraph`.
+        void renderCode(markup::Paragraph& paragraph, const slang::SourceManager& sm,
+                        bool rawDocComments) const;
 
         /// Goto-definition link pointing at the name token (or macro usage range, if applicable).
         std::vector<lsp::LocationLink> getDefinition(const slang::SourceManager& sm) const;

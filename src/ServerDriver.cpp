@@ -543,21 +543,10 @@ std::optional<DefinitionInfo> ServerDriver::getMacroDefinitionInfo(
     std::vector<DefinitionInfo::Target> targets;
     for (auto* macroDef : macroDefs) {
         auto nameToken = macroDef->name;
-        auto macroUsageRange = SourceRange::NoLocation;
         const bool isMacroGenerated = sm.isMacroLoc(nameToken.location());
-        if (isMacroGenerated) {
-            auto tokenRange = SourceRange(nameToken.location(),
-                                          nameToken.location() + nameToken.rawText().length());
-            auto expansionRange = sm.getFullyExpandedRange(tokenRange);
-            if (sm.getSourceText(expansionRange).empty()) {
-                ERROR("Couldn't get original range for macro {}", nameToken.valueText());
-            }
-            else {
-                macroUsageRange = expansionRange;
-            }
-        }
-
-        DefinitionInfo::SyntaxTarget syntaxTarget{macroDef, nameToken, macroUsageRange};
+        auto syntaxTarget = DefinitionInfo::SyntaxTarget::fromNode(macroDef, nameToken, sm);
+        if (isMacroGenerated && syntaxTarget.macroUsageRange == SourceRange::NoLocation)
+            ERROR("Couldn't get original range for macro {}", nameToken.valueText());
         DefinitionInfo::MacroTarget::Definition macroDefinition = syntaxTarget;
 
         const auto defPath = sm.getFullPath(nameToken.location().buffer());
@@ -806,20 +795,12 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
         }
         parsing::Token nameToken = foundNameToken ? *foundNameToken : symSyntax->getFirstToken();
 
-        auto macroUsageRange = SourceRange::NoLocation;
-        if (sm.isMacroLoc(nameToken.location())) {
-            auto tokenRange = SourceRange(nameToken.location(),
-                                          nameToken.location() + nameToken.rawText().length());
-            auto expansionRange = sm.getFullyExpandedRange(tokenRange);
-            if (sm.getSourceText(expansionRange).empty()) {
-                ERROR("Couldn't get original range for symbol {}", nameToken.valueText());
-            }
-            else {
-                macroUsageRange = expansionRange;
-            }
+        auto result = DefinitionInfo::SyntaxTarget::fromNode(symSyntax, nameToken, sm);
+        if (sm.isMacroLoc(nameToken.location()) &&
+            result.macroUsageRange == SourceRange::NoLocation) {
+            ERROR("Couldn't get original range for symbol {}", nameToken.valueText());
         }
-
-        return DefinitionInfo::SyntaxTarget{symSyntax, nameToken, macroUsageRange};
+        return result;
     };
 
     auto makeSymbolTarget = [&](const ast::Symbol* symbol,
