@@ -53,6 +53,16 @@ bool hasSourceLocation(const ast::Symbol& symbol) {
     return symbol.location && symbol.location != SourceLocation::NoLocation;
 }
 
+std::string getCompletionTypeString(const ast::Symbol& symbol, const ast::Type& type) {
+    if (type.isError()) {
+        if (auto* value = symbol.as_if<ast::ValueSymbol>()) {
+            if (auto result = getDeclaredTypeString(*value))
+                return std::move(*result);
+        }
+    }
+    return type.toString();
+}
+
 class CompletionSymbolFinder
     : public ast::ASTVisitor<CompletionSymbolFinder, ast::VisitFlags::Symbols> {
 public:
@@ -361,7 +371,9 @@ std::string getMemberCompletionDetail(const slang::ast::Symbol& symbol) {
     }
     else if (slang::ast::PortSymbol::isKind(symbol.kind)) {
         auto& port = symbol.as<slang::ast::PortSymbol>();
-        detailStr = portString(port.direction) + " " + port.getType().toString();
+        auto& typeSymbol = port.internalSymbol ? *port.internalSymbol : symbol;
+        detailStr = portString(port.direction) + " " +
+                    getCompletionTypeString(typeSymbol, port.getType());
     }
     else if (slang::ast::InstanceSymbol::isKind(symbol.kind)) {
         auto& defName = symbol.as<slang::ast::InstanceSymbol>().getDefinition().name;
@@ -401,7 +413,8 @@ lsp::CompletionItem MemberCompletionQuery::getHierarchicalCompletion(
     std::string_view documentUri, bool labelOnly, bool deferCallableEdit) {
 
     if (ast::FieldSymbol::isKind(symbol.kind)) {
-        auto detailStr = symbol.as<ast::FieldSymbol>().getType().toString();
+        auto& field = symbol.as<ast::FieldSymbol>();
+        auto detailStr = getCompletionTypeString(field, field.getType());
         auto valSym = parentSymbol.as_if<ast::ValueSymbol>();
         auto descStr = valSym ? valSym->getType().getLexicalPath() : parentSymbol.getLexicalPath();
         auto item = lsp::CompletionItem{
@@ -442,7 +455,7 @@ static void setSubroutineCompletionEdit(const slang::ast::SubroutineSymbol& subr
     toInsert.appendText("(");
     auto args = subroutine.getArguments();
     for (auto& arg : args) {
-        auto argType = arg->getDeclaredType()->getType().toString();
+        auto argType = getCompletionTypeString(*arg, arg->getType());
 
         // TODO: We should use textDocument/signatureHelp to show types and default values
         if (arg->getDefaultValue() && arg->getDefaultValue()->syntax) {

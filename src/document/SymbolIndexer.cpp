@@ -9,6 +9,7 @@
 #include "document/SymbolIndexer.h"
 
 #include "util/Logging.h"
+#include "util/SlangExtensions.h"
 #include <algorithm>
 
 #include "slang/ast/Scope.h"
@@ -371,7 +372,7 @@ void SymbolIndexer::handle(const slang::ast::TypeAliasType& value) {
         return;
     }
     indexSymbolName(value);
-    value.getDeclaredType()->getType().visit(*this);
+    unwrapErrorType(value.getDeclaredType()->getType()).visit(*this);
 }
 
 // These are not in the buffer, but should be visited

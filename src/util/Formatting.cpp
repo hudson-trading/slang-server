@@ -14,6 +14,7 @@
 
 #include "slang/ast/symbols/PortSymbols.h"
 #include "slang/ast/symbols/ValueSymbol.h"
+#include "slang/ast/types/DeclaredType.h"
 #include "slang/ast/types/Type.h"
 #include "slang/ast/types/TypePrinter.h"
 #include "slang/numeric/ConstantValue.h"
@@ -184,6 +185,23 @@ std::string detailFormat(const syntax::SyntaxNode& node) {
     squashSpaces(res);
     ltrim(res);
     return res;
+}
+
+std::optional<std::string> getDeclaredTypeString(const ast::ValueSymbol& value) {
+    auto declaredType = value.getDeclaredType();
+    auto* syntax = declaredType->getResolvedTypeSyntax();
+    if (!syntax)
+        return std::nullopt;
+
+    auto result = detailFormat(*syntax);
+    if (auto* dimensions = declaredType->getDimensionSyntax(); dimensions && !dimensions->empty()) {
+        result += " ";
+        for (auto* dimension : *dimensions)
+            result += detailFormat(*dimension);
+    }
+    if (result.empty())
+        return std::nullopt;
+    return result;
 }
 
 /// Copied from `Slang::SyntaxPrinter::printLeadingComments` with minor adjustments

@@ -141,12 +141,12 @@ interface bus_if #(
                   ^^^ Ref -> **Input Net** `clk` in `bus_if`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
 
         addr <= address;
-        ^^^^ Ref -> **Variable** `addr` in `bus_if`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`logic [ADDR_WIDTH-1:0] addr;`
-                ^^^^^^^ Ref -> **FormalArgument** `address` in `bus_if.write_data`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [ADDR_WIDTH-1:0] address`
+        ^^^^ Ref -> **Variable** `addr` in `bus_if`  \n\Declared Type: `logic [ADDR_WIDTH-1:0]`  \n\\n\\n\---\n\\n\`logic [ADDR_WIDTH-1:0] addr;`
+                ^^^^^^^ Ref -> **FormalArgument** `address` in `bus_if.write_data`  \n\Declared Type: `logic [ADDR_WIDTH-1:0]`  \n\\n\\n\---\n\\n\`input logic [ADDR_WIDTH-1:0] address`
 
         data <= write_data;
-        ^^^^ Ref -> **Variable** `data` in `bus_if`  \n\Type: [`Incomplete type`](<file:///tests/data/hdl_test.sv#L20,20>)  \n\\n\\n\---\n\\n\`data_t data;`
-                ^^^^^^^^^^ Ref -> **FormalArgument** `write_data` in `bus_if.write_data`  \n\Type: [`Incomplete type`](<file:///tests/data/hdl_test.sv#L20,20>)  \n\\n\\n\---\n\\n\`input data_t write_data`
+        ^^^^ Ref -> **Variable** `data` in `bus_if`  \n\Declared Type: [`data_t`](<file:///tests/data/hdl_test.sv#L20,20>)  \n\\n\\n\---\n\\n\`data_t data;`
+                ^^^^^^^^^^ Ref -> **FormalArgument** `write_data` in `bus_if.write_data`  \n\Declared Type: [`data_t`](<file:///tests/data/hdl_test.sv#L20,20>)  \n\\n\\n\---\n\\n\`input data_t write_data`
 
         write_enable <= 1'b1;
         ^^^^^^^^^^^^ Ref -> **Variable** `write_enable` in `bus_if`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic write_enable;`
@@ -181,8 +181,8 @@ interface bus_if #(
                   ^^^ Ref -> **Input Net** `clk` in `bus_if`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
 
         addr <= address;
-        ^^^^ Ref -> **Variable** `addr` in `bus_if`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`logic [ADDR_WIDTH-1:0] addr;`
-                ^^^^^^^ Ref -> **FormalArgument** `address` in `bus_if.read_data`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [ADDR_WIDTH-1:0] address`
+        ^^^^ Ref -> **Variable** `addr` in `bus_if`  \n\Declared Type: `logic [ADDR_WIDTH-1:0]`  \n\\n\\n\---\n\\n\`logic [ADDR_WIDTH-1:0] addr;`
+                ^^^^^^^ Ref -> **FormalArgument** `address` in `bus_if.read_data`  \n\Declared Type: `logic [ADDR_WIDTH-1:0]`  \n\\n\\n\---\n\\n\`input logic [ADDR_WIDTH-1:0] address`
 
         write_enable <= 1'b0;
         ^^^^^^^^^^^^ Ref -> **Variable** `write_enable` in `bus_if`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic write_enable;`
@@ -195,8 +195,8 @@ interface bus_if #(
                           ^^^^^ Ref -> **Variable** `ready` in `bus_if`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic ready;`
 
         read_data = data;
-        ^^^^^^^^^ Ref -> **FormalArgument** `read_data` in `bus_if.read_data`  \n\Type: [`Incomplete type`](<file:///tests/data/hdl_test.sv#L20,20>)  \n\\n\\n\---\n\\n\`output data_t read_data`
-                    ^^^^ Ref -> **Variable** `data` in `bus_if`  \n\Type: [`Incomplete type`](<file:///tests/data/hdl_test.sv#L20,20>)  \n\\n\\n\---\n\\n\`data_t data;`
+        ^^^^^^^^^ Ref -> **FormalArgument** `read_data` in `bus_if.read_data`  \n\Declared Type: [`data_t`](<file:///tests/data/hdl_test.sv#L20,20>)  \n\\n\\n\---\n\\n\`output data_t read_data`
+                    ^^^^ Ref -> **Variable** `data` in `bus_if`  \n\Declared Type: [`data_t`](<file:///tests/data/hdl_test.sv#L20,20>)  \n\\n\\n\---\n\\n\`data_t data;`
 
         valid <= 1'b0;
         ^^^^^ Ref -> **Variable** `valid` in `bus_if`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic valid;`
@@ -243,13 +243,13 @@ module Sub #(
             ^^^ Ref -> **Input Net** `rst` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
 
             data_out <= '0;
-            ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+            ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
 
         end else begin
 
             data_out <= data_in;
-            ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
-                        ^^^^^^^ Ref -> **Input Net** `data_in` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+            ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+                        ^^^^^^^ Ref -> **Input Net** `data_in` in `Sub`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
 
         end
 
@@ -523,7 +523,7 @@ module TestModule #(
                 data_out <= bus_follower.data[7:0]; // Convert to data_t size
                 ^^^^^^^^ Ref -> **Output Variable** `data_out` in `TestModule`  \n\Type: [`data_t (aka logic[7:0])`](<file:///tests/data/hdl_test.sv#L16,20>)  \n\Width: `8`  \n\\n\\n\---\n\\n\`output test_pkg::data_t data_out`
                             ^^^^^^^^^^^^ Ref -> **InterfacePort** `bus_follower` in `TestModule`  \n\\n\\n\---\n\\n\`bus_if.follower bus_follower`
-                                         ^^^^ Ref -> **ModportPort** `data` in `bus_if.follower`  \n\Type: [`Incomplete type`](<file:///tests/data/hdl_test.sv#L20,20>)  \n\\n\\n\---\n\\n\`input clk, rst, valid, addr, data, write_enable`\n\\n\---\n\\n\`data_t data;`
+                                         ^^^^ Ref -> **ModportPort** `data` in `bus_if.follower`  \n\Declared Type: [`data_t`](<file:///tests/data/hdl_test.sv#L20,20>)  \n\\n\\n\---\n\\n\`input clk, rst, valid, addr, data, write_enable`\n\\n\---\n\\n\`data_t data;`
 
             end
 
@@ -552,12 +552,12 @@ module TestModule #(
 
         bus_master.data <= state;
         ^^^^^^^^^^ Ref -> **InterfacePort** `bus_master` in `TestModule`  \n\\n\\n\---\n\\n\`bus_if.master bus_master`
-                   ^^^^ Ref -> **ModportPort** `data` in `bus_if.master`  \n\Type: [`Incomplete type`](<file:///tests/data/hdl_test.sv#L20,20>)  \n\\n\\n\---\n\\n\`output valid, addr, data, write_enable`\n\\n\---\n\\n\`data_t data;`
+                   ^^^^ Ref -> **ModportPort** `data` in `bus_if.master`  \n\Declared Type: [`data_t`](<file:///tests/data/hdl_test.sv#L20,20>)  \n\\n\\n\---\n\\n\`output valid, addr, data, write_enable`\n\\n\---\n\\n\`data_t data;`
                            ^^^^^ Ref -> **Variable** `state` in `TestModule`  \n\Type: [`Enum state_t (logic[1:0])`](<file:///tests/data/hdl_test.sv#L14,7>)  \n\Width: `2`  \n\\n\\n\---\n\\n\`test_pkg::state_t state, state_next;`\n\\n\---\n\\n\Driven by always_ff at [hdl_test.sv:132:5](<file:///tests/data/hdl_test.sv#L132,5>)  \n\`always_ff @(posedge clk) begin\n\    if (rst) begin\n\        state   <= test_pkg::STATE_A;\n\        counter <= '0;\n\    end else begin\n\        state   <= state_next;\n\        counter <= counter + 1'b1;\n\        if (thing) begin\n\            $display("Do this thing");\n\        end\n\    end\n\end`
 
         bus_master.data <= pkt_array[0].id;
         ^^^^^^^^^^ Ref -> **InterfacePort** `bus_master` in `TestModule`  \n\\n\\n\---\n\\n\`bus_if.master bus_master`
-                   ^^^^ Ref -> **ModportPort** `data` in `bus_if.master`  \n\Type: [`Incomplete type`](<file:///tests/data/hdl_test.sv#L20,20>)  \n\\n\\n\---\n\\n\`output valid, addr, data, write_enable`\n\\n\---\n\\n\`data_t data;`
+                   ^^^^ Ref -> **ModportPort** `data` in `bus_if.master`  \n\Declared Type: [`data_t`](<file:///tests/data/hdl_test.sv#L20,20>)  \n\\n\\n\---\n\\n\`output valid, addr, data, write_enable`\n\\n\---\n\\n\`data_t data;`
                            ^^^^^^^^^ Ref -> **Input Net** `pkt_array` in `TestModule`  \n\Type: `packet_t$[2]`  \n\\n\\n\---\n\\n\`input test_pkg::packet_t pkt_array[2]`
                                         ^^ Ref -> **Field** `id` in `test_pkg::packet_t`  \n\Type: [`id_t (aka logic[31:0])`](<file:///tests/data/hdl_test.sv#L3,31>)  \n\Width: `32`  \n\\n\\n\---\n\\n\`id_t id;`
 
@@ -624,12 +624,12 @@ module NoDefaults #(
              ^^^ Ref -> **Input Net** `rst` in `NoDefaults`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
 
         .data_in(data_in),
-         ^^^^^^^ Ref -> **Input Net** `data_in` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`\n\\n\---\n\\n\Driven via port from `Sub sub_inst` at [hdl_test.sv:75:5](<file:///tests/data/hdl_test.sv#L75,5>)  \n\`input logic [WIDTH-1:0] data_in`
-                 ^^^^^^^ Ref -> **Input Net** `data_in` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+         ^^^^^^^ Ref -> **Input Net** `data_in` in `Sub`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`\n\\n\---\n\\n\Driven via port from `Sub sub_inst` at [hdl_test.sv:75:5](<file:///tests/data/hdl_test.sv#L75,5>)  \n\`input logic [WIDTH-1:0] data_in`
+                 ^^^^^^^ Ref -> **Input Net** `data_in` in `NoDefaults`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
 
         .data_out(data_out)
-         ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
-                  ^^^^^^^^ Ref -> **Output Variable** `data_out` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+         ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+                  ^^^^^^^^ Ref -> **Output Variable** `data_out` in `NoDefaults`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
 
     );
 
@@ -652,11 +652,11 @@ module NoDefaults #(
              ^^^ Ref -> **Input Net** `rst` in `NoDefaults`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
 
         .data_in(data_in),
-         ^^^^^^^ Ref -> **Input Net** `data_in` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
-                 ^^^^^^^ Ref -> **Input Net** `data_in` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+         ^^^^^^^ Ref -> **Input Net** `data_in` in `Sub`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+                 ^^^^^^^ Ref -> **Input Net** `data_in` in `NoDefaults`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
 
         .data_out()
-         ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+         ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
 
     );
 
@@ -669,11 +669,11 @@ module NoDefaults #(
                       ^^^^^^^^^^^^^^ Sym test_2d_access : Variable
 
     assign test_2d_access = sub_2d[0][1].data_out + sub_2d[1][2].data_out;
-           ^^^^^^^^^^^^^^ Ref -> **Variable** `test_2d_access` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\Test 2D instance array access  \n\  \n\\n\\n\---\n\\n\`logic [WIDTH-1:0] test_2d_access;`
+           ^^^^^^^^^^^^^^ Ref -> **Variable** `test_2d_access` in `NoDefaults`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\\n\\n\---\n\\n\Test 2D instance array access  \n\  \n\\n\\n\---\n\\n\`logic [WIDTH-1:0] test_2d_access;`
                             ^^^^^^ Ref -> `Sub[2][3]` `sub_2d` in `NoDefaults`  \n\\n\\n\---\n\\n\2D instance array  \n\  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(WIDTH)) sub_2d [2][3] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(data_in),\n\    .data_out()\n\);`
-                                         ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+                                         ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
                                                     ^^^^^^ Ref -> `Sub[2][3]` `sub_2d` in `NoDefaults`  \n\\n\\n\---\n\\n\2D instance array  \n\  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(WIDTH)) sub_2d [2][3] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(data_in),\n\    .data_out()\n\);`
-                                                                 ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+                                                                 ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
 
 
 
@@ -701,11 +701,11 @@ module NoDefaults #(
                  ^^^ Ref -> **Input Net** `rst` in `NoDefaults`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
 
             .data_in(data_in),
-             ^^^^^^^ Ref -> **Input Net** `data_in` in `Sub`  \n\Type: Incomplete type  \n\Generated signals: `3`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
-                     ^^^^^^^ Ref -> **Input Net** `data_in` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+             ^^^^^^^ Ref -> **Input Net** `data_in` in `Sub`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\Generated signals: `3`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+                     ^^^^^^^ Ref -> **Input Net** `data_in` in `NoDefaults`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
 
             .data_out()
-             ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\Generated signals: `3`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+             ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\Generated signals: `3`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
 
         );
 
@@ -720,10 +720,10 @@ module NoDefaults #(
                       ^^^^^^^^^^^^^^^^^^^^^ Sym test_gen_array_access : Variable
 
     assign test_gen_array_access = gen_loop_2[0].gen_sub_array[2].data_out;
-           ^^^^^^^^^^^^^^^^^^^^^ Ref -> **Variable** `test_gen_array_access` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\Test instance array inside generate scope access  \n\  \n\\n\\n\---\n\\n\`logic [WIDTH-1:0] test_gen_array_access;`
+           ^^^^^^^^^^^^^^^^^^^^^ Ref -> **Variable** `test_gen_array_access` in `NoDefaults`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\\n\\n\---\n\\n\Test instance array inside generate scope access  \n\  \n\\n\\n\---\n\\n\`logic [WIDTH-1:0] test_gen_array_access;`
                                    ^^^^^^^^^^ Ref -> **GenerateBlockArray** `gen_loop_2` in `NoDefaults`  \n\\n\\n\---\n\\n\`for(j = 0; j < 3; j++) begin : gen_loop_2\n\    Sub #(.WIDTH(WIDTH)) gen_sub_array [4] (\n\        .clk(clk),\n\        .rst(rst),\n\        .data_in(data_in),\n\        .data_out()\n\    );\n\end`
                                                  ^^^^^^^^^^^^^ Ref -> `Sub[4]` `gen_sub_array` in `NoDefaults.gen_loop_2`  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(WIDTH)) gen_sub_array [4] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(data_in),\n\    .data_out()\n\);`
-                                                                  ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+                                                                  ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
 
 
 
@@ -756,12 +756,12 @@ module NoDefaults #(
                  ^^^ Ref -> **Input Net** `rst` in `NoDefaults`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
 
             .data_in(data_in),
-             ^^^^^^^ Ref -> **Input Net** `data_in` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
-                     ^^^^^^^ Ref -> **Input Net** `data_in` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+             ^^^^^^^ Ref -> **Input Net** `data_in` in `Sub`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+                     ^^^^^^^ Ref -> **Input Net** `data_in` in `NoDefaults`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
 
             .data_out(data_out)
-             ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
-                      ^^^^^^^^ Ref -> **Output Variable** `data_out` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+             ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+                      ^^^^^^^^ Ref -> **Output Variable** `data_out` in `NoDefaults`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
 
         );
 
@@ -792,12 +792,12 @@ module NoDefaults #(
                  ^^^ Ref -> **Input Net** `rst` in `NoDefaults`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
 
             .data_in(data_in),
-             ^^^^^^^ Ref -> **Input Net** `data_in` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
-                     ^^^^^^^ Ref -> **Input Net** `data_in` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+             ^^^^^^^ Ref -> **Input Net** `data_in` in `Sub`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+                     ^^^^^^^ Ref -> **Input Net** `data_in` in `NoDefaults`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
 
             .data_out(data_out)
-             ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
-                      ^^^^^^^^ Ref -> **Output Variable** `data_out` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+             ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+                      ^^^^^^^^ Ref -> **Output Variable** `data_out` in `NoDefaults`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
 
         );
 
@@ -823,12 +823,12 @@ module NoDefaults #(
                  ^^^ Ref -> **Input Net** `rst` in `NoDefaults`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
 
             .data_in(data_in),
-             ^^^^^^^ Ref -> **Input Net** `data_in` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
-                     ^^^^^^^ Ref -> **Input Net** `data_in` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+             ^^^^^^^ Ref -> **Input Net** `data_in` in `Sub`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+                     ^^^^^^^ Ref -> **Input Net** `data_in` in `NoDefaults`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
 
             .data_out(data_out)
-             ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
-                      ^^^^^^^^ Ref -> **Output Variable** `data_out` in `NoDefaults`  \n\Type: Incomplete type  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+             ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+                      ^^^^^^^^ Ref -> **Output Variable** `data_out` in `NoDefaults`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
 
         );
 
