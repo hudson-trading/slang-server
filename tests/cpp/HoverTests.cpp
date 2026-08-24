@@ -82,6 +82,23 @@ endmodule
           doc.before("`DEFINE_DEFAULT(FEATURE_ENABLE").getPosition());
 }
 
+TEST_CASE("HoverLinksUseFriendlyAnonymousTypeNames") {
+    ServerHarness server;
+    auto doc = server.openFile("anonymous_type.sv", R"(
+module top;
+    struct { logic member; } value;
+    initial value.member = 1;
+endmodule
+)");
+
+    auto hover = doc.getHoverAt(doc.before("value.member").m_offset);
+    REQUIRE(hover);
+    auto content = rfl::get<lsp::MarkupContent>(hover->contents).value;
+    CAPTURE(content);
+    CHECK(content.find("Type: [`UnpackedStruct struct") != std::string::npos);
+    CHECK(content.find("s$") == std::string::npos);
+}
+
 TEST_CASE("HoverDriversGeneratedByMacroUseExpansionLocation") {
     ServerHarness server;
 

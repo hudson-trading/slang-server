@@ -303,7 +303,7 @@ module test;
     // Alternative implementation without memory_module
 
     test_struct my_struct;
-    ^^^^^^^^^^^ Ref -> **TypeAlias** `test_struct` in `test`  \n\Resolved Type: UnpackedStruct `test_struct`  \n\\n\\n\---\n\\n\Basic struct for testing member access  \n\  \n\\n\\n\---\n\\n\`typedef struct {\n\    int i;\n\    logic [7:0] data;\n\} test_struct;`
+    ^^^^^^^^^^^ Ref -> **TypeAlias** `test_struct` in `test`  \n\Resolved Type: [`UnpackedStruct test_struct`](<file:///tests/data/macro_test/macros.svh#L46,7>)  \n\\n\\n\---\n\\n\Basic struct for testing member access  \n\  \n\\n\\n\---\n\\n\`typedef struct {\n\    int i;\n\    logic [7:0] data;\n\} test_struct;`
                 ^^^^^^^^^ Sym my_struct : Variable
 
 `endif

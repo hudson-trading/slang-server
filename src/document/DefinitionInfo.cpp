@@ -132,7 +132,7 @@ void renderSymbolHeaderName(markup::Paragraph& infoPg, const ast::Symbol& symbol
     infoPg.appendBold(toString(symbol.kind)).appendCode(symbol.name);
 }
 
-void appendSourceLink(markup::Paragraph& paragraph, SourceLocation location,
+bool appendSourceLink(markup::Paragraph& paragraph, SourceLocation location,
                       const SourceManager& sourceManager, std::string_view label = {});
 
 struct IncompleteSubtype {
@@ -203,12 +203,16 @@ void renderIncompleteSubtypes(markup::Paragraph& infoPg, const ast::Type& type,
     infoPg.newLine();
 }
 
-void renderSymbolType(markup::Paragraph& infoPg, const ast::Symbol& symbol) {
+void renderSymbolType(markup::Paragraph& infoPg, const ast::Symbol& symbol,
+                      const SourceManager& sourceManager) {
     if (ast::ValueSymbol::isKind(symbol.kind) && symbol.kind != ast::SymbolKind::EnumValue) {
         const auto& valSym = symbol.as<ast::ValueSymbol>();
         const auto& type = valSym.getType();
-        const auto typeStr = getHoverTypeString(type);
-        infoPg.appendText("Type: ").appendText(typeStr).newLine();
+        infoPg.appendText("Type: ");
+        if (!appendSourceLink(infoPg, type.location, sourceManager,
+                              getTypeString(type, TypeStringMode::Friendly)))
+            infoPg.appendText(getTypeString(type, TypeStringMode::FriendlyMarkdownQuoted));
+        infoPg.newLine();
         if (!ast::ParameterSymbol::isKind(symbol.kind) && !type.isError() &&
             type.getBitWidth() > 1) {
             infoPg.appendText("Width: ")
@@ -364,15 +368,15 @@ const syntax::SyntaxNode* getDriverDisplayNode(const analysis::ValueDriver& driv
     return &selectDisplayNode(*node);
 }
 
-void appendSourceLink(markup::Paragraph& paragraph, SourceLocation location,
+bool appendSourceLink(markup::Paragraph& paragraph, SourceLocation location,
                       const SourceManager& sourceManager, std::string_view label) {
     const auto originalLoc = sourceManager.getFullyOriginalLoc(location);
     if (!sourceManager.isFileLoc(originalLoc))
-        return;
+        return false;
 
     const auto& path = sourceManager.getFullPath(originalLoc.buffer());
     if (path.empty())
-        return;
+        return false;
 
     const auto line = sourceManager.getRawLineNumber(originalLoc);
     const auto column = sourceManager.getColumnNumber(originalLoc);
@@ -383,6 +387,7 @@ void appendSourceLink(markup::Paragraph& paragraph, SourceLocation location,
     if (label.empty())
         paragraph.appendText(" at ");
     paragraph.appendText(fmt::format("[{}](<{}>)", linkLabel, target));
+    return true;
 }
 
 void appendSyntaxTargets(markup::Document& doc,
@@ -518,7 +523,9 @@ void renderSymbolValue(markup::Paragraph& infoPg, const ast::Symbol& symbol,
                        const SourceManager& sourceManager) {
     auto appendTypeParameterValue = [&](const ast::Type& type) {
         if (!type.isError()) {
-            infoPg.appendText("Value: ").appendText(getHoverTypeString(type)).newLine();
+            infoPg.appendText("Value: ")
+                .appendText(getTypeString(type, TypeStringMode::FriendlyMarkdownQuoted))
+                .newLine();
         }
     };
 
@@ -544,8 +551,11 @@ void renderSymbolValue(markup::Paragraph& infoPg, const ast::Symbol& symbol,
     else if (ast::Type::isKind(symbol.kind)) {
         auto& type = symbol.as<ast::Type>();
         if (!unwrapErrorType(type).isError()) {
-            auto typeString = getHoverTypeString(type);
-            infoPg.appendText("Resolved Type: ").appendText(typeString).newLine();
+            infoPg.appendText("Resolved Type: ");
+            if (!appendSourceLink(infoPg, type.location, sourceManager,
+                                  getTypeString(type, TypeStringMode::Friendly)))
+                infoPg.appendText(getTypeString(type, TypeStringMode::FriendlyMarkdownQuoted));
+            infoPg.newLine();
             if (type.isError()) {
                 renderIncompleteSubtypes(infoPg, type, sourceManager);
             }
@@ -627,7 +637,7 @@ RenderedSymbolHover renderSymbolHover(const DefinitionInfo::SymbolTarget& target
     if (!label.empty())
         result.header.appendBold(label);
     renderSymbolHeader(result.header, *target.symbol);
-    renderSymbolType(result.type, *target.symbol);
+    renderSymbolType(result.type, *target.symbol, sm);
     if (target.generatedSignalCount > 1) {
         result.generatedSignals.appendText("Generated signals: ")
             .appendCode(fmt::format("{}", target.generatedSignalCount))
@@ -727,7 +737,7 @@ std::optional<lsp::MarkupContent> renderElaboratedParameterSummary(
     auto kindOverride = !genvar && isGenvar ? "Genvar" : "";
     renderSymbolHeader(header, genvar ? *genvar->symbol : *parameters.front()->symbol,
                        kindOverride);
-    renderSymbolType(header, *parameters.front()->symbol);
+    renderSymbolType(header, *parameters.front()->symbol, sm);
     if (values.size() == 1) {
         header.appendText("Value: ").appendCode(formatConstantValue(*values.front()));
     }
@@ -775,7 +785,7 @@ std::optional<lsp::MarkupContent> renderElaboratedParameterValues(
 
     markup::Document result;
     markup::Paragraph sharedType;
-    renderSymbolType(sharedType, *parameterTargets.front()->symbol);
+    renderSymbolType(sharedType, *parameterTargets.front()->symbol, sm);
     std::vector<const ConstantValue*> renderedValues;
     for (auto* target : parameterTargets) {
         const auto& value = target->symbol->as<ast::ParameterSymbol>().getValue();

@@ -84,29 +84,21 @@ std::string toLowerCase(std::string_view str);
 /// For string values, shows escaped invalid UTF-8 characters
 std::string formatConstantValue(const slang::ConstantValue& value);
 
+enum class TypeStringMode {
+    /// Uses Slang's canonical type spelling without Markdown quoting.
+    Canonical,
+    /// Uses Slang's friendly type spelling without Markdown quoting.
+    Friendly,
+    /// Uses Slang's friendly type spelling and Markdown-quotes type names.
+    FriendlyMarkdownQuoted
+};
+
 // Print the canonical type nicely, if it's a type alias
-template<bool isMarkdown>
-std::string getTypeStringImpl(const ast::Type& type);
+std::string getTypeString(const ast::Type& type, TypeStringMode mode = TypeStringMode::Canonical);
 
 // Print a type of a value symbol nicely, including the canonical type and port direction if
 // applicable
-template<bool isMarkdown>
-std::string getTypeStringImpl(const ast::ValueSymbol& value);
-
-// Plain text versions
-inline std::string getTypeString(const ast::Type& type) {
-    return getTypeStringImpl<false>(type);
-}
-inline std::string getTypeString(const ast::ValueSymbol& value) {
-    return getTypeStringImpl<false>(value);
-}
-
-// Hover/Markdown versions
-inline std::string getHoverTypeString(const ast::Type& type) {
-    return getTypeStringImpl<true>(type);
-}
-inline std::string getHoverTypeString(const ast::ValueSymbol& value) {
-    return getTypeStringImpl<true>(value);
-}
+std::string getTypeString(const ast::ValueSymbol& value,
+                          TypeStringMode mode = TypeStringMode::Canonical);
 
 } // namespace server
