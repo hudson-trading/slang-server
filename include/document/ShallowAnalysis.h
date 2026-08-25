@@ -168,8 +168,8 @@ public:
     /// @param targetLocation The source location of the target symbol
     /// @param targetName The name of the symbol to match
     void addLocalReferences(std::vector<lsp::Location>& references,
-                            slang::SourceLocation targetLocation,
-                            std::string_view targetName) const;
+                            slang::SourceLocation targetLocation, std::string_view targetName,
+                            bool excludeEndBlockClauses = false) const;
 
     /// @brief Runs analysis on the shallow compilation and returns diagnostics
     /// @return The analysis diagnostics (owned by internal AnalysisManager)

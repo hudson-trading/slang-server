@@ -129,7 +129,8 @@ public:
     std::optional<std::vector<lsp::Location>> getDocReferences(const URI& uri,
                                                                const lsp::Position& position,
                                                                bool includeDeclaration,
-                                                               const lsp::RequestContext& ctx = {});
+                                                               const lsp::RequestContext& ctx = {},
+                                                               bool excludeEndBlockClauses = false);
 
     /// @brief Renames a symbol in a document
     /// @param uri The URI of the document

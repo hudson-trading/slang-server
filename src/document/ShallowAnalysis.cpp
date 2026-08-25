@@ -914,8 +914,8 @@ std::vector<lsp::InlayHint> ShallowAnalysis::getInlayHints(lsp::Range range,
 }
 
 void ShallowAnalysis::addLocalReferences(std::vector<lsp::Location>& references,
-                                         SourceLocation targetLocation,
-                                         std::string_view targetName) const {
+                                         SourceLocation targetLocation, std::string_view targetName,
+                                         bool excludeEndBlockClauses) const {
     // Get the token and symbol at the target location (may be in a different buffer)
 
     auto it = syntaxes.collected.begin();
@@ -969,7 +969,8 @@ void ShallowAnalysis::addLocalReferences(std::vector<lsp::Location>& references,
         auto* tokenParent = syntaxes.getTokenParent(token);
         auto parentKind = tokenParent && tokenParent->parent ? tokenParent->parent->kind
                                                              : syntax::SyntaxKind::Unknown;
-        if (tokenParent && tokenParent->kind == syntax::SyntaxKind::NamedBlockClause &&
+        if (excludeEndBlockClauses && tokenParent &&
+            tokenParent->kind == syntax::SyntaxKind::NamedBlockClause &&
             parentKind != syntax::SyntaxKind::SequentialBlockStatement &&
             parentKind != syntax::SyntaxKind::ParallelBlockStatement &&
             parentKind != syntax::SyntaxKind::GenerateBlock) {

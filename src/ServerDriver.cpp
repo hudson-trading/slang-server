@@ -1027,7 +1027,7 @@ void ServerDriver::addMemberReferences(std::vector<lsp::Location>& references,
 
 std::optional<std::vector<lsp::Location>> ServerDriver::getDocReferences(
     const URI& srcUri, const lsp::Position& position, bool includeDeclaration,
-    const lsp::RequestContext& ctx) {
+    const lsp::RequestContext& ctx, bool excludeEndBlockClauses) {
     ctx.throwIfCancelled("before finding references");
     auto doc = getDocument(srcUri);
     if (!doc) {
@@ -1149,7 +1149,8 @@ std::optional<std::vector<lsp::Location>> ServerDriver::getDocReferences(
         // Add refs in declaration file, and remove declaration if requested
         if (targetDoc) {
             auto targetAnalysis = targetDoc->getAnalysis(false, ctx);
-            targetAnalysis->addLocalReferences(references, targetSymbol->location, targetName);
+            targetAnalysis->addLocalReferences(references, targetSymbol->location, targetName,
+                                               excludeEndBlockClauses);
             if (!includeDeclaration) {
                 auto targetLspLoc = lsp::Location{
                     .uri = URI::fromFile(sm.getFullPath(targetLoc.buffer())),
@@ -1211,7 +1212,7 @@ std::optional<std::vector<lsp::Location>> ServerDriver::getDocReferences(
                 }
                 else if (targetLoc.buffer() != target.analysisBuffer) {
                     target.analysis->addLocalReferences(references, targetSymbol->location,
-                                                        targetName);
+                                                        targetName, excludeEndBlockClauses);
                 }
             }
         }

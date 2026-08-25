@@ -859,7 +859,8 @@ std::optional<std::vector<lsp::InlayHint>> SlangServer::getDocInlayHint(
 std::optional<std::vector<lsp::Location>> SlangServer::getDocReferences(
     const lsp::ReferenceParams& params, lsp::RequestContext ctx) {
     auto references = m_driver->getDocReferences(params.textDocument.uri, params.position,
-                                                 params.context.includeDeclaration, ctx);
+                                                 params.context.includeDeclaration, ctx,
+                                                 /* excludeEndBlockClauses */ true);
     auto doc = m_driver->getDocument(params.textDocument.uri);
     ctx.info("Found {} references for {}", references ? references->size() : 0,
              doc ? doc->getWsRelativePath() : params.textDocument.uri.getPath());
