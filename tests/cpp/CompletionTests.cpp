@@ -1136,6 +1136,10 @@ TEST_CASE("HierarchicalStructCompletionWithUnresolvedWidth") {
 
     auto rootMembers = doc.after("partial_value.").getCompletions(".");
     CHECK(findCompletion(rootMembers, "middle") != rootMembers.end());
+    CHECK(findCompletion(rootMembers, "middle.leaf") != rootMembers.end());
+    CHECK(findCompletion(rootMembers, "middle.leaf.known") != rootMembers.end());
+    CHECK(findCompletion(rootMembers, "middle.leaf.variable_width") != rootMembers.end());
+    CHECK(findCompletion(rootMembers, "middle.middle_known") != rootMembers.end());
     CHECK(findCompletion(rootMembers, "root_known") != rootMembers.end());
 
     auto middleMembers = doc.after("partial_value.middle.").getCompletions(".");
@@ -1611,6 +1615,50 @@ TEST_CASE("HierarchicalStructCompletion") {
     testCompletion("complex_struct.inner.");
     testCompletion("very_complex_struct.level1.");
     testCompletion("very_complex_struct.level1.inner.");
+}
+
+TEST_CASE("HierarchicalStructCompletionDoesNotFlattenUnions") {
+    ServerHarness server("repo1");
+
+    auto doc = server.openFile("struct_union_completion.sv", R"(
+    typedef struct {
+        logic leaf;
+    } inner_t;
+
+    typedef union {
+        inner_t inner;
+        logic raw;
+    } choice_t;
+
+    typedef struct {
+        inner_t nested;
+        choice_t choice;
+    } outer_t;
+
+    module struct_union_completion;
+        outer_t value;
+        choice_t choice;
+
+        initial begin
+            value.;
+            choice.;
+        end
+    endmodule
+    )");
+
+    auto hasLabel = [](const auto& items, std::string_view label) {
+        return std::ranges::any_of(items, [&](const CompletionHandle& item) {
+            return item.m_item.label == label;
+        });
+    };
+
+    auto structCompletions = doc.after("value.").getCompletions(".");
+    CHECK(hasLabel(structCompletions, "nested.leaf"));
+    CHECK_FALSE(hasLabel(structCompletions, "choice.inner"));
+
+    auto unionCompletions = doc.after("choice.").getCompletions(".");
+    CHECK(hasLabel(unionCompletions, "inner"));
+    CHECK_FALSE(hasLabel(unionCompletions, "inner.leaf"));
 }
 
 TEST_CASE("ArrayOfStructsCompletion") {

@@ -110,6 +110,84 @@
         }
       },
       {
+        "label": "inner.addr",
+        "labelDetails": {
+          "detail": " logic[7:0]",
+          "description": "simple_struct_t"
+        },
+        "kind": "Property",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic [7:0] addr;\n````"
+        },
+        "filterText": "inner.addr",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 27,
+              "character": 27
+            },
+            "end": {
+              "line": 27,
+              "character": 27
+            }
+          },
+          "newText": "inner.addr"
+        }
+      },
+      {
+        "label": "inner.data",
+        "labelDetails": {
+          "detail": " logic[31:0]",
+          "description": "simple_struct_t"
+        },
+        "kind": "Property",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic [31:0] data;\n````"
+        },
+        "filterText": "inner.data",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 27,
+              "character": 27
+            },
+            "end": {
+              "line": 27,
+              "character": 27
+            }
+          },
+          "newText": "inner.data"
+        }
+      },
+      {
+        "label": "inner.valid",
+        "labelDetails": {
+          "detail": " logic",
+          "description": "simple_struct_t"
+        },
+        "kind": "Property",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic valid;\n````"
+        },
+        "filterText": "inner.valid",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 27,
+              "character": 27
+            },
+            "end": {
+              "line": 27,
+              "character": 27
+            }
+          },
+          "newText": "inner.valid"
+        }
+      },
+      {
         "label": "ready",
         "labelDetails": {
           "detail": " logic",
@@ -242,6 +320,162 @@
           },
           "newText": "level1"
         }
+      },
+      {
+        "label": "level1.inner",
+        "labelDetails": {
+          "detail": " simple_struct_t",
+          "description": "nested_struct_t"
+        },
+        "kind": "Property",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nsimple_struct_t inner;\n````"
+        },
+        "filterText": "level1.inner",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 29,
+              "character": 32
+            },
+            "end": {
+              "line": 29,
+              "character": 32
+            }
+          },
+          "newText": "level1.inner"
+        }
+      },
+      {
+        "label": "level1.inner.addr",
+        "labelDetails": {
+          "detail": " logic[7:0]",
+          "description": "simple_struct_t"
+        },
+        "kind": "Property",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic [7:0] addr;\n````"
+        },
+        "filterText": "level1.inner.addr",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 29,
+              "character": 32
+            },
+            "end": {
+              "line": 29,
+              "character": 32
+            }
+          },
+          "newText": "level1.inner.addr"
+        }
+      },
+      {
+        "label": "level1.inner.data",
+        "labelDetails": {
+          "detail": " logic[31:0]",
+          "description": "simple_struct_t"
+        },
+        "kind": "Property",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic [31:0] data;\n````"
+        },
+        "filterText": "level1.inner.data",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 29,
+              "character": 32
+            },
+            "end": {
+              "line": 29,
+              "character": 32
+            }
+          },
+          "newText": "level1.inner.data"
+        }
+      },
+      {
+        "label": "level1.inner.valid",
+        "labelDetails": {
+          "detail": " logic",
+          "description": "simple_struct_t"
+        },
+        "kind": "Property",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic valid;\n````"
+        },
+        "filterText": "level1.inner.valid",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 29,
+              "character": 32
+            },
+            "end": {
+              "line": 29,
+              "character": 32
+            }
+          },
+          "newText": "level1.inner.valid"
+        }
+      },
+      {
+        "label": "level1.ready",
+        "labelDetails": {
+          "detail": " logic",
+          "description": "nested_struct_t"
+        },
+        "kind": "Property",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic ready;\n````"
+        },
+        "filterText": "level1.ready",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 29,
+              "character": 32
+            },
+            "end": {
+              "line": 29,
+              "character": 32
+            }
+          },
+          "newText": "level1.ready"
+        }
+      },
+      {
+        "label": "level1.tag",
+        "labelDetails": {
+          "detail": " logic[15:0]",
+          "description": "nested_struct_t"
+        },
+        "kind": "Property",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic [15:0] tag;\n````"
+        },
+        "filterText": "level1.tag",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 29,
+              "character": 32
+            },
+            "end": {
+              "line": 29,
+              "character": 32
+            }
+          },
+          "newText": "level1.tag"
+        }
       }
     ]
   },
@@ -353,6 +587,84 @@
             }
           },
           "newText": "inner"
+        }
+      },
+      {
+        "label": "inner.addr",
+        "labelDetails": {
+          "detail": " logic[7:0]",
+          "description": "simple_struct_t"
+        },
+        "kind": "Property",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic [7:0] addr;\n````"
+        },
+        "filterText": "inner.addr",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 33,
+              "character": 39
+            },
+            "end": {
+              "line": 33,
+              "character": 39
+            }
+          },
+          "newText": "inner.addr"
+        }
+      },
+      {
+        "label": "inner.data",
+        "labelDetails": {
+          "detail": " logic[31:0]",
+          "description": "simple_struct_t"
+        },
+        "kind": "Property",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic [31:0] data;\n````"
+        },
+        "filterText": "inner.data",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 33,
+              "character": 39
+            },
+            "end": {
+              "line": 33,
+              "character": 39
+            }
+          },
+          "newText": "inner.data"
+        }
+      },
+      {
+        "label": "inner.valid",
+        "labelDetails": {
+          "detail": " logic",
+          "description": "simple_struct_t"
+        },
+        "kind": "Property",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic valid;\n````"
+        },
+        "filterText": "inner.valid",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 33,
+              "character": 39
+            },
+            "end": {
+              "line": 33,
+              "character": 39
+            }
+          },
+          "newText": "inner.valid"
         }
       },
       {

@@ -216,6 +216,84 @@
           },
           "newText": "txn"
         }
+      },
+      {
+        "label": "txn.addr",
+        "labelDetails": {
+          "detail": " logic[7:0]",
+          "description": "transaction_t"
+        },
+        "kind": "Property",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic [7:0] addr;\n````"
+        },
+        "filterText": "txn.addr",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 25,
+              "character": 26
+            },
+            "end": {
+              "line": 25,
+              "character": 26
+            }
+          },
+          "newText": "txn.addr"
+        }
+      },
+      {
+        "label": "txn.data",
+        "labelDetails": {
+          "detail": " logic[31:0]",
+          "description": "transaction_t"
+        },
+        "kind": "Property",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic [31:0] data;\n````"
+        },
+        "filterText": "txn.data",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 25,
+              "character": 26
+            },
+            "end": {
+              "line": 25,
+              "character": 26
+            }
+          },
+          "newText": "txn.data"
+        }
+      },
+      {
+        "label": "txn.valid",
+        "labelDetails": {
+          "detail": " logic",
+          "description": "transaction_t"
+        },
+        "kind": "Property",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nlogic valid;\n````"
+        },
+        "filterText": "txn.valid",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 25,
+              "character": 26
+            },
+            "end": {
+              "line": 25,
+              "character": 26
+            }
+          },
+          "newText": "txn.valid"
+        }
       }
     ]
   },
