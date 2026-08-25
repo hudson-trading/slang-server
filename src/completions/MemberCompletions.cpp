@@ -37,6 +37,7 @@
 #include "slang/ast/symbols/ValueSymbol.h"
 #include "slang/ast/symbols/VariableSymbols.h"
 #include "slang/ast/types/AllTypes.h"
+#include "slang/ast/types/TypePrinter.h"
 #include "slang/parsing/TokenKind.h"
 #include "slang/syntax/SyntaxKind.h"
 #include "slang/syntax/SyntaxNode.h"
@@ -61,6 +62,40 @@ std::string getCompletionTypeString(const ast::Symbol& symbol, const ast::Type& 
         }
     }
     return type.toString();
+}
+
+const ast::Type* getResolvedTypeParameter(const ast::Symbol& symbol) {
+    auto* typeSymbol = &symbol;
+    if (auto* modportPort = symbol.as_if<ast::ModportPortSymbol>();
+        modportPort && modportPort->internalSymbol) {
+        typeSymbol = modportPort->internalSymbol;
+    }
+
+    auto* value = typeSymbol->as_if<ast::ValueSymbol>();
+    if (!value)
+        return nullptr;
+
+    auto* alias = value->getType().as_if<ast::TypeAliasType>();
+    if (!alias)
+        return nullptr;
+
+    // Preserve ordinary typedef names and only unwrap aliases introduced by type parameters.
+    auto* aliasSyntax = alias->getSyntax();
+    if (!aliasSyntax || !aliasSyntax->parent ||
+        aliasSyntax->parent->kind != syntax::SyntaxKind::TypeParameterDeclaration) {
+        return nullptr;
+    }
+
+    auto& type = alias->targetType.getType();
+    return type.isError() ? nullptr : &type;
+}
+
+std::string getTypeDetail(const ast::Type& type) {
+    ast::TypePrinter printer;
+    printer.options.elideScopeNames = true;
+    printer.options.skipTypeDefs = true;
+    printer.append(type);
+    return printer.toString();
 }
 
 class CompletionSymbolFinder
@@ -353,6 +388,9 @@ std::string getMemberCompletionDetail(const slang::ast::Symbol& symbol) {
             detailStr = "TypeAlias";
         }
     }
+    else if (slang::ast::TypeParameterSymbol::isKind(symbol.kind)) {
+        detailStr = "type";
+    }
     else if (slang::ast::InterfacePortSymbol::isKind(symbol.kind)) {
         auto& port = symbol.as<slang::ast::InterfacePortSymbol>();
         detailStr = port.interfaceDef ? std::string{port.interfaceDef->name} : "interface";
@@ -383,13 +421,16 @@ std::string getMemberCompletionDetail(const slang::ast::Symbol& symbol) {
         detailStr = getInstanceArrayCompletionDetail(symbol.as<ast::InstanceArraySymbol>());
     }
     else {
+        if (auto* resolvedType = getResolvedTypeParameter(symbol))
+            detailStr = getTypeDetail(*resolvedType);
+
         bool supportsDeclaredTypeDetail = slang::ast::ValueSymbol::isKind(symbol.kind) ||
-                                          slang::ast::ParameterSymbol::isKind(symbol.kind) ||
-                                          slang::ast::TypeParameterSymbol::isKind(symbol.kind);
+                                          slang::ast::ParameterSymbol::isKind(symbol.kind);
         auto declType = symbol.getDeclaredType();
         // For value symbols, unwrap their type to see in the dropdown, and go one layer up for
         // the syntax to include the type
-        if (supportsDeclaredTypeDetail && declType && declType->getTypeSyntax()) {
+        if (detailStr.empty() && supportsDeclaredTypeDetail && declType &&
+            declType->getTypeSyntax()) {
             auto typeSyntax = declType->getTypeSyntax();
             if (typeSyntax) {
                 detailStr = slang::syntax::SyntaxPrinter()
@@ -398,7 +439,7 @@ std::string getMemberCompletionDetail(const slang::ast::Symbol& symbol) {
                                 .str();
             }
         }
-        else if (supportsDeclaredTypeDetail) {
+        else if (detailStr.empty() && supportsDeclaredTypeDetail) {
             detailStr = toString(symbol.kind);
         }
     }
@@ -414,7 +455,9 @@ lsp::CompletionItem MemberCompletionQuery::getHierarchicalCompletion(
 
     if (ast::FieldSymbol::isKind(symbol.kind)) {
         auto& field = symbol.as<ast::FieldSymbol>();
-        auto detailStr = getCompletionTypeString(field, field.getType());
+        auto* resolvedType = getResolvedTypeParameter(symbol);
+        auto detailStr = resolvedType ? getTypeDetail(*resolvedType)
+                                      : getCompletionTypeString(field, field.getType());
         auto valSym = parentSymbol.as_if<ast::ValueSymbol>();
         auto descStr = valSym ? valSym->getType().getLexicalPath() : parentSymbol.getLexicalPath();
         auto item = lsp::CompletionItem{

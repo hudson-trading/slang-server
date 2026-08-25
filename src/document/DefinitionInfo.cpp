@@ -533,9 +533,12 @@ void renderSymbolValue(markup::Paragraph& infoPg, const ast::Symbol& symbol,
                        const SourceManager& sourceManager) {
     auto appendTypeParameterValue = [&](const ast::Type& type) {
         if (!type.isError()) {
-            infoPg.appendText("Value: ")
-                .appendText(getTypeString(type, TypeStringMode::FriendlyMarkdownQuoted))
-                .newLine();
+            infoPg.appendText("Value: ");
+            if (!appendSourceLink(infoPg, type.location, sourceManager,
+                                  getTypeString(type, TypeStringMode::Friendly))) {
+                infoPg.appendText(getTypeString(type, TypeStringMode::FriendlyMarkdownQuoted));
+            }
+            infoPg.newLine();
         }
     };
 
