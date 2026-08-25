@@ -958,6 +958,83 @@ TEST_CASE("HierarchicalInterfacePortCompletion") {
     CHECK(!hasCompletion(producerCompletions, "hidden"));
 }
 
+TEST_CASE("HierarchicalInterfaceInstanceCompletionUsesResolvedParameterType") {
+    ServerHarness server("repo1");
+
+    auto doc = server.openFile("parameterized_iface_completion.sv", R"(
+    typedef logic [3:0] nibble_t;
+
+    interface stream_if #(
+        parameter type element_t = logic
+    );
+        element_t data;
+    endinterface
+
+    module parameterized_iface_completion;
+        stream_if #(.element_t(logic [7:0])) stream();
+        stream_if #(.element_t(nibble_t)) narrow_stream();
+
+        initial begin
+            stream.data;
+            narrow_stream.data;
+        end
+    endmodule
+    )");
+
+    auto completions = doc.after("stream.").getCompletions(".");
+    auto data = std::ranges::find(completions, "data",
+                                  [](const CompletionHandle& item) { return item.m_item.label; });
+    REQUIRE(data != completions.end());
+    REQUIRE(data->m_item.labelDetails);
+    CHECK(data->m_item.labelDetails->detail == " logic[7:0]");
+    auto typeParameter = std::ranges::find(
+        completions, "element_t", [](const CompletionHandle& item) { return item.m_item.label; });
+    REQUIRE(typeParameter != completions.end());
+    REQUIRE(typeParameter->m_item.labelDetails);
+    CHECK(typeParameter->m_item.labelDetails->detail == " type");
+
+    auto narrowCompletions = doc.after("narrow_stream.").getCompletions(".");
+    auto narrowData = std::ranges::find(
+        narrowCompletions, "data", [](const CompletionHandle& item) { return item.m_item.label; });
+    REQUIRE(narrowData != narrowCompletions.end());
+    REQUIRE(narrowData->m_item.labelDetails);
+    CHECK(narrowData->m_item.labelDetails->detail == " nibble_t");
+}
+
+TEST_CASE("HierarchicalInterfacePortCompletionUsesPinnedParameterType") {
+    ServerHarness server("repo1");
+
+    auto doc = server.openFile("pinned_parameter_iface_completion.sv", R"(
+    package types_pkg;
+        typedef logic [15:0] event_t;
+    endpackage
+
+    interface event_if #(
+        parameter type data_type = logic
+    );
+        data_type data;
+        modport source(output data);
+    endinterface
+
+    module pinned_parameter_iface_completion (
+        event_if.source channel
+    );
+        $static_assert(type(channel.data_type) == type(types_pkg::event_t));
+
+        initial begin
+            channel.; // completion target
+        end
+    endmodule
+    )");
+
+    auto completions = doc.before("; // completion target").getCompletions(".");
+    auto data = std::ranges::find(completions, "data",
+                                  [](const CompletionHandle& item) { return item.m_item.label; });
+    REQUIRE(data != completions.end());
+    REQUIRE(data->m_item.labelDetails);
+    CHECK(data->m_item.labelDetails->detail == " event_t");
+}
+
 TEST_CASE("HierarchicalInterfacePortArrayCompletionWithUnresolvedBounds") {
     ServerHarness server("repo1");
 

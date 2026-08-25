@@ -59,6 +59,35 @@ TEST_CASE("FindMultiSymbolRef") {
     scanner.scanDocument(hdl);
 }
 
+TEST_CASE("HoverAndGotoHierarchicalInterfaceTypeParameter") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+typedef logic [7:0] payload_t;
+
+interface stream_if #(
+    parameter type data_type = logic
+);
+endinterface
+
+module top;
+    stream_if #(.data_type(payload_t)) decoded_event_fifo();
+    localparam type resolved_t = type(decoded_event_fifo.data_type);
+endmodule
+)");
+
+    auto declaration = doc.before("data_type = logic");
+    auto use = doc.after("decoded_event_fifo.");
+    auto definitions = use.getDefinitions();
+    REQUIRE(definitions.size() == 1);
+    CHECK(definitions.front().targetSelectionRange.start == declaration.getPosition());
+
+    auto hover = doc.getHoverAt(use.m_offset);
+    REQUIRE(hover);
+    auto content = rfl::get<lsp::MarkupContent>(hover->contents).value;
+    CHECK(content.find("Value: [`payload_t (aka logic[7:0])`](<file:") != std::string::npos);
+}
+
 TEST_CASE("GotoDefinition_UndefDirective") {
     ServerHarness server;
 

@@ -776,6 +776,10 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
         [&](const ast::Symbol* symbol) -> std::optional<DefinitionInfo::SyntaxTarget> {
         auto* symSyntax = symbol->getSyntax();
         if (!symSyntax) {
+            if (auto* typeParam = symbol->as_if<ast::TypeParameterSymbol>())
+                symSyntax = typeParam->getTypeAlias().getSyntax();
+        }
+        if (!symSyntax) {
             ERROR("Failed to get syntax for symbol {} of kind {}", symbol->name,
                   toString(symbol->kind));
             return {};
