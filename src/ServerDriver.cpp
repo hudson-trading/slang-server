@@ -199,14 +199,15 @@ std::unique_ptr<ServerDriver> ServerDriver::create(Indexer& indexer, SlangLspCli
 
 void ServerDriver::openDocument(const URI& uri, const std::string_view text) {
     auto docIter = docs.find(uri);
+    bool wasTracked = docIter != docs.end();
     std::shared_ptr<SlangDoc> doc;
     bool alreadyInBuild = false;
-    if (docIter != docs.end() && docIter->second->textMatches(text)) {
+    if (wasTracked && docIter->second->textMatches(text)) {
         doc = docIter->second;
         alreadyInBuild = true;
     }
     else {
-        if (docIter != docs.end())
+        if (wasTracked)
             WARN("Document {} text does not match, updating", uri.getPath());
         doc = SlangDoc::fromText(*this, uri, text);
         docs[uri] = doc;
@@ -216,6 +217,14 @@ void ServerDriver::openDocument(const URI& uri, const std::string_view text) {
         // File is already part of the compilation — compilation diags were
         // already published, so skip shallow diags. Still publish inactive regions.
         publishInactiveRegions(*doc);
+    }
+    else if (comp && wasTracked) {
+        // Already part of the compilation but its text didn't match (e.g. a
+        // stale buffer diffing against a mid-reload full-build snapshot).
+        // Refresh the whole compilation instead of shallow-diagnosing just
+        // this file, so we don't overwrite correct diagnostics for the rest
+        // of the build with a narrower, incomplete pass.
+        updateDoc(*doc, FileUpdateType::SAVE);
     }
     else {
         updateDoc(*doc, FileUpdateType::OPEN);
