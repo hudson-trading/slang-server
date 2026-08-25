@@ -43,7 +43,12 @@ struct DefinitionInfo {
         // found.
         slang::parsing::Token nameToken;
         // Optional original source range; exists if it's behind a macro expansion.
-        slang::SourceRange macroUsageRange = slang::SourceRange::NoLocation;
+        slang::SourceRange macroUsageRange;
+
+        SyntaxTarget(const slang::syntax::SyntaxNode* node, slang::parsing::Token nameToken,
+                     slang::SourceRange macroUsageRange = slang::SourceRange::NoLocation) :
+            node(node), nameToken(nameToken), macroUsageRange(macroUsageRange) {}
+        SyntaxTarget() : SyntaxTarget(nullptr, {}, slang::SourceRange::NoLocation) {}
 
         static SyntaxTarget fromNode(const slang::syntax::SyntaxNode* node,
                                      slang::parsing::Token nameToken,
