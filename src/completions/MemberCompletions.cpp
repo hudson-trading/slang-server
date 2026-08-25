@@ -243,6 +243,40 @@ public:
                                                         followedByCall,
                                                         resolvesCompletionEdits(dispatch)));
         }
+
+        auto* targetType = targetScope->asSymbol().as_if<ast::Type>();
+        if (!targetType || !targetType->isStruct())
+            return;
+
+        std::vector<const ast::Type*> activeTypes{&targetType->getCanonicalType()};
+        auto addNestedFields = [&](auto&& self, const ast::FieldSymbol& parent,
+                                   std::string_view prefix) -> void {
+            auto& fieldType = unwrapErrorType(parent.getType()).getCanonicalType();
+            if (!fieldType.isStruct() ||
+                std::ranges::find(activeTypes, &fieldType) != activeTypes.end()) {
+                return;
+            }
+
+            activeTypes.push_back(&fieldType);
+            for (auto& nestedMember : fieldType.as<ast::Scope>().members()) {
+                auto* nestedField = nestedMember.as_if<ast::FieldSymbol>();
+                if (!nestedField || nestedField->name.empty())
+                    continue;
+
+                auto label = fmt::format("{}.{}", prefix, nestedField->name);
+                results.push_back(getHierarchicalCompletion(parent, *nestedField,
+                                                            doc->getURI().str(), followedByCall,
+                                                            resolvesCompletionEdits(dispatch),
+                                                            label));
+                self(self, *nestedField, label);
+            }
+            activeTypes.pop_back();
+        };
+
+        for (auto& member : targetScope->members()) {
+            if (auto* field = member.as_if<ast::FieldSymbol>(); field && !field->name.empty())
+                addNestedFields(addNestedFields, *field, field->name);
+        }
     }
 
 private:
@@ -451,7 +485,8 @@ std::string getMemberCompletionDetail(const slang::ast::Symbol& symbol) {
 
 lsp::CompletionItem MemberCompletionQuery::getHierarchicalCompletion(
     const slang::ast::Symbol& parentSymbol, const slang::ast::Symbol& symbol,
-    std::string_view documentUri, bool labelOnly, bool deferCallableEdit) {
+    std::string_view documentUri, bool labelOnly, bool deferCallableEdit,
+    std::string_view completionLabel) {
 
     if (ast::FieldSymbol::isKind(symbol.kind)) {
         auto& field = symbol.as<ast::FieldSymbol>();
@@ -460,8 +495,10 @@ lsp::CompletionItem MemberCompletionQuery::getHierarchicalCompletion(
                                       : getCompletionTypeString(field, field.getType());
         auto valSym = parentSymbol.as_if<ast::ValueSymbol>();
         auto descStr = valSym ? valSym->getType().getLexicalPath() : parentSymbol.getLexicalPath();
+        auto label = completionLabel.empty() ? std::string{symbol.name}
+                                             : std::string{completionLabel};
         auto item = lsp::CompletionItem{
-            .label = std::string{symbol.name},
+            .label = label,
             .labelDetails =
                 lsp::CompletionItemLabelDetails{
                     .detail = " " + detailStr,
@@ -469,10 +506,11 @@ lsp::CompletionItem MemberCompletionQuery::getHierarchicalCompletion(
                 },
             .kind = getCompletionKind(symbol),
             .documentation = std::nullopt,
-            .filterText = std::string{symbol.name},
+            .filterText = label,
             .data = rfl::to_generic<rfl::UnderlyingEnums>(CompletionData{
                 .documentUri = std::string(documentUri),
                 .symbolPath = symbol.getHierarchicalPath(),
+                .symbolName = std::string{symbol.name},
                 .bufferId = symbol.location.buffer().getId(),
                 .offset = symbol.location.offset(),
                 .symbolKind = symbol.kind,
@@ -544,6 +582,7 @@ lsp::CompletionItem MemberCompletionQuery::getCompletion(const slang::ast::Symbo
         .data = rfl::to_generic<rfl::UnderlyingEnums>(CompletionData{
             .documentUri = std::string(documentUri),
             .symbolPath = symbol.getHierarchicalPath(),
+            .symbolName = std::string{symbol.name},
             .bufferId = symbol.location.buffer().getId(),
             .offset = symbol.location.offset(),
             .symbolKind = symbol.kind,
@@ -733,7 +772,7 @@ void MemberCompletionQuery::resolve(CompletionDispatch& dispatch, lsp::Completio
     if (data->bufferId) {
         CompletionSymbolFinder finder(
             SourceLocation(BufferID(data->bufferId, "completion item resolve"), data->offset),
-            data->symbolKind, item.label, data->symbolPath);
+            data->symbolKind, data->symbolName, data->symbolPath);
         root.visit(finder);
         symbol = finder.result;
     }

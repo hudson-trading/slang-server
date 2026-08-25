@@ -58,12 +58,14 @@ protected:
                                                          const slang::ast::Symbol& symbol,
                                                          std::string_view documentUri,
                                                          bool labelOnly = false,
-                                                         bool deferCallableEdit = false);
+                                                         bool deferCallableEdit = false,
+                                                         std::string_view completionLabel = {});
 
 private:
     struct CompletionData {
         std::string documentUri;
         std::string symbolPath;
+        std::string symbolName;
         uint32_t bufferId = 0;
         uint64_t offset = 0;
         slang::ast::SymbolKind symbolKind = slang::ast::SymbolKind::Unknown;
