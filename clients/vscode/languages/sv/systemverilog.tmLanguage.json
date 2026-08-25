@@ -54,7 +54,7 @@
       "include": "#module-parameters"
     },
     {
-      "include": "#assignment-concatenation"
+      "include": "#assignment-expression"
     },
     {
       "include": "#module-no-parameters-split"
@@ -100,30 +100,32 @@
     }
   ],
   "repository": {
+    "assignment-expression": {
+      "begin": ">>>=|>>=|<<<=|<<=|\\+=|-=|/=|\\*=|%=|&=|\\|=|\\^=|<=|(?<![<>=!])=(?!=)",
+      "beginCaptures": {
+        "0": {
+          "name": "keyword.operator.assignment.systemverilog"
+        }
+      },
+      "end": "(?=;)",
+      "patterns": [
+        {
+          "include": "#assignment-concatenation"
+        },
+        {
+          "include": "#expression"
+        }
+      ]
+    },
     "assignment-concatenation": {
-      "begin": "(?<==)[ \\t]*\\{",
+      "begin": "\\{",
       "end": "\\}",
       "patterns": [
         {
           "include": "#concatenation-body"
         },
         {
-          "include": "#comments"
-        },
-        {
-          "include": "#strings"
-        },
-        {
-          "include": "#operators"
-        },
-        {
-          "include": "#constants"
-        },
-        {
-          "include": "#identifiers"
-        },
-        {
-          "include": "#selects"
+          "include": "#expression"
         }
       ],
       "name": "meta.concatenation.assignment.systemverilog"
@@ -136,16 +138,27 @@
           "include": "#concatenation-body"
         },
         {
-          "include": "#comments"
+          "include": "#expression"
+        }
+      ],
+      "name": "meta.concatenation.systemverilog"
+    },
+    "expression": {
+      "patterns": [
+        {
+          "include": "#functions"
         },
         {
-          "include": "#strings"
+          "include": "#keywords"
         },
         {
-          "include": "#operators"
+          "include": "#system-tf"
         },
         {
-          "include": "#constants"
+          "include": "#cast-operator"
+        },
+        {
+          "include": "#base-grammar"
         },
         {
           "include": "#identifiers"
@@ -153,8 +166,7 @@
         {
           "include": "#selects"
         }
-      ],
-      "name": "meta.concatenation.systemverilog"
+      ]
     },
     "function-task": {
       "begin": "[ \\t\\r\\n]*(?:\\b(virtual)[ \\t\\r\\n]+)?(?:\\b(function|task)\\b)(?:[ \\t\\r\\n]+\\b(static|automatic)\\b)?",

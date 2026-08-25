@@ -36,16 +36,29 @@
 #               ^ source.systemverilog meta.port-net-parameter.declaration.systemverilog
 #                ^^^^^^^^^^ source.systemverilog meta.port-net-parameter.declaration.systemverilog variable.other.identifier.systemverilog
 #                          ^^ source.systemverilog
+>    logic [7:0] expression_var;
+#^^^^^^^^^ source.systemverilog storage.type.vector.systemverilog
+#         ^ source.systemverilog meta.port-net-parameter.declaration.systemverilog
+#          ^ source.systemverilog meta.port-net-parameter.declaration.systemverilog meta.brackets.select.systemverilog punctuation.slice.brackets.begin
+#           ^ source.systemverilog meta.port-net-parameter.declaration.systemverilog meta.brackets.select.systemverilog constant.numeric.decimal.systemverilog
+#            ^ source.systemverilog meta.port-net-parameter.declaration.systemverilog meta.brackets.select.systemverilog keyword.operator.bitwise.systemverilog
+#             ^ source.systemverilog meta.port-net-parameter.declaration.systemverilog meta.brackets.select.systemverilog constant.numeric.decimal.systemverilog
+#              ^ source.systemverilog meta.port-net-parameter.declaration.systemverilog meta.brackets.select.systemverilog punctuation.slice.brackets.end
+#               ^ source.systemverilog meta.port-net-parameter.declaration.systemverilog
+#                ^^^^^^^^^^^^^^ source.systemverilog meta.port-net-parameter.declaration.systemverilog variable.other.identifier.systemverilog
+#                              ^^ source.systemverilog
 >
 #^ source.systemverilog
->    assign this_var = {
+>    assign this_var =
 #^^^^ source.systemverilog
 #    ^^^^^^ source.systemverilog keyword.control.systemverilog
 #          ^ source.systemverilog meta.port-net-parameter.declaration.systemverilog
 #           ^^^^^^^^ source.systemverilog meta.port-net-parameter.declaration.systemverilog variable.other.identifier.systemverilog
 #                   ^ source.systemverilog meta.port-net-parameter.declaration.systemverilog
 #                    ^ source.systemverilog keyword.operator.assignment.systemverilog
-#                     ^^ source.systemverilog meta.concatenation.assignment.systemverilog
+>    {
+#^^^^ source.systemverilog
+#    ^ source.systemverilog meta.concatenation.assignment.systemverilog
 >        some_var,
 #^^^^^^^^ source.systemverilog meta.concatenation.assignment.systemverilog
 #        ^^^^^^^^ source.systemverilog meta.concatenation.assignment.systemverilog variable.other.identifier.systemverilog
@@ -59,15 +72,35 @@
 #     ^^ source.systemverilog
 >
 #^ source.systemverilog
->    assign nested_var = {
+>    assign nested_var = some_var ? {
 #^^^^ source.systemverilog
 #    ^^^^^^ source.systemverilog keyword.control.systemverilog
 #          ^ source.systemverilog meta.port-net-parameter.declaration.systemverilog
 #           ^^^^^^^^^^ source.systemverilog meta.port-net-parameter.declaration.systemverilog variable.other.identifier.systemverilog
 #                     ^ source.systemverilog meta.port-net-parameter.declaration.systemverilog
 #                      ^ source.systemverilog keyword.operator.assignment.systemverilog
-#                       ^^ source.systemverilog meta.concatenation.assignment.systemverilog
->        {some_var, other_var},
+#                       ^ source.systemverilog
+#                        ^^^^^^^^ source.systemverilog variable.other.identifier.systemverilog
+#                                ^ source.systemverilog
+#                                 ^ source.systemverilog keyword.operator.bitwise.systemverilog
+#                                  ^ source.systemverilog
+#                                   ^ source.systemverilog meta.concatenation.assignment.systemverilog
+>        some_var,
+#^^^^^^^^ source.systemverilog meta.concatenation.assignment.systemverilog
+#        ^^^^^^^^ source.systemverilog meta.concatenation.assignment.systemverilog variable.other.identifier.systemverilog
+#                ^^ source.systemverilog meta.concatenation.assignment.systemverilog
+>        other_var
+#^^^^^^^^ source.systemverilog meta.concatenation.assignment.systemverilog
+#        ^^^^^^^^^ source.systemverilog meta.concatenation.assignment.systemverilog variable.other.identifier.systemverilog
+>    } : ~{
+#^^^^ source.systemverilog meta.concatenation.assignment.systemverilog
+#    ^ source.systemverilog meta.concatenation.assignment.systemverilog
+#     ^ source.systemverilog
+#      ^ source.systemverilog keyword.operator.bitwise.systemverilog
+#       ^ source.systemverilog
+#        ^ source.systemverilog keyword.operator.bitwise.systemverilog
+#         ^ source.systemverilog meta.concatenation.assignment.systemverilog
+>        {some_var, other_var}, 2{some_var}
 #^^^^^^^^ source.systemverilog meta.concatenation.assignment.systemverilog
 #        ^ source.systemverilog meta.concatenation.assignment.systemverilog meta.concatenation.systemverilog
 #         ^^^^^^^^ source.systemverilog meta.concatenation.assignment.systemverilog meta.concatenation.systemverilog variable.other.identifier.systemverilog
@@ -75,16 +108,53 @@
 #                   ^^^^^^^^^ source.systemverilog meta.concatenation.assignment.systemverilog meta.concatenation.systemverilog variable.other.identifier.systemverilog
 #                            ^ source.systemverilog meta.concatenation.assignment.systemverilog meta.concatenation.systemverilog
 #                             ^^ source.systemverilog meta.concatenation.assignment.systemverilog
->        2{some_var}
-#^^^^^^^^ source.systemverilog meta.concatenation.assignment.systemverilog
-#        ^ source.systemverilog meta.concatenation.assignment.systemverilog constant.numeric.decimal.systemverilog
-#         ^ source.systemverilog meta.concatenation.assignment.systemverilog meta.concatenation.systemverilog
-#          ^^^^^^^^ source.systemverilog meta.concatenation.assignment.systemverilog meta.concatenation.systemverilog variable.other.identifier.systemverilog
-#                  ^ source.systemverilog meta.concatenation.assignment.systemverilog meta.concatenation.systemverilog
+#                               ^ source.systemverilog meta.concatenation.assignment.systemverilog constant.numeric.decimal.systemverilog
+#                                ^ source.systemverilog meta.concatenation.assignment.systemverilog meta.concatenation.systemverilog
+#                                 ^^^^^^^^ source.systemverilog meta.concatenation.assignment.systemverilog meta.concatenation.systemverilog variable.other.identifier.systemverilog
+#                                         ^ source.systemverilog meta.concatenation.assignment.systemverilog meta.concatenation.systemverilog
 >    };
 #^^^^ source.systemverilog meta.concatenation.assignment.systemverilog
 #    ^ source.systemverilog meta.concatenation.assignment.systemverilog
 #     ^^ source.systemverilog
+>
+#^ source.systemverilog
+>    assign expression_var = ({
+#^^^^ source.systemverilog
+#    ^^^^^^ source.systemverilog keyword.control.systemverilog
+#          ^ source.systemverilog meta.port-net-parameter.declaration.systemverilog
+#           ^^^^^^^^^^^^^^ source.systemverilog meta.port-net-parameter.declaration.systemverilog variable.other.identifier.systemverilog
+#                         ^ source.systemverilog meta.port-net-parameter.declaration.systemverilog
+#                          ^ source.systemverilog keyword.operator.assignment.systemverilog
+#                           ^^ source.systemverilog
+#                             ^ source.systemverilog meta.concatenation.assignment.systemverilog
+>        make_value(some_var),
+#^^^^^^^^^^^^^^^^^^ source.systemverilog meta.concatenation.assignment.systemverilog entity.name.function.systemverilog3
+#                  ^ source.systemverilog meta.concatenation.assignment.systemverilog
+#                   ^^^^^^^^ source.systemverilog meta.concatenation.assignment.systemverilog variable.other.identifier.systemverilog
+#                           ^^^ source.systemverilog meta.concatenation.assignment.systemverilog
+>        $bits(other_var),
+#^^^^^^^^ source.systemverilog meta.concatenation.assignment.systemverilog
+#        ^^^^^ source.systemverilog meta.concatenation.assignment.systemverilog entity.name.function.systemverilog
+#             ^ source.systemverilog meta.concatenation.assignment.systemverilog
+#              ^^^^^^^^^ source.systemverilog meta.concatenation.assignment.systemverilog variable.other.identifier.systemverilog
+#                       ^^^ source.systemverilog meta.concatenation.assignment.systemverilog
+>        data_type'(this_var),
+#^^^^^^^^ source.systemverilog meta.concatenation.assignment.systemverilog meta.cast.systemverilog
+#        ^^^^^^^^^ source.systemverilog meta.concatenation.assignment.systemverilog meta.cast.systemverilog storage.type.user-defined.systemverilog
+#                 ^ source.systemverilog meta.concatenation.assignment.systemverilog meta.cast.systemverilog keyword.operator.cast.systemverilog
+#                  ^ source.systemverilog meta.concatenation.assignment.systemverilog
+#                   ^^^^^^^^ source.systemverilog meta.concatenation.assignment.systemverilog variable.other.identifier.systemverilog
+#                           ^^^ source.systemverilog meta.concatenation.assignment.systemverilog
+>        some_pkg::some_value
+#^^^^^^^^ source.systemverilog meta.concatenation.assignment.systemverilog
+#        ^^^^^^^^ source.systemverilog meta.concatenation.assignment.systemverilog meta.scope.systemverilog support.type.scope.systemverilog
+#                ^^ source.systemverilog meta.concatenation.assignment.systemverilog meta.scope.systemverilog keyword.operator.scope.systemverilog
+#                  ^^^^^^^^^^ source.systemverilog meta.concatenation.assignment.systemverilog variable.other.identifier.systemverilog
+>    });
+#^^^^ source.systemverilog meta.concatenation.assignment.systemverilog
+#    ^ source.systemverilog meta.concatenation.assignment.systemverilog
+#     ^ source.systemverilog
+#      ^^ source.systemverilog
 >
 #^ source.systemverilog
 >    some_module
