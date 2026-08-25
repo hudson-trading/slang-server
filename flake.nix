@@ -42,6 +42,8 @@
 									python3
 									boost
 									fmt
+									catch2_3
+									uv
 								]
 								++ lib.optionals (!llvmPkgs.stdenv.hostPlatform.isDarwin) [gdb];
 						};
