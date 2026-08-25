@@ -25,6 +25,11 @@ import {
   ViewerState,
 } from '../vaporview-api/types'
 import {
+  loadCompilationSourceMemento,
+  saveCompilationSourceMemento,
+  uriToPersistedTopFile,
+} from './ProjectMemento'
+import {
   BuildCommandArgs,
   BuildFileParams,
   createBuildSelectionItems,
@@ -391,8 +396,24 @@ export class ProjectComponent
   top: RootItem | undefined = undefined
 
   // Current build or top - mutually exclusive
-  private compilationSource: CompilationSource = { type: 'none' }
+  private _compilationSource: CompilationSource = { type: 'none' }
   private activeBuildWatcher: vscode.FileSystemWatcher | undefined
+
+  private get compilationSource(): CompilationSource {
+    return this._compilationSource
+  }
+
+  // Every write goes through here so the selection survives a window reload.
+  private set compilationSource(value: CompilationSource) {
+    this._compilationSource = value
+    void saveCompilationSourceMemento(
+      value.type === 'none'
+        ? undefined
+        : value.type === 'topfile'
+          ? uriToPersistedTopFile(value.topFile)
+          : value
+    )
+  }
 
   // Getters for backward compatibility
   get buildfile(): string | undefined {
@@ -425,6 +446,18 @@ export class ProjectComponent
     } else {
       this.compilationSource = { type: 'topfile', topFile: value }
     }
+  }
+
+  // Restore the selection persisted from a previous session, if any.
+  private async restoreCompilationSourceMemento(): Promise<void> {
+    const persisted = await loadCompilationSourceMemento()
+    if (persisted === undefined) {
+      return
+    }
+    this._compilationSource =
+      persisted.type === 'topfile'
+        ? { type: 'topfile', topFile: vscode.Uri.file(persisted.topFile) }
+        : persisted
   }
 
   // Show the selected instance for the open file
@@ -1500,6 +1533,11 @@ export class ProjectComponent
 
     context.subscriptions.push(vscode.window.registerTerminalLinkProvider(this))
     context.subscriptions.push({ dispose: () => this.clearBuildCommandTracking() })
+
+    await this.restoreCompilationSourceMemento()
+    if (await this.refreshActiveCompilationSource()) {
+      await this.refreshSlangCompilation()
+    }
 
     // user updates to buildfile
     vscode.workspace.onDidSaveTextDocument(async (document) => {
