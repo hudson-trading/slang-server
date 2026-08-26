@@ -29,4 +29,7 @@ bool hasValidBuffers(const slang::SourceManager& sm,
 /// Return the canonical type, unwrapping a recoverable error type when available.
 const slang::ast::Type& unwrapErrorType(const slang::ast::Type& type);
 
+/// Return the resolved target of an alias introduced by a type parameter.
+const slang::ast::Type* getTypeParameterTargetType(const slang::ast::Type& type);
+
 } // namespace server

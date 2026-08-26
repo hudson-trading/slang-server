@@ -218,9 +218,13 @@ void renderSymbolType(markup::Paragraph& infoPg, const ast::Symbol& symbol,
         }
         else {
             infoPg.appendText("Type: ");
-            if (!appendSourceLink(infoPg, type.location, sourceManager,
-                                  getTypeString(type, TypeStringMode::Friendly)))
+            auto typeString = getTypeString(type, TypeStringMode::Friendly);
+            auto* resolvedType = getTypeParameterTargetType(type);
+            if ((!resolvedType ||
+                 !appendSourceLink(infoPg, resolvedType->location, sourceManager, typeString)) &&
+                !appendSourceLink(infoPg, type.location, sourceManager, typeString)) {
                 infoPg.appendText(getTypeString(type, TypeStringMode::FriendlyMarkdownQuoted));
+            }
         }
         infoPg.newLine();
         if (!ast::ParameterSymbol::isKind(symbol.kind) && !type.isError() &&
@@ -546,11 +550,8 @@ void renderSymbolValue(markup::Paragraph& infoPg, const ast::Symbol& symbol,
         appendTypeParameterValue(typeParam->targetType.getType());
     }
     else if (auto* typeAlias = symbol.as_if<ast::TypeAliasType>()) {
-        auto* syntax = typeAlias->getSyntax();
-        if (syntax && syntax->parent &&
-            syntax->parent->kind == syntax::SyntaxKind::TypeParameterDeclaration) {
-            appendTypeParameterValue(typeAlias->targetType.getType());
-        }
+        if (auto* targetType = getTypeParameterTargetType(*typeAlias))
+            appendTypeParameterValue(*targetType);
     }
 
     // Values for elab-known values like parameters, type aliases, and enum values
