@@ -6,7 +6,7 @@ import * as tmp from 'tmp-promise'
 import { Readable } from 'stream'
 
 import { createFakeAssets } from './harness'
-import { installFromGithub, GithubInstallerConfig } from '../../src/lib/install'
+import { chooseReleaseAsset, installFromGithub, GithubInstallerConfig } from '../../src/lib/install'
 import { Platform, PlatformMap } from '../../src/lib/platform'
 
 const binaryNames: PlatformMap = {
@@ -40,6 +40,55 @@ function mockRelease(platform: Platform) {
     ],
   }
 }
+
+tape('install: exact release asset takes precedence', (assert) => {
+  const config = testConfig('linux')
+  const release = mockRelease('linux')
+  release.assets.unshift({
+    name: 'slang-server-old-linux-x64-gcc.tar.gz',
+    browser_download_url: 'http://fake/fallback',
+  })
+
+  assert.equal(
+    chooseReleaseAsset(release, config).name,
+    'slang-server-linux-x64.tar.gz',
+    'uses the configured asset'
+  )
+  assert.end()
+})
+
+tape('install: falls back to a release asset for the same platform and architecture', (assert) => {
+  const release = mockRelease('linux')
+  release.assets = [
+    {
+      name: 'slang-server-linux-arm64.tar.gz',
+      browser_download_url: 'http://fake/arm64',
+    },
+    {
+      name: 'slang-server-old-linux-x64-gcc.tar.gz',
+      browser_download_url: 'http://fake/x64',
+    },
+  ]
+
+  assert.equal(
+    chooseReleaseAsset(release, testConfig('linux')).name,
+    'slang-server-old-linux-x64-gcc.tar.gz',
+    'does not select another architecture'
+  )
+  assert.end()
+})
+
+tape('install: recognizes platform names used by release assets', (assert) => {
+  for (const [platform, fallbackName] of [
+    ['windows', 'slang-server-old-windows-x64.zip'],
+    ['mac', 'slang-server-old-macos.tar.gz'],
+  ] as const) {
+    const release = mockRelease(platform)
+    release.assets = [{ name: fallbackName, browser_download_url: 'http://fake/fallback' }]
+    assert.equal(chooseReleaseAsset(release, testConfig(platform)).name, fallbackName, platform)
+  }
+  assert.end()
+})
 
 function stubFetch(assetsDir: string, platform: Platform) {
   const config = testConfig(platform)

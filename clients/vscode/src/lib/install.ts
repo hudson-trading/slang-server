@@ -28,6 +28,12 @@ type GithubRelease = {
   assets: GithubAsset[]
 }
 
+const assetPlatformNames: PlatformMap = {
+  windows: 'windows',
+  linux: 'linux',
+  mac: 'macos',
+}
+
 export interface GithubInstallerConfig {
   githubRepo: string // e.g., 'hudson-trading/slang-server'
   assetNames: PlatformMap // asset name per platform
@@ -59,7 +65,10 @@ export async function latestRelease(config: GithubInstallerConfig): Promise<Gith
   }
 }
 
-function chooseReleaseAsset(release: GithubRelease, config: GithubInstallerConfig): GithubAsset {
+export function chooseReleaseAsset(
+  release: GithubRelease,
+  config: GithubInstallerConfig
+): GithubAsset {
   const platform = getConfigPlatform(config)
   const assetName = config.assetNames[platform]
 
@@ -70,6 +79,26 @@ function chooseReleaseAsset(release: GithubRelease, config: GithubInstallerConfi
   const asset = release.assets.find((a) => a.name === assetName)
   if (asset) {
     return asset
+  }
+
+  const architecture = assetName.match(/-(x64|arm64)(?:[.-])/)?.[1]
+  const platformName = assetPlatformNames[platform]
+  const fallback = release.assets
+    .filter((candidate) => {
+      const name = candidate.name.toLowerCase()
+      return (
+        (name.endsWith('.tar.gz') || name.endsWith('.zip')) &&
+        name.includes(`-${platformName}`) &&
+        (!architecture || name.includes(`-${architecture}`))
+      )
+    })
+    .sort(
+      (left, right) => left.name.length - right.name.length || left.name.localeCompare(right.name)
+    )[0]
+
+  if (fallback) {
+    console.warn(`Release asset '${assetName}' not found; using '${fallback.name}' instead`)
+    return fallback
   }
 
   throw new Error(`No compatible release asset '${assetName}' found for ${platform}`)
