@@ -246,6 +246,57 @@ endmodule
     CHECK(hints[5].position == argumentPattern);
 }
 
+TEST_CASE("InlayHintsAndHoverUseResolvedInterfaceType") {
+    ServerHarness server("");
+    auto hdl = server.openFile("inlay_interface_assignment_pattern.sv", R"(
+typedef struct packed {
+    logic [7:0] first;
+    logic [7:0] second;
+} item_t;
+
+interface test_if #(
+    parameter type T = item_t
+);
+    T value;
+endinterface
+
+module top;
+    test_if #(.T(item_t)) a();
+    test_if b();
+
+    initial begin
+        a.value = '{first: '0, second: '0};
+        b.value = '{first: '0, second: '0};
+    end
+endmodule
+)");
+
+    auto hints = hdl.getAllInlayHints();
+    REQUIRE(hints.size() == 2);
+    for (const auto& hint : hints) {
+        REQUIRE(rfl::holds_alternative<std::vector<lsp::InlayHintLabelPart>>(hint.label));
+        const auto& labelParts = rfl::get<std::vector<lsp::InlayHintLabelPart>>(hint.label);
+        REQUIRE(labelParts.size() == 1);
+        CHECK(labelParts[0].value == "item_t");
+        REQUIRE(labelParts[0].location);
+        CHECK(labelParts[0].location->range.start == hdl.before("item_t;").getPosition());
+        REQUIRE(hint.textEdits);
+        REQUIRE(hint.textEdits->size() == 1);
+        CHECK(hint.textEdits->front().newText == "item_t");
+    }
+
+    for (auto cursor : {hdl.after("a."), hdl.after("b.")}) {
+        auto hover = hdl.getHoverAt(cursor.m_offset);
+        REQUIRE(hover);
+        auto content = rfl::get<lsp::MarkupContent>(hover->contents).value;
+        CAPTURE(content);
+        CHECK(content.find("Type: [`PackedStruct T (aka item_t) (logic[15:0])`]") !=
+              std::string::npos);
+        CHECK(content.find("#L5,3") != std::string::npos);
+        CHECK(content.find("#L8,20") == std::string::npos);
+    }
+}
+
 TEST_CASE("InlayHintsParameters") {
     /// Test inlay hints for parameter assignments
     ServerHarness server("");

@@ -74,20 +74,7 @@ const ast::Type* getResolvedTypeParameter(const ast::Symbol& symbol) {
     auto* value = typeSymbol->as_if<ast::ValueSymbol>();
     if (!value)
         return nullptr;
-
-    auto* alias = value->getType().as_if<ast::TypeAliasType>();
-    if (!alias)
-        return nullptr;
-
-    // Preserve ordinary typedef names and only unwrap aliases introduced by type parameters.
-    auto* aliasSyntax = alias->getSyntax();
-    if (!aliasSyntax || !aliasSyntax->parent ||
-        aliasSyntax->parent->kind != syntax::SyntaxKind::TypeParameterDeclaration) {
-        return nullptr;
-    }
-
-    auto& type = alias->targetType.getType();
-    return type.isError() ? nullptr : &type;
+    return getTypeParameterTargetType(value->getType());
 }
 
 std::string getTypeDetail(const ast::Type& type) {

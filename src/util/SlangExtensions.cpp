@@ -9,6 +9,8 @@
 #include "util/SlangExtensions.h"
 
 #include "slang/ast/types/AllTypes.h"
+#include "slang/syntax/SyntaxKind.h"
+#include "slang/syntax/SyntaxNode.h"
 
 namespace server {
 
@@ -36,6 +38,21 @@ const ast::Type& unwrapErrorType(const ast::Type& type) {
             return child->getCanonicalType();
     }
     return canonicalType;
+}
+
+const ast::Type* getTypeParameterTargetType(const ast::Type& type) {
+    auto* alias = type.as_if<ast::TypeAliasType>();
+    if (!alias)
+        return nullptr;
+
+    auto* aliasSyntax = alias->getSyntax();
+    if (!aliasSyntax || !aliasSyntax->parent ||
+        aliasSyntax->parent->kind != syntax::SyntaxKind::TypeParameterDeclaration) {
+        return nullptr;
+    }
+
+    const auto& targetType = alias->targetType.getType();
+    return targetType.isError() ? nullptr : &targetType;
 }
 
 } // namespace server

@@ -367,23 +367,27 @@ void InlayHintCollector::handle(const AssignmentPatternExpressionSyntax& syntax)
     if (!target)
         return;
 
+    auto* declaredType = target->getDeclaredType();
     const ast::Type* type = nullptr;
     if (target->isType())
         type = &target->as<ast::Type>();
-    else if (ast::ValueSymbol::isKind(target->kind))
-        type = &target->as<ast::ValueSymbol>().getType();
+    else if (declaredType)
+        type = &declaredType->getType();
     if (!type || (!unwrapErrorType(*type).isStruct() && !unwrapErrorType(*type).isUnion()))
         return;
 
     const ast::Symbol* namedType = nullptr;
-    if (auto* declaredType = target->getDeclaredType()) {
+    if (auto* resolvedType = getTypeParameterTargetType(*type);
+        resolvedType && !resolvedType->name.empty())
+        namedType = resolvedType;
+    if (!namedType && !type->name.empty())
+        namedType = type;
+    if (!namedType && declaredType) {
         if (auto* typeSyntax = declaredType->getTypeSyntax()) {
             auto* token = m_analysis.syntaxes.getTokenAt(typeSyntax->getLastToken().location());
             namedType = m_analysis.getSymbolAtToken(token);
         }
     }
-    if (!namedType && !type->name.empty())
-        namedType = type;
     if (!namedType || !namedType->isType() || namedType->name.empty())
         return;
 
