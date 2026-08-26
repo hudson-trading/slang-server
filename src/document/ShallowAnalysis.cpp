@@ -22,6 +22,7 @@
 #include "slang/ast/ASTContext.h"
 #include "slang/ast/Compilation.h"
 #include "slang/ast/symbols/BlockSymbols.h"
+#include "slang/ast/symbols/CompilationUnitSymbols.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
 #include "slang/ast/symbols/MemberSymbols.h"
 #include "slang/ast/symbols/ParameterSymbols.h"
@@ -96,6 +97,8 @@ ShallowAnalysis::ShallowAnalysis(SourceManager& sourceManager, slang::BufferID b
     cOptions.flags |= ast::CompilationFlags::AllowTopLevelIfacePorts;
     cOptions.flags |= ast::CompilationFlags::CheckUninstantiated;
     cOptions.flags |= ast::CompilationFlags::AllowInvalidTop;
+    // Check the edited module and two levels of instantiated children.
+    cOptions.maxInstanceDepth = 3;
 
     // Add definitions from this tree (even if they aren't valid tops)
     cOptions.topModules.clear();
@@ -108,6 +111,24 @@ ShallowAnalysis::ShallowAnalysis(SourceManager& sourceManager, slang::BufferID b
     // - token -> symbol defs
     // - syntax -> scopes
     m_compilation->getRoot().visit(m_symbolIndexer);
+}
+
+const Diagnostics& ShallowAnalysis::getSemanticDiagnostics() {
+    if (!m_editedDefinitionsElaborated) {
+        auto& root = m_compilation->getRoot();
+        for (auto* symbol : m_compilation->getDefinitions()) {
+            auto* definition = symbol->as_if<ast::DefinitionSymbol>();
+            if (!definition || definition->syntaxTree != m_tree.get())
+                continue;
+
+            auto& instance = ast::InstanceSymbol::createDefault(*m_compilation, *definition);
+            instance.setParent(root);
+            m_compilation->forceElaborate(instance.body);
+        }
+        m_editedDefinitionsElaborated = true;
+    }
+
+    return m_compilation->getSemanticDiagnostics();
 }
 
 std::vector<lsp::DocumentSymbol> ShallowAnalysis::getDocSymbols() {
@@ -1044,7 +1065,7 @@ const slang::analysis::AnalysisManager* ShallowAnalysis::getAnalysisManager() {
         return m_driverAnalysis.get();
     }
 
-    (void)m_compilation->getSemanticDiagnostics();
+    (void)getSemanticDiagnostics();
 
     if (!m_compilation || m_compilation->getRoot().topInstances.empty()) {
         m_cachedAnalysisDiags = Diagnostics{};

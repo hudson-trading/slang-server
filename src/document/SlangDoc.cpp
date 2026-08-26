@@ -21,6 +21,7 @@
 #include <string_view>
 
 #include "slang/ast/Compilation.h"
+#include "slang/diagnostics/CompilationDiags.h"
 #include "slang/diagnostics/DeclarationsDiags.h"
 #include "slang/diagnostics/Diagnostics.h"
 #include "slang/diagnostics/ExpressionsDiags.h"
@@ -255,7 +256,6 @@ void SlangDoc::issueParseDiagnostics(DiagnosticEngine& diagEngine) {
 void SlangDoc::issueDiagnosticsTo(DiagnosticEngine& diagEngine) {
     // Issue compilation diagnostics
     auto analysis = getAnalysis(true);
-    auto& shallowComp = *analysis->getCompilation();
 
     // Parse diags (just this tree, others will be handled by their SlangDoc objects
     for (auto& diag : getSyntaxTree()->diagnostics()) {
@@ -264,8 +264,12 @@ void SlangDoc::issueDiagnosticsTo(DiagnosticEngine& diagEngine) {
 
     // Parse and shallow compilation diagnostics
     // There will be many diags outside the buffer, like unknown modules.
-    for (auto& diag : shallowComp.getSemanticDiagnostics()) {
+    const auto& semanticDiagnostics = analysis->getSemanticDiagnostics();
+    for (auto& diag : semanticDiagnostics) {
         if (m_sourceManager.getFullyOriginalLoc(diag.location).buffer() != m_buffer.id) {
+            continue;
+        }
+        if (diag.code == slang::diag::MaxInstanceDepthExceeded) {
             continue;
         }
         diagEngine.issue(diag);
