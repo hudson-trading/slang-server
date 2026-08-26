@@ -54,6 +54,9 @@
       "include": "#module-parameters"
     },
     {
+      "include": "#assignment-expression"
+    },
+    {
       "include": "#module-no-parameters-split"
     },
     {
@@ -97,6 +100,74 @@
     }
   ],
   "repository": {
+    "assignment-expression": {
+      "begin": ">>>=|>>=|<<<=|<<=|\\+=|-=|/=|\\*=|%=|&=|\\|=|\\^=|<=|(?<![<>=!])=(?!=)",
+      "beginCaptures": {
+        "0": {
+          "name": "keyword.operator.assignment.systemverilog"
+        }
+      },
+      "end": "(?=;)",
+      "patterns": [
+        {
+          "include": "#assignment-concatenation"
+        },
+        {
+          "include": "#expression"
+        }
+      ]
+    },
+    "assignment-concatenation": {
+      "begin": "\\{",
+      "end": "\\}",
+      "patterns": [
+        {
+          "include": "#concatenation-body"
+        },
+        {
+          "include": "#expression"
+        }
+      ],
+      "name": "meta.concatenation.assignment.systemverilog"
+    },
+    "concatenation-body": {
+      "begin": "\\{",
+      "end": "\\}",
+      "patterns": [
+        {
+          "include": "#concatenation-body"
+        },
+        {
+          "include": "#expression"
+        }
+      ],
+      "name": "meta.concatenation.systemverilog"
+    },
+    "expression": {
+      "patterns": [
+        {
+          "include": "#functions"
+        },
+        {
+          "include": "#keywords"
+        },
+        {
+          "include": "#system-tf"
+        },
+        {
+          "include": "#cast-operator"
+        },
+        {
+          "include": "#base-grammar"
+        },
+        {
+          "include": "#identifiers"
+        },
+        {
+          "include": "#selects"
+        }
+      ]
+    },
     "function-task": {
       "begin": "[ \\t\\r\\n]*(?:\\b(virtual)[ \\t\\r\\n]+)?(?:\\b(function|task)\\b)(?:[ \\t\\r\\n]+\\b(static|automatic)\\b)?",
       "beginCaptures": {
