@@ -10,6 +10,7 @@
 #include "JsonRpcServer.h"
 #include "JsonTypes.h"
 #include "LspTypes.h"
+#include "RequestContext.h"
 #include "URI.h"
 #include "lsp/LspClient.h"
 #include <iostream>
@@ -419,7 +420,8 @@ protected:
     /// by the given text document position. The request's parameter is of
     /// type {@link ReferenceParams} the response is of type
     /// {@link Location Location[]} or a Thenable that resolves to such.
-    virtual std::optional<std::vector<Location>> getDocReferences(const ReferenceParams&) {
+    virtual std::optional<std::vector<Location>> getDocReferences(const ReferenceParams&,
+                                                                  RequestContext = {}) {
         return std::optional<std::vector<Location>>{};
     }
 
@@ -709,7 +711,7 @@ protected:
     };
     /// The document change notification is sent from the client to the server to signal
     /// changes to a text document.
-    virtual void onDocDidChange(const DidChangeTextDocumentParams&) {}
+    virtual void onDocDidChange(const DidChangeTextDocumentParams&, RequestContext = {}) {}
 
     void registerDocDidChange() {
         this->template registerNotification<DidChangeTextDocumentParams, &Impl::onDocDidChange>(
@@ -902,7 +904,7 @@ protected:
     /// Request to resolve additional information for a given completion item.The request's
     /// parameter is of type {@link CompletionItem} the response
     /// is of type {@link CompletionItem} or a Thenable that resolves to such.
-    virtual CompletionItem getCompletionItemResolve(const CompletionItem&) {
+    virtual CompletionItem getCompletionItemResolve(const CompletionItem&, RequestContext = {}) {
         return CompletionItem{};
     }
 
@@ -964,7 +966,7 @@ protected:
     void registerProgress() {
         this->template registerNotification<ProgressParams, &Impl::onProgress>("$/progress");
     };
-    virtual void onCancelRequest(const CancelParams&) {}
+    virtual void onCancelRequest(const CancelParams& params) { this->cancelRequest(params.id); }
 
     void registerCancelRequest() {
         this->template registerNotification<CancelParams, &Impl::onCancelRequest>(

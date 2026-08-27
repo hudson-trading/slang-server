@@ -252,8 +252,10 @@ void CompletionDispatch::getCompletions(std::vector<lsp::CompletionItem>& result
          toString(context.query->kind()), toString(context.kind));
 }
 
-void CompletionDispatch::getCompletionItemResolve(lsp::CompletionItem& item) {
+void CompletionDispatch::getCompletionItemResolve(lsp::CompletionItem& item,
+                                                  const lsp::RequestContext& ctx) {
     INFO("Resolving completion item: {}", item.label);
+    ctx.throwIfCancelled("before resolving completion item");
     if (!item.label.empty() && item.label[0] == '$')
         return;
 
@@ -265,7 +267,7 @@ void CompletionDispatch::getCompletionItemResolve(lsp::CompletionItem& item) {
             completions::InstanceCompletionQuery::resolve(*this, item);
             break;
         default:
-            completions::MemberCompletionQuery::resolve(*this, item);
+            completions::MemberCompletionQuery::resolve(*this, item, ctx);
             break;
     }
 }

@@ -124,6 +124,33 @@ endmodule
     CHECK(std::string_view{text.data(), expected.size()} == expected);
 }
 
+TEST_CASE("Cancelled didChange applies edits without rebuilding analysis") {
+    ServerHarness server;
+    auto hdl = server.openFile("test.sv", R"(module test;
+    logic foo;
+endmodule
+)");
+    REQUIRE(hdl.doc->hasAnalysis());
+
+    std::string replacement = R"(module test;
+    logic bar;
+endmodule
+)";
+    lsp::RequestContext ctx("textDocument/didChange", std::nullopt);
+    ctx.cancel();
+    CHECK_THROWS_WITH(
+        server.onDocDidChange(
+            lsp::DidChangeTextDocumentParams{
+                .textDocument = lsp::VersionedTextDocumentIdentifier{.version = 2,
+                                                                     .uri = hdl.doc->getURI()},
+                .contentChanges = {lsp::TextDocumentContentChangeWholeDocument{replacement}}},
+            ctx),
+        "before analysis");
+
+    CHECK(hdl.doc->textMatches(replacement));
+    CHECK_FALSE(hdl.doc->hasAnalysis());
+}
+
 TEST_CASE("getAnalysis with cross-file dependencies is stable") {
     ServerHarness server("indexer_test");
     auto hdl = server.openFile("crossfile_module.sv");
@@ -132,6 +159,12 @@ TEST_CASE("getAnalysis with cross-file dependencies is stable") {
     auto a1 = hdl.doc->getAnalysis();
     auto a2 = hdl.doc->getAnalysis();
     CHECK(a1.get() == a2.get());
+}
+
+TEST_CASE("Document log paths are workspace relative") {
+    ServerHarness server("indexer_test");
+    auto hdl = server.openFile("crossfile_module.sv");
+    CHECK(hdl.doc->getWsRelativePath() == "crossfile_module.sv");
 }
 
 TEST_CASE("LoadConfig") {

@@ -10,6 +10,7 @@
 
 #include "document/ShallowAnalysis.h"
 #include "lsp/LspTypes.h"
+#include "lsp/RequestContext.h"
 #include "lsp/URI.h"
 #include <memory>
 #include <optional>
@@ -23,6 +24,7 @@
 #include "slang/text/SourceLocation.h"
 #include "slang/text/SourceManager.h"
 #include "slang/util/Bag.h"
+
 namespace server {
 /// Container around an open document, syntax tree, and shallow analysis. Isn't aware of any broader
 /// compilation context at the moment. Creates a syntax tree at the minimum, and an analysis if
@@ -46,6 +48,8 @@ private:
 
     /// The URI of the document
     URI m_uri;
+
+    size_t m_wsRelativePathOffset;
 
     /// The buffer of the actual source text (no expansions)
     slang::SourceBuffer m_buffer;
@@ -82,6 +86,9 @@ public:
     const std::string_view getText() const;
     const URI& getURI() { return m_uri; }
     std::string_view getPath() const { return m_uri.getPath(); }
+    std::string_view getWsRelativePath() const {
+        return m_uri.getPath().substr(m_wsRelativePathOffset);
+    }
 
     /// @brief Get the syntax tree, creating it if necessary
     std::shared_ptr<slang::syntax::SyntaxTree> getSyntaxTree();
@@ -91,7 +98,8 @@ public:
 
     /// @brief Get the analysis, creating it if necessary.
     /// Returns a shared_ptr so callers can hold the analysis alive independently of this document.
-    std::shared_ptr<ShallowAnalysis> getAnalysis(bool refreshDependencies = false);
+    std::shared_ptr<ShallowAnalysis> getAnalysis(bool refreshDependencies = false,
+                                                 const lsp::RequestContext& ctx = {});
 
     ////////////////////////////////////////////////
     /// Indexed Syntax Tree Methods
@@ -142,9 +150,9 @@ public:
     /// @brief Issue all diagnostics from this document to the given diagnostic engine
     /// Issue diagnostics to the diagnostic engine
     /// @param diagEngine The diagnostic engine to issue to
-    /// @param parseOnly If true, only issue parse diagnostics (for when ServerCompilation handles
-    /// semantic diags)
-    void issueDiagnosticsTo(slang::DiagnosticEngine& diagEngine);
+    /// @param ctx The request context used for timing logs
+    void issueDiagnosticsTo(slang::DiagnosticEngine& diagEngine,
+                            const lsp::RequestContext& ctx = {});
 
     /// @brief For the document symbols request
     // TODO: should this use the shallow compilation instead of syntax tree?
@@ -154,7 +162,7 @@ public:
 
     std::vector<lsp::DocumentLink> getDocLinks() { return getAnalysis()->getDocLinks(); }
 
-    std::vector<lsp::Range> getInactiveRegions();
+    std::vector<lsp::Range> getInactiveRegions(const lsp::RequestContext& ctx = {});
 };
 
 } // namespace server
@@ -164,6 +172,6 @@ struct fmt::formatter<server::SlangDoc> {
 
     template<typename FormatContext>
     constexpr auto format(const server::SlangDoc& doc, FormatContext& ctx) const {
-        return fmt::format_to(ctx.out(), "{}", doc.getPath());
+        return fmt::format_to(ctx.out(), "{}", doc.getWsRelativePath());
     }
 };

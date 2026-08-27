@@ -9,6 +9,7 @@
 
 #include "completions/CompletionContext.h"
 #include "lsp/LspTypes.h"
+#include "lsp/RequestContext.h"
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -39,7 +40,8 @@ public:
         bool followedByCall);
 
     /// Resolve a member completion received through completionItem/resolve.
-    static void resolve(CompletionDispatch& dispatch, lsp::CompletionItem& item);
+    static void resolve(CompletionDispatch& dispatch, lsp::CompletionItem& item,
+                        const lsp::RequestContext& ctx);
 
     /// Populate deferred member properties while the symbol is already available.
     static void resolve(const slang::ast::Symbol& symbol, lsp::CompletionItem& item,

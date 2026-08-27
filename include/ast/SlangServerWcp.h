@@ -20,5 +20,5 @@ public:
     virtual void onWaveformLoaded(const std::string&) = 0;
     virtual std::vector<std::string> getDrivers(const std::string&) = 0;
     virtual std::vector<std::string> getLoads(const std::string&) = 0;
-    virtual std::mutex& getMutex() = 0;
+    virtual std::mutex& getServerStateMutex() = 0;
 };

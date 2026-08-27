@@ -184,8 +184,7 @@ bool ShallowAnalysis::isOverSelector(const parsing::Token* node,
 }
 
 const ast::Symbol* ShallowAnalysis::handleScopedNameLookup(const syntax::NameSyntax* nameSyntax,
-                                                           const ast::ASTContext& context,
-                                                           const ast::Scope* scope) const {
+                                                           const ast::ASTContext& context) const {
     auto scopedParent = nameSyntax->parent->as_if<syntax::ScopedNameSyntax>();
     if (!scopedParent || nameSyntax->kind != syntax::SyntaxKind::IdentifierName) {
         return nullptr;
@@ -193,17 +192,12 @@ const ast::Symbol* ShallowAnalysis::handleScopedNameLookup(const syntax::NameSyn
     ast::LookupResult result;
     ast::Lookup::name(*scopedParent, context, ast::LookupFlags::None, result);
     if (!result.found) {
-        ERROR("No symbol found for scoped name {} in scope {}", scopedParent->toString(),
-              scope->asSymbol().getHierarchicalPath());
         return nullptr;
     }
 
     if (!result.path.empty()) {
         return result.path.front().symbol.get();
     }
-
-    ERROR("No path found for scoped name {} in scope {}", scopedParent->toString(),
-          scope->asSymbol().getHierarchicalPath());
     return nullptr;
 }
 
@@ -843,7 +837,7 @@ slang::SmallVector<const ast::Symbol*, 2> ShallowAnalysis::getSymbolsAtToken(
         }
 
         // Try scoped name lookup with the same flags
-        if (auto scopedResult = handleScopedNameLookup(nameSyntax, context, scope)) {
+        if (auto scopedResult = handleScopedNameLookup(nameSyntax, context)) {
             return scopedResult;
         }
 

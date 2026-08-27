@@ -6398,7 +6398,7 @@ struct CodeAction {
 
 struct CancelParams {
     /// The request id to cancel.
-    rfl::Variant<int, std::string> id;
+    std::variant<int, std::string> id;
 };
 
 /// The parameter of a `textDocument/prepareCallHierarchy` request.
