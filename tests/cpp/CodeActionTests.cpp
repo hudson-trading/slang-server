@@ -16,6 +16,21 @@ static std::optional<lsp::CodeAction> getCodeActionAt(ServerHarness& server, Doc
     return rfl::get<lsp::CodeAction>(result->front());
 }
 
+static std::vector<lsp::CodeAction> getCodeActionsAt(ServerHarness& server, DocumentHandle& doc,
+                                                     lsp::uint offset) {
+    auto pos = doc.getPosition(offset);
+    auto result = server.getDocCodeAction(lsp::CodeActionParams{
+        .textDocument = {.uri = doc.m_uri},
+        .range = {.start = pos, .end = pos},
+        .context = {.diagnostics = {}},
+    });
+    std::vector<lsp::CodeAction> actions;
+    if (result)
+        for (auto& r : *result)
+            actions.push_back(rfl::get<lsp::CodeAction>(r));
+    return actions;
+}
+
 TEST_CASE("LspExtensibleStringEnums_AllowExtensionKinds") {
     auto params = rfl::json::read<lsp::InitializeParams>(R"(
 {
@@ -155,6 +170,90 @@ TEST_CASE("CodeAction_AddDefine_DefinedMacro") {
     // Should NOT show add-define action when macro is already defined
     auto action = getCodeActionAt(server, doc, doc.after("`ifdef ").m_offset);
     CHECK(!action.has_value());
+}
+
+TEST_CASE("CodeAction_IncludeForMacro_Unknown") {
+    ServerHarness server;
+
+    auto defs = server.openFile("defs.svh", R"(
+`define MY_FLAG 1
+)");
+    defs.save();
+
+    auto use = server.openFile("use.sv", R"(
+module top;
+    localparam int x = `MY_FLAG;
+endmodule
+)");
+
+    auto actions = getCodeActionsAt(server, use, use.before("MY_FLAG").m_offset);
+    auto it = std::ranges::find_if(actions, [](const lsp::CodeAction& a) {
+        return a.title.find("`include") != std::string::npos;
+    });
+    REQUIRE(it != actions.end());
+    CHECK(it->title == "Add `include \"defs.svh\" for `MY_FLAG");
+    REQUIRE(it->edit.has_value());
+    auto& edits = it->edit->changes.value()[use.m_uri.str()];
+    REQUIRE(edits.size() == 1);
+    CHECK(edits[0].newText == "`include \"defs.svh\"\n");
+    CHECK(edits[0].range.start.line == 0);
+}
+
+TEST_CASE("CodeAction_IncludeForMacro_NotWhenDefined") {
+    ServerHarness server;
+
+    auto defs = server.openFile("defs.svh", R"(
+`define MY_FLAG 1
+)");
+    defs.save();
+
+    auto use = server.openFile("use.sv", R"(
+`define MY_FLAG 2
+module top;
+    logic x = `MY_FLAG;
+endmodule
+)");
+
+    auto actions = getCodeActionsAt(server, use, use.after("logic x = ").m_offset);
+    CHECK(std::ranges::none_of(actions, [](const lsp::CodeAction& a) {
+        return a.title.find("`include") != std::string::npos;
+    }));
+}
+
+TEST_CASE("CodeAction_IncludeForMacro_NotWhenAlreadyIncluded") {
+    ServerHarness server;
+
+    auto defs = server.openFile("defs.svh", R"(
+`define MY_FLAG 1
+)");
+    defs.save();
+
+    auto use = server.openFile("use.sv", R"(
+`include "defs.svh"
+module top;
+    logic x = `MY_FLAG;
+endmodule
+)");
+
+    auto actions = getCodeActionsAt(server, use, use.before("`MY_FLAG").m_offset);
+    CHECK(std::ranges::none_of(actions, [](const lsp::CodeAction& a) {
+        return a.title.find("`include") != std::string::npos;
+    }));
+}
+
+TEST_CASE("CodeAction_IncludeForMacro_NoneWhenUnindexed") {
+    ServerHarness server;
+
+    auto use = server.openFile("use.sv", R"(
+module top;
+    logic x = `NOWHERE_MACRO;
+endmodule
+)");
+
+    auto actions = getCodeActionsAt(server, use, use.before("`NOWHERE_MACRO").m_offset);
+    CHECK(std::ranges::none_of(actions, [](const lsp::CodeAction& a) {
+        return a.title.find("`include") != std::string::npos;
+    }));
 }
 
 TEST_CASE("CodeAction_ExpandConcatenation") {
