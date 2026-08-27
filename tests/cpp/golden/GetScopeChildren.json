@@ -211,6 +211,7 @@
             }
           }
         },
+        "declKind": "Module",
         "children": []
       },
       {
@@ -537,6 +538,7 @@
             }
           }
         },
+        "declKind": "Module",
         "children": []
       },
       {
@@ -569,6 +571,7 @@
             }
           }
         },
+        "declKind": "Module",
         "children": []
       },
       {
@@ -763,6 +766,7 @@
             }
           }
         },
+        "declKind": "Module",
         "children": [
           {
             "kind": "Instance",
@@ -794,6 +798,7 @@
                 }
               }
             },
+            "declKind": "Module",
             "children": []
           },
           {
@@ -826,6 +831,7 @@
                 }
               }
             },
+            "declKind": "Module",
             "children": []
           },
           {
@@ -858,6 +864,7 @@
                 }
               }
             },
+            "declKind": "Module",
             "children": []
           },
           {
@@ -890,6 +897,7 @@
                 }
               }
             },
+            "declKind": "Module",
             "children": []
           }
         ]
@@ -960,6 +968,7 @@
             }
           }
         },
+        "declKind": "Module",
         "children": [
           {
             "kind": "Instance",
@@ -991,6 +1000,7 @@
                 }
               }
             },
+            "declKind": "Module",
             "children": []
           }
         ]
@@ -1186,6 +1196,7 @@
                     }
                   }
                 },
+                "declKind": "Module",
                 "children": []
               }
             ]
@@ -1364,6 +1375,7 @@
                     }
                   }
                 },
+                "declKind": "Module",
                 "children": []
               }
             ]
@@ -1542,6 +1554,7 @@
                     }
                   }
                 },
+                "declKind": "Module",
                 "children": []
               }
             ]

@@ -119,6 +119,10 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     // Hierarchy View (sidebar)
     registerCommand<std::string, std::vector<hier::HierItem_t>, &SlangServer::getScope>(
         "slang.getScope");
+    registerCommand<ShowHierLocationArgs, std::monostate, &SlangServer::showHierLocation>(
+        "slang.showHierLocation");
+    registerCommand<ShowModuleDefinitionArgs, std::monostate, &SlangServer::showModuleDefinition>(
+        "slang.showModuleDefinition");
 
     // Terminal Links
     registerCommand<std::string, std::vector<std::string>, &SlangServer::getFilesContainingModule>(
@@ -389,8 +393,14 @@ std::vector<hier::QualifiedInstance> SlangServer::getInstancesOfModule(
     auto result = m_driver->comp->getInstancesOfModule(moduleName);
     if (result.empty()) {
         m_client.showError(fmt::format("Module {} not found", moduleName));
+        return {};
     }
-    return result;
+    std::vector<hier::QualifiedInstance> qualifiedInstances;
+    qualifiedInstances.reserve(result.size());
+    for (const auto* inst : result) {
+        qualifiedInstances.push_back(hier::toQualifiedInstance(*inst, m_driver->sm));
+    }
+    return qualifiedInstances;
 }
 
 bool SlangServer::expandMacros(ExpandMacroArgs args) {
@@ -422,6 +432,84 @@ std::vector<hier::HierItem_t> SlangServer::getScope(const std::string& hierPath)
         return {};
     }
     return m_driver->comp->getScope(hierPath);
+}
+
+std::optional<lsp::Location> SlangServer::getHierLocation(const std::string& hierPath) {
+    if (!m_driver->comp) {
+        ERROR("No compilation available, cannot resolve location for {}", hierPath);
+        return std::nullopt;
+    }
+    auto location = m_driver->comp->getHierLocation(hierPath);
+    if (location) {
+        return location;
+    }
+
+    // Packages aren't always part of the active build; fall back to any open doc.
+    auto separator = hierPath.rfind("::");
+    if (separator == std::string::npos) {
+        WARN("getHierLocation: failed to resolve {}", hierPath);
+        return std::nullopt;
+    }
+    auto packageName = std::string_view(hierPath).substr(0, separator);
+    auto memberName = std::string_view(hierPath).substr(separator + 2);
+    for (const auto& [_, doc] : m_driver->docs) {
+        auto analysis = doc->getAnalysis();
+        auto* pkg = analysis->getCompilation()->getPackage(packageName);
+        auto* member = pkg ? pkg->lookupName(memberName) : nullptr;
+        if (!member) {
+            continue;
+        }
+        if (member->location.valid()) {
+            auto memberLoc = toLocation(member->location, m_driver->sm);
+            if (!memberLoc.uri.getPath().empty()) {
+                return memberLoc;
+            }
+        }
+        if (auto* syntax = member->getSyntax()) {
+            auto memberLoc = toLocation(syntax->sourceRange(), m_driver->sm);
+            if (!memberLoc.uri.getPath().empty()) {
+                return memberLoc;
+            }
+        }
+    }
+    WARN("getHierLocation: failed to resolve {}", hierPath);
+    return std::nullopt;
+}
+
+std::monostate SlangServer::showHierLocation(const ShowHierLocationArgs& args) {
+    auto location = getHierLocation(args.hierPath);
+    if (!location) {
+        return {};
+    }
+    m_client.onShowDocument(lsp::ShowDocumentParams{
+        .uri = location->uri,
+        .takeFocus = args.takeFocus,
+        .selection = location->range,
+    });
+    return {};
+}
+
+std::monostate SlangServer::showModuleDefinition(const ShowModuleDefinitionArgs& args) {
+    if (!m_driver->comp) {
+        ERROR("No compilation available, cannot show module definition for {}", args.moduleName);
+        return {};
+    }
+    auto instances = m_driver->comp->getInstancesOfModule(args.moduleName);
+    if (instances.empty()) {
+        WARN("showModuleDefinition: module {} has no instances", args.moduleName);
+        return {};
+    }
+    auto declLoc = toLocation(instances[0]->getDefinition().location, m_driver->sm);
+    if (declLoc.uri.getPath().empty()) {
+        WARN("showModuleDefinition: module {} declaration has no source location", args.moduleName);
+        return {};
+    }
+    m_client.onShowDocument(lsp::ShowDocumentParams{
+        .uri = declLoc.uri,
+        .takeFocus = args.takeFocus,
+        .selection = declLoc.range,
+    });
+    return {};
 }
 
 // TODO -- Underlying InstanceVisitor implementation is slow for larger designs -- fix
