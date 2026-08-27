@@ -70,6 +70,41 @@ TEST_CASE("GetScopeBranches") {
     golden.record("children", children);
 }
 
+TEST_CASE("HierarchyExpansionMetadataIsSparse") {
+    ServerHarness server;
+
+    auto hdl = server.openFile("macro_hierarchy.sv", R"(
+`define MAKE_CHILD child macro_child();
+
+module child;
+endmodule
+
+module top;
+    child direct_child();
+    `MAKE_CHILD
+endmodule
+)");
+
+    server.setTopLevel(std::string{hdl.m_uri.getPath()});
+    auto children = server.getScope("top");
+
+    auto findInstance = [&](std::string_view name) -> const hier::Instance& {
+        auto it = std::ranges::find_if(children, [&](const hier::HierItem_t& item) {
+            return rfl::holds_alternative<hier::Instance>(item) &&
+                   rfl::get<hier::Instance>(item).instName == name;
+        });
+        REQUIRE(it != children.end());
+        return rfl::get<hier::Instance>(*it);
+    };
+
+    CHECK_FALSE(findInstance("direct_child").fromExpansion.has_value());
+    CHECK(findInstance("macro_child").fromExpansion == true);
+
+    auto json = rfl::json::write(children);
+    CHECK(json.find("\"fromExpansion\":true") != std::string::npos);
+    CHECK(json.find("\"fromExpansion\":false") == std::string::npos);
+}
+
 TEST_CASE("GetScopeTypeParameterOverride") {
     ServerHarness server;
 
@@ -247,4 +282,87 @@ TEST_CASE("HierarchicalViewEmptyResults") {
     // Module not in workspace
     auto noFiles = server.getFilesContainingModule("nonexistent_module");
     CHECK(noFiles.empty());
+}
+
+TEST_CASE("HierLocationRetargetsToShallowAfterEdit") {
+    // When a file is edited but not saved, the full compilation (only refreshed on save)
+    // still points at the pre-edit buffer. Resolving a hierarchy path must retarget onto the
+    // per-edit shallow compilation so the source location reflects the current buffer.
+    ServerHarness server("comp_repo");
+    server.setBuildFile("cpu_design.f");
+
+    // Baseline: alu_inst resolves inside cpu.sv before any edit.
+    auto before = server.getHierLocation("cpu_testbench.dut.alu_inst");
+    REQUIRE(before.has_value());
+    CHECK(before->uri.getPath().ends_with("cpu.sv"));
+    auto baselineLine = before->range.start.line;
+
+    // Open cpu.sv and insert two lines above the alu_inst instantiation, published but not
+    // saved. This shifts alu_inst down by two lines in the live buffer.
+    auto cpu = server.openFile("cpu.sv");
+    cpu.after("// Internal registers").write("\n    // touch\n");
+    cpu.publishChanges();
+
+    // The location must retarget onto the shallow compilation and reflect the shifted line,
+    // rather than failing to resolve (the old behavior warned "definition has no fullPath").
+    auto after = server.getHierLocation("cpu_testbench.dut.alu_inst");
+    REQUIRE(after.has_value());
+    CHECK(after->uri.getPath().ends_with("cpu.sv"));
+    CHECK(after->range.start.line == baselineLine + 2);
+}
+
+TEST_CASE("HierLocationRetargetsIndexedPathsAfterEdit") {
+    // Retargeting must keep generate-loop and instance-array indices, so paths like
+    // gen_alu_array[1].gen_alu_inst or alu_inst_array[2] resolve in the shallow compilation
+    // after an edit (plain getLexicalPath() drops the indices and fails to resolve).
+    // counter_inst[0] additionally exercises a non-zero-based ([0:0]) array range.
+    for (const std::string path :
+         {"cpu_testbench.dut.gen_alu_array[1].gen_alu_inst", "cpu_testbench.dut.alu_inst_array[2]",
+          "cpu_testbench.dut.counter_inst[0]"}) {
+        CAPTURE(path);
+        ServerHarness server("comp_repo");
+        server.setBuildFile("cpu_design.f");
+
+        auto before = server.getHierLocation(path);
+        REQUIRE(before.has_value());
+        CHECK(before->uri.getPath().ends_with("cpu.sv"));
+        auto baselineLine = before->range.start.line;
+
+        // Insert two lines above the instantiations (all live below "// Internal registers"),
+        // published but not saved.
+        auto cpu = server.openFile("cpu.sv");
+        cpu.after("// Internal registers").write("\n    // touch\n");
+        cpu.publishChanges();
+
+        auto after = server.getHierLocation(path);
+        REQUIRE(after.has_value());
+        CHECK(after->uri.getPath().ends_with("cpu.sv"));
+        CHECK(after->range.start.line == baselineLine + 2);
+    }
+}
+
+TEST_CASE("HierLocationRetargetsNonTopModuleAfterEdit") {
+    // Two modules in one file where the top (outer_tb) instantiates a non-top module
+    // (inner_cell, which has a non-defaulted parameter so it is never a valid top). A path into
+    // inner_cell can't be resolved from the shallow comp's root, so retargeting must descend
+    // from the tops to the real instance and resolve the remainder within its body.
+    ServerHarness server("comp_repo");
+    auto hdl = server.openFile("two_mods.sv");
+    server.setTopLevel(std::string{hdl.m_uri.getPath()});
+
+    // dut (a leaf instance) lives inside inner_cell.
+    auto path = "outer_tb.the_cell.dut";
+    auto before = server.getHierLocation(path);
+    REQUIRE(before.has_value());
+    CHECK(before->uri.getPath().ends_with("two_mods.sv"));
+    auto baselineLine = before->range.start.line;
+
+    // Insert two lines above inner_cell's body (unsaved), shifting dut down by two.
+    hdl.after("module inner_cell").write("\n// pad\n");
+    hdl.publishChanges();
+
+    auto after = server.getHierLocation(path);
+    REQUIRE(after.has_value());
+    CHECK(after->uri.getPath().ends_with("two_mods.sv"));
+    CHECK(after->range.start.line == baselineLine + 2);
 }
