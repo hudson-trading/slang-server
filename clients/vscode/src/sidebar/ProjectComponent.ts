@@ -32,12 +32,24 @@ import {
   getGeneratedBuildOutputPath,
   resolveCommandToken,
 } from './BuildConfigUtils'
+import {
+  ResolvedHierarchyChild,
+  resolveHierarchyChild,
+  splitHierarchyPath,
+} from '../lib/InstancePathUtils'
 
 const STRUCTURE_SYMS = [
   slang.SlangKind.Instance,
   slang.SlangKind.InstanceArray,
   slang.SlangKind.Scope,
   slang.SlangKind.ScopeArray,
+]
+
+const DATA_SYMS = [
+  slang.SlangKind.Port,
+  slang.SlangKind.Logic,
+  slang.SlangKind.InterfacePort,
+  slang.SlangKind.InterfacePortArray,
 ]
 
 interface HasChildren {
@@ -128,6 +140,14 @@ export abstract class HierItem implements HasChildren {
     return []
   }
 
+  setChildren(children: HierItem[]) {
+    this.children = children
+    this.childrenByName = new Map()
+    for (const child of children) {
+      this.childrenByName.set(child.inst.instName, child)
+    }
+  }
+
   async getTreeItem(): Promise<TreeItem> {
     let item = new TreeItem(this.inst.instName)
     item.iconPath = new vscode.ThemeIcon('chip')
@@ -206,6 +226,10 @@ class ScopeItem extends HierItem {
     return mapChildren(this, this.inst.children)
   }
 
+  async hasChildren(): Promise<boolean> {
+    return this.inst.children.length > 0
+  }
+
   async getTreeItem(): Promise<TreeItem> {
     let item = new TreeItem(this.inst.instName)
     item.iconPath =
@@ -248,7 +272,12 @@ export class InstanceItem extends HierItem {
   }
 
   async hasChildren(): Promise<boolean> {
-    return (await this.getChildren()).length > 0
+    // Use the server-provided flag to avoid a getScope round-trip; only fetch if we
+    // already happen to have the children cached.
+    if (this.children !== undefined) {
+      return this.children.length > 0
+    }
+    return this.inst.hasChildren
   }
 }
 
@@ -287,6 +316,10 @@ export class PkgItem extends RootItem {
     super(undefined, instance)
   }
 
+  getChildPath(name: string): string {
+    return this.getPath() + '::' + name
+  }
+
   async getTreeItem(): Promise<vscode.TreeItem> {
     let item = await super.getTreeItem()
     item.iconPath = new vscode.ThemeIcon('package')
@@ -318,38 +351,10 @@ export class UnitItem implements HasChildren {
   }
 }
 
-// Split a scope path into parts, handling array indices.
-// e.g. "top.u1[0].u2[0][1]" -> ["top", "u1", "[0]", "u2", "[0]", "[1]"]
-// Vaporview will format like so though: "top.u1.[0].u2.[0].u2.[1]", so we should be robust to both
-function splitScope(path: string): string[] {
-  const parts = path.split('.')
-  const partsWithBrackets = []
-  for (const part of parts) {
-    if (part.includes('[')) {
-      const bracketSplit = part.split('[')
-      // Handle vaporview's extra dot by skipping empty parts
-      if (bracketSplit[0].length > 0) {
-        partsWithBrackets.push(bracketSplit[0])
-      }
-      for (const index of bracketSplit.slice(1)) {
-        partsWithBrackets.push('[' + index)
-      }
-    } else {
-      partsWithBrackets.push(part)
-    }
-  }
-  return partsWithBrackets
-}
-
 class VarItem extends HierItem {
   inst: slang.Var
   static PARAM_TYPES: slang.SlangKind[] = [slang.SlangKind.Param]
-  static DATA_TYPES: slang.SlangKind[] = [
-    slang.SlangKind.Logic,
-    slang.SlangKind.Port,
-    slang.SlangKind.InterfacePort,
-    slang.SlangKind.InterfacePortArray,
-  ]
+  static DATA_TYPES: slang.SlangKind[] = DATA_SYMS
 
   constructor(parent: HierItem | undefined, instance: slang.Var) {
     super(parent, instance)
@@ -584,6 +589,94 @@ export class ProjectComponent
     }
   )
 
+  private async resolveHierarchyPath(path: string): Promise<{
+    item: HierItem
+    exact: boolean
+    missingPart?: string
+  } | null> {
+    if (!this.unit) {
+      return null
+    }
+
+    const scopes = await slang.getScopes(path)
+    const parts = splitHierarchyPath(path)
+    let current: HasChildren = this.unit
+    let lastResolved: HierItem | undefined = undefined
+
+    // Replace `current`'s children with server-fresh items, but reuse existing HierItem
+    // objects (by name) so vscode's TreeView selection identity survives. Replacing
+    // wholesale on every call orphans previously-selected items and the selection
+    // visually gets stuck on the prior pick.
+    const refreshChildren = (parent: HierItem, items: slang.Item[]) => {
+      const existing = new Map<string, HierItem>()
+      for (const child of parent.children ?? []) {
+        existing.set(child.inst.instName, child)
+      }
+      const fresh = mapChildren(parent, items)
+      for (let i = 0; i < fresh.length; i++) {
+        const reuse = existing.get(fresh[i].inst.instName)
+        if (reuse) {
+          // Keep the same HierItem object; update its slang.Item payload so any new
+          // fields (e.g. hasChildren) reflect the latest server snapshot.
+          reuse.inst = fresh[i].inst
+          reuse.fromExpansion = fresh[i].fromExpansion ?? false
+          fresh[i] = reuse
+        }
+      }
+      parent.setChildren(fresh)
+    }
+
+    for (let i = 0; i < parts.length; i++) {
+      if (i > 0 && current instanceof HierItem) {
+        const step = scopes[i]
+        if (step) {
+          refreshChildren(current, step.children)
+        }
+      }
+
+      type ChildCandidate = { instName: string; path: string; item: HierItem }
+      const childCandidates: ChildCandidate[] = (await current.getChildren()).map((item) => ({
+        instName: item.inst.instName,
+        path: item.getPath(),
+        item,
+      }))
+      const resolvedChild: ResolvedHierarchyChild<ChildCandidate> = resolveHierarchyChild(
+        childCandidates,
+        parts,
+        i,
+        lastResolved?.getPath()
+      )
+      const child: HierItem | undefined = resolvedChild.child?.item
+      i = resolvedChild.nextIndex
+      if (!child) {
+        if (lastResolved) {
+          return {
+            item: lastResolved,
+            exact: false,
+            missingPart: parts[i],
+          }
+        }
+        return null
+      }
+
+      lastResolved = child
+      current = child
+    }
+
+    if (lastResolved) {
+      const finalStep = scopes[parts.length]
+      if (finalStep) {
+        refreshChildren(lastResolved, finalStep.children)
+      }
+      return {
+        item: lastResolved,
+        exact: true,
+      }
+    }
+
+    return null
+  }
+
   // Set instance given one of:
   // - a path (from internal calls)
   // - a hierarchy item (from hierarchy or modules view)
@@ -631,9 +724,6 @@ export class ProjectComponent
 
       // resolve instances if hierarchy path
       if (typeof instance === 'string') {
-        // const scopes = await slang.getScopes(instance)
-        const scopes = splitScope(instance)
-        // Go through hierarchy, revealing each level
         if (this.unit === undefined) {
           // TODO: set the top level based on top name?
           await vscode.window.showErrorMessage(
@@ -641,36 +731,21 @@ export class ProjectComponent
           )
           return
         }
-        let current: HasChildren = this.unit!
-        let error: string | undefined = undefined
-        for (let scope of scopes) {
-          let child = await current.getChild(scope)
 
-          if (child === undefined) {
-            const isLogicArray =
-              current instanceof HierItem && current.inst.kind === slang.SlangKind.Logic
-            if (!isLogicArray) {
-              error = `Could not find instance ${scope} in ${current.getPath()}`
-              this.logger.warn(error)
-            }
-            break
-          }
-
-          current = child
-        }
-
-        if (error) {
+        const resolved = await this.resolveHierarchyPath(instance)
+        this._onDidChangeTreeData.fire()
+        if (!resolved) {
+          const error = `Could not find instance ${instance}`
+          this.logger.warn(error)
           await vscode.window.showErrorMessage(error)
-        }
-        if (!(current instanceof HierItem)) {
-          if (!error) {
-            await vscode.window.showErrorMessage(
-              'Invalid instance type: ' + typeof current + ' = ' + current
-            )
-          }
           return
         }
-        instance = current
+        if (!resolved.exact && resolved.missingPart) {
+          const error = `Could not find instance ${resolved.missingPart} in ${resolved.item.getPath()}`
+          this.logger.warn(error)
+          await vscode.window.showErrorMessage(error)
+        }
+        instance = resolved.item
       }
 
       this.focused = instance
@@ -679,13 +754,10 @@ export class ProjectComponent
           await this.toggleHiddenFunc()
         }
         if (!this.symFilter.has(instance.inst.kind)) {
-          switch (instance.inst.kind) {
-            case slang.SlangKind.Param:
-              await this.toggleParamsFunc()
-              break
-            case slang.SlangKind.Logic:
-              await this.toggleDataFunc()
-              break
+          if (instance.inst.kind === slang.SlangKind.Param) {
+            await this.toggleParamsFunc()
+          } else if (DATA_SYMS.includes(instance.inst.kind)) {
+            await this.toggleDataFunc()
           }
         }
         await this.reveal(instance, focus === 'hierarchy')
@@ -1553,11 +1625,9 @@ export class ProjectComponent
       return treeItem
     }
 
-    const [treeItem, children] = await Promise.all([
-      element.getTreeItem(),
-      this.getChildren(element),
-    ])
-    if (children.length === 0) {
+    const treeItem = await element.getTreeItem()
+    const expandable = await element.hasChildren()
+    if (!expandable) {
       treeItem.collapsibleState = vscode.TreeItemCollapsibleState.None
     } else if (element instanceof RootItem && element.inst.kind === slang.SlangKind.Instance) {
       treeItem.collapsibleState = vscode.TreeItemCollapsibleState.Expanded
