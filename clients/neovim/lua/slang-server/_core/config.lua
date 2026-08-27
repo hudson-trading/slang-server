@@ -16,6 +16,8 @@ local default_config = {
       instancearray = { icon = "", hl = "SlangServerInstanceArray" },
       scope = { icon = "󰅩", hl = "SlangServerScope" },
       scopearray = { icon = "󰅩", hl = "SlangServerScopeArray" },
+      interfaceport = { icon = "󰅩", hl = "SlangServerScope" },
+      interfaceportarray = { icon = "󰅩", hl = "SlangServerScopeArray" },
       package = { icon = "📦", hl = "SlangServerPackage" },
       port = {
          input = { icon = "", hl = "SlangServerPortInput" },

@@ -22,6 +22,7 @@
 #include "slang/ast/symbols/BlockSymbols.h"
 #include "slang/ast/symbols/CompilationUnitSymbols.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
+#include "slang/ast/symbols/MemberSymbols.h"
 #include "slang/ast/symbols/ParameterSymbols.h"
 #include "slang/ast/symbols/PortSymbols.h"
 #include "slang/ast/symbols/ValueSymbol.h"
@@ -52,6 +53,8 @@ enum class SlangKind {
     Instance,
     Scope,
     ScopeArray,
+    InterfacePort,
+    InterfacePortArray,
     Port,
     Param,
     Logic,
@@ -102,6 +105,7 @@ struct Scope {
     /// @deprecated Use slang.showHierLocation with the item's hierarchy path.
     lsp::Location instLoc;
     std::optional<bool> fromExpansion;
+    std::optional<std::string> type;
     std::vector<HierItem_t> children;
 };
 
@@ -335,6 +339,137 @@ static void handleValue(std::vector<HierItem_t>& result, const slang::ast::Value
     }));
 }
 
+static SourceRange getSymbolSourceRange(const slang::ast::Symbol& symbol) {
+    if (auto* syntax = symbol.getSyntax()) {
+        return syntax->sourceRange();
+    }
+    return SourceRange(symbol.location, symbol.location);
+}
+
+static const slang::ast::Scope* getInterfacePortScope(const slang::ast::InterfacePortSymbol& port,
+                                                      const slang::ast::InstanceSymbol* ifaceInst) {
+    if (!ifaceInst) {
+        if (port.interfaceDef) {
+            ifaceInst = &slang::ast::InstanceSymbol::createDefault(
+                port.getParentScope()->getCompilation(), *port.interfaceDef);
+        }
+        else {
+            return nullptr;
+        }
+    }
+
+    auto [_, modport] = port.getConnection();
+    if (modport) {
+        if (auto sym = ifaceInst->body.find(modport->name)) {
+            if (auto modportSym = sym->as_if<slang::ast::ModportSymbol>()) {
+                return modportSym;
+            }
+        }
+    }
+    else if (!port.modport.empty()) {
+        if (auto sym = ifaceInst->body.find(port.modport)) {
+            if (auto modportSym = sym->as_if<slang::ast::ModportSymbol>()) {
+                return modportSym;
+            }
+        }
+    }
+
+    return &ifaceInst->body;
+}
+
+static std::vector<HierItem_t> getInterfacePortElementChildren(
+    const slang::ast::InterfacePortSymbol& port, const slang::ast::InstanceSymbol* ifaceInst,
+    const SourceManager& sm) {
+    auto* scope = getInterfacePortScope(port, ifaceInst);
+    if (!scope) {
+        return {};
+    }
+    return getScopeChildren(*scope, sm);
+}
+
+static std::string getInterfacePortType(const slang::ast::InterfacePortSymbol& port);
+
+static std::vector<HierItem_t> getInterfacePortChildren(const slang::ast::InterfacePortSymbol& port,
+                                                        const SourceManager& sm) {
+    auto sourceRange = getSymbolSourceRange(port);
+    auto type = getInterfacePortType(port);
+    auto [connSym, _modport] = port.getConnection();
+    if (auto declaredRange = port.getDeclaredRange(); declaredRange && !declaredRange->empty()) {
+        std::vector<HierItem_t> elements;
+        const auto& range = declaredRange->front();
+        int32_t index = range.left;
+        int32_t step = range.isDescending() ? -1 : 1;
+
+        auto* connArray = connSym ? connSym->as_if<slang::ast::InstanceArraySymbol>() : nullptr;
+        for (size_t i = 0; i < range.width(); i++) {
+            const slang::ast::InstanceSymbol* ifaceInst = nullptr;
+            if (connArray && i < connArray->elements.size()) {
+                ifaceInst = connArray->elements[i]->as_if<slang::ast::InstanceSymbol>();
+            }
+
+            auto children = getInterfacePortElementChildren(port, ifaceInst, sm);
+            elements.push_back(HierItem_t(Scope{
+                .kind = SlangKind::InterfacePort,
+                .instName = fmt::format("[{}]", index),
+                .instLoc = toLocation(sourceRange, sm),
+                .fromExpansion = getFromExpansion(sourceRange, sm),
+                .type = type,
+                .children = std::move(children),
+            }));
+            index += step;
+        }
+
+        return elements;
+    }
+
+    const slang::ast::InstanceSymbol* ifaceInst = connSym
+                                                      ? connSym->as_if<slang::ast::InstanceSymbol>()
+                                                      : nullptr;
+    return getInterfacePortElementChildren(port, ifaceInst, sm);
+}
+
+static std::string getInterfacePortType(const slang::ast::InterfacePortSymbol& port) {
+    std::string result;
+    if (port.interfaceDef) {
+        result = std::string(port.interfaceDef->name);
+    }
+    if (!port.modport.empty()) {
+        if (!result.empty()) {
+            result += ".";
+        }
+        result += std::string(port.modport);
+    }
+    return result;
+}
+
+static void handleInterfacePort(std::vector<HierItem_t>& result,
+                                const slang::ast::InterfacePortSymbol& port,
+                                const SourceManager& sm) {
+    auto sourceRange = getSymbolSourceRange(port);
+    auto children = getInterfacePortChildren(port, sm);
+    auto type = getInterfacePortType(port);
+    if (auto declaredRange = port.getDeclaredRange(); declaredRange && !declaredRange->empty()) {
+        result.push_back(HierItem_t(Scope{
+            .kind = SlangKind::InterfacePortArray,
+            .instName = std::string(port.name),
+            .instLoc = toLocation(sourceRange, sm),
+            .fromExpansion = getFromExpansion(sourceRange, sm),
+            .type = type,
+            .children = std::move(children),
+        }));
+        return;
+    }
+
+    result.push_back(HierItem_t(Scope{
+        .kind = SlangKind::InterfacePort,
+        .instName = std::string(port.name),
+        .instLoc = toLocation(sourceRange, sm),
+        .fromExpansion = getFromExpansion(sourceRange, sm),
+        .type = type,
+        .children = std::move(children),
+    }));
+}
+
 static std::vector<HierItem_t> getScopeChildren(const slang::ast::Scope& scope,
                                                 const SourceManager& sm) {
     std::vector<HierItem_t> result;
@@ -350,6 +485,9 @@ static std::vector<HierItem_t> getScopeChildren(const slang::ast::Scope& scope,
         }
         else if (auto val = sym.as_if<slang::ast::ValueSymbol>()) {
             handleValue(result, *val, sm);
+        }
+        else if (auto ifacePort = sym.as_if<slang::ast::InterfacePortSymbol>()) {
+            handleInterfacePort(result, *ifacePort, sm);
         }
         else if (auto block = sym.as_if<slang::ast::GenerateBlockSymbol>()) {
             handleBlockScope(result, *block, sm);
