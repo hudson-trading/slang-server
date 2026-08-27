@@ -12,6 +12,7 @@
 #include <sstream>
 #include <string>
 
+#include "slang/ast/symbols/MemberSymbols.h"
 #include "slang/ast/symbols/PortSymbols.h"
 #include "slang/ast/symbols/ValueSymbol.h"
 #include "slang/ast/types/DeclaredType.h"
@@ -556,6 +557,9 @@ std::string portString(ast::ArgumentDirection dir) {
 
 std::string getTypeString(const ast::ValueSymbol& value, TypeStringMode mode) {
     const slang::ast::Type& decl = value.getType();
+    if (auto* modportPort = value.as_if<ast::ModportPortSymbol>()) {
+        return fmt::format("{} {}", portString(modportPort->direction), getTypeString(decl, mode));
+    }
     auto port = value.getFirstPortBackref();
     if (port) {
         return fmt::format("{} {}", portString(port->port->direction), getTypeString(decl, mode));

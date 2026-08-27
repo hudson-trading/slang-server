@@ -14,6 +14,8 @@
 ---@class (exact) slang-server.config.Kinds
 ---@field instance slang-server.config.KindScoped?
 ---@field scope slang-server.config.KindScoped?
+---@field interfaceport slang-server.config.Kind?
+---@field interfaceportarray slang-server.config.Kind?
 ---@field port slang-server.config.Kind?
 ---@field param slang-server.config.Kind?
 ---@field reg slang-server.config.Kind?
@@ -27,6 +29,10 @@
 ---@field closed slang-server.config.Kind?
 
 ---@alias slang-server.config.Highlights table<string, vim.api.keyset.highlight>
+
+---@class (exact) slang-server.SearchHierarchyOptions
+---@field bufnr integer?
+---@field on_error fun(message: string)?
 
 --- Navigation types
 
