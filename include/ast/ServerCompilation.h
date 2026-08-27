@@ -67,6 +67,9 @@ public:
     /// Retrun the children of the scope at the given hierarchical path
     std::vector<hier::HierItem_t> getScope(const std::string& hierPath);
 
+    /// Return root-to-focus scope steps with populated child lists for each path segment.
+    std::vector<hier::ScopeStep> getScopes(const std::string& hierPath);
+
     /// Resolve the source location for a hierarchical instance path.
     std::optional<lsp::Location> getHierLocation(const std::string& hierPath);
 
