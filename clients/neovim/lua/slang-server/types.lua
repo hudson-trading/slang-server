@@ -13,9 +13,15 @@
 
 ---@class (exact) slang-server.config.Kinds
 ---@field instance slang-server.config.KindScoped?
+---@field instancearray slang-server.config.Kind?
 ---@field scope slang-server.config.KindScoped?
+---@field scopearray slang-server.config.Kind?
+---@field interfaceport slang-server.config.Kind?
+---@field interfaceportarray slang-server.config.Kind?
+---@field package slang-server.config.Kind?
 ---@field port slang-server.config.Kind?
 ---@field param slang-server.config.Kind?
+---@field logic slang-server.config.Kind?
 ---@field reg slang-server.config.Kind?
 
 ---@class (exact) slang-server.config.Kind

@@ -118,6 +118,14 @@ void renderSymbolHeaderName(markup::Paragraph& infoPg, const ast::Symbol& symbol
         }
     }
 
+    if (auto* port = symbol.as_if<ast::ModportPortSymbol>()) {
+        infoPg
+            .appendBold(fmt::format("{} {}", getPortDirectionHeader(port->direction),
+                                    toString(symbol.kind)))
+            .appendCode(symbol.name);
+        return;
+    }
+
     // Better handling for ports to show direction
     if (auto* value = symbol.as_if<ast::ValueSymbol>()) {
         if (auto* port = value->getFirstPortBackref()) {

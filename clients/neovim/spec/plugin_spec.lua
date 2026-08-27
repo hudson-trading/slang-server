@@ -178,6 +178,44 @@ describe("SlangServer", function()
       assert.are.same(expected, table.concat(lines, "\n"))
       vim.api.nvim_buf_delete(0, { force = true })
    end)
+
+   it("Hierarchy renders interface ports and tolerates missing decorations", function()
+      local request_buf = vim.api.nvim_get_current_buf()
+      local function set_top_level(path)
+         local response, request_error = vim.lsp.get_client_by_id(client):request_sync(
+            "workspace/executeCommand",
+            {
+               command = "slang.setTopLevel",
+               arguments = { vim.fn.fnamemodify(path, ":p") },
+            },
+            5000,
+            request_buf
+         )
+         assert(response, request_error)
+         assert.is_nil(response.err)
+      end
+
+      set_top_level("tests/interface_ports.sv")
+      vim.cmd("SlangServer hierarchy interface_top.u")
+      local lines = wait_on("Slang-server: Hierarchy")
+      local rendered = table.concat(lines, "\n")
+      assert.is_truthy(string.find(rendered, "single_bus", 1, true))
+      assert.is_truthy(string.find(rendered, "bus_array", 1, true))
+      vim.api.nvim_buf_delete(0, { force = true })
+
+      local config = require("slang-server._core.config").CONFIG
+      local interfaceport = config.kinds.interfaceport
+      config.kinds.interfaceport = nil
+      local ok, err = pcall(function()
+         vim.cmd("SlangServer hierarchy interface_top.u")
+         lines = wait_on("Slang-server: Hierarchy")
+         assert.is_truthy(string.find(table.concat(lines, "\n"), "? single_bus", 1, true))
+         vim.api.nvim_buf_delete(0, { force = true })
+      end)
+      config.kinds.interfaceport = interfaceport
+      set_top_level("tests/foo.sv")
+      assert(ok, err)
+   end)
 end)
 
 -- TODO (tests)
