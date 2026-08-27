@@ -51,6 +51,7 @@ export interface Scope extends Item {
 export interface Instance extends Item {
   declName: string
   declKind: SlangInstKind
+  hasChildren: boolean
   // May or may not be filled
   children: Item[]
 }
@@ -68,6 +69,11 @@ export interface Module {
 // When buttons are pressed on these, we call getScopes() to get relevant data
 export interface QualifiedInstance {
   instPath: string
+}
+
+export interface ScopeStep {
+  path: string
+  children: Item[]
 }
 
 ////////////////////////////////////////////////////////////
@@ -111,9 +117,14 @@ export async function getScopesByModule(): Promise<Module[]> {
   return children
 }
 
-/// Query a list of scopes going down to this instance. FilledInstance ... Item
-export async function getScopes(hierPath: string): Promise<Instance[]> {
-  return await vscode.commands.executeCommand('slang.getScopes', hierPath)
+/// Query root-to-focus scope steps, with child lists for each hierarchy segment.
+export async function getScopes(hierPath: string): Promise<ScopeStep[]> {
+  const scopes: ScopeStep[] = await vscode.commands.executeCommand('slang.getScopes', hierPath)
+  if (scopes === undefined) {
+    vscode.window.showErrorMessage('Failed to get scope chain for ' + hierPath)
+    return []
+  }
+  return scopes
 }
 
 export async function getInstancesOfModule(declName: string): Promise<QualifiedInstance[]> {

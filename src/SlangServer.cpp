@@ -119,6 +119,8 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     // Hierarchy View (sidebar)
     registerCommand<std::string, std::vector<hier::HierItem_t>, &SlangServer::getScope>(
         "slang.getScope");
+    registerCommand<std::string, std::vector<hier::ScopeStep>, &SlangServer::getScopes>(
+        "slang.getScopes");
     registerCommand<ShowHierLocationArgs, std::monostate, &SlangServer::showHierLocation>(
         "slang.showHierLocation");
     registerCommand<ShowModuleDefinitionArgs, std::monostate, &SlangServer::showModuleDefinition>(
@@ -393,6 +395,14 @@ std::vector<hier::HierItem_t> SlangServer::getScope(const std::string& hierPath)
         return {};
     }
     return m_driver->comp->getScope(hierPath);
+}
+
+std::vector<hier::ScopeStep> SlangServer::getScopes(const std::string& hierPath) {
+    if (!m_driver->comp) {
+        ERROR("No compilation available, cannot get scopes for {}", hierPath);
+        return {};
+    }
+    return m_driver->comp->getScopes(hierPath);
 }
 
 std::optional<lsp::Location> SlangServer::getHierLocation(const std::string& hierPath) {
