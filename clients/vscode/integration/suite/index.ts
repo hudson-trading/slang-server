@@ -16,7 +16,7 @@ async function waitFor(description: string, predicate: () => boolean): Promise<v
 
 async function executeAndExpectLocation(
   command: string,
-  args: object,
+  args: unknown,
   uri: vscode.Uri,
   line: number
 ): Promise<void> {
@@ -43,8 +43,12 @@ export async function run(): Promise<void> {
   const lines = document.getText().split('\n')
   const moduleLine = lines.findIndex((line) => line.includes('module child'))
   const instanceLine = lines.findIndex((line) => line.includes('child u_child'))
+  const nestedInstanceLine = lines.findIndex((line) => line.includes('leaf nested_leaf'))
+  const generatedInstanceLine = lines.findIndex((line) => line.includes('leaf generated_leaf'))
   assert.notEqual(moduleLine, -1)
   assert.notEqual(instanceLine, -1)
+  assert.notEqual(nestedInstanceLine, -1)
+  assert.notEqual(generatedInstanceLine, -1)
 
   try {
     await vscode.commands.executeCommand('slang.setTopLevel', uri.fsPath)
@@ -63,6 +67,19 @@ export async function run(): Promise<void> {
       { hierPath: 'top.u_child', takeFocus: true },
       uri,
       instanceLine
+    )
+
+    await executeAndExpectLocation(
+      'slang.project.setInstance',
+      'top.branch_array[0].nested_leaf',
+      uri,
+      nestedInstanceLine
+    )
+    await executeAndExpectLocation(
+      'slang.project.setInstance',
+      'top.generated[1].generated_leaf',
+      uri,
+      generatedInstanceLine
     )
 
     const edit = new vscode.WorkspaceEdit()
