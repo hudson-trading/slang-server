@@ -119,6 +119,10 @@ struct Instance {
     /// @deprecated Use slang.showModuleDefinition with declName.
     lsp::Location declLoc;
     DeclKind declKind = DeclKind::Module;
+    // True when the instance body has at least one member that the hierarchy view would
+    // surface (instance, var, port, generate block, etc.). Lets the client mark the tree
+    // item as collapsible without a follow-up getScope round-trip.
+    bool hasChildren = false;
     std::vector<HierItem_t> children;
 };
 
@@ -128,6 +132,12 @@ struct QualifiedInstance {
     /// @deprecated Use slang.showHierLocation with instPath.
     lsp::Location instLoc;
 };
+
+struct ScopeStep {
+    std::string path;
+    std::vector<HierItem_t> children;
+};
+
 struct InstanceSet {
     std::string declName;
     /// @deprecated Use slang.showModuleDefinition with declName.
@@ -136,9 +146,6 @@ struct InstanceSet {
     // Will be filled if there's only one
     std::optional<QualifiedInstance> inst;
 };
-
-static std::vector<HierItem_t> getScopeChildren(const slang::ast::Scope& scope,
-                                                const SourceManager& sm);
 
 static std::vector<HierItem_t> getScopeChildren(const slang::ast::Scope& scope,
                                                 const SourceManager& sm);
@@ -191,6 +198,29 @@ static void handleBlockScopeArray(std::vector<HierItem_t>& result,
     }
 }
 
+// Cheap probe for "does this scope have any members the hierarchy view would surface?"
+// Mirrors the kind filter in getScopeChildren but bails on the first hit so we don't
+// pay the cost of constructing the full child list just to know if it's non-empty.
+static bool scopeHasVisibleChildren(const slang::ast::Scope& scope) {
+    for (auto& sym : scope.members()) {
+        switch (sym.kind) {
+            case slang::ast::SymbolKind::Instance:
+            case slang::ast::SymbolKind::InstanceArray:
+            case slang::ast::SymbolKind::Parameter:
+            case slang::ast::SymbolKind::InterfacePort:
+            case slang::ast::SymbolKind::GenerateBlock:
+            case slang::ast::SymbolKind::GenerateBlockArray:
+                return true;
+            default:
+                if (sym.as_if<slang::ast::ValueSymbol>()) {
+                    return true;
+                }
+                break;
+        }
+    }
+    return false;
+}
+
 static Instance toInstance(const slang::ast::InstanceSymbol& inst, const SourceManager& sm,
                            std::string&& nameOverride, bool filled = false) {
     auto sourceRange = inst.getSyntax() ? inst.getSyntax()->sourceRange()
@@ -208,6 +238,7 @@ static Instance toInstance(const slang::ast::InstanceSymbol& inst, const SourceM
             break;
     }
     auto children = filled ? getScopeChildren(inst.body, sm) : std::vector<HierItem_t>{};
+    bool hasChildren = filled ? !children.empty() : scopeHasVisibleChildren(inst.body);
     return Instance{
         .kind = SlangKind::Instance,
         .instName = nameOverride,
@@ -216,6 +247,7 @@ static Instance toInstance(const slang::ast::InstanceSymbol& inst, const SourceM
         .declName = std::string(inst.getDefinition().name),
         .declLoc = toLocation(inst.getDefinition().getSyntax()->sourceRange(), sm),
         .declKind = declKind,
+        .hasChildren = hasChildren,
         .children = std::move(children),
     };
 }
@@ -290,6 +322,7 @@ static void handleInstanceArray(std::vector<HierItem_t>& result,
         .declName = fmt::format("{}{}", firstElement.declName, array.range.toString()),
         .declLoc = firstElement.declLoc,
         .declKind = firstElement.declKind,
+        .hasChildren = !elements.empty(),
         .children = elements,
     }));
 }

@@ -9,6 +9,7 @@ M.hierarchy = {
       local bufnr = capabilities.get_source_context()
       local required = {
          "slang.getScope",
+         "slang.getScopes",
          "slang.getScopesByModule",
          "slang.getInstancesOfModule",
          "slang.showHierLocation",
@@ -18,7 +19,7 @@ M.hierarchy = {
       end
 
       local top = args[1]
-      require("slang-server.navigation").show(top or "")
+      require("slang-server.navigation").show(top or "", top ~= nil)
    end,
 }
 

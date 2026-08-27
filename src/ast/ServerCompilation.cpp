@@ -47,6 +47,130 @@ const slang::ast::InstanceBodySymbol* enclosingInstanceBody(const slang::ast::Sy
     return nullptr;
 }
 
+std::vector<hier::HierItem_t> getGenerateArrayChildren(
+    const slang::ast::GenerateBlockArraySymbol& array, const SourceManager& sourceManager) {
+    std::vector<hier::HierItem_t> result;
+    for (const slang::ast::GenerateBlockSymbol* block : array.entries) {
+        hier::handleBlockScope(result, *block, sourceManager,
+                               fmt::format("[{}]", block->constructIndex));
+    }
+    return result;
+}
+
+std::vector<hier::HierItem_t> getInstanceArrayChildren(const slang::ast::InstanceArraySymbol& array,
+                                                       const SourceManager& sourceManager) {
+    std::vector<hier::HierItem_t> result;
+
+    int32_t instanceIdx = array.range.left;
+    int8_t step = array.range.isDescending() ? -1 : 1;
+    for (const slang::ast::Symbol* element : array.elements) {
+        if (auto inst = element->as_if<slang::ast::InstanceSymbol>()) {
+            hier::handleInstance(result, *inst, sourceManager, fmt::format("[{}]", instanceIdx));
+            instanceIdx += step;
+        }
+    }
+
+    return result;
+}
+
+bool isHierarchicalScope(const slang::ast::Symbol& sym) {
+    switch (sym.kind) {
+        case slang::ast::SymbolKind::Instance:
+        case slang::ast::SymbolKind::InstanceArray:
+        case slang::ast::SymbolKind::InterfacePort:
+        case slang::ast::SymbolKind::GenerateBlock:
+        case slang::ast::SymbolKind::GenerateBlockArray:
+        case slang::ast::SymbolKind::Package:
+            return true;
+        default:
+            return false;
+    }
+}
+
+std::vector<hier::HierItem_t> getChildrenForScopeSymbol(const slang::ast::Symbol& sym,
+                                                        const SourceManager& sourceManager) {
+    switch (sym.kind) {
+        case slang::ast::SymbolKind::Instance:
+            return hier::getScopeChildren(sym.as<slang::ast::InstanceSymbol>().body, sourceManager);
+        case slang::ast::SymbolKind::InstanceArray:
+            return getInstanceArrayChildren(sym.as<slang::ast::InstanceArraySymbol>(),
+                                            sourceManager);
+        case slang::ast::SymbolKind::InterfacePort:
+            return hier::getInterfacePortChildren(sym.as<slang::ast::InterfacePortSymbol>(),
+                                                  sourceManager);
+        case slang::ast::SymbolKind::GenerateBlock:
+            return hier::getScopeChildren(sym.as<slang::ast::GenerateBlockSymbol>(), sourceManager);
+        case slang::ast::SymbolKind::GenerateBlockArray:
+            return getGenerateArrayChildren(sym.as<slang::ast::GenerateBlockArraySymbol>(),
+                                            sourceManager);
+        case slang::ast::SymbolKind::Package:
+            return hier::getScopeChildren(sym.as<slang::ast::PackageSymbol>(), sourceManager);
+        default:
+            return {};
+    }
+}
+
+// Run slang's hierarchical lookup, returning the chain of scope-presenting symbols traversed
+// (whether or not the final segment resolved). Each `LookupResult::Element` records a step
+// slang took as it descended the path, so we get the partial chain for free even when a
+// trailing segment doesn't exist (e.g. "top.foo[0].missing" yields [top, foo, foo[0]]).
+std::vector<const slang::ast::Symbol*> lookupScopeChain(slang::ast::Compilation& compilation,
+                                                        std::string_view hierPath) {
+    slang::ast::LookupResult lookup;
+    slang::ast::ASTContext context(compilation.getRoot(), ast::LookupLocation::max);
+    slang::ast::Lookup::name(compilation.parseName(hierPath), context,
+                             ast::LookupFlags::AllowUnnamedGenerate, lookup);
+
+    std::vector<const slang::ast::Symbol*> chain;
+    auto push = [&](const slang::ast::Symbol* sym) {
+        if (!sym || !isHierarchicalScope(*sym)) {
+            return;
+        }
+        if (!chain.empty() && chain.back() == sym) {
+            return;
+        }
+        chain.push_back(sym);
+    };
+
+    for (const auto& element : lookup.path) {
+        push(element.symbol);
+    }
+    push(lookup.found);
+    return chain;
+}
+
+std::optional<std::vector<hier::HierItem_t>> tryGetScopeChildren(
+    slang::ast::Compilation& compilation, const SourceManager& sourceManager,
+    std::string_view hierPath) {
+    if (hierPath.empty()) {
+        std::vector<hier::HierItem_t> result;
+        auto& root = compilation.getRoot();
+        for (auto& inst : root.topInstances) {
+            INFO("Adding top instance {}", inst->name);
+            hier::handleInstance(result, *inst, sourceManager, true);
+        }
+        for (auto& pkg : compilation.getPackages()) {
+            hier::handlePackage(result, *pkg, sourceManager);
+        }
+        return result;
+    }
+
+    if (auto* sym = lookupHierSymbol(compilation, hierPath)) {
+        if (isHierarchicalScope(*sym)) {
+            return getChildrenForScopeSymbol(*sym, sourceManager);
+        }
+        ERROR("Unknown symbol kind for getScope: {}", toString(sym->kind));
+        return std::nullopt;
+    }
+
+    if (auto* pkg = compilation.getPackage(hierPath)) {
+        return hier::getScopeChildren(*pkg, sourceManager);
+    }
+
+    ERROR("Failed to find symbol at path {}", hierPath);
+    return std::nullopt;
+}
+
 std::optional<lsp::ShowDocumentParams> makeShowDocumentParams(const SourceRange& range,
                                                               const SourceManager& sm) {
     if (range == SourceRange::NoLocation || !range.start().valid()) {
@@ -202,43 +326,32 @@ const std::vector<const slang::ast::InstanceSymbol*>& ServerCompilation::getInst
 }
 
 std::vector<hier::HierItem_t> ServerCompilation::getScope(const std::string& hierPath) {
-    auto& root = m_analysis->compilation.getRoot();
+    auto scopeChildren = tryGetScopeChildren(m_analysis->compilation, m_sourceManager, hierPath);
+    return scopeChildren.value_or(std::vector<hier::HierItem_t>{});
+}
+
+std::vector<hier::ScopeStep> ServerCompilation::getScopes(const std::string& hierPath) {
+    std::vector<hier::ScopeStep> result;
+    auto& compilation = m_analysis->compilation;
+
+    auto rootChildren = tryGetScopeChildren(compilation, m_sourceManager, std::string_view{});
+    if (!rootChildren) {
+        return result;
+    }
+    result.push_back({.path = "", .children = std::move(*rootChildren)});
 
     if (hierPath.empty()) {
-        std::vector<hier::HierItem_t> result;
-        for (auto& inst : root.topInstances) {
-            INFO("Adding top instance {}", inst->name);
-            hier::handleInstance(result, *inst, m_sourceManager, true);
-        }
-        for (auto& pkg : m_analysis->compilation.getPackages()) {
-            hier::handlePackage(result, *pkg, m_sourceManager);
-        }
         return result;
     }
 
-    const slang::ast::Scope* scope = nullptr;
-    {
-        auto sym = root.lookupName(hierPath, ast::LookupLocation::max,
-                                   ast::LookupFlags::AllowUnnamedGenerate);
-        if (sym) {
-            switch (sym->kind) {
-                case slang::ast::SymbolKind::Instance:
-                    scope = &sym->as_if<slang::ast::InstanceSymbol>()->body;
-                    break;
-                default:
-                    ERROR("Unknown symbol kind for getScope: {}", toString(sym->kind));
-                    return {};
-            }
-        }
+    for (const auto* sym : lookupScopeChain(compilation, hierPath)) {
+        result.push_back({
+            .path = sym->getHierarchicalPath(),
+            .children = getChildrenForScopeSymbol(*sym, m_sourceManager),
+        });
     }
-    if (!scope) {
-        scope = m_analysis->compilation.getPackage(hierPath);
-        if (!scope) {
-            ERROR("Failed to find symbol at path {}", hierPath);
-            return {};
-        }
-    }
-    return hier::getScopeChildren(*scope, m_sourceManager);
+
+    return result;
 }
 
 std::optional<lsp::Location> ServerCompilation::getHierLocation(const std::string& hierPath) {
