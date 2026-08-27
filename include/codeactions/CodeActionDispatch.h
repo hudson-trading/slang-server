@@ -24,6 +24,7 @@ class ServerDriver;
 /// Context passed to individual code action providers, built by the dispatcher.
 struct CodeActionContext {
     const lsp::CodeActionParams& params;
+    ServerDriver& driver;
     SlangDoc& doc;
     ShallowAnalysis& analysis;
     const slang::SourceManager& sourceManager;
