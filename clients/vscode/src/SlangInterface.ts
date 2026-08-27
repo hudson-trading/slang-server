@@ -27,23 +27,17 @@ export enum SlangKind {
   Package = 'Package',
 }
 
-/// Can't parse URIs
-export interface Location {
-  /**
-   * The resource identifier of this location.
-   */
-  uri: string
-
-  /**
-   * The document range of this location.
-   */
-  range: vscode.Range
+export enum SlangInstKind {
+  Module = 'Module',
+  Interface = 'Interface',
+  Program = 'Program',
+  Package = 'Package',
 }
 
 export interface Item {
   kind: SlangKind
   instName: string
-  instLoc: Location
+  fromExpansion?: boolean
 }
 
 export interface Var extends Item {
@@ -58,7 +52,7 @@ export interface Scope extends Item {
 
 export interface Instance extends Item {
   declName: string
-  declLoc: Location
+  declKind: SlangInstKind
   // May or may not be filled
   children: Item[]
 }
@@ -67,14 +61,8 @@ export interface Instance extends Item {
 // Instances View
 ////////////////////////////////////////////////////////////
 
-// std::string declName;
-// lsp::Location declLoc;
-// size_t instanceCount;
-// // Will be filled if there's only one
-// std::optional<QualifiedInstance> instance;
 export interface Module {
   declName: string
-  declLoc: Location
   inst?: QualifiedInstance
   instCount: number
 }
@@ -82,7 +70,6 @@ export interface Module {
 // When buttons are pressed on these, we call getScopes() to get relevant data
 export interface QualifiedInstance {
   instPath: string
-  instLoc: Location
 }
 
 ////////////////////////////////////////////////////////////
@@ -166,6 +153,16 @@ interface ExpandMacroArgs {
 }
 export async function expandMacros(args: ExpandMacroArgs): Promise<boolean> {
   return await vscode.commands.executeCommand('slang.expandMacros', args)
+}
+
+// Server-side show: the LSP language client handles file://-vs-vscode-remote:// URI
+// translation, so remote workspaces work correctly without client-side conversion.
+export async function showHierLocation(hierPath: string, takeFocus: boolean): Promise<void> {
+  await vscode.commands.executeCommand('slang.showHierLocation', { hierPath, takeFocus })
+}
+
+export async function showModuleDefinition(moduleName: string, takeFocus: boolean): Promise<void> {
+  await vscode.commands.executeCommand('slang.showModuleDefinition', { moduleName, takeFocus })
 }
 ////////////////////////////////////////////////////////////
 /// server -> client is in commands in the project component

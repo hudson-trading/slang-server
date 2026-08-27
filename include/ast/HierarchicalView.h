@@ -33,6 +33,21 @@ namespace hier {
 
 using namespace server;
 
+static std::optional<bool> getFromExpansion(const SourceRange& range, const SourceManager& sm) {
+    if (range.start() && sm.getFullPath(range.start().buffer()).empty())
+        return true;
+    return std::nullopt;
+}
+
+static std::optional<bool> getFromExpansion(const slang::ast::Symbol& symbol,
+                                            const SourceManager& sm) {
+    if (auto* syntax = symbol.getSyntax())
+        return getFromExpansion(syntax->sourceRange(), sm);
+    if (symbol.location && sm.getFullPath(symbol.location.buffer()).empty())
+        return true;
+    return std::nullopt;
+}
+
 enum class SlangKind {
     Instance,
     Scope,
@@ -41,6 +56,13 @@ enum class SlangKind {
     Param,
     Logic,
     InstanceArray,
+    Package,
+};
+
+enum class DeclKind {
+    Module,
+    Interface,
+    Program,
     Package,
 };
 
@@ -54,16 +76,22 @@ struct Instance;
 
 using HierItem_t = rfl::Variant<Var, Scope, Instance>;
 
+// TODO: Migrate the Neovim hierarchy and cells views to slang.showHierLocation and
+// slang.showModuleDefinition before removing the deprecated location fields below.
 struct Item {
     SlangKind kind;
     std::string instName;
+    /// @deprecated Use slang.showHierLocation with the item's hierarchy path.
     lsp::Location instLoc;
+    std::optional<bool> fromExpansion;
 };
 
 struct Var {
     SlangKind kind;
     std::string instName;
+    /// @deprecated Use slang.showHierLocation with the item's hierarchy path.
     lsp::Location instLoc;
+    std::optional<bool> fromExpansion;
     std::string type;
     std::optional<std::string> value;
 };
@@ -71,26 +99,34 @@ struct Var {
 struct Scope {
     SlangKind kind;
     std::string instName;
+    /// @deprecated Use slang.showHierLocation with the item's hierarchy path.
     lsp::Location instLoc;
+    std::optional<bool> fromExpansion;
     std::vector<HierItem_t> children;
 };
 
 struct Instance {
     SlangKind kind;
     std::string instName;
+    /// @deprecated Use slang.showHierLocation with the instance's hierarchy path.
     lsp::Location instLoc;
+    std::optional<bool> fromExpansion;
     std::string declName;
+    /// @deprecated Use slang.showModuleDefinition with declName.
     lsp::Location declLoc;
+    DeclKind declKind = DeclKind::Module;
     std::vector<HierItem_t> children;
 };
 
 // Instances View
 struct QualifiedInstance {
     std::string instPath;
+    /// @deprecated Use slang.showHierLocation with instPath.
     lsp::Location instLoc;
 };
 struct InstanceSet {
     std::string declName;
+    /// @deprecated Use slang.showModuleDefinition with declName.
     lsp::Location declLoc;
     size_t instCount;
     // Will be filled if there's only one
@@ -115,6 +151,7 @@ static void handleBlockScope(std::vector<HierItem_t>& result,
             .kind = SlangKind::Scope,
             .instName = nameOverride,
             .instLoc = toLocation(block.getSyntax()->sourceRange(), sm),
+            .fromExpansion = getFromExpansion(block.getSyntax()->sourceRange(), sm),
             .children = children,
         }));
     }
@@ -141,33 +178,48 @@ static void handleBlockScopeArray(std::vector<HierItem_t>& result,
 
     // Don't return empty arrays
     if (!entries.empty()) {
-        result.push_back(
-            HierItem_t(Scope{.kind = SlangKind::ScopeArray,
-                             .instName = array.getExternalName(),
-                             .instLoc = toLocation(array.getSyntax()->sourceRange(), sm),
-                             .children = entries}));
+        result.push_back(HierItem_t(
+            Scope{.kind = SlangKind::ScopeArray,
+                  .instName = array.getExternalName(),
+                  .instLoc = toLocation(array.getSyntax()->sourceRange(), sm),
+                  .fromExpansion = getFromExpansion(array.getSyntax()->sourceRange(), sm),
+                  .children = entries}));
     }
 }
 
 static Instance toInstance(const slang::ast::InstanceSymbol& inst, const SourceManager& sm,
                            std::string&& nameOverride, bool filled = false) {
+    auto sourceRange = inst.getSyntax() ? inst.getSyntax()->sourceRange()
+                                        : inst.getDefinition().getSyntax()->sourceRange();
+    auto declKind = DeclKind::Module;
+    switch (inst.getDefinition().definitionKind) {
+        case slang::ast::DefinitionKind::Interface:
+            declKind = DeclKind::Interface;
+            break;
+        case slang::ast::DefinitionKind::Program:
+            declKind = DeclKind::Program;
+            break;
+        case slang::ast::DefinitionKind::Module:
+        default:
+            break;
+    }
+    auto children = filled ? getScopeChildren(inst.body, sm) : std::vector<HierItem_t>{};
     return Instance{
         .kind = SlangKind::Instance,
         .instName = nameOverride,
-        .instLoc = toLocation(inst.getSyntax() ? inst.getSyntax()->sourceRange()
-                                               : inst.getDefinition().getSyntax()->sourceRange(),
-                              sm),
+        .instLoc = toLocation(sourceRange, sm),
+        .fromExpansion = getFromExpansion(sourceRange, sm),
         .declName = std::string(inst.getDefinition().name),
         .declLoc = toLocation(inst.getDefinition().getSyntax()->sourceRange(), sm),
-        .children = filled ? getScopeChildren(inst.body, sm) : std::vector<HierItem_t>{},
+        .declKind = declKind,
+        .children = std::move(children),
     };
 }
 
 [[maybe_unused]] static QualifiedInstance toQualifiedInstance(
     const slang::ast::InstanceSymbol& inst, const SourceManager& sm) {
-    auto hierPath = inst.getHierarchicalPath();
     return QualifiedInstance{
-        .instPath = hierPath,
+        .instPath = inst.getHierarchicalPath(),
         .instLoc = toLocation(inst.getSyntax() ? inst.getSyntax()->sourceRange()
                                                : inst.getDefinition().getSyntax()->sourceRange(),
                               sm),
@@ -200,6 +252,7 @@ static void handleInstance(std::vector<HierItem_t>& result, const slang::ast::In
         .instLoc = loc,
         .declName = std::string(pkg.name),
         .declLoc = loc,
+        .declKind = DeclKind::Package,
         .children = {},
     }));
 }
@@ -229,8 +282,10 @@ static void handleInstanceArray(std::vector<HierItem_t>& result,
         .kind = SlangKind::InstanceArray,
         .instName = std::string(array.getArrayName()),
         .instLoc = toLocation(array.getSyntax()->sourceRange(), sm),
+        .fromExpansion = getFromExpansion(array.getSyntax()->sourceRange(), sm),
         .declName = fmt::format("{}{}", firstElement.declName, array.range.toString()),
         .declLoc = firstElement.declLoc,
+        .declKind = firstElement.declKind,
         .children = elements,
     }));
 }
@@ -241,6 +296,7 @@ static void handleParameter(std::vector<HierItem_t>& result,
         .kind = SlangKind::Param,
         .instName = std::string(param.name),
         .instLoc = toLocation(param.getSyntax()->sourceRange(), sm),
+        .fromExpansion = getFromExpansion(param, sm),
         .type = getTypeString(param),
         .value = param.getValue().toString(),
     }));
@@ -260,6 +316,7 @@ static void handleTypeParameter(std::vector<HierItem_t>& result,
         .kind = SlangKind::Param,
         .instName = std::string(param.name),
         .instLoc = syntax ? toLocation(syntax->sourceRange(), sm) : toLocation(param.location, sm),
+        .fromExpansion = getFromExpansion(param, sm),
         .type = "type",
         .value = std::move(value),
     }));
@@ -273,6 +330,7 @@ static void handleValue(std::vector<HierItem_t>& result, const slang::ast::Value
         .kind = val.getFirstPortBackref() ? SlangKind::Port : SlangKind::Logic,
         .instName = std::string(val.name),
         .instLoc = toLocation(val.getSyntax()->sourceRange(), sm),
+        .fromExpansion = getFromExpansion(val.getSyntax()->sourceRange(), sm),
         .type = getTypeString(val),
     }));
 }

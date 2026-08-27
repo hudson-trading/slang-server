@@ -4,12 +4,14 @@ local function wait_on(buf_name)
    local lines
 
    local buf = nil
-   for _, win in ipairs(vim.api.nvim_list_wins()) do
-      local this_buf = vim.api.nvim_win_get_buf(win)
+   local win = nil
+   for _, candidate_win in ipairs(vim.api.nvim_list_wins()) do
+      local this_buf = vim.api.nvim_win_get_buf(candidate_win)
       local this_name = vim.api.nvim_buf_get_name(this_buf)
 
       if string.find(this_name, buf_name, 1, true) then
          buf = this_buf
+         win = candidate_win
          break
       end
    end
@@ -29,7 +31,24 @@ local function wait_on(buf_name)
    end)
    assert(success, lines)
 
-   return lines
+   return lines, win
+end
+
+local function find_line(lines, text)
+   for index, line in ipairs(lines) do
+      if string.find(line, text, 1, true) then
+         return index
+      end
+   end
+   error("Could not find line containing " .. text)
+end
+
+local function press_key(win, line, key)
+   vim.api.nvim_set_current_win(win)
+   vim.api.nvim_win_set_cursor(win, { line, 0 })
+   local mapping = vim.fn.maparg(key, "n", false, true)
+   assert.is_function(mapping.callback)
+   mapping.callback()
 end
 
 ---@param fn fun()
@@ -96,6 +115,8 @@ describe("SlangServer", function()
    -- load test SV
    vim.cmd("edit tests/foo.sv")
    vim.cmd("set filetype=systemverilog")
+   local source_buf = vim.api.nvim_get_current_buf()
+   local source_win = vim.api.nvim_get_current_win()
    -- start slang-server
    local server_bin = os.getenv("SLANG_SERVER_BIN") or "../../build/bin/slang-server"
    local client = vim.lsp.start({
@@ -106,6 +127,36 @@ describe("SlangServer", function()
       capabilities = capabilities.make_client_capabilities(),
    })
    assert(client)
+   local function execute_server_command(command, arguments)
+      local done = false
+      local response
+      local request_error
+      vim.lsp.get_client_by_id(client):request(
+         "workspace/executeCommand",
+         { command = command, arguments = arguments },
+         function(err, result)
+            request_error = err
+            response = result
+            done = true
+         end,
+         source_buf
+      )
+      assert(vim.wait(5000, function()
+         return done
+      end))
+      assert.is_nil(request_error)
+      return response
+   end
+
+   local function focus_source()
+      if vim.api.nvim_win_is_valid(source_win) then
+         vim.api.nvim_set_current_win(source_win)
+      end
+      if vim.api.nvim_buf_is_valid(source_buf) then
+         vim.api.nvim_set_current_buf(source_buf)
+      end
+   end
+
    -- wait for client to attach to this buffer
    local success, _ = vim.wait(5000, function()
       return #vim.lsp.get_clients() > 0
@@ -115,7 +166,121 @@ describe("SlangServer", function()
    vim.cmd("luafile ftplugin/systemverilog.lua")
    vim.cmd("luafile lua/slang-server/init.lua")
    -- compile design
-   vim.cmd("SlangServer setTopLevel")
+   execute_server_command("slang.setTopLevel", { vim.api.nvim_buf_get_name(source_buf) })
+
+   before_each(focus_source)
+
+   after_each(function()
+      local navigation = require("slang-server.navigation")
+      local ok, err = pcall(function()
+         if navigation.state.open then
+            navigation.on_close()
+         end
+      end)
+      focus_source()
+      assert(ok, err)
+   end)
+
+   it("Routes hierarchy navigation through server commands", function()
+      local lsp = require("slang-server._lsp.client")
+      local capabilities = require("slang-server._lsp.capabilities")
+      local original_supported = capabilities.command_supported
+      local original_get_client = capabilities.get_client
+      local requests = {}
+
+      local ok, err = pcall(function()
+         capabilities.command_supported = function()
+            return true
+         end
+         capabilities.get_client = function()
+            return {
+               request = function(_, method, params, callback, bufnr)
+                  requests[#requests + 1] = { bufnr = bufnr, method = method, params = params }
+                  callback(nil, nil)
+                  return true
+               end,
+            }
+         end
+
+         local handlers = { on_success = function() end }
+         lsp.showHierLocation(7, handlers, { hierPath = "top.child", takeFocus = true })
+      end)
+
+      capabilities.command_supported = original_supported
+      capabilities.get_client = original_get_client
+      assert(ok, err)
+
+      assert.are.same({
+         bufnr = 7,
+         method = "workspace/executeCommand",
+         params = {
+            command = "slang.showHierLocation",
+            arguments = { { hierPath = "top.child", takeFocus = true } },
+         },
+      }, requests[1])
+   end)
+
+   it("Targets the same source window and buffer for hierarchy navigation", function()
+      local navigation = require("slang-server.navigation")
+      local lsp = require("slang-server._lsp.client")
+      local capabilities = require("slang-server._lsp.capabilities")
+      local original_source_win = rawget(navigation.state, "sv_win")
+      local original_get_client = capabilities.get_client
+      local source_win = {
+         bufnr = vim.api.nvim_get_current_buf(),
+         winid = vim.api.nvim_get_current_win(),
+         winnr = vim.api.nvim_get_current_win(),
+      }
+      navigation.state.sv_win = source_win
+
+      local original_show = lsp.showHierLocation
+      local request
+      local ok, err = pcall(function()
+         capabilities.get_client = function(bufnr)
+            if bufnr == source_win.bufnr then
+               return {}
+            end
+         end
+         lsp.showHierLocation = function(bufnr, _, params)
+            request = {
+               bufnr = bufnr,
+               current_win = vim.api.nvim_get_current_win(),
+               params = params,
+            }
+         end
+
+         navigation.show_hier_location("top.child")
+      end)
+      lsp.showHierLocation = original_show
+      capabilities.get_client = original_get_client
+      navigation.state.sv_win = original_source_win
+
+      assert(ok, err)
+      assert.are.same(source_win.bufnr, request.bufnr)
+      assert.are.same(source_win.winid, request.current_win)
+      assert.are.same({ hierPath = "top.child", takeFocus = true }, request.params)
+   end)
+
+   it("Does not request hierarchy navigation without a valid source window", function()
+      local navigation = require("slang-server.navigation")
+      local lsp = require("slang-server._lsp.client")
+      local original_source_win = rawget(navigation.state, "sv_win")
+      local original_show = lsp.showHierLocation
+      local requested = false
+
+      navigation.state.sv_win = false
+      lsp.showHierLocation = function()
+         requested = true
+      end
+      local messages = capture_notifications(function()
+         navigation.show_hier_location("top.child")
+      end)
+      lsp.showHierLocation = original_show
+      navigation.state.sv_win = original_source_win
+
+      assert.is_false(requested)
+      assert.are.same({ "Cannot jump to location: invalid target window" }, messages)
+   end)
 
    -- Catches anything the server complained about, including messages emitted
    -- during startup, which land before the first test runs.
@@ -124,6 +289,8 @@ describe("SlangServer", function()
    it("Hierarchy no args", function()
       vim.cmd("SlangServer hierarchy")
       local lines = wait_on("Slang-server: Hierarchy")
+      local hierarchy = require("slang-server.navigation/hierarchy")
+      local cells = require("slang-server.navigation.cells")
       local expected = [=[
    foo foo]=]
       assert.are.same(expected, table.concat(lines, "\n"))
@@ -133,7 +300,40 @@ describe("SlangServer", function()
    └╴foo
   sub (4)]=]
       assert.are.same(expected, table.concat(lines, "\n"))
+
       vim.api.nvim_buf_delete(0, { force = true })
+   end)
+
+   it("Focuses an existing hierarchy window", function()
+      local navigation = require("slang-server.navigation")
+      local hierarchy = require("slang-server.navigation/hierarchy")
+      local original_open = navigation.state.open
+      local original_split = hierarchy.state.split
+      local original_reveal = hierarchy.reveal
+      local original_is_valid = vim.api.nvim_win_is_valid
+      local original_set_current = vim.api.nvim_set_current_win
+      local focused
+
+      local ok, err = pcall(function()
+         navigation.state.open = true
+         hierarchy.state.split = { winid = 42 }
+         hierarchy.reveal = function() end
+         vim.api.nvim_win_is_valid = function(winid)
+            return winid == 42
+         end
+         vim.api.nvim_set_current_win = function(winid)
+            focused = winid
+         end
+
+         navigation.show("")
+         assert.are.same(42, focused)
+      end)
+      navigation.state.open = original_open
+      hierarchy.state.split = original_split
+      hierarchy.reveal = original_reveal
+      vim.api.nvim_win_is_valid = original_is_valid
+      vim.api.nvim_set_current_win = original_set_current
+      assert(ok, err)
    end)
 
    it("Explicit commands use the source buffer when focus is in the hierarchy panel", function()
@@ -193,6 +393,7 @@ describe("SlangServer", function()
       assert.are.same(expected, table.concat(lines, "\n"))
       vim.api.nvim_buf_delete(0, { force = true })
    end)
+
 end)
 
 -- TODO (tests)
