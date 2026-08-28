@@ -8,6 +8,8 @@
 #pragma once
 
 #include "lsp/LspTypes.h"
+#include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <string_view>
 
@@ -30,6 +32,10 @@ std::optional<SourceLocation> toSourceLocation(BufferID buffer, const lsp::Posit
                                                const SourceManager& sourceManager);
 
 lsp::Range toRange(const SourceRange& range, const SourceManager& sourceManager);
+
+// Byte offset into `line` of the given UTF-16 code unit column, clamped to the
+// first newline or end of string. `line` starts at the column-0 character.
+size_t utf16ColumnToByte(std::string_view line, uint32_t character);
 
 lsp::Location toOriginalLocation(const SourceRange& range, const SourceManager& sourceManager);
 
