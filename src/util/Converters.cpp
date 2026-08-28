@@ -7,6 +7,7 @@
 //------------------------------------------------------------------------------
 #include "util/Converters.h"
 
+#include <cstdint>
 #include <fmt/format.h>
 
 #include "slang/text/SourceLocation.h"
@@ -50,6 +51,18 @@ lsp::Position toPosition(const SourceLocation& loc, const SourceManager& sourceM
 std::optional<SourceLocation> toSourceLocation(BufferID buffer, const lsp::Position& position,
                                                const SourceManager& sourceManager) {
     return sourceManager.getSourceLocation(buffer, position.line + 1, position.character + 1);
+}
+
+size_t utf16ColumnToByte(std::string_view line, uint32_t character) {
+    size_t i = 0;
+    uint32_t units = 0;
+    while (i < line.size() && line[i] != '\n' && units < character) {
+        unsigned char c = static_cast<unsigned char>(line[i]);
+        size_t len = c < 0x80 ? 1 : (c >> 5) == 0x6 ? 2 : (c >> 4) == 0xE ? 3 : 4;
+        units += len == 4 ? 2 : 1; // astral chars are a surrogate pair in UTF-16
+        i += len;
+    }
+    return i;
 }
 
 lsp::Range toRange(const SourceRange& range, const SourceManager& sourceManager) {
