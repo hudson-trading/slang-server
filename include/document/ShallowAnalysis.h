@@ -54,7 +54,9 @@ public:
                     const std::vector<std::shared_ptr<slang::syntax::SyntaxTree>>& allTrees = {});
 
     /// @brief Retrieves document symbols for LSP outline view, called right after open
-    /// @return Vector of LSP document symbols representing the document structure
+    /// @return Tree of LSP document symbols representing the document CST structure
+    /// This also provides range info for "sticky scroll", where the open scopes stick at the top of
+    /// the editor to provide context
     std::vector<lsp::DocumentSymbol> getDocSymbols();
 
     /// @brief Gets document links for include directives, called right after open

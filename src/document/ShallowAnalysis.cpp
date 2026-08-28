@@ -135,7 +135,7 @@ std::vector<lsp::DocumentSymbol> ShallowAnalysis::getDocSymbols() {
     if (!m_tree) {
         return {};
     }
-    return m_symbolTreeVisitor.get_symbols(m_tree, true);
+    return m_symbolTreeVisitor.getSymbols(m_tree, true);
 }
 
 const parsing::Token* ShallowAnalysis::getTokenAt(SourceLocation loc) const {
