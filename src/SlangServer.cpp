@@ -172,6 +172,9 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     auto result = lsp::InitializeResult{
         .capabilities =
             lsp::ServerCapabilities{
+                .positionEncoding = m_client.capabilities.utf8Positions
+                                        ? std::optional<lsp::PositionEncodingKind>("utf-8")
+                                        : std::nullopt,
                 .textDocumentSync =
                     lsp::TextDocumentSyncOptions{
                         .openClose = true,

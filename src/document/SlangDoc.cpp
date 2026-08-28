@@ -165,6 +165,9 @@ void SlangDoc::onChange(const std::vector<lsp::TextDocumentContentChangeEvent>& 
         return;
     }
 
+    // LSP Position.character is UTF-16 code units unless the client negotiated utf-8
+    bool utf8Cols = m_driver.client.capabilities.utf8Positions;
+
     auto getOffsets = [&](lsp::Range range) {
         // Only one thread is able to call onchange, so the offsets remain valid without locking
         SourceManager::computeLineOffsets(textView, lineOffsets);
@@ -174,8 +177,14 @@ void SlangDoc::onChange(const std::vector<lsp::TextDocumentContentChangeEvent>& 
             throw std::runtime_error(fmt::format("Range out of bounds: {},{} / {}", start.line,
                                                  end.line, lineOffsets.size()));
         }
-        auto startOffset = lineOffsets[start.line] + start.character;
-        auto endOffset = lineOffsets[end.line] + end.character;
+        auto colToOffset = [&](lsp::uint line, lsp::uint character) -> size_t {
+            size_t lineStart = lineOffsets[line];
+            if (utf8Cols)
+                return lineStart + character;
+            return lineStart + utf16ColumnToByte(textView.substr(lineStart), character);
+        };
+        auto startOffset = colToOffset(start.line, start.character);
+        auto endOffset = colToOffset(end.line, end.character);
         return std::make_pair(startOffset, endOffset);
     };
 

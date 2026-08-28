@@ -28,6 +28,10 @@ public:
         /// [`textDocument.completion.completionItem.resolveSupport`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#completionClientCapabilities)
         bool completionEditResolveSupported = false;
 
+        /// client offered "utf-8" in `general.positionEncodings`; slang columns are
+        /// byte offsets, so this lets us skip utf-16 conversion on the wire
+        bool utf8Positions = false;
+
         Capabilities() = default;
 
         explicit Capabilities(const lsp::ClientCapabilities& capabilities) {
@@ -46,6 +50,11 @@ public:
                 completionEditResolveSupported = supports("insertText") &&
                                                  supports("insertTextFormat") &&
                                                  supports("textEdit");
+            }
+
+            if (capabilities.general && capabilities.general->positionEncodings) {
+                const auto& encs = *capabilities.general->positionEncodings;
+                utf8Positions = std::ranges::find(encs, "utf-8") != encs.end();
             }
 
             if (!capabilities.experimental)
