@@ -230,9 +230,13 @@ void Indexer::indexPath(const fs::path& path, IndexedPath& indexedFile) {
 }
 
 void Indexer::addDocuments(const std::vector<fs::path>& paths) {
+    // Parse files only and build up a local state
+    auto indexedPaths = indexPaths(paths);
+
+    // Lock down the global state
     IndexWriteGuard guard(*this);
 
-    auto indexedPaths = indexPaths(paths);
+    // Merge into global state
     for (size_t i = 0; i < indexedPaths.size(); ++i)
         indexPath(paths[i], indexedPaths[i]);
 }
