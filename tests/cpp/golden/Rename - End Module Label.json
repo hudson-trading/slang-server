@@ -1,0 +1,47 @@
+[
+  {
+    "changes": {
+      "file:///home/evanp/slang-server/test.sv": [
+        {
+          "range": {
+            "start": {
+              "line": 1,
+              "character": 7
+            },
+            "end": {
+              "line": 1,
+              "character": 12
+            }
+          },
+          "newText": "my_new_module"
+        },
+        {
+          "range": {
+            "start": {
+              "line": 2,
+              "character": 12
+            },
+            "end": {
+              "line": 2,
+              "character": 17
+            }
+          },
+          "newText": "my_new_module"
+        },
+        {
+          "range": {
+            "start": {
+              "line": 5,
+              "character": 4
+            },
+            "end": {
+              "line": 5,
+              "character": 9
+            }
+          },
+          "newText": "my_new_module"
+        }
+      ]
+    }
+  }
+]

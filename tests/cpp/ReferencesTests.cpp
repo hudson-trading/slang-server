@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "utils/ServerHarness.h"
+#include <catch2/catch_test_macros.hpp>
 
 using namespace slang;
 
@@ -271,6 +272,34 @@ TEST_CASE("Rename - Simple Variable") {
     for (const auto& textEdit : changes[uriStr]) {
         CHECK(textEdit.newText == "my_data");
     }
+}
+
+TEST_CASE("Rename - End Module Label") {
+    JsonGoldenTest golden;
+    ServerHarness server;
+    auto hdl = server.openFile("test.sv", R"(
+module child;
+endmodule : child
+
+module top;
+    child instance();
+endmodule : top
+)");
+
+    auto cursor = hdl.after("module ");
+    auto edit = server.getDocRename(lsp::RenameParams{
+        .textDocument = {.uri = hdl.m_uri},
+        .position = cursor.getPosition(),
+        .newName = "my_new_module",
+    });
+
+    REQUIRE(edit.has_value());
+    REQUIRE(edit->changes.has_value());
+
+    // 3 changes for each reference of child
+    CHECK(edit->changes->size() == 3);
+
+    golden.record(*edit);
 }
 
 TEST_CASE("Rename - Parameter") {
