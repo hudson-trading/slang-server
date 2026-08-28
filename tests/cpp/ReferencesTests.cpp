@@ -296,8 +296,15 @@ endmodule : top
     REQUIRE(edit.has_value());
     REQUIRE(edit->changes.has_value());
 
-    // 3 changes for each reference of child
-    CHECK(edit->changes->size() == 3);
+    // One file
+    CHECK(edit->changes->size() == 1);
+
+    auto& changes = *edit->changes;
+    auto uriStr = hdl.m_uri.str();
+    REQUIRE(changes.find(uriStr) != changes.end());
+
+    // Should have at least 3 references
+    CHECK(changes[uriStr].size() >= 3);
 
     golden.record(*edit);
 }
