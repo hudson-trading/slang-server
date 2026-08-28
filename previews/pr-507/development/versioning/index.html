@@ -1117,9 +1117,8 @@
 <h1 id="versioning-and-releases">Versioning and releases<a class="headerlink" href="#versioning-and-releases" title="Permanent link">&para;</a></h1>
 <p>The <code>slang-server</code> binary and its editor clients use independent semantic versions. Patch
 versions can advance independently, but the major and minor versions describe
-the shared feature set. During LSP initialization, the server and supported
-editor clients exchange their versions and warn when either side has an older
-major or minor version.</p>
+the shared feature set. Version-aware clients warn when either side has an
+older major or minor version.</p>
 <h2 id="version-sources">Version sources<a class="headerlink" href="#version-sources" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -1156,9 +1155,10 @@ server also warns when a version-aware client has an older major or minor
 version. Patch differences do not generate compatibility warnings.</p>
 <p>For example, versions <code>0.2.3</code> and <code>0.2.10</code> are compatible. A <code>0.3.x</code> component
 used with a <code>0.2.x</code> component warns that the older component should be updated.</p>
-<p>Pre-versioned Neovim clients do not send plugin information during
-initialization. A current server detects this and asks the user to update the
-plugin.</p>
+<p>The Neovim plugin checks the server version after an existing LSP client
+attaches. Users can also add the plugin's client capability to their LSP
+configuration so the server can check the plugin version during initialization.
+The plugin does not install, update, configure, or start the language server.</p>
 <h2 id="neovim-validation">Neovim validation<a class="headerlink" href="#neovim-validation" title="Permanent link">&para;</a></h2>
 <p>Run the following command from the repository root to validate the checked-in
 Neovim version:</p>
