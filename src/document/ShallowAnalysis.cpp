@@ -63,8 +63,8 @@ static bool symbolsMatch(const ast::Symbol* a, const ast::Symbol* b) {
     return false;
 }
 ShallowAnalysis::ShallowAnalysis(SourceManager& sourceManager, slang::BufferID buffer,
-                                 std::shared_ptr<SyntaxTree> tree, slang::Bag options,
-                                 const std::vector<std::shared_ptr<SyntaxTree>>& allTrees) :
+                                 std::shared_ptr<syntax::SyntaxTree> tree, slang::Bag options,
+                                 const std::vector<std::shared_ptr<syntax::SyntaxTree>>& allTrees) :
     syntaxes(*tree), m_sourceManager(sourceManager), m_buffer(buffer), m_tree(tree),
     m_allTrees(allTrees), m_analysisOptions(options.getOrDefault<analysis::AnalysisOptions>()),
     m_symbolTreeVisitor(m_sourceManager), m_symbolIndexer(buffer) {
@@ -453,7 +453,7 @@ const ast::Scope* ShallowAnalysis::getAssignmentPatternScopeAt(SourceLocation lo
 struct OffsetFinder {
     OffsetFinder(uint32_t targetOffset) : targetOffset(targetOffset) {}
 
-    void visit(const SyntaxNode& node) {
+    void visit(const syntax::SyntaxNode& node) {
         for (uint32_t i = 0; i < node.getChildCount(); i++) {
             auto child = node.childNode(i);
             if (child) {
@@ -471,7 +471,7 @@ struct OffsetFinder {
     }
 
     uint32_t targetOffset;
-    const SyntaxNode* foundSyntax = nullptr;
+    const syntax::SyntaxNode* foundSyntax = nullptr;
     const parsing::Token* foundToken = nullptr;
 };
 
@@ -596,7 +596,7 @@ slang::SmallVector<const ast::Symbol*, 2> ShallowAnalysis::getSymbolsAtToken(
     }
 
     // Handle macro args
-    std::shared_ptr<SyntaxTree> tokTree; // syntax needs to live for this function
+    std::shared_ptr<syntax::SyntaxTree> tokTree; // syntax needs to live for this function
     if (syntax->kind == syntax::SyntaxKind::MacroActualArgument) {
         // parse the token list, and use those name syntaxes for lookups
         // TODO: be more precise; handle args that produce lhs ids
@@ -614,7 +614,7 @@ slang::SmallVector<const ast::Symbol*, 2> ShallowAnalysis::getSymbolsAtToken(
 
         // These will overwrite the same assigned source, but it's ok since they are temporary,
         // and the source manager should be thread safe (for when we do threaded async)
-        tokTree = SyntaxTree::fromText(macroArgText, m_sourceManager);
+        tokTree = syntax::SyntaxTree::fromText(macroArgText, m_sourceManager);
         tokTree->root().parent = macroArgSyntax.parent;
         OffsetFinder visitor(declTok->location().offset() -
                              macroArgSyntax.getFirstToken().location().offset());

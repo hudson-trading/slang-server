@@ -361,7 +361,7 @@ bool SlangServer::expandMacros(ExpandMacroArgs args) {
         return false;
     }
 
-    SyntaxPrinter printer(doc->getSyntaxTree()->sourceManager());
+    syntax::SyntaxPrinter printer(doc->getSyntaxTree()->sourceManager());
     printer.setSquashNewlines(false);
     printer.setIncludeDirectives(true);
     printer.setExpandMacros(true);
