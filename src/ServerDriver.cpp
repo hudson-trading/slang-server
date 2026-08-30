@@ -341,9 +341,9 @@ void ServerDriver::onWorkspaceDidChangeWatchedFiles(
 }
 
 std::vector<std::shared_ptr<SlangDoc>> ServerDriver::getDependentDocs(
-    std::shared_ptr<SyntaxTree> tree) {
+    std::shared_ptr<syntax::SyntaxTree> tree) {
     std::vector<std::shared_ptr<SlangDoc>> result;
-    std::queue<std::shared_ptr<SyntaxTree>> treesToProcess;
+    std::queue<std::shared_ptr<syntax::SyntaxTree>> treesToProcess;
     flat_hash_set<std::string_view> knownNames;
     flat_hash_set<std::string> processedFiles;
 
@@ -1011,7 +1011,7 @@ void ServerDriver::addMemberReferences(std::vector<lsp::Location>& references,
                     if (ref->identifier.valueText() != parentSymbol.name) {
                         continue;
                     }
-                    auto tok = ref->parent->as<ScopedNameSyntax>().right->getFirstToken();
+                    auto tok = ref->parent->as<syntax::ScopedNameSyntax>().right->getFirstToken();
                     if (tok.valueText() == targetName) {
                         references.push_back(toOriginalLocation(tok.range(), sm));
                     }

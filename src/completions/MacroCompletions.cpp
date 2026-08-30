@@ -141,8 +141,8 @@ void MacroCompletionQuery::resolve(CompletionDispatch& dispatch, lsp::Completion
         return;
     }
 
-    auto maybeTree = SyntaxTree::fromFile(paths[0].string(), getSourceManager(dispatch),
-                                          getOptions(dispatch));
+    auto maybeTree = syntax::SyntaxTree::fromFile(paths[0].string(), getSourceManager(dispatch),
+                                                  getOptions(dispatch));
     if (!maybeTree)
         return;
 

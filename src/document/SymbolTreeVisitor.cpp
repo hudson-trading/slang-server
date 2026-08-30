@@ -25,11 +25,11 @@
 namespace server {
 using namespace slang::syntax;
 
-SymbolTreeVisitor::SymbolTreeVisitor(const SourceManager& sourceManager) :
+SymbolTreeVisitor::SymbolTreeVisitor(const slang::SourceManager& sourceManager) :
     m_sourceManager(sourceManager), m_symbols_ptr(&m_symbols) {};
 
-std::vector<lsp::DocumentSymbol> SymbolTreeVisitor::get_symbols(std::shared_ptr<SyntaxTree> tree,
-                                                                const bool macros = true) {
+std::vector<lsp::DocumentSymbol> SymbolTreeVisitor::get_symbols(
+    std::shared_ptr<slang::syntax::SyntaxTree> tree, const bool macros = true) {
     if (m_symbols.empty()) {
         visit(tree->root());
 
