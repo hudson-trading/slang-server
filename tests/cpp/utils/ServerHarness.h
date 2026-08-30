@@ -90,7 +90,7 @@ public:
     std::vector<std::string> getModulesInFile(const std::string& fileName);
 
     std::optional<std::vector<lsp::Location>> getDocReferences(
-        const lsp::ReferenceParams& params) override;
+        const lsp::ReferenceParams& params, lsp::RequestContext ctx = {}) override;
 
     // For access to isWcpVariable
     // TODO -- remove once isWcpVariable is removed

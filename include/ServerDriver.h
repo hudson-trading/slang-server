@@ -14,6 +14,7 @@
 #include "codeactions/CodeActionDispatch.h"
 #include "completions/CompletionDispatch.h"
 #include "document/DefinitionInfo.h"
+#include "lsp/RequestContext.h"
 #include "lsp/URI.h"
 #include <filesystem>
 #include <memory>
@@ -39,10 +40,11 @@ enum FileUpdateType {
 /// options passed in a filelist
 class ServerDriver {
 public:
-    static std::unique_ptr<ServerDriver> create(Indexer& indexer, SlangLspClient& client,
-                                                const Config& config,
-                                                std::vector<std::string> buildfiles = {},
-                                                const ServerDriver* oldDriver = nullptr);
+    static std::unique_ptr<ServerDriver> create(
+        Indexer& indexer, SlangLspClient& client, const Config& config,
+        std::vector<std::string> buildfiles = {},
+        std::optional<std::string_view> workspaceFolder = std::nullopt,
+        const ServerDriver* oldDriver = nullptr);
     /// Mapping of URI to SlangDoc, which may hold a shallow analysis of the document
     std::unordered_map<URI, std::shared_ptr<SlangDoc>> docs;
 
@@ -79,7 +81,8 @@ public:
     /// @brief Reload a document from disk, used when external tools modify open files
     void reloadDocument(const URI& uri);
 
-    void onDocDidChange(const lsp::DidChangeTextDocumentParams& params);
+    void onDocDidChange(const lsp::DidChangeTextDocumentParams& params,
+                        const lsp::RequestContext& ctx = {});
 
     /// @brief Checks if a document is open
     bool isDocumentOpen(const URI& uri);
@@ -88,7 +91,7 @@ public:
     /// Reloads all changed buffers first, then updates open documents
     void onWorkspaceDidChangeWatchedFiles(const lsp::DidChangeWatchedFilesParams& params);
 
-    void updateDoc(SlangDoc& doc, FileUpdateType type);
+    void updateDoc(SlangDoc& doc, FileUpdateType type, const lsp::RequestContext& ctx = {});
 
     std::shared_ptr<SlangDoc> getDocument(const URI& uri);
 
@@ -124,7 +127,8 @@ public:
     /// @return Optional vector of locations, or nullopt if no symbol found
     std::optional<std::vector<lsp::Location>> getDocReferences(const URI& uri,
                                                                const lsp::Position& position,
-                                                               bool includeDeclaration);
+                                                               bool includeDeclaration,
+                                                               const lsp::RequestContext& ctx = {});
 
     /// @brief Renames a symbol in a document
     /// @param uri The URI of the document
@@ -150,7 +154,12 @@ public:
     /// @param config Reference to the configuration object
     /// @param buildfiles List of build files to process
     ServerDriver(Indexer& indexer, SlangLspClient& client, const Config& config,
-                 std::vector<std::string> buildfiles);
+                 std::vector<std::string> buildfiles,
+                 std::optional<std::string_view> workspaceFolder);
+
+    size_t getWsRelativePathOffset(std::string_view path) const {
+        return path.starts_with(m_workspacePathPrefix) ? m_workspacePathPrefix.size() : 0;
+    }
 
     /// Map from macro name to the config/build file that defined it
     flat_hash_map<std::string, std::filesystem::path> m_defineSources;
@@ -167,6 +176,8 @@ private:
     /// Reference to the config object
     const Config& m_config;
 
+    std::string m_workspacePathPrefix;
+
     /// Parse config flags and build files, load sources, create documents
     void parseAndLoadSources(const std::vector<std::string>& buildfiles);
 
@@ -180,8 +191,8 @@ private:
     /// Helper to add member references to the references vector
     void addMemberReferences(std::vector<lsp::Location>& references,
                              const ast::Symbol& parentSymbol, const ast::Symbol& targetSymbol,
-                             bool isTypeMember = false);
+                             bool isTypeMember = false, const lsp::RequestContext& ctx = {});
 
-    void publishInactiveRegions(SlangDoc& doc);
+    void publishInactiveRegions(SlangDoc& doc, const lsp::RequestContext& ctx = {});
 };
 } // namespace server

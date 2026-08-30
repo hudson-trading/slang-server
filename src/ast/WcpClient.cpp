@@ -211,7 +211,7 @@ void waves::WcpClient::runClient() {
             continue;
         }
 
-        std::lock_guard<std::mutex> lock(m_lspServer->getMutex());
+        std::lock_guard<std::mutex> lock(m_lspServer->getServerStateMutex());
         std::cerr << "WCP S2C MESSAGE: " << *message << std::endl;
         auto s2cMessage = rfl::json::read<wcp::S2CMessage>(*message);
         if (!s2cMessage) {

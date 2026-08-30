@@ -89,6 +89,7 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
 
     // LSP Lifecycle
     registerInitialized();
+    registerCancelRequest();
 
     INFO("Server started with pid: {}", OS::getpid());
 
@@ -265,7 +266,11 @@ void SlangServer::setExplore() {
     m_topFile = std::nullopt;
 
     // Move data into the Server Driver
-    m_driver = ServerDriver::create(m_indexer, m_client, m_config, {}, m_driver.get());
+    const auto workspacePath = m_workspaceFolder ? std::optional<std::string_view>(
+                                                       m_workspaceFolder->uri.getPath())
+                                                 : std::nullopt;
+    m_driver = ServerDriver::create(m_indexer, m_client, m_config, {}, workspacePath,
+                                    m_driver.get());
     m_driver->diagClient->pushDiags();
 }
 
@@ -319,8 +324,11 @@ std::monostate SlangServer::setBuildFile(const std::string& path) {
     }
     m_buildfile = path;
 
+    const auto workspacePath = m_workspaceFolder ? std::optional<std::string_view>(
+                                                       m_workspaceFolder->uri.getPath())
+                                                 : std::nullopt;
     m_driver = ServerDriver::create(m_indexer, m_client, m_config, std::vector<std::string>{path},
-                                    m_driver.get());
+                                    workspacePath, m_driver.get());
     m_driver->createCompilation();
     return std::monostate{};
 }
@@ -690,8 +698,9 @@ void SlangServer::onDocDidOpen(const lsp::DidOpenTextDocumentParams& params) {
     m_driver->openDocument(params.textDocument.uri, params.textDocument.text);
 }
 
-void SlangServer::onDocDidChange(const lsp::DidChangeTextDocumentParams& params) {
-    m_driver->onDocDidChange(params);
+void SlangServer::onDocDidChange(const lsp::DidChangeTextDocumentParams& params,
+                                 lsp::RequestContext ctx) {
+    m_driver->onDocDidChange(params, ctx);
 }
 
 void SlangServer::onDocDidSave(const lsp::DidSaveTextDocumentParams& params) {
@@ -824,14 +833,15 @@ rfl::Variant<std::vector<lsp::CompletionItem>, lsp::CompletionList, std::monosta
     return results;
 }
 
-lsp::CompletionItem SlangServer::getCompletionItemResolve(const lsp::CompletionItem& item) {
+lsp::CompletionItem SlangServer::getCompletionItemResolve(const lsp::CompletionItem& item,
+                                                          lsp::RequestContext ctx) {
     if (item.documentation.has_value()) {
         // Already resolved
         return item;
     }
 
     lsp::CompletionItem ret = item;
-    m_driver->completions.getCompletionItemResolve(ret);
+    m_driver->completions.getCompletionItemResolve(ret, ctx);
     return ret;
 }
 
@@ -842,14 +852,18 @@ std::optional<std::vector<lsp::InlayHint>> SlangServer::getDocInlayHint(
         return {};
     }
     auto hints = doc->getAnalysis()->getInlayHints(params.range, m_config.inlayHints.get());
-    INFO("Providing {} inlay hints for {}", hints.size(), params.textDocument.uri.getPath());
+    INFO("Providing {} inlay hints for {}", hints.size(), doc->getWsRelativePath());
     return hints;
 }
 
 std::optional<std::vector<lsp::Location>> SlangServer::getDocReferences(
-    const lsp::ReferenceParams& params) {
-    return m_driver->getDocReferences(params.textDocument.uri, params.position,
-                                      params.context.includeDeclaration);
+    const lsp::ReferenceParams& params, lsp::RequestContext ctx) {
+    auto references = m_driver->getDocReferences(params.textDocument.uri, params.position,
+                                                 params.context.includeDeclaration, ctx);
+    auto doc = m_driver->getDocument(params.textDocument.uri);
+    ctx.info("Found {} references for {}", references ? references->size() : 0,
+             doc ? doc->getWsRelativePath() : params.textDocument.uri.getPath());
+    return references;
 }
 
 std::optional<lsp::WorkspaceEdit> SlangServer::getDocRename(const lsp::RenameParams& params) {

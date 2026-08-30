@@ -89,12 +89,13 @@ class CompletionSymbolFinder
     : public ast::ASTVisitor<CompletionSymbolFinder, ast::VisitFlags::Symbols> {
 public:
     CompletionSymbolFinder(SourceLocation location, ast::SymbolKind kind, std::string_view name,
-                           std::string_view symbolPath) :
-        location(location), kind(kind), name(name), symbolPath(symbolPath) {}
+                           std::string_view symbolPath, const lsp::RequestContext& ctx) :
+        location(location), kind(kind), name(name), symbolPath(symbolPath), ctx(ctx) {}
 
     template<typename T>
         requires std::is_base_of_v<ast::Symbol, T>
     void handle(const T& symbol) {
+        ctx.throwIfCancelled("while locating completion symbol");
         if (!inspect(symbol))
             return;
         if constexpr (std::is_base_of_v<ast::ValueSymbol, T>) {
@@ -140,6 +141,7 @@ private:
     ast::SymbolKind kind;
     std::string_view name;
     std::string_view symbolPath;
+    const lsp::RequestContext& ctx;
     std::unordered_set<const ast::Symbol*> visited;
 };
 
@@ -314,19 +316,19 @@ private:
 
 std::unique_ptr<CompletionQuery> MemberCompletionQuery::createLexical(
     lsp::Range replacementRange, bool followedByCall, bool followedByInstantiation) {
-    return std::make_unique<LexicalCompletionQuery>(std::move(replacementRange), followedByCall,
+    return std::make_unique<LexicalCompletionQuery>(replacementRange, followedByCall,
                                                     followedByInstantiation);
 }
 
 std::unique_ptr<CompletionQuery> MemberCompletionQuery::createMemberAccess(
     lsp::Range replacementRange, const parsing::Token* receiverToken, bool followedByCall) {
-    return std::make_unique<MemberAccessCompletionQuery>(std::move(replacementRange), receiverToken,
+    return std::make_unique<MemberAccessCompletionQuery>(replacementRange, receiverToken,
                                                          followedByCall);
 }
 
 std::unique_ptr<CompletionQuery> MemberCompletionQuery::createScopedAccess(
     lsp::Range replacementRange, const parsing::Token* receiverToken, bool followedByCall) {
-    return std::make_unique<ScopedAccessCompletionQuery>(std::move(replacementRange), receiverToken,
+    return std::make_unique<ScopedAccessCompletionQuery>(replacementRange, receiverToken,
                                                          followedByCall);
 }
 
@@ -735,7 +737,8 @@ void MemberCompletionQuery::addCompletions(std::vector<lsp::CompletionItem>& res
     }
 }
 
-void MemberCompletionQuery::resolve(CompletionDispatch& dispatch, lsp::CompletionItem& item) {
+void MemberCompletionQuery::resolve(CompletionDispatch& dispatch, lsp::CompletionItem& item,
+                                    const lsp::RequestContext& ctx) {
     if (!item.data)
         return;
 
@@ -750,20 +753,21 @@ void MemberCompletionQuery::resolve(CompletionDispatch& dispatch, lsp::Completio
     if (!doc)
         return;
 
-    auto analysis = doc->getAnalysis();
+    auto analysis = doc->getAnalysis(false, ctx);
     if (!analysis || !analysis->getCompilation())
         return;
 
     auto& root = analysis->getCompilation()->getRoot();
     const ast::Symbol* symbol = nullptr;
-    if (data->bufferId) {
+    if (data->bufferId && data->bufferId == doc->getBuffer().getId()) {
         CompletionSymbolFinder finder(
             SourceLocation(BufferID(data->bufferId, "completion item resolve"), data->offset),
-            data->symbolKind, data->symbolName, data->symbolPath);
+            data->symbolKind, data->symbolName, data->symbolPath, ctx);
         root.visit(finder);
         symbol = finder.result;
     }
     if (!symbol) {
+        ctx.throwIfCancelled("before completion symbol lookup");
         try {
             symbol = root.lookupName(data->symbolPath, ast::LookupLocation::max,
                                      ast::LookupFlags::AllowUnnamedGenerate);
@@ -777,6 +781,7 @@ void MemberCompletionQuery::resolve(CompletionDispatch& dispatch, lsp::Completio
         return;
     }
 
+    ctx.throwIfCancelled("before formatting completion item");
     resolve(*symbol, item, resolvesCompletionEdits(dispatch));
     if (!data->labelOnly)
         updateCompletionEditText(item);

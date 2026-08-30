@@ -237,11 +237,9 @@ private:
     /// @brief Helper method to handle lookup for scoped names (e.g., pkg::identifier)
     /// @param nameSyntax The name syntax to look up
     /// @param context The AST context for the lookup
-    /// @param scope The scope to search in
     /// @return Pointer to the found symbol, or nullptr if not found
     const slang::ast::Symbol* handleScopedNameLookup(const slang::syntax::NameSyntax* nameSyntax,
-                                                     const slang::ast::ASTContext& context,
-                                                     const slang::ast::Scope* scope) const;
+                                                     const slang::ast::ASTContext& context) const;
 
     /// @brief Helper method to handle symbol lookup for interface port headers
     /// @param node The token being queried

@@ -162,7 +162,8 @@ public:
 
     void onDocDidClose(const lsp::DidCloseTextDocumentParams&) override;
 
-    void onDocDidChange(const lsp::DidChangeTextDocumentParams&) override;
+    void onDocDidChange(const lsp::DidChangeTextDocumentParams&,
+                        lsp::RequestContext ctx = {}) override;
 
     void onDocDidSave(const lsp::DidSaveTextDocumentParams&) override;
 
@@ -204,12 +205,13 @@ public:
         const lsp::InlayHintParams&) override;
 
     std::optional<std::vector<lsp::Location>> getDocReferences(
-        const lsp::ReferenceParams&) override;
+        const lsp::ReferenceParams&, lsp::RequestContext ctx = {}) override;
 
     std::optional<lsp::WorkspaceEdit> getDocRename(const lsp::RenameParams&) override;
 
     /// Completions resolve (get docs and snippet string)
-    lsp::CompletionItem getCompletionItemResolve(const lsp::CompletionItem&) override;
+    lsp::CompletionItem getCompletionItemResolve(const lsp::CompletionItem&,
+                                                 lsp::RequestContext ctx = {}) override;
 
     /// Get a list of highlights for all references to a symbol in the current document
     std::optional<std::vector<lsp::DocumentHighlight>> getDocDocumentHighlight(
@@ -253,7 +255,7 @@ public:
     /// Get a list of RTL paths of the loads of a given RTL path
     std::vector<std::string> getLoads(const std::string&) final;
 
-    /// Get the mutex to prevent collisions between LSP and WCP message handling
-    std::mutex& getMutex() final { return mutex; };
+    /// Get the mutex that serializes access to shared server state.
+    std::mutex& getServerStateMutex() final { return serverStateMutex; };
 };
 } // namespace server

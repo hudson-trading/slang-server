@@ -164,8 +164,8 @@ std::vector<std::string> ServerHarness::getModulesInFile(const std::string& file
 }
 
 std::optional<std::vector<lsp::Location>> ServerHarness::getDocReferences(
-    const lsp::ReferenceParams& params) {
-    auto refs = SlangServer::getDocReferences(params);
+    const lsp::ReferenceParams& params, lsp::RequestContext ctx) {
+    auto refs = SlangServer::getDocReferences(params, ctx);
     if (!refs) {
         return refs;
     }

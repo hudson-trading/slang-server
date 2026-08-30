@@ -12,6 +12,7 @@
 #include "completions/CompletionContext.h"
 #include "document/SlangDoc.h"
 #include "lsp/LspTypes.h"
+#include "lsp/RequestContext.h"
 #include <memory>
 #include <string>
 #include <vector>
@@ -44,7 +45,7 @@ public:
     void getCompletions(std::vector<lsp::CompletionItem>& results, std::shared_ptr<SlangDoc> doc,
                         const CompletionContext& ctx);
 
-    void getCompletionItemResolve(lsp::CompletionItem& item);
+    void getCompletionItemResolve(lsp::CompletionItem& item, const lsp::RequestContext& ctx);
 };
 
 namespace completions {

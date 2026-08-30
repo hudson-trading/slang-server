@@ -169,6 +169,39 @@ TEST_CASE("PartialElaboration") {
     golden.record(diags);
 }
 
+TEST_CASE("ShallowCompilationDepthLimitIsNotReported") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+module leaf;
+endmodule
+
+module implementation;
+    leaf #(.missing_param(1)) leaf_i(.missing_port(1'b0));
+endmodule
+
+module child;
+    implementation implementation_i();
+endmodule
+
+module wrapper;
+    child child_i();
+endmodule
+)");
+
+    auto diags = doc.getDiagnostics();
+    bool sawMissingParam = false;
+    bool sawMissingPort = false;
+    for (auto& diag : diags) {
+        sawMissingParam |= diag.message == "parameter 'missing_param' does not exist in 'leaf'";
+        sawMissingPort |= diag.message == "port 'missing_port' does not exist in 'leaf'";
+    }
+
+    CHECK(diags.size() == 2);
+    CHECK(sawMissingParam);
+    CHECK(sawMissingPort);
+}
+
 TEST_CASE("IfacePortStaticAssertParamOverride") {
     // When a top-level module has an interface port (shallow / AllowTopLevelIfacePorts),
     // a `$static_assert(port.PARAM == const)` in the module body should override the value

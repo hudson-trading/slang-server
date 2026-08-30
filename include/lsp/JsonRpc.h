@@ -8,21 +8,23 @@
 
 #pragma once
 
+#include "JsonTypes.h"
 #include "rfl/Generic.hpp"
 #include <iostream>
 #include <optional>
 #include <rfl/json.hpp> // IWYU pragma: keep
 #include <string>
+#include <variant>
 
 namespace lsp {
 
-using ID_t = std::optional<rfl::Variant<int, std::string>>;
+using ID_t = std::variant<int, std::string>;
 using Params_t = std::optional<rfl::Generic>;
 
 struct RpcRequest {
     /// includes notifications
     std::string jsonrpc;
-    ID_t id;
+    std::optional<ID_t> id;
     std::string method;
     Params_t params;
 };
@@ -35,19 +37,19 @@ struct RpcNotification {
 
 struct RpcResponse {
     std::string jsonrpc;
-    ID_t id;
+    std::optional<ID_t> id;
     Params_t result;
 };
 
 struct RpcError {
     /// A number indicating the error type that occurred.
-    int code;
+    int32_t code;
     /// A string providing a short description of the error.
     std::string message;
 };
 struct RpcErrorResponse {
     std::string jsonrpc;
-    ID_t id;
+    std::optional<ID_t> id;
     RpcError error;
 };
 
@@ -83,9 +85,9 @@ inline void sendRequest(const std::string& method, const rfl::Generic& params) {
 }
 
 template<typename T>
-T readJson(std::string& line, std::string& content) {
+std::optional<T> readJson(std::string& line, std::string& content) {
     while (std::getline(std::cin, line)) {
-        if (line.find("Content-Length: ") != 0) {
+        if (!line.starts_with("Content-Length: ")) {
             std::cerr << "<-/- " << "Invalid Line: " << line << std::endl;
             continue;
         }
@@ -122,7 +124,7 @@ T readJson(std::string& line, std::string& content) {
 
         return std::move(request.value());
     }
-    return T{};
+    return std::nullopt;
 }
 
 } // namespace lsp

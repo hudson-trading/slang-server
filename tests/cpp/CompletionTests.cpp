@@ -501,6 +501,20 @@ TEST_CASE("MidIdentifierCompletion") {
         CHECK(doc.getText().find("get_value()();") == std::string::npos);
     }
 
+    SECTION("resolve after document buffer changes") {
+        auto cursor = doc.after("completion_pkg::get_va");
+        auto items = cursor.getCompletions();
+        auto item = findByLabel(items, "get_value");
+        REQUIRE(item != items.end());
+
+        doc.append("\n");
+        doc.publishChanges();
+        item->resolve();
+
+        CHECK(item->m_item.documentation);
+        CHECK(!item->m_item.data);
+    }
+
     SECTION("lexical access") {
         auto cursor = doc.after("from_scope = local_on");
         auto items = cursor.getCompletions();
