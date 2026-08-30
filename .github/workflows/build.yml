@@ -55,14 +55,15 @@ jobs:
             os: ubuntu-24.04-arm
             container: quay.io/pypa/manylinux_2_28_aarch64
             cmake_args: -DCMAKE_CXX_COMPILER=/opt/rh/gcc-toolset-14/root/usr/bin/g++
-          - name: linux-x64-musl
-            preset: gcc-release
-            os: ubuntu-24.04
-            alpine: true
-            cmake_args: -DCMAKE_CXX_COMPILER=g++
-            skip_pytests: true
-            skip_neovim_tests: true
-            shell: 'alpine.sh {0}'
+          # Disabled due to download timeouts. Revisit when https://github.com/jirutka/setup-alpine/issues/32 is resolved
+          # - name: linux-x64-musl
+          #   preset: gcc-release
+          #   os: ubuntu-24.04
+          #   alpine: true
+          #   cmake_args: -DCMAKE_CXX_COMPILER=g++
+          #   skip_pytests: true
+          #   skip_neovim_tests: true
+          #   shell: 'alpine.sh {0}'
           # Dev-only Linux builds for additional compiler/host coverage.
           # OS is in the name to distinguish from the canonical release builds.
           - name: linux-x64-ubuntu-24.04-clang
