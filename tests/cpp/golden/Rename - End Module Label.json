@@ -1,7 +1,7 @@
 [
   {
     "changes": {
-      "file:///home/evanp/slang-server/test.sv": [
+      "file://test.sv": [
         {
           "range": {
             "start": {
