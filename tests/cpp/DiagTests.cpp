@@ -5,6 +5,9 @@
 #include "utils/ServerHarness.h"
 #include <cstdlib>
 
+#include "slang/diagnostics/CompilationDiags.h"
+#include "slang/diagnostics/ExpressionsDiags.h"
+
 TEST_CASE("SingleFileDiag") {
     ServerHarness server;
 
@@ -515,4 +518,105 @@ endmodule
                    code == "unused-but-set-variable"));
         }
     }
+}
+
+TEST_CASE("ShallowCompilationSuppressesMaxInstanceDepth") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+module leaf;
+endmodule
+
+module level3;
+    leaf child();
+endmodule
+
+module level2;
+    level3 child();
+endmodule
+
+module level1;
+    level2 child();
+endmodule
+
+module top;
+    level1 child();
+endmodule
+)");
+
+    auto& semanticDiags = doc.doc->getCompilation()->getSemanticDiagnostics();
+    CHECK(std::ranges::any_of(semanticDiags, [](const auto& diag) {
+        return diag.code == slang::diag::MaxInstanceDepthExceeded;
+    }));
+    CHECK(doc.getDiagnostics().empty());
+}
+
+TEST_CASE("ShallowCompilationKeepsExpressionDiagWithMatchingNumericCode") {
+    CHECK(slang::diag::BadIntegerCast.getCode() == slang::diag::MaxInstanceDepthExceeded.getCode());
+    CHECK(slang::diag::BadIntegerCast.getSubsystem() !=
+          slang::diag::MaxInstanceDepthExceeded.getSubsystem());
+
+    ServerHarness server;
+    auto doc = server.openFile("test.sv", R"(
+module top;
+    initial 4'(1.0);
+endmodule
+)");
+
+    auto diags = doc.getDiagnostics();
+    REQUIRE(diags.size() == 1);
+    CHECK(diags.front().message ==
+          "cannot change width or signedness of non-integral expression (type is 'real')");
+}
+
+TEST_CASE("ShallowCompilationChecksExpressionsPastDepthLimit") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(`default_nettype none
+module receiver #(
+    parameter int WIDTH = 1,
+    parameter int DEPTH = 1
+) (input logic value);
+endmodule
+
+module checked_module;
+    logic value;
+    assign value = missing_assign_rhs;
+    receiver #(
+        .WIDTH(missing_param_rhs),
+        .DEPTH(missing_second_param_rhs)
+    ) receiver_i(.value(missing_port_rhs));
+endmodule
+
+module level_two;
+    checked_module checked_module_i();
+endmodule
+
+module level_one;
+    level_two level_two_i();
+endmodule
+
+module top;
+    level_one level_one_i();
+endmodule
+)");
+
+    auto diags = doc.getDiagnostics();
+    bool sawAssignRhs = false;
+    bool sawParamRhs = false;
+    bool sawSecondParamRhs = false;
+    bool sawPortRhs = false;
+    for (const auto& diag : diags) {
+        sawAssignRhs |= diag.message == "use of undeclared identifier 'missing_assign_rhs'";
+        sawParamRhs |= diag.message == "use of undeclared identifier 'missing_param_rhs'";
+        sawSecondParamRhs |= diag.message ==
+                             "use of undeclared identifier 'missing_second_param_rhs'";
+        sawPortRhs |= diag.message == "use of undeclared identifier 'missing_port_rhs'";
+    }
+
+    REQUIRE(diags.size() == 4);
+    CHECK(sawAssignRhs);
+    CHECK(sawParamRhs);
+    CHECK(sawSecondParamRhs);
+    CHECK(sawPortRhs);
 }

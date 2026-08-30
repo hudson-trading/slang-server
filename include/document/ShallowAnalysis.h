@@ -102,6 +102,9 @@ public:
 
     const std::unique_ptr<slang::ast::Compilation>& getCompilation() const { return m_compilation; }
 
+    /// @brief Gets semantic diagnostics after shallowly elaborating edited-file definitions.
+    const Diagnostics& getSemanticDiagnostics();
+
     /// @brief Ensures the shallow compilation has been analyzed and returns the slang
     /// `AnalysisManager`. Returns nullptr if analysis could not be run, for example no top
     /// instances.
@@ -191,6 +194,8 @@ private:
 
     /// Cached diagnostics from the latest analysis run, if available
     std::optional<Diagnostics> m_cachedAnalysisDiags;
+
+    bool m_editedDefinitionsElaborated = false;
 
     /// Analysis options for driver analysis (numThreads=1 to avoid persistent threads)
     slang::analysis::AnalysisOptions m_analysisOptions;
