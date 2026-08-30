@@ -143,7 +143,8 @@ public:
             rfl::to_generic(std::unordered_map<std::string, T>{{label, (some_struct)}}));
     }
 
-    /// Helper to convert file:// URIs to just filename in a Generic value
+    /// Helper to convert file:// URIs to just filename in a Generic value.
+    /// URIs can occur as either values or object keys (for example, WorkspaceEdit::changes).
     static void makeUrisRelative(rfl::Generic& g) {
         std::visit(
             [](auto& val) {
@@ -159,6 +160,9 @@ public:
                 }
                 else if constexpr (std::is_same_v<T, rfl::Generic::Object>) {
                     for (auto& [key, child] : val) {
+                        rfl::Generic keyValue = key;
+                        makeUrisRelative(keyValue);
+                        key = std::get<std::string>(keyValue.get());
                         makeUrisRelative(child);
                     }
                 }

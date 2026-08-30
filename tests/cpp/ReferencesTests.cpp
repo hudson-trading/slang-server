@@ -303,8 +303,8 @@ endmodule : top
     auto uriStr = hdl.m_uri.str();
     REQUIRE(changes.find(uriStr) != changes.end());
 
-    // Should have at least 3 references
-    CHECK(changes[uriStr].size() >= 3);
+    // Should have 3 references
+    CHECK(changes[uriStr].size() == 3);
 
     golden.record(*edit);
 }
