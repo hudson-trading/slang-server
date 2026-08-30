@@ -137,14 +137,13 @@ void ServerDriver::parseAndLoadSources(const std::vector<std::string>& buildfile
 
 // Doc updates (open, change, save)
 void ServerDriver::updateDoc(SlangDoc& doc, FileUpdateType type, const lsp::RequestContext& ctx) {
-    ctx.throwIfCancelled("before dependency loading");
-
-    // Grab dependent documents
-    doc.setDependentDocuments(getDependentDocs(doc.getSyntaxTree()));
     ctx.throwIfCancelled("before diagnostics");
 
     // Clear and re-issue diagnostics for this document
     diagClient->clear(doc.getURI());
+
+    // Pragma mappings are populated while parsing the syntax tree.
+    doc.getSyntaxTree();
 
     // Update pragma mappings for the changed buffer
     diagEngine.setMappingsFromPragmas(doc.getBuffer());
@@ -340,9 +339,9 @@ void ServerDriver::onWorkspaceDidChangeWatchedFiles(
     }
 }
 
-std::vector<std::shared_ptr<SlangDoc>> ServerDriver::getDependentDocs(
+std::vector<std::shared_ptr<syntax::SyntaxTree>> ServerDriver::getDependentTrees(
     std::shared_ptr<syntax::SyntaxTree> tree) {
-    std::vector<std::shared_ptr<SlangDoc>> result;
+    std::vector<std::shared_ptr<syntax::SyntaxTree>> result;
     std::queue<std::shared_ptr<syntax::SyntaxTree>> treesToProcess;
     flat_hash_set<std::string_view> knownNames;
     flat_hash_set<std::string> processedFiles;
@@ -378,15 +377,15 @@ std::vector<std::shared_ptr<SlangDoc>> ServerDriver::getDependentDocs(
 
             auto newdoc = getDocument(URI::fromFile(filePath));
             if (newdoc) {
-                result.push_back(newdoc);
-                docs[newdoc->getURI()] = newdoc;
+                auto dependencyTree = newdoc->getSyntaxTree();
+                result.push_back(dependencyTree);
 
                 // Recurse into packages and interfaces, since they may contain types from other
                 // packages that are referenced by the analyzed module.
-                for (auto& [decl, _] : newdoc->getSyntaxTree()->getMetadata().nodeMeta) {
+                for (auto& [decl, _] : dependencyTree->getMetadata().nodeMeta) {
                     if (decl->kind == syntax::SyntaxKind::PackageDeclaration ||
                         decl->kind == syntax::SyntaxKind::InterfaceDeclaration) {
-                        treesToProcess.push(newdoc->getSyntaxTree());
+                        treesToProcess.push(dependencyTree);
                         break;
                     }
                 }
@@ -1020,7 +1019,7 @@ void ServerDriver::addMemberReferences(std::vector<lsp::Location>& references,
             }
         }
 
-        auto fileAnalysis = fileDoc->getAnalysis(false, ctx);
+        auto fileAnalysis = fileDoc->getAnalysis(ctx);
         fileAnalysis->addLocalReferences(references, targetSymbol.location, targetName);
     }
 }
@@ -1036,7 +1035,7 @@ std::optional<std::vector<lsp::Location>> ServerDriver::getDocReferences(
 
     // Get the symbol at the position. Hold the analysis via shared_ptr so that symbols remain
     // valid even if getAnalysis() is called on this doc again.
-    auto analysis = doc->getAnalysis(false, ctx);
+    auto analysis = doc->getAnalysis(ctx);
     ctx.throwIfCancelled("before resolving reference target");
     auto loc = toSourceLocation(doc->getBuffer(), position, sm);
     if (!loc) {
@@ -1148,7 +1147,7 @@ std::optional<std::vector<lsp::Location>> ServerDriver::getDocReferences(
 
         // Add refs in declaration file, and remove declaration if requested
         if (targetDoc) {
-            auto targetAnalysis = targetDoc->getAnalysis(false, ctx);
+            auto targetAnalysis = targetDoc->getAnalysis(ctx);
             targetAnalysis->addLocalReferences(references, targetSymbol->location, targetName);
             if (!includeDeclaration) {
                 auto targetLspLoc = lsp::Location{
@@ -1228,7 +1227,7 @@ std::optional<std::vector<lsp::Location>> ServerDriver::getDocReferences(
             if (!referenceLoc)
                 continue;
 
-            auto referenceAnalysis = referenceDoc->getAnalysis(false, ctx);
+            auto referenceAnalysis = referenceDoc->getAnalysis(ctx);
             auto* referenceToken = referenceAnalysis->syntaxes.getWordTokenAt(*referenceLoc);
             if (!referenceToken)
                 continue;

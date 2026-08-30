@@ -95,7 +95,7 @@ public:
 
     std::shared_ptr<SlangDoc> getDocument(const URI& uri);
 
-    std::vector<std::shared_ptr<SlangDoc>> getDependentDocs(
+    std::vector<std::shared_ptr<syntax::SyntaxTree>> getDependentTrees(
         std::shared_ptr<syntax::SyntaxTree> tree);
 
     std::vector<std::string> getModulesInFile(const std::string& path);

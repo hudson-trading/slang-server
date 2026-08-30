@@ -57,15 +57,14 @@ private:
     /// The syntax tree for this document
     std::shared_ptr<slang::syntax::SyntaxTree> m_tree;
 
-    /// List of weak pointers to documents that this one depends on. Owned by
-    std::vector<std::shared_ptr<SlangDoc>> m_dependentDocuments;
-
     /// Document analysis for syntax and symbol analysis.
     /// Shared so that callers can hold the analysis alive even if getAnalysis() recreates it.
     std::shared_ptr<ShallowAnalysis> m_analysis;
 
     // For testing
     friend class DocumentHandle;
+
+    std::shared_ptr<ShallowAnalysis> refreshAnalysis(const lsp::RequestContext& ctx);
 
 public:
     SlangDoc(ServerDriver& driver, URI uri, slang::SourceBuffer buffer);
@@ -98,8 +97,7 @@ public:
 
     /// @brief Get the analysis, creating it if necessary.
     /// Returns a shared_ptr so callers can hold the analysis alive independently of this document.
-    std::shared_ptr<ShallowAnalysis> getAnalysis(bool refreshDependencies = false,
-                                                 const lsp::RequestContext& ctx = {});
+    std::shared_ptr<ShallowAnalysis> getAnalysis(const lsp::RequestContext& ctx = {});
 
     ////////////////////////////////////////////////
     /// Indexed Syntax Tree Methods
@@ -129,11 +127,6 @@ public:
     ////////////////////////////////////////////////
     /// File Lifecycle
     ////////////////////////////////////////////////
-    /// @brief Set dependent documents for this document, updated by driver after document changes
-    void setDependentDocuments(const std::vector<std::shared_ptr<SlangDoc>>& dependentDocs) {
-        m_dependentDocuments = dependentDocs;
-    }
-
     void onChange(const std::vector<lsp::TextDocumentContentChangeEvent>& contentChanges);
 
     /// @brief Re-read the buffer from disk (used for external file changes)
