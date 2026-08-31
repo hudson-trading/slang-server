@@ -129,6 +129,12 @@ void ServerDriver::parseAndLoadSources(const std::vector<std::string>& buildfile
     // Create documents from syntax trees
     INFO("Creating ServerDriver with {} trees", driver.syntaxTrees.size());
     for (auto& tree : driver.syntaxTrees) {
+        for (auto buffer : tree->getSourceBufferIds()) {
+            auto path = sm.getFullPath(buffer);
+            if (!path.empty())
+                m_buildSourceUris.emplace(URI::fromFile(path));
+        }
+
         auto uri = URI::fromFile(sm.getFullPath(tree->getSourceBufferIds()[0]));
         auto doc = SlangDoc::fromTree(*this, std::move(tree));
         docs[uri] = doc;
@@ -138,6 +144,11 @@ void ServerDriver::parseAndLoadSources(const std::vector<std::string>& buildfile
 // Doc updates (open, change, save)
 void ServerDriver::updateDoc(SlangDoc& doc, FileUpdateType type, const lsp::RequestContext& ctx) {
     ctx.throwIfCancelled("before diagnostics");
+
+    if (comp && type == FileUpdateType::REOPEN) {
+        publishInactiveRegions(doc, ctx);
+        return;
+    }
 
     // Clear and re-issue diagnostics for this document
     diagClient->clear(doc.getURI());
@@ -170,59 +181,106 @@ void ServerDriver::updateDoc(SlangDoc& doc, FileUpdateType type, const lsp::Requ
     publishInactiveRegions(doc, ctx);
 }
 
-std::unique_ptr<ServerDriver> ServerDriver::create(Indexer& indexer, SlangLspClient& client,
-                                                   const Config& config,
-                                                   std::vector<std::string> buildfiles,
-                                                   std::optional<std::string_view> workspaceFolder,
-                                                   const ServerDriver* oldDriver) {
-    auto newDriver = std::make_unique<ServerDriver>(indexer, client, config, buildfiles,
-                                                    workspaceFolder);
+void ServerDriver::publishCompilationDiagnostics(
+    const std::vector<std::shared_ptr<SlangDoc>>& documents) {
+    diagEngine.setMappingsFromPragmas();
+    for (const auto& document : documents) {
+        document->issueParseDiagnostics(diagEngine);
+    }
+    comp->issueDiagnosticsTo(diagEngine);
+    diagClient->pushDiags();
+}
 
-    // Copy only open documents from old driver if provided
-    if (oldDriver) {
-        newDriver->completions.resolveEdits = oldDriver->completions.resolveEdits;
-        oldDriver->diagClient->clearAndPush();
-        for (const auto& uri : oldDriver->m_openDocs) {
-            auto docIt = oldDriver->docs.find(uri);
-            if (docIt == oldDriver->docs.end()) {
-                ERROR("Open Doc {} not found in old driver", uri.getPath());
-                continue;
-            }
-            // Only copy if the URI isn't already in the new driver's docs
-            auto newDocit = newDriver->docs.find(uri);
-            if (newDocit == newDriver->docs.end()) {
-                // Open the document in the new driver using the text from the old document
-                newDriver->openDocument(uri, docIt->second->getText());
-                // Trigger diagnostics for the newly opened document
-            }
-            else {
-                // Publish diags for the existing document
-                // Add to open doc set
-                newDriver->m_openDocs.insert(uri);
-                newDriver->updateDoc(*newDocit->second, FileUpdateType::OPEN);
-            }
+void ServerDriver::copyOpenDocumentsFrom(const ServerDriver* oldDriver) {
+    if (!oldDriver)
+        return;
+
+    completions.resolveEdits = oldDriver->completions.resolveEdits;
+    oldDriver->diagClient->clearAndPush();
+    for (const auto& uri : oldDriver->m_openDocs) {
+        auto docIt = oldDriver->docs.find(uri);
+        if (docIt == oldDriver->docs.end()) {
+            ERROR("Open Doc {} not found in old driver", uri.getPath());
+            continue;
+        }
+
+        auto newDocIt = docs.find(uri);
+        if (newDocIt == docs.end()) {
+            openDocument(uri, docIt->second->getText());
+        }
+        else {
+            m_openDocs.insert(uri);
+            updateDoc(*newDocIt->second, FileUpdateType::REOPEN);
         }
     }
+}
 
+std::unique_ptr<ServerDriver> ServerDriver::createForExplore(
+    Indexer& indexer, SlangLspClient& client, const Config& config,
+    std::optional<std::string_view> workspaceFolder, const ServerDriver* oldDriver) {
+    auto newDriver = std::make_unique<ServerDriver>(indexer, client, config,
+                                                    std::vector<std::string>{}, workspaceFolder);
+    newDriver->copyOpenDocumentsFrom(oldDriver);
+    return newDriver;
+}
+
+std::unique_ptr<ServerDriver> ServerDriver::createFromFileLists(
+    Indexer& indexer, SlangLspClient& client, const Config& config,
+    std::vector<std::string> buildfiles, std::optional<std::string_view> workspaceFolder,
+    const ServerDriver* oldDriver) {
+    auto newDriver = std::make_unique<ServerDriver>(indexer, client, config, std::move(buildfiles),
+                                                    workspaceFolder);
+
+    std::vector<std::shared_ptr<SlangDoc>> buildDocuments;
+    buildDocuments.reserve(newDriver->docs.size());
+    for (const auto& entry : newDriver->docs) {
+        buildDocuments.push_back(entry.second);
+    }
+
+    if (buildDocuments.empty()) {
+        newDriver->copyOpenDocumentsFrom(oldDriver);
+        ERROR("No documents available for compilation");
+        return newDriver;
+    }
+
+    auto diagnosticDocuments = buildDocuments;
+    newDriver->comp = std::make_unique<ServerCompilation>(std::move(buildDocuments),
+                                                          newDriver->options, newDriver->sm,
+                                                          newDriver->client);
+
+    newDriver->diagClient->clear();
+    newDriver->copyOpenDocumentsFrom(oldDriver);
+    newDriver->publishCompilationDiagnostics(diagnosticDocuments);
     return newDriver;
 }
 
 void ServerDriver::openDocument(const URI& uri, const std::string_view text) {
     auto docIter = docs.find(uri);
     std::shared_ptr<SlangDoc> doc;
-    bool alreadyInBuild = false;
+    bool matchesBuildSource = false;
     if (docIter != docs.end() && docIter->second->textMatches(text)) {
         doc = docIter->second;
-        alreadyInBuild = true;
+        matchesBuildSource = m_buildSourceUris.contains(uri);
     }
-    else {
+    else if (docIter == docs.end() && m_buildSourceUris.contains(uri)) {
+        doc = SlangDoc::open(*this, uri);
+        if (doc->textMatches(text)) {
+            matchesBuildSource = true;
+            docs[uri] = doc;
+        }
+        else {
+            doc.reset();
+        }
+    }
+
+    if (!doc) {
         if (docIter != docs.end())
             WARN("Document {} text does not match, updating", uri.getPath());
         doc = SlangDoc::fromText(*this, uri, text);
         docs[uri] = doc;
     }
 
-    if (comp && alreadyInBuild) {
+    if (comp && matchesBuildSource) {
         // File is already part of the compilation — compilation diags were
         // already published, so skip shallow diags. Still publish inactive regions.
         publishInactiveRegions(*doc);
@@ -424,15 +482,43 @@ std::vector<std::string> ServerDriver::getModulesInFile(const std::string& path)
     return moduleNames;
 }
 
-bool ServerDriver::createCompilation(std::shared_ptr<SlangDoc> doc, std::string_view top) {
-    // Collect documents starting with the target document
-    std::vector<std::shared_ptr<syntax::SyntaxTree>> syntaxTrees{doc->getSyntaxTree()};
+std::unique_ptr<ServerDriver> ServerDriver::createFromTop(
+    Indexer& indexer, SlangLspClient& client, const Config& config, const URI& topUri,
+    std::optional<std::string_view> workspaceFolder, const ServerDriver* oldDriver) {
+    auto newDriver = createForExplore(indexer, client, config, workspaceFolder, oldDriver);
+    auto doc = newDriver->getDocument(topUri);
+    if (!doc) {
+        client.showError("Document not found: " + std::string(topUri.getPath()));
+        return newDriver;
+    }
+
+    auto topTree = doc->getSyntaxTree();
+    std::string topName;
+    if (topTree->getMetadata().nodeMeta.size() == 1) {
+        topName = topTree->getMetadata().nodeMeta[0].first->header->name.valueText();
+    }
+    else {
+        ast::Compilation shallowCompilation;
+        shallowCompilation.addSyntaxTree(topTree);
+        auto& topInstances = shallowCompilation.getRoot().topInstances;
+        if (topInstances.empty()) {
+            client.showError("No top modules found in: " + std::string(topUri.getPath()));
+            return newDriver;
+        }
+        for (auto& top : topInstances.subspan(1)) {
+            WARN("Extra top module: {}", top->name);
+        }
+        topName = topInstances[0]->name;
+    }
+
+    std::vector<std::shared_ptr<syntax::SyntaxTree>> syntaxTrees{topTree};
+    auto* serverDriver = newDriver.get();
     driver::SourceLoader::loadTrees(
         syntaxTrees,
-        [this](std::string_view name) {
-            auto paths = m_indexer.getFilesForSymbol(name);
+        [serverDriver](std::string_view name) {
+            auto paths = serverDriver->m_indexer.getFilesForSymbol(name);
             if (!paths.empty()) {
-                auto maybeBuf = sm.readSource(paths[0], /* library */ nullptr);
+                auto maybeBuf = serverDriver->sm.readSource(paths[0], /* library */ nullptr);
                 if (maybeBuf) {
                     return *maybeBuf;
                 }
@@ -443,68 +529,23 @@ bool ServerDriver::createCompilation(std::shared_ptr<SlangDoc> doc, std::string_
             }
             return SourceBuffer{};
         },
-        sm, this->options);
+        newDriver->sm, newDriver->options);
 
     std::vector<std::shared_ptr<SlangDoc>> documents;
     documents.reserve(syntaxTrees.size());
     for (const auto& tree : syntaxTrees) {
-        documents.push_back(SlangDoc::fromTree(*this, tree));
+        documents.push_back(SlangDoc::fromTree(*newDriver, tree));
     }
-    // insert the documents into the driver
-    for (const auto& doc : documents) {
-        docs[doc->getURI()] = doc;
-    }
-
-    comp = std::make_unique<ServerCompilation>(documents, this->options, sm, client,
-                                               std::string(top));
-
-    // Apply pragma mappings for all buffers (including newly loaded ones)
-    diagEngine.setMappingsFromPragmas();
-
-    // Publish initial diags
-    for (const auto& doc : documents) {
-        doc->issueParseDiagnostics(diagEngine);
-    }
-    comp->issueDiagnosticsTo(diagEngine);
-    diagClient->pushDiags();
-
-    return true;
-}
-
-bool ServerDriver::createCompilation() {
-    // Collect all documents
-    std::vector<std::shared_ptr<SlangDoc>> documents;
-
-    for (const auto& [uri, doc] : docs) {
-        if (doc->getSyntaxTree()) {
-            documents.push_back(doc);
-        }
-        else {
-            ERROR("Document {} has no syntax tree", uri.getPath());
-        }
+    for (const auto& dependency : documents) {
+        newDriver->docs[dependency->getURI()] = dependency;
     }
 
-    if (documents.empty()) {
-        ERROR("No documents available for compilation");
-        return false;
-    }
+    newDriver->comp = std::make_unique<ServerCompilation>(documents, newDriver->options,
+                                                          newDriver->sm, newDriver->client,
+                                                          std::move(topName));
 
-    comp = std::make_unique<ServerCompilation>(std::move(documents), this->options, sm, client);
-
-    // Apply pragma mappings for all buffers
-    diagEngine.setMappingsFromPragmas();
-
-    // Issue parse diagnostics for all documents + semantic diagnostics from compilation
-    // This ensures that when a user opens a document later, the diagnostics don't disappear
-    diagClient->clear();
-    for (const auto& [uri, doc] : docs) {
-        doc->issueParseDiagnostics(diagEngine);
-    }
-
-    // Issue semantic diagnostics from the compilation
-    comp->issueDiagnosticsTo(diagEngine);
-    diagClient->pushDiags();
-    return true;
+    newDriver->publishCompilationDiagnostics(documents);
+    return newDriver;
 }
 
 std::optional<DefinitionInfo> ServerDriver::getMacroDefinitionInfo(

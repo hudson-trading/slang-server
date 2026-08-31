@@ -31,10 +31,6 @@
 #include <variant>
 #include <vector>
 
-#include "slang/ast/Compilation.h"
-#include "slang/ast/Scope.h"
-#include "slang/ast/symbols/InstanceSymbols.h"
-#include "slang/driver/Driver.h"
 #include "slang/syntax/SyntaxPrinter.h"
 #include "slang/text/SourceLocation.h"
 #include "slang/text/SourceManager.h"
@@ -269,8 +265,8 @@ void SlangServer::setExplore() {
     const auto workspacePath = m_workspaceFolder ? std::optional<std::string_view>(
                                                        m_workspaceFolder->uri.getPath())
                                                  : std::nullopt;
-    m_driver = ServerDriver::create(m_indexer, m_client, m_config, {}, workspacePath,
-                                    m_driver.get());
+    m_driver = ServerDriver::createForExplore(m_indexer, m_client, m_config, workspacePath,
+                                              m_driver.get());
     m_driver->diagClient->pushDiags();
 }
 
@@ -280,39 +276,13 @@ std::monostate SlangServer::setTopLevel(const std::string& path) {
         return std::monostate{};
     }
     INFO("Setting top level to {}", path);
-    auto uri = URI::fromFile(path);
-    auto doc = m_driver->getDocument(uri);
-    if (!doc) {
-        m_client.showError("Document not found: " + path);
-        return std::monostate{};
-    }
     m_topFile = path;
-    // Get top name from shallow parse
-    {
-        auto topTree = doc->getSyntaxTree();
 
-        std::string_view topName;
-        if (topTree->getMetadata().nodeMeta.size() == 1) {
-            topName = topTree->getMetadata().nodeMeta[0].first->header->name.valueText();
-        }
-        else {
-            slang::ast::Compilation shallowCompilation;
-            shallowCompilation.addSyntaxTree(topTree);
-            if (shallowCompilation.getRoot().topInstances.empty()) {
-                m_client.showError("No top modules found in: " + path);
-                return std::monostate{};
-            }
-            for (auto& top : shallowCompilation.getRoot().topInstances.subspan(1)) {
-                WARN("Extra top module: {}", top->name);
-            }
-            if (shallowCompilation.getRoot().topInstances.size() == 0) {
-                m_client.showError("No top modules found in " + path);
-                return std::monostate{};
-            }
-            topName = shallowCompilation.getRoot().topInstances[0]->name;
-        }
-        m_driver->createCompilation(doc, topName);
-    }
+    const auto workspacePath = m_workspaceFolder ? std::optional<std::string_view>(
+                                                       m_workspaceFolder->uri.getPath())
+                                                 : std::nullopt;
+    m_driver = ServerDriver::createFromTop(m_indexer, m_client, m_config, URI::fromFile(path),
+                                           workspacePath, m_driver.get());
 
     return std::monostate{};
 }
@@ -327,9 +297,9 @@ std::monostate SlangServer::setBuildFile(const std::string& path) {
     const auto workspacePath = m_workspaceFolder ? std::optional<std::string_view>(
                                                        m_workspaceFolder->uri.getPath())
                                                  : std::nullopt;
-    m_driver = ServerDriver::create(m_indexer, m_client, m_config, std::vector<std::string>{path},
-                                    workspacePath, m_driver.get());
-    m_driver->createCompilation();
+    m_driver = ServerDriver::createFromFileLists(m_indexer, m_client, m_config,
+                                                 std::vector<std::string>{path}, workspacePath,
+                                                 m_driver.get());
     return std::monostate{};
 }
 
