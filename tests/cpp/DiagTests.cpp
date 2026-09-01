@@ -4,6 +4,8 @@
 #include "utils/GoldenTest.h"
 #include "utils/ServerHarness.h"
 #include <cstdlib>
+#include <fstream>
+#include <iterator>
 
 #include "slang/diagnostics/CompilationDiags.h"
 #include "slang/diagnostics/ExpressionsDiags.h"
@@ -416,6 +418,26 @@ TEST_CASE("OpeningSingleUnitBuildFilePreservesCompilationDiags") {
         server.openFile(std::string(fileName));
         CHECK(hasInstanceDiag(server.client.getDiagnostics(childUri)));
     }
+}
+
+TEST_CASE("RecreatingSingleUnitBuildDoesNotShallowAnalyzeOpenBuildFile") {
+    ServerHarness server("single_unit_build");
+    server.client.capabilities.inactiveRegionsSupported = false;
+
+    auto childUri = URI::fromFile(fs::current_path() / "submodule.sv");
+    std::ifstream file(fs::current_path() / "submodule.sv");
+    REQUIRE(file);
+    std::string text{std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
+
+    server.onDocDidOpen(lsp::DidOpenTextDocumentParams{
+        .textDocument = lsp::TextDocumentItem{
+            .uri = childUri, .languageId = "systemverilog", .version = 1, .text = text}});
+    REQUIRE(server.getDoc(childUri));
+    CHECK_FALSE(server.getDoc(childUri)->hasAnalysis());
+
+    server.setBuildFile("design.f");
+    REQUIRE(server.getDoc(childUri));
+    CHECK_FALSE(server.getDoc(childUri)->hasAnalysis());
 }
 
 TEST_CASE("OpenNonBuildFileGetsShallowDiags") {

@@ -205,6 +205,52 @@ TEST_CASE("GotoDefinition_TwoLayerIncludeModification") {
     CHECK(newDef.targetRange.start.line == originalLine + 2);
 }
 
+TEST_CASE("SavingDependencyRefreshesOpenShallowDiagnostics") {
+    auto tempDir = std::filesystem::temp_directory_path() / "slang_test_shallow_save";
+    std::filesystem::create_directories(tempDir);
+
+    {
+        std::ofstream(tempDir / "width.svh") << "`define WIDTH 8\n";
+        std::ofstream(tempDir / "child.sv") << R"(`include "width.svh"
+module child(input logic [`WIDTH-1:0] data);
+endmodule
+)";
+        std::ofstream(tempDir / "parent.sv") << R"(module parent;
+    logic [7:0] data;
+    child child_inst(.data(data));
+endmodule
+)";
+        std::ofstream(tempDir / "unrelated.sv") << "module unrelated; endmodule\n";
+    }
+
+    ServerHarness server(lsp::InitializeParams{
+        .workspaceFolders = {
+            {lsp::WorkspaceFolder{.uri = URI::fromFile(tempDir), .name = "test"}}}});
+
+    auto parent = server.openFile("parent.sv");
+    auto width = server.openFile("width.svh", "`define WIDTH 8\n");
+    auto unrelated = server.openFile("unrelated.sv");
+    auto hasPortWidthDiag = [&] {
+        return std::ranges::any_of(parent.getDiagnostics(), [](const auto& diagnostic) {
+            return diagnostic.message.find("port connection expands") != std::string::npos;
+        });
+    };
+
+    CHECK_FALSE(hasPortWidthDiag());
+    width.replaceAll("`define WIDTH 16\n");
+    width.publishChanges();
+    CHECK_FALSE(hasPortWidthDiag());
+    server.client.diagnosticPublications.clear();
+    width.save();
+    REQUIRE(!server.client.diagnosticPublications.empty());
+    CHECK(server.client.diagnosticPublications.front() == width.m_uri);
+    CHECK(hasPortWidthDiag());
+    CHECK(std::ranges::find(server.client.diagnosticPublications, unrelated.m_uri) ==
+          server.client.diagnosticPublications.end());
+
+    std::filesystem::remove_all(tempDir);
+}
+
 TEST_CASE("ExternalFileChange_ReReadBuffer") {
     /// Test that external file changes are detected and the buffer is re-read from disk
     auto tempDir = std::filesystem::temp_directory_path() / "slang_test_external";

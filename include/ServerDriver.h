@@ -28,12 +28,6 @@
 #include "slang/util/FlatMap.h"
 namespace server {
 using namespace slang;
-enum FileUpdateType {
-    OPEN,
-    REOPEN,
-    CHANGE,
-    SAVE,
-};
 
 /// @brief Manages the document handles, which include open and referenced symbols/documents.
 /// Syntax trees and options are used to build one, after flags are processed via a slang driver.
@@ -90,14 +84,15 @@ public:
     void onDocDidChange(const lsp::DidChangeTextDocumentParams& params,
                         const lsp::RequestContext& ctx = {});
 
+    /// @brief Update the index and refresh relevant diagnostics after a document is saved
+    void onDocDidSave(SlangDoc& doc);
+
     /// @brief Checks if a document is open
     bool isDocumentOpen(const URI& uri);
 
     /// @brief Handle workspace file change notifications from the file watcher
     /// Reloads all changed buffers first, then updates open documents
     void onWorkspaceDidChangeWatchedFiles(const lsp::DidChangeWatchedFilesParams& params);
-
-    void updateDoc(SlangDoc& doc, FileUpdateType type, const lsp::RequestContext& ctx = {});
 
     std::shared_ptr<SlangDoc> getDocument(const URI& uri);
 
@@ -195,7 +190,11 @@ private:
 
     void copyOpenDocumentsFrom(const ServerDriver* oldDriver);
 
-    void publishCompilationDiagnostics(const std::vector<std::shared_ptr<SlangDoc>>& documents);
+    /// @brief Run shallow analysis and publish diagnostics and inactive regions for one document
+    void analyzeDocument(SlangDoc& doc, const lsp::RequestContext& ctx = {});
+
+    /// @brief Publish diagnostics for the active full compilation, optionally prioritizing a URI
+    void publishCompilationDiagnostics(const URI* priorityUri = nullptr);
 
     /// Helper to add member references to the references vector
     void addMemberReferences(std::vector<lsp::Location>& references,
