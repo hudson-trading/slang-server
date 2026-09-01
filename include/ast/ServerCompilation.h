@@ -7,6 +7,7 @@
 //------------------------------------------------------------------------------
 #pragma once
 
+#include "ActiveDesignContext.h"
 #include "HierarchicalView.h"
 #include "ServerCompilationAnalysis.h"
 #include "document/SlangDoc.h"
@@ -16,6 +17,9 @@
 #include <filesystem>
 #include <memory>
 #include <set>
+#include <span>
+#include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -24,6 +28,11 @@
 
 namespace server {
 using namespace slang;
+
+struct ActiveGenerateLoop {
+    std::string activePath;
+    std::vector<std::string> iterationPaths;
+};
 
 /// @brief A single endpoint of a driver/load cone.
 struct ConeEntry {
@@ -34,11 +43,8 @@ struct ConeEntry {
 };
 
 /// @brief A server compilation that is set via top level or a .f file.
-/// Manages the specification of the compilation, as well as the analysis state that gets refreshed
-/// on file saves.
-///
-/// More state here is planned, like the currently focused instance, and a mapping
-/// of modules to instance for enriched data like inlayed parameter or signal values.
+/// Manages the specification of the compilation, as well as the analysis state that gets
+/// refreshed on file saves.
 class ServerCompilation {
 public:
     /// @brief Constructs a new ServerCompilation instance
@@ -57,13 +63,35 @@ public:
 
     InstanceIndexer& getInstances() { return m_analysis->instances; }
 
-    /// Get instances by module; Used for the 'instances' view. Only contains the module name and
-    /// count
+    /// Get instances by module; Used for the 'instances' view. Includes declaration metadata.
     std::vector<hier::InstanceSet> getScopesByModule();
 
     /// Get instances of a specific module
     const std::vector<const slang::ast::InstanceSymbol*>& getInstancesOfModule(
         const std::string& moduleName) const;
+
+    /// Return the file path that the active compilation resolved for a symbol name, if any.
+    std::optional<std::string> getPreferredSymbolPath(std::string_view name) const;
+
+    /// Set the active instance and generate scope reached by `hierPath`. The path may be
+    /// canonical (`top.bus8`) or an alias that resolves through an interface port
+    /// (`top.tap.data_bus`); slang's lookup resolves both. Returns false if the path isn't
+    /// contained by an instance.
+    bool setActiveInstance(const std::string& hierPath);
+
+    /// Return the active instance for a module, falling back to a deterministic default.
+    std::optional<hier::QualifiedInstance> getActiveInstance(const std::string& moduleName);
+
+    /// Return the elaborated active instance symbol for a module, if any.
+    const slang::ast::InstanceSymbol* getActiveInstanceSymbol(std::string_view moduleName) const;
+
+    /// Capture the selected full-design instances needed by a shallow compilation.
+    ActiveDesignContext createActiveDesignContext(
+        std::span<const std::string_view> definitionNames) const;
+
+    /// Return the active iteration and available choices for a generate loop in a module.
+    std::optional<ActiveGenerateLoop> getActiveGenerateLoop(
+        std::string_view moduleName, const slang::syntax::LoopGenerateSyntax& loop) const;
 
     /// Retrun the children of the scope at the given hierarchical path
     std::vector<hier::HierItem_t> getScope(const std::string& hierPath);
@@ -75,7 +103,7 @@ public:
     /// Search the elaborated hierarchy for instances, scopes, ports, parameters, and signals.
     hier::HierarchySearchResult searchHierarchy(const std::string& query);
 
-    /// Resolve the source location for a hierarchical instance path.
+    /// Resolve the document location for a hierarchical path on-demand.
     std::optional<lsp::Location> getHierLocation(const std::string& hierPath);
 
     /// Return instances for given doc position
@@ -132,19 +160,25 @@ public:
     }
 
 private:
-    // Used when going from hierPath -> compilation symbol -> shallow compilation symbol so
-    // server-side opens use locations from the up-to-date open document when possible.
+    /// Return the stored active selection for a module, if any.
+    std::optional<hier::QualifiedInstance> getActiveInstanceSelection(
+        std::string_view moduleName) const;
+
+    // Used when going from hierPath -> compilation symbol -> shallow compilation symbol
+    // Therefore we get more up to date source locations
     const slang::ast::Symbol* toShallowSymbol(const slang::ast::Symbol& symbol) const;
 
     /// Build m_moduleToDoc from the declared symbols of each document's syntax tree.
     void indexModuleDocs();
 
-    /// The Slang documents this compilation is based on
-    std::vector<std::shared_ptr<SlangDoc>> m_documents;
+    /// The Slang documents this compilation is based on, keyed by their absolute source path so
+    /// path-driven lookups (LSP URIs, symbol source locations) avoid scanning every doc.
+    std::unordered_map<std::string, std::shared_ptr<SlangDoc>> m_documents;
 
     /// Maps a declared module (/interface/program/class) name to the document that declares it.
-    /// Lets toShallowSymbol() find the owning shallow compilation without scanning all documents.
-    /// Rebuilt in the constructor since m_documents is fixed for this compilation's lifetime.
+    /// Lets toShallowSymbol() find the owning shallow compilation without scanning all
+    /// documents. Rebuilt in the constructor since m_documents is fixed for this compilation's
+    /// lifetime.
     std::unordered_map<std::string, std::shared_ptr<SlangDoc>> m_moduleToDoc;
 
     /// Copy of compilation options
@@ -161,11 +195,22 @@ private:
     /// LSP client owned by the server
     lsp::LspClient& m_client;
 
-    /// The analysis state, rebuilt on refresh()
-    std::unique_ptr<ServerCompilationAnalysis> m_analysis;
+    /// The analysis state, rebuilt on refresh(). Shared by shallow compilations that are using it
+    /// for params while we may be rebuilding a new one.
+    std::shared_ptr<ServerCompilationAnalysis> m_analysis;
+
+    /// Active instance and generate scope selection by module name for this compilation.
+    std::unordered_map<std::string, hier::QualifiedInstance> m_activeInstancesByModule;
+
+    /// Active iteration by fully qualified generate array path.
+    std::unordered_map<std::string, std::string> m_activeGenerateScopesByArray;
+
     /// Flattened hierarchy entries, populated on the first search after each refresh.
     std::vector<hier::HierarchySearchItem> m_hierarchySearchItems;
     bool m_hierarchySearchIndexed = false;
+
+    /// Retain only still-valid active instances after a refresh and seed unique modules.
+    void syncActiveInstances();
 };
 
 } // namespace server

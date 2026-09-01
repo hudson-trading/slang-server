@@ -13,7 +13,7 @@ import {
   WebviewButton,
 } from '../lib/libconfig'
 import * as slang from '../SlangInterface'
-import { InstancesView } from './InstancesView'
+import { InteractionSource } from '../SlangInterface'
 import * as vv from '../vaporview-api'
 import { getBasename, getIcons, getWorkspaceFolder, isAnyVerilog } from '../utils'
 import { Logger } from '../lib/logger'
@@ -33,10 +33,11 @@ import {
   resolveCommandToken,
 } from './BuildConfigUtils'
 import {
-  ResolvedHierarchyChild,
+  findInstancePaths,
   resolveHierarchyChild,
   splitHierarchyPath,
 } from '../lib/InstancePathUtils'
+import { InstancesView } from './InstancesView'
 
 const STRUCTURE_SYMS = [
   slang.SlangKind.Instance,
@@ -58,12 +59,13 @@ interface HasChildren {
   getPath(): string
 }
 
-interface RevealOptions {
-  revealHierarchy?: boolean
-  revealFile?: boolean
-  revealInstance?: boolean
-  focus?: 'editor' | 'hierarchy' | 'modules'
-  showBeside?: boolean
+interface HierarchyQuickPickItem extends vscode.QuickPickItem {
+  path: string
+}
+
+interface RefreshOptions {
+  revealSelection?: boolean
+  preserveFocusedPath?: boolean
 }
 
 type CompilationSource =
@@ -172,10 +174,6 @@ export abstract class HierItem implements HasChildren {
     }
     return undefined
   }
-
-  async hasChildren(): Promise<boolean> {
-    return false
-  }
 }
 
 function mapChildren(parent: HierItem, items: slang.Item[]): HierItem[] {
@@ -226,10 +224,6 @@ class ScopeItem extends HierItem {
     return mapChildren(this, this.inst.children)
   }
 
-  async hasChildren(): Promise<boolean> {
-    return this.inst.children.length > 0
-  }
-
   async getTreeItem(): Promise<TreeItem> {
     let item = new TreeItem(this.inst.instName)
     item.iconPath =
@@ -270,15 +264,6 @@ export class InstanceItem extends HierItem {
   async _fetchChildren(): Promise<HierItem[]> {
     return await getSlangChildren(this, this.getPath())
   }
-
-  async hasChildren(): Promise<boolean> {
-    // Use the server-provided flag to avoid a getScope round-trip; only fetch if we
-    // already happen to have the children cached.
-    if (this.children !== undefined) {
-      return this.children.length > 0
-    }
-    return this.inst.hasChildren
-  }
 }
 
 class InstanceArrayItem extends InstanceItem {
@@ -286,10 +271,6 @@ class InstanceArrayItem extends InstanceItem {
 
   async _fetchChildren(): Promise<HierItem[]> {
     return mapChildren(this, this.inst.children)
-  }
-
-  async hasChildren(): Promise<boolean> {
-    return true
   }
 
   getChildPath(name: string): string {
@@ -354,7 +335,6 @@ export class UnitItem implements HasChildren {
 class VarItem extends HierItem {
   inst: slang.Var
   static PARAM_TYPES: slang.SlangKind[] = [slang.SlangKind.Param]
-  static DATA_TYPES: slang.SlangKind[] = DATA_SYMS
 
   constructor(parent: HierItem | undefined, instance: slang.Var) {
     super(parent, instance)
@@ -454,20 +434,29 @@ export class ProjectComponent
     }
   }
 
-  // Show the selected instance for the open file
-  focusedBar: vscode.StatusBarItem
-
-  // Map from module name to instance for following along in the hierarchy view
-  moduleToInstance: Map<string, InstanceItem> = new Map()
-
   // Hierarchy Tree
   private _onDidChangeTreeData: vscode.EventEmitter<void> = new vscode.EventEmitter<void>()
   readonly onDidChangeTreeData: vscode.Event<void> = this._onDidChangeTreeData.event
   treeView: vscode.TreeView<HierItem> | undefined
   focused: HierItem | undefined = undefined
+  instancesView = new InstancesView(async (item) => {
+    const selected = await this.setInstance.func(item.data.instPath, InteractionSource.Modules)
+    if (selected) {
+      await slang.showHierLocation(selected.getPath(), true)
 
-  // Instances Index
-  instancesView: InstancesView = new InstancesView()
+      let parentModule = selected.parent
+      while (
+        parentModule &&
+        (!(parentModule instanceof InstanceItem) ||
+          parentModule.inst.kind !== slang.SlangKind.Instance)
+      ) {
+        parentModule = parentModule.parent
+      }
+      if (parentModule instanceof InstanceItem) {
+        await this.instancesView.revealPath(parentModule.inst.declName, parentModule.getPath())
+      }
+    }
+  })
 
   //////////////////////////////////////////////////////////////////
   // Editor Buttons
@@ -489,7 +478,7 @@ export class ProjectComponent
       this.clearBuildCommandTracking()
       this.topFile = uri
       await slang.setTopLevel(uri.fsPath)
-      await this.refreshSlangCompilation()
+      await this.refreshSlangCompilation({ preserveFocusedPath: false })
     }
   )
 
@@ -522,14 +511,55 @@ export class ProjectComponent
       await this.setTopLevel.func(vscode.Uri.file(file.fsPath))
     }
   )
-  isRevalingFile: boolean = false
+  private interactionSource: InteractionSource | undefined
+
+  // If the saved interaction source is undefined, push/pop to this source
+  private async withInteractionSource<T>(
+    interactionSource: InteractionSource | undefined,
+    action: () => Promise<T>
+  ): Promise<T> {
+    if (!interactionSource || this.interactionSource !== undefined) {
+      return await action()
+    }
+
+    this.interactionSource = interactionSource
+    try {
+      return await action()
+    } finally {
+      this.interactionSource = undefined
+    }
+  }
+
+  private getInteractionSource(): InteractionSource | undefined {
+    return this.interactionSource
+  }
+
+  private isInterfaceInstance(item: HierItem): item is InstanceItem {
+    return item instanceof InstanceItem && item.inst.declKind === slang.SlangInstKind.Interface
+  }
+
+  private isDataItem(item: HierItem): boolean {
+    return this.isInterfaceInstance(item) || DATA_SYMS.includes(item.inst.kind)
+  }
+
+  private isCategoryVisible(item: HierItem): boolean {
+    if (this.isInterfaceInstance(item)) {
+      return this.includeData
+    }
+    return this.symFilter.has(item.inst.kind)
+  }
+
+  // The server emits LSP window/showDocument so the language client handles URI translation
+  // (file:// vs vscode-remote://). viewColumn is dropped — showDocument has no equivalent.
+  private async revealHierLocation(
+    hierPath: string,
+    { preserveFocus = false }: { preserveFocus?: boolean; viewColumn?: vscode.ViewColumn } = {}
+  ): Promise<void> {
+    await slang.showHierLocation(hierPath, !preserveFocus)
+  }
 
   async onStart(): Promise<void> {
-    await this.refreshSlangCompilation({
-      revealHierarchy: false,
-      revealFile: false,
-      revealInstance: false,
-    })
+    await this.refreshSlangCompilation({ revealSelection: false })
   }
 
   //////////////////////////////////////////////////////////////////
@@ -547,15 +577,19 @@ export class ProjectComponent
 
       this.unit = undefined
       this.top = undefined
+      this.focused = undefined
+      this.instancesView.clearModules()
 
-      await this.instancesView.clearModules()
       this._onDidChangeTreeData.fire()
       await slang.setBuildFile('')
-      this.focusedBar.hide()
     }
   )
 
-  async reveal(item: HierItem | undefined = undefined, focus: boolean = false) {
+  async reveal(
+    item: HierItem | undefined = undefined,
+    focus: boolean = false,
+    openViewWhenNotVisible: boolean = false
+  ) {
     if (item === undefined) {
       if (this.focused === undefined) {
         this._onDidChangeTreeData.fire()
@@ -569,23 +603,113 @@ export class ProjectComponent
       this.focused = item
     }
     this._onDidChangeTreeData.fire()
-    if (item !== undefined) {
+    if (item !== undefined && this.treeView && (openViewWhenNotVisible || this.treeView.visible)) {
       this.logger.info('Revealing in hierarchy: ' + item.getPath())
-      await this.treeView?.reveal(item, { select: true, focus: focus, expand: true })
+      await this.treeView.reveal(item, { select: true, focus: focus, expand: true })
+    }
+  }
+
+  private async showHierarchySearch(): Promise<void> {
+    const quickPick = vscode.window.createQuickPick<HierarchyQuickPickItem>()
+    quickPick.placeholder = 'Search hierarchy by path'
+    quickPick.matchOnDescription = true
+    quickPick.matchOnDetail = true
+
+    let closed = false
+    let searchInProgress = false
+    let pendingQuery: string | undefined
+    const applyFilter = async (query: string): Promise<void> => {
+      pendingQuery = query
+      if (searchInProgress) {
+        return
+      }
+
+      searchInProgress = true
+      quickPick.busy = true
+      try {
+        while (!closed && pendingQuery !== undefined) {
+          const currentQuery = pendingQuery
+          pendingQuery = undefined
+
+          let result: slang.HierarchySearchResult | undefined
+          try {
+            result = await slang.searchHierarchy(currentQuery)
+          } catch (error) {
+            if (quickPick.value === currentQuery) {
+              quickPick.items = []
+              quickPick.title = `Search failed: ${String(error)}`
+            }
+            continue
+          }
+          if (closed || quickPick.value !== currentQuery) {
+            continue
+          }
+
+          const matches = result?.matches ?? []
+          const totalResults = result?.totalResults ?? 0
+          quickPick.items = matches.map((match) => {
+            const isSignal =
+              match.kind === slang.SlangKind.Logic || match.kind === slang.SlangKind.Port
+            return {
+              label: match.name,
+              description:
+                isSignal && match.containerName ? match.containerName : match.description,
+              detail:
+                isSignal && match.description ? `${match.description} — ${match.path}` : match.path,
+              path: match.path,
+            }
+          })
+          if (totalResults === 0) {
+            quickPick.title = 'No results found'
+          } else if (matches.length !== totalResults) {
+            quickPick.title = `Showing ${matches.length} of ${totalResults} results`
+          } else {
+            quickPick.title = `${totalResults} ${totalResults === 1 ? 'result' : 'results'}`
+          }
+        }
+      } finally {
+        searchInProgress = false
+        if (!closed) {
+          quickPick.busy = false
+        }
+      }
+    }
+
+    let selected: HierarchyQuickPickItem | undefined
+    const disposables = [
+      quickPick.onDidChangeValue((query) => void applyFilter(query)),
+      quickPick.onDidAccept(() => {
+        selected = quickPick.selectedItems[0]
+        quickPick.hide()
+      }),
+    ]
+    await new Promise<void>((resolve) => {
+      disposables.push(
+        quickPick.onDidHide(() => {
+          closed = true
+          resolve()
+        })
+      )
+      quickPick.show()
+      void applyFilter(quickPick.value)
+    })
+    disposables.forEach((disposable) => disposable.dispose())
+    quickPick.dispose()
+
+    if (selected) {
+      await this.setInstance.func(selected.path)
     }
   }
 
   fuzzyFindInstance: ViewButton = new ViewButton(
     {
-      title: 'Fuzzy Find Instances',
+      title: 'Find in Hierarchy',
       icon: '$(search-view-icon)',
       keybind: 'cmd+f',
       keybindContainer: true,
     },
     async (_instance: HierItem | undefined) => {
-      // Calling with undefined will pull up the instance quick pick
-      // We can't bind setInstance directly since it'll pass the focused tree item
-      await this.setInstance.func(undefined)
+      await this.showHierarchySearch()
     }
   )
 
@@ -598,10 +722,7 @@ export class ProjectComponent
       return null
     }
 
-    const scopes = await slang.getScopes(path)
     const parts = splitHierarchyPath(path)
-    let current: HasChildren = this.unit
-    let lastResolved: HierItem | undefined = undefined
 
     // Replace `current`'s children with server-fresh items, but reuse existing HierItem
     // objects (by name) so vscode's TreeView selection identity survives. Replacing
@@ -626,168 +747,235 @@ export class ProjectComponent
       parent.setChildren(fresh)
     }
 
-    for (let i = 0; i < parts.length; i++) {
-      if (i > 0 && current instanceof HierItem) {
-        const step = scopes[i]
-        if (step) {
-          refreshChildren(current, step.children)
-        }
-      }
+    const walkHierarchy = async (scopes?: slang.ScopeStep[]) => {
+      let current: HasChildren = this.unit!
+      let lastResolved: HierItem | undefined
 
-      type ChildCandidate = { instName: string; path: string; item: HierItem }
-      const childCandidates: ChildCandidate[] = (await current.getChildren()).map((item) => ({
-        instName: item.inst.instName,
-        path: item.getPath(),
-        item,
-      }))
-      const resolvedChild: ResolvedHierarchyChild<ChildCandidate> = resolveHierarchyChild(
-        childCandidates,
-        parts,
-        i,
-        lastResolved?.getPath()
-      )
-      const child: HierItem | undefined = resolvedChild.child?.item
-      i = resolvedChild.nextIndex
-      if (!child) {
-        if (lastResolved) {
-          return {
-            item: lastResolved,
-            exact: false,
-            missingPart: parts[i],
+      for (let i = 0; i < parts.length; i++) {
+        if (i > 0 && current instanceof HierItem && scopes) {
+          const step = scopes[i]
+          if (step) {
+            refreshChildren(current, step.children)
           }
         }
-        return null
+
+        // Normal instances lazily fetch their children from the server. Stop the cache-only
+        // pass here; scope and array children are embedded in their parent payloads.
+        if (
+          !scopes &&
+          current instanceof InstanceItem &&
+          !(current instanceof InstanceArrayItem) &&
+          current.children === undefined
+        ) {
+          return null
+        }
+
+        const childCandidates: Array<{ instName: string; path: string; item: HierItem }> = (
+          await current.getChildren()
+        ).map((item) => ({
+          instName: item.inst.instName,
+          path: item.getPath(),
+          item,
+        }))
+        const resolvedChild = resolveHierarchyChild(
+          childCandidates,
+          parts,
+          i,
+          lastResolved?.getPath()
+        )
+        const child = resolvedChild.child?.item
+        i = resolvedChild.nextIndex
+        if (!child) {
+          if (lastResolved) {
+            return {
+              item: lastResolved,
+              exact: false,
+              missingPart: parts[i],
+            }
+          }
+          return null
+        }
+
+        lastResolved = child
+        current = child
       }
 
-      lastResolved = child
-      current = child
+      if (lastResolved) {
+        const finalStep = scopes?.[parts.length]
+        if (finalStep) {
+          refreshChildren(lastResolved, finalStep.children)
+        }
+        return {
+          item: lastResolved,
+          exact: true,
+        }
+      }
+
+      return null
     }
 
-    if (lastResolved) {
-      const finalStep = scopes[parts.length]
-      if (finalStep) {
-        refreshChildren(lastResolved, finalStep.children)
-      }
-      return {
-        item: lastResolved,
-        exact: true,
-      }
+    const cached = await walkHierarchy()
+    if (cached?.exact) {
+      return cached
     }
+    return await walkHierarchy(await slang.getScopes(path))
+  }
 
-    return null
+  public async showInHierarchy(params: slang.ActivateInstanceParams): Promise<void> {
+    await this.setInstance.func(params.hierPath, params.interactionSource, true)
+  }
+
+  public async onActiveInstanceChanged(params: slang.ActivateInstanceParams): Promise<void> {
+    await this.showInHierarchy(params)
   }
 
   // Set instance given one of:
   // - a path (from internal calls)
-  // - a hierarchy item (from hierarchy or modules view)
-  // - undefined (let user select from compilation)
+  // - a hierarchy item
+  // - undefined (let user search the hierarchy)
   setInstance: CommandNode = new CommandNode(
     {
       title: 'Select Instance',
     },
     async (
       instance: HierItem | string | undefined,
-      { revealHierarchy, revealFile, revealInstance, focus }: RevealOptions = {
-        revealHierarchy: true,
-        revealFile: true,
-        revealInstance: true,
-      }
-    ) => {
-      if (instance === undefined) {
-        if (this.unit === undefined) {
-          // TODO: have one flow that this leads to- setting top, then specfiying build spec / params
-          await vscode.window.showInformationMessage('Please set top level or build file first')
+      interactionSource?: InteractionSource,
+      alreadyActivated = false
+    ) =>
+      this.withInteractionSource(interactionSource, async () => {
+        if (instance === undefined) {
+          if (this.unit === undefined) {
+            // TODO: have one flow that this leads to- setting top, then specfiying build spec / params
+            await vscode.window.showInformationMessage('Please set top level or build file first')
+            return
+          }
+
+          await this.showHierarchySearch()
+          return
         }
 
-        let options: vscode.QuickPickItem[] = []
-        await Promise.all(
-          Array.from(this.instancesView.modules.values()).map(async (mod) => {
-            const children = await mod.getChildren()
-            for (const child of children) {
-              options.push({
-                label: child.data.instPath,
-                description: mod.data.declName,
-              })
+        const currentInteractionSource = this.getInteractionSource()
+        const fromEditor = InteractionSource.isFromEditor(currentInteractionSource)
+        const fromSidebar = InteractionSource.isFromSidebar(currentInteractionSource)
+        const fromWaveform = InteractionSource.isFromWaveform(currentInteractionSource)
+        const preserveEditorFocus =
+          currentInteractionSource === undefined ||
+          fromSidebar ||
+          (fromEditor && currentInteractionSource !== InteractionSource.CodeLensGotoInstantiation)
+        const viewColumn = fromWaveform ? vscode.ViewColumn.Beside : undefined
+        const shouldOpenEditorLocation =
+          !alreadyActivated &&
+          currentInteractionSource !== InteractionSource.Modules &&
+          (!fromEditor || currentInteractionSource === InteractionSource.CodeLensGotoInstantiation)
+        let openedEditorPath: string | undefined
+
+        // resolve instances if hierarchy path
+        if (typeof instance === 'string') {
+          if (this.unit === undefined) {
+            // TODO: set the top level based on top name?
+            await vscode.window.showErrorMessage(
+              'Please set top level or build file first (no $unit)'
+            )
+            return
+          }
+
+          if (shouldOpenEditorLocation) {
+            await this.revealHierLocation(instance, {
+              preserveFocus: preserveEditorFocus,
+              viewColumn,
+            })
+            openedEditorPath = instance
+          }
+
+          const resolved = await this.resolveHierarchyPath(instance)
+          this._onDidChangeTreeData.fire()
+          if (!resolved) {
+            const error = `Could not find instance ${instance}`
+            this.logger.warn(error)
+            await vscode.window.showErrorMessage(error)
+            return
+          }
+          if (!resolved.exact && resolved.missingPart) {
+            const error = `Could not find instance ${resolved.missingPart} in ${resolved.item.getPath()}`
+            this.logger.warn(error)
+            await vscode.window.showErrorMessage(error)
+          }
+          instance = resolved.item
+        }
+
+        this.focused = instance
+        // The tree's getChildren filter hides fromExpansion items, so reveal can't walk
+        // the parent chain if any ancestor is macro-expanded. Toggle if any node on the
+        // path needs the macro-defined visibility on.
+        if (!this.includeMacroDefined) {
+          for (let node: HierItem | undefined = instance; node; node = node.parent) {
+            if (node.fromExpansion) {
+              await this.toggleHiddenFunc()
+              break
             }
-          })
-        )
-        const selectedInst = await vscode.window.showQuickPick(options, {
-          placeHolder: 'Enter instance path',
-        })
-
-        if (selectedInst === undefined) {
-          return
+          }
         }
-        instance = selectedInst.label
-        this.logger.info('Selected instance: ' + instance)
-      }
-
-      // resolve instances if hierarchy path
-      if (typeof instance === 'string') {
-        if (this.unit === undefined) {
-          // TODO: set the top level based on top name?
-          await vscode.window.showErrorMessage(
-            'Please set top level or build file first (no $unit)'
-          )
-          return
-        }
-
-        const resolved = await this.resolveHierarchyPath(instance)
-        this._onDidChangeTreeData.fire()
-        if (!resolved) {
-          const error = `Could not find instance ${instance}`
-          this.logger.warn(error)
-          await vscode.window.showErrorMessage(error)
-          return
-        }
-        if (!resolved.exact && resolved.missingPart) {
-          const error = `Could not find instance ${resolved.missingPart} in ${resolved.item.getPath()}`
-          this.logger.warn(error)
-          await vscode.window.showErrorMessage(error)
-        }
-        instance = resolved.item
-      }
-
-      this.focused = instance
-      if (revealHierarchy) {
-        if (instance.fromExpansion && !this.includeMacroDefined) {
-          await this.toggleHiddenFunc()
-        }
-        if (!this.symFilter.has(instance.inst.kind)) {
+        if (!this.isCategoryVisible(instance)) {
           if (instance.inst.kind === slang.SlangKind.Param) {
             await this.toggleParamsFunc()
-          } else if (DATA_SYMS.includes(instance.inst.kind)) {
+          } else if (this.isDataItem(instance)) {
             await this.toggleDataFunc()
           }
         }
-        await this.reveal(instance, focus === 'hierarchy')
-      }
 
-      if (revealFile) {
-        this.isRevalingFile = true
-        await slang.showHierLocation(instance.getPath(), focus === 'editor')
-        this.isRevalingFile = false
-      }
-
-      if (revealInstance) {
-        // select the most recent module
-        while (!(instance instanceof InstanceItem)) {
-          instance = instance.parent
-          if (instance === undefined) {
-            return
-          }
+        // Reveal in Hierarchy
+        if (
+          currentInteractionSource !== InteractionSource.Hierarchy &&
+          currentInteractionSource !== InteractionSource.WaveformNetlist
+        ) {
+          const openHierarchyWhenNotVisible =
+            currentInteractionSource === undefined ||
+            currentInteractionSource === InteractionSource.Terminal ||
+            currentInteractionSource === InteractionSource.Waveform
+          await this.reveal(instance, false, openHierarchyWhenNotVisible)
+        } else {
+          this._onDidChangeTreeData.fire()
         }
-        this.instancesView.revealPath(instance.inst.declName, instance.getPath())
-      }
 
-      const parentModule = instance.getModule()
-      if (parentModule) {
-        this.moduleToInstance.set(parentModule.inst.declName, parentModule!)
-        this.focusedBar.text = `$(chip) ${parentModule.getPath()}`
-        this.focusedBar.show()
-      }
+        // Set as active
+        const selectedModule = instance.getModule()
+        const selectedActiveModule =
+          selectedModule && selectedModule.inst.declKind !== slang.SlangInstKind.Package
+            ? selectedModule
+            : undefined
 
-      return instance
+        if (selectedActiveModule && !alreadyActivated) {
+          await slang.setActiveInstance(instance.getPath())
+        }
+
+        if (selectedActiveModule) {
+          await this.instancesView.revealPath(
+            selectedActiveModule.inst.declName,
+            selectedActiveModule.getPath()
+          )
+        }
+
+        if (shouldOpenEditorLocation && openedEditorPath !== instance.getPath()) {
+          await this.revealHierLocation(instance.getPath(), {
+            preserveFocus: preserveEditorFocus,
+            viewColumn,
+          })
+        }
+
+        return instance
+      })
+  )
+
+  selectModuleInstance: CommandNode = new CommandNode(
+    {
+      title: 'Select Module Instance',
+    },
+    async (instancePath: string, moduleName: string) => {
+      const selected = await this.setInstance.func(instancePath, InteractionSource.Modules)
+      if (!selected) {
+        return
+      }
+      await slang.openModuleDefinition(moduleName)
     }
   )
 
@@ -940,7 +1128,7 @@ export class ProjectComponent
         await this.setDirectBuildFile(selection.filePath)
       }
 
-      await this.refreshSlangCompilation()
+      await this.refreshSlangCompilation({ preserveFocusedPath: false })
     }
   )
 
@@ -948,11 +1136,11 @@ export class ProjectComponent
   // Symbol Filtering
   //////////////////////////////////////////////////////////////////
 
-  symFilter: Set<string> = new Set<string>(STRUCTURE_SYMS)
+  symFilter: Set<string> = new Set<string>([...STRUCTURE_SYMS, ...DATA_SYMS])
   // params / localparams (constants)
   includeParams: boolean = false
-  // ports / nets / registers (variables)
-  includeData: boolean = false
+  // ports / nets / registers / interfaces / interface ports
+  includeData: boolean = true
 
   // symbols hidden behind macros
   includeMacroDefined: boolean = false
@@ -994,11 +1182,11 @@ export class ProjectComponent
   async toggleDataFunc() {
     this.includeData = !this.includeData
     if (this.includeData) {
-      for (let type of VarItem.DATA_TYPES) {
+      for (let type of DATA_SYMS) {
         this.symFilter.add(type)
       }
     } else {
-      for (let type of VarItem.DATA_TYPES) {
+      for (let type of DATA_SYMS) {
         this.symFilter.delete(type)
       }
     }
@@ -1038,21 +1226,6 @@ export class ProjectComponent
   //////////////////////////////////////////////////////////////////
   // Inline Item Buttons
   //////////////////////////////////////////////////////////////////
-
-  showSourceFile: TreeItemButton = new TreeItemButton(
-    {
-      title: 'Show Module',
-      viewItems: ['Module'],
-      icon: getIcons('go-to-file'),
-    },
-    async (item: HierItem) => {
-      if (item instanceof InstanceItem && item) {
-        this.isRevalingFile = true
-        await slang.showModuleDefinition(item.inst.declName, true)
-        this.isRevalingFile = false
-      }
-    }
-  )
 
   showInWaveform: TreeItemButton = new TreeItemButton(
     {
@@ -1138,9 +1311,8 @@ export class ProjectComponent
       }
       await this.setDirectBuildFile(this.buildfile)
       await this.refreshSlangCompilation({
-        revealFile: false,
-        revealHierarchy: false,
-        revealInstance: false,
+        revealSelection: false,
+        preserveFocusedPath: false,
       })
     } else {
       this.logger.warn('No build files found for pattern: ' + buildPattern)
@@ -1176,13 +1348,7 @@ export class ProjectComponent
         const top = decoded.scopeId?.split('.')[0] || ''
         await this.openBuildFile({ name: basename, top: top })
       }
-      await this.setInstance.func(fullpath, {
-        revealHierarchy: false,
-        revealFile: true,
-        revealInstance: true,
-        focus: 'editor',
-        showBeside: true,
-      })
+      await this.setInstance.func(fullpath, InteractionSource.WaveformNetlist)
     }
   )
 
@@ -1236,13 +1402,7 @@ export class ProjectComponent
           "'e' keybind from netlist view not yet supported; please add to waveform first or use button."
         )
       }
-      await this.setInstance.func(signalPath, {
-        revealHierarchy: true,
-        revealFile: true,
-        revealInstance: true,
-        focus: 'editor',
-        showBeside: true,
-      })
+      await this.setInstance.func(signalPath, InteractionSource.Waveform)
     }
   )
 
@@ -1274,72 +1434,17 @@ export class ProjectComponent
           '[Select Build File](command:slang.project.selectBuildFile)\n[Select Top Level](command:slang.project.selectTopLevel)',
       },
     })
-    this.focusedBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100)
-    this.focusedBar.name = 'Slang Instance'
-    vscode.window.onDidChangeActiveTextEditor(async (e: vscode.TextEditor | undefined) => {
-      if (e === undefined) {
-        return
-      }
-      if (this.unit === undefined) {
-        return
-      }
-      if (!isAnyVerilog(e.document.languageId)) {
-        return
-      }
-      if (this.isRevalingFile) {
-        return
-      }
-
-      // Only show when slang view is visible.
-      // Users may put the instances view in another tab, so check that too.
-      if (!(this.treeView?.visible === true || this.instancesView.treeView?.visible === true)) {
-        return
-      }
-
-      this.logger.info(
-        'Active editor changed: ' + e.document.uri.toString(),
-        'updating instances view'
-      )
-
-      // always open the modules view so we can select an instance
-
-      // try this first to avoid querying slang-server
-      const basename = getBasename(e.document.uri.fsPath)!
-      if (this.instancesView.modules.has(basename)) {
-        this.instancesView.revealPath(basename)
-        return
-      }
-
-      const modules = await slang.getModulesInFile(e.document.uri.fsPath)
-      if (modules.length === 0) {
-        this.logger.info('No modules found in file')
-        return
-      }
-      const instance = this.moduleToInstance.get(modules[0])
-      if (instance !== undefined) {
-        await this.setInstance.func(instance, {
-          revealHierarchy: true,
-          revealFile: false,
-          revealInstance: false,
-          focus: 'hierarchy',
-        })
-      }
-      this.instancesView.revealPath(modules[0])
-    })
   }
-
-  static RE_INSTANCE_PATHS = /(?<![/\\])[\w$]+(\[\d+\])?(\.[\w$]+(\[\d+\])?)+(?![/\\])/g
 
   async provideTerminalLinks(
     context: vscode.TerminalLinkContext,
     _token: vscode.CancellationToken
   ): Promise<InstanceLink[]> {
     let links = []
-    for (let match of context.line.matchAll(ProjectComponent.RE_INSTANCE_PATHS)) {
-      this.logger.info('Potential instance path in terminal: ' + match[0])
-      const line = context.line
-      const startIndex = line.indexOf(match[0])
-      const path = match[0]
+    for (let match of findInstancePaths(context.line)) {
+      this.logger.info('Potential instance path in terminal: ' + match.path)
+      const startIndex = match.index
+      const path = match.path
       const topModule = path.split('.')[0]
 
       if (this.unit?.childMap.has(topModule)) {
@@ -1373,12 +1478,7 @@ export class ProjectComponent
       }
       await this.setTopLevel.func(vscode.Uri.file(file))
     }
-    await this.setInstance.func(link.path, {
-      revealHierarchy: true,
-      revealFile: true,
-      revealInstance: true,
-      focus: 'editor',
-    })
+    await this.setInstance.func(link.path, InteractionSource.Terminal)
   }
 
   // Stop watching the currently active command-backed build source, if any.
@@ -1397,7 +1497,7 @@ export class ProjectComponent
       return true
     }
     if (this.topFile) {
-      await this.setTopLevel.func(this.topFile)
+      await slang.setTopLevel(this.topFile.fsPath)
       return true
     }
     return false
@@ -1454,11 +1554,7 @@ export class ProjectComponent
 
       this.compilationSource = { type: 'commandBuild', buildfile, args }
       await slang.setBuildFile(buildfile)
-      await this.refreshSlangCompilation({
-        revealFile: false,
-        revealHierarchy: false,
-        revealInstance: false,
-      })
+      await this.refreshSlangCompilation({ revealSelection: false })
     }
 
     watcher.onDidChange((uri) => void rerun(uri))
@@ -1571,34 +1667,41 @@ export class ProjectComponent
 
     context.subscriptions.push(vscode.window.registerTerminalLinkProvider(this))
     context.subscriptions.push({ dispose: () => this.clearBuildCommandTracking() })
-
     // user updates to buildfile
-    vscode.workspace.onDidSaveTextDocument(async (document) => {
-      if (document.uri.fsPath === this.buildfile) {
-        this.logger.info(
-          'Build file updated, reloading: ' + vscode.workspace.asRelativePath(this.buildfile)
-        )
-        vscode.commands.executeCommand('slang.setBuildFile', this.buildfile)
-        await this.refreshSlangCompilation()
-      }
-    })
+    context.subscriptions.push(
+      vscode.workspace.onDidSaveTextDocument(async (document) => {
+        if (document.uri.fsPath === this.buildfile) {
+          this.logger.info(
+            'Build file updated, reloading: ' + vscode.workspace.asRelativePath(this.buildfile)
+          )
+          vscode.commands.executeCommand('slang.setBuildFile', this.buildfile)
+          await this.refreshSlangCompilation()
+          return
+        }
+
+        if (this.unit && isAnyVerilog(document.languageId)) {
+          this.logger.info(
+            'HDL file updated, refreshing hierarchy: ' +
+              vscode.workspace.asRelativePath(document.uri)
+          )
+          await this.refreshSlangCompilation({ revealSelection: false })
+        }
+      })
+    )
   }
 
-  async refreshSlangCompilation(
-    revealOptions: RevealOptions = {
-      revealHierarchy: true,
-      revealFile: true,
-      revealInstance: false,
-    }
-  ) {
+  async refreshSlangCompilation({
+    revealSelection = true,
+    preserveFocusedPath = true,
+  }: RefreshOptions = {}) {
+    const previousFocusedPath = preserveFocusedPath ? this.focused?.getPath() : undefined
     const unit = await slang.getUnit()
     if (unit.length === 0) {
       this.unit = undefined
       this.top = undefined
       this.focused = undefined
-      this.focusedBar.hide()
+      this.instancesView.clearModules()
       this._onDidChangeTreeData.fire()
-      await this.instancesView.clearModules()
       return
     }
     this.unit = new UnitItem(
@@ -1608,25 +1711,43 @@ export class ProjectComponent
     )
 
     const tops = this.unit.children.filter((item) => item.inst.kind === slang.SlangKind.Instance)
-
-    if (tops.length === 1 && this.treeView !== undefined) {
-      this.top = tops[0]
-      this.setInstance.func(tops[0], revealOptions)
+    this.top = tops.length === 1 ? tops[0] : undefined
+    if (!preserveFocusedPath) {
+      this.focused = undefined
     }
     this._onDidChangeTreeData.fire()
-    // TODO: maybe setInstance() regardless of how many tops there are
     await this.instancesView.updateModules()
+    if (previousFocusedPath) {
+      const restored = await this.resolveHierarchyPath(previousFocusedPath)
+      if (restored) {
+        this.focused = restored.item
+        if (revealSelection) {
+          await this.setInstance.func(restored.item)
+        } else {
+          this._onDidChangeTreeData.fire()
+        }
+        return
+      }
+    }
+
+    if (tops.length === 1 && this.treeView !== undefined && revealSelection) {
+      await this.setInstance.func(tops[0])
+    }
+  }
+
+  private decorateHierarchyTreeItem(item: TreeItem, element: HierItem): TreeItem {
+    item.tooltip = element.getPath()
+    item.command = {
+      title: 'Go to definition',
+      command: 'slang.project.setInstance',
+      arguments: [element, InteractionSource.Hierarchy],
+    }
+    return item
   }
 
   async getTreeItem(element: HierItem): Promise<TreeItem> {
-    if (element.inst.kind === slang.SlangKind.Package) {
-      const treeItem = await element.getTreeItem()
-      treeItem.collapsibleState = vscode.TreeItemCollapsibleState.Collapsed
-      return treeItem
-    }
-
     const treeItem = await element.getTreeItem()
-    const expandable = await element.hasChildren()
+    const expandable = (await this.getChildren(element)).length > 0
     if (!expandable) {
       treeItem.collapsibleState = vscode.TreeItemCollapsibleState.None
     } else if (element instanceof RootItem && element.inst.kind === slang.SlangKind.Instance) {
@@ -1634,7 +1755,7 @@ export class ProjectComponent
     } else {
       treeItem.collapsibleState = vscode.TreeItemCollapsibleState.Collapsed
     }
-    return treeItem
+    return this.decorateHierarchyTreeItem(treeItem, element)
   }
 
   async getChildren(element?: HierItem | undefined): Promise<HierItem[]> {
@@ -1645,16 +1766,18 @@ export class ProjectComponent
       return this.unit.getChildren()
     }
     const children = await element.getChildren()
-    if (element.inst.kind === slang.SlangKind.Package) {
-      // Packages don't have children loaded, but should always have something
-      return children
+    if (element instanceof PkgItem) {
+      return children.filter(
+        (child) =>
+          (child.inst.kind === slang.SlangKind.Param || this.isCategoryVisible(child)) &&
+          (this.includeMacroDefined || !child.fromExpansion)
+      )
     }
     return children.filter((child) => this.shouldBeVisible(child))
   }
 
-  // doesn't include filtering for package children
   shouldBeVisible(element: HierItem): boolean {
-    if (!this.symFilter.has(element.inst.kind)) {
+    if (!this.isCategoryVisible(element)) {
       return false
     }
     if (!this.includeMacroDefined && element.fromExpansion) {
@@ -1672,14 +1795,6 @@ export class ProjectComponent
     element: HierItem,
     _token: vscode.CancellationToken
   ): Promise<TreeItem> {
-    /// Triggered on hover
-    item.tooltip = element.getPath()
-    item.command = {
-      title: 'Go to definition',
-      command: 'slang.project.setInstance',
-      arguments: [element, { revealHierarchy: false, revealFile: true, revealInstance: true }],
-    }
-
-    return item
+    return this.decorateHierarchyTreeItem(item, element)
   }
 }

@@ -1,6 +1,8 @@
 local hl = require("slang-server._core.highlights")
 local ui = require("slang-server._core.ui")
 local util = require("slang-server.util")
+local client = require("slang-server._lsp.client")
+local handlers = require("slang-server.handlers")
 local hier = require("slang-server.navigation/hierarchy")
 local cells = require("slang-server.navigation/cells")
 
@@ -87,6 +89,21 @@ end
 ---@return string
 function M.get_node_id(node)
    return node._uid
+end
+
+---@param hier_path string
+---@param on_success fun()?
+function M.set_active_instance(hier_path, on_success)
+   local source = M.state.sv_buf
+   if not source then
+      vim.notify("No SV buffer", vim.log.levels.ERROR)
+      return
+   end
+
+   client.setActiveInstance(source.bufnr, {
+      on_success = on_success or function() end,
+      on_failure = handlers.defaultOnFailure,
+   }, { hierPath = hier_path })
 end
 
 ---@param top slang-server.navigation.Path The top level at which to initialise the hierarchy
