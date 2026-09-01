@@ -97,10 +97,16 @@ export class InactiveRegionsFeature extends ExtensionComponent implements vscode
 
   private applyHighlights(fileUri: string) {
     const ranges = this.files.get(fileUri)
-    if (!ranges) return
+    if (!ranges) {
+      return
+    }
     vscode.window.visibleTextEditors.forEach((e) => {
-      if (!this.decorationType) return
-      if (e.document.uri.toString() !== fileUri) return
+      if (!this.decorationType) {
+        return
+      }
+      if (e.document.uri.toString() !== fileUri) {
+        return
+      }
       e.setDecorations(this.decorationType, ranges)
     })
   }

@@ -57,29 +57,80 @@ export interface Scope extends Item {
 export interface Instance extends Item {
   declName: string
   declKind: SlangInstKind
+  // True when the instance body has at least one hierarchy member.
   hasChildren: boolean
   // May or may not be filled
   children: Item[]
 }
 
-////////////////////////////////////////////////////////////
-// Instances View
-////////////////////////////////////////////////////////////
+export interface QualifiedInstance {
+  instPath: string
+}
 
 export interface Module {
   declName: string
-  inst?: QualifiedInstance
   instCount: number
+  inst?: QualifiedInstance
 }
 
-// When buttons are pressed on these, we call getScopes() to get relevant data
-export interface QualifiedInstance {
-  instPath: string
+export enum InteractionSource {
+  // Selection came from the editor or another command that should keep the editor in place.
+  Editor = 'editor',
+  // Selection came from a codelens action that should keep the editor in place.
+  CodeLensSelect = 'codeLensSelect',
+  // Selection came from a codelens action that should navigate to the instantiation.
+  CodeLensGotoInstantiation = 'codeLensGotoInstantiation',
+  // Selection came from the hierarchy tree.
+  Hierarchy = 'hierarchy',
+  // Selection came from the modules tree.
+  Modules = 'modules',
+  // Selection came from a terminal link.
+  Terminal = 'terminal',
+  // Selection came from waveform navigation.
+  Waveform = 'waveform',
+  // Selection came from the waveform netlist, which should not reveal the hierarchy view.
+  WaveformNetlist = 'waveformNetlist',
+}
+
+export namespace InteractionSource {
+  export function isFromEditor(source: InteractionSource | undefined): boolean {
+    return (
+      source === InteractionSource.Editor ||
+      source === InteractionSource.CodeLensSelect ||
+      source === InteractionSource.CodeLensGotoInstantiation
+    )
+  }
+
+  export function isFromSidebar(source: InteractionSource | undefined): boolean {
+    return source === InteractionSource.Hierarchy || source === InteractionSource.Modules
+  }
+
+  export function isFromWaveform(source: InteractionSource | undefined): boolean {
+    return source === InteractionSource.Waveform || source === InteractionSource.WaveformNetlist
+  }
+}
+
+export interface ActivateInstanceParams {
+  hierPath: string
+  interactionSource: InteractionSource
 }
 
 export interface ScopeStep {
   path: string
   children: Item[]
+}
+
+export interface HierarchySearchItem {
+  name: string
+  path: string
+  kind: SlangKind
+  description?: string
+  containerName?: string
+}
+
+export interface HierarchySearchResult {
+  totalResults: number
+  matches: HierarchySearchItem[]
 }
 
 ////////////////////////////////////////////////////////////
@@ -113,14 +164,12 @@ export async function getUnit(): Promise<Instance[]> {
   return children
 }
 
-/// Module -> scopes for instances view
 export async function getScopesByModule(): Promise<Module[]> {
-  const children: Module[] = await vscode.commands.executeCommand('slang.getScopesByModule')
-  if (children === undefined) {
-    vscode.window.showErrorMessage('Failed to get modules')
-    return []
-  }
-  return children
+  return (await vscode.commands.executeCommand('slang.getScopesByModule')) ?? []
+}
+
+export async function getInstancesOfModule(declName: string): Promise<QualifiedInstance[]> {
+  return (await vscode.commands.executeCommand('slang.getInstancesOfModule', declName)) ?? []
 }
 
 /// Query root-to-focus scope steps, with child lists for each hierarchy segment.
@@ -133,8 +182,36 @@ export async function getScopes(hierPath: string): Promise<ScopeStep[]> {
   return scopes
 }
 
-export async function getInstancesOfModule(declName: string): Promise<QualifiedInstance[]> {
-  return await vscode.commands.executeCommand('slang.getInstancesOfModule', declName)
+export async function searchHierarchy(query: string): Promise<HierarchySearchResult | undefined> {
+  return await vscode.commands.executeCommand('slang.searchHierarchy', query)
+}
+
+// Get the instances for the module in this file (by editor position)
+export async function getInstances(
+  document: vscode.TextDocument,
+  position: vscode.Position
+): Promise<string[]> {
+  const instances: string[] = await vscode.commands.executeCommand('slang.getInstances', {
+    textDocument: { uri: document.uri.toString() },
+    position,
+  })
+  return instances ?? []
+}
+
+// Server resolves the path (canonical or port-side alias) and walks up to set active
+// instances and generate scopes for every module in the chain.
+export async function setActiveInstance(hierPath: string): Promise<boolean> {
+  return await vscode.commands.executeCommand('slang.setActiveInstance', hierPath)
+}
+
+export async function getActiveInstance(
+  moduleName: string
+): Promise<QualifiedInstance | undefined> {
+  const instance: QualifiedInstance | undefined = await vscode.commands.executeCommand(
+    'slang.getActiveInstance',
+    moduleName
+  )
+  return instance
 }
 
 export async function getFilesContainingModule(moduleName: string): Promise<string[]> {
@@ -176,9 +253,10 @@ export async function showHierLocation(hierPath: string, takeFocus: boolean): Pr
   await vscode.commands.executeCommand('slang.showHierLocation', { hierPath, takeFocus })
 }
 
-export async function showModuleDefinition(moduleName: string, takeFocus: boolean): Promise<void> {
-  await vscode.commands.executeCommand('slang.showModuleDefinition', { moduleName, takeFocus })
+export async function openModuleDefinition(moduleName: string): Promise<void> {
+  await vscode.commands.executeCommand('slang.openModuleDefinition', moduleName)
 }
+
 ////////////////////////////////////////////////////////////
 /// server -> client is in commands in the project component
 ////////////////////////////////////////////////////////////
