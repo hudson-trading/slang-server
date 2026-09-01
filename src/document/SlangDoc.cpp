@@ -103,28 +103,23 @@ std::shared_ptr<syntax::SyntaxTree> SlangDoc::getSyntaxTree() {
     return m_tree;
 }
 
-std::shared_ptr<ShallowAnalysis> SlangDoc::getAnalysis(bool refreshDependencies,
-                                                       const lsp::RequestContext& ctx) {
-    if (!m_analysis || !m_analysis->hasValidBuffers() || refreshDependencies) {
-        ctx.throwIfCancelled("before analysis");
-        // Load dependent documents from driver if not already loaded
-        if (m_dependentDocuments.empty() || refreshDependencies) {
-            m_dependentDocuments = m_driver.getDependentDocs(getSyntaxTree());
-        }
+std::shared_ptr<ShallowAnalysis> SlangDoc::refreshAnalysis(const lsp::RequestContext& ctx) {
+    ctx.throwIfCancelled("before analysis");
+    auto tree = getSyntaxTree();
+    auto trees = m_driver.getDependentTrees(tree);
+    trees.insert(trees.begin(), tree);
+    auto analysis = std::make_shared<ShallowAnalysis>(m_sourceManager, m_buffer.id, tree, m_options,
+                                                      trees);
+    auto topNames = analysis->getCompilation()->getRoot().topInstances |
+                    std::views::transform([](const auto& top) { return top->name; });
+    ctx.info("Analyzed {} with tops: {}", getWsRelativePath(), fmt::join(topNames, ", "));
+    m_analysis = analysis;
+    return analysis;
+}
 
-        std::vector<std::shared_ptr<syntax::SyntaxTree>> trees = {getSyntaxTree()};
-        for (const auto& doc : m_dependentDocuments) {
-            if (auto depTree = doc->getSyntaxTree()) {
-                trees.push_back(depTree);
-            }
-        }
-        m_analysis = std::make_shared<ShallowAnalysis>(m_sourceManager, m_buffer.id, m_tree,
-                                                       m_options, trees);
-        auto topNames = m_analysis->getCompilation()->getRoot().topInstances |
-                        std::views::transform([](const auto& top) { return top->name; });
-        ctx.info("Analyzed {} with tops: {}", getWsRelativePath(), fmt::join(topNames, ", "));
-    }
-
+std::shared_ptr<ShallowAnalysis> SlangDoc::getAnalysis(const lsp::RequestContext& ctx) {
+    if (!m_analysis || !m_analysis->hasValidBuffers())
+        return refreshAnalysis(ctx);
     return m_analysis;
 }
 
@@ -257,7 +252,7 @@ void SlangDoc::issueParseDiagnostics(DiagnosticEngine& diagEngine) {
 
 void SlangDoc::issueDiagnosticsTo(DiagnosticEngine& diagEngine, const lsp::RequestContext& ctx) {
     // Issue compilation diagnostics
-    auto analysis = getAnalysis(true, ctx);
+    auto analysis = refreshAnalysis(ctx);
 
     // Parse diags (just this tree, others will be handled by their SlangDoc objects
     for (auto& diag : getSyntaxTree()->diagnostics()) {
@@ -292,7 +287,7 @@ void SlangDoc::issueDiagnosticsTo(DiagnosticEngine& diagEngine, const lsp::Reque
 std::vector<lsp::Range> SlangDoc::getInactiveRegions(const lsp::RequestContext& ctx) {
     ctx.throwIfCancelled("before collecting inactive regions");
     std::vector<lsp::Range> result;
-    auto analysis = getAnalysis(false, ctx);
+    auto analysis = getAnalysis(ctx);
     result.reserve(analysis->syntaxes.disabledRegions.size());
 
     for (const auto& region : analysis->syntaxes.disabledRegions) {

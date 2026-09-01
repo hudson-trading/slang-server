@@ -348,7 +348,7 @@ TEST_CASE("GotoDefinition_AllIndexedMacroDefinitions") {
 
 TEST_CASE("LoadTransitivePackages") {
     /// Find the referenced symbol at each location in files with circular package dependencies.
-    /// Tests the queue-based cycle detection in getDependentDocs.
+    /// Tests the queue-based cycle detection while loading dependent trees.
     ServerHarness server("repo1"); // Use repo1 as workspace folder
     auto hdl = server.openFile("cycle_test.sv");
 

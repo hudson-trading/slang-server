@@ -753,7 +753,7 @@ void MemberCompletionQuery::resolve(CompletionDispatch& dispatch, lsp::Completio
     if (!doc)
         return;
 
-    auto analysis = doc->getAnalysis(false, ctx);
+    auto analysis = doc->getAnalysis(ctx);
     if (!analysis || !analysis->getCompilation())
         return;
 
