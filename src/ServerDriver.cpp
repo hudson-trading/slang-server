@@ -141,54 +141,64 @@ void ServerDriver::parseAndLoadSources(const std::vector<std::string>& buildfile
     }
 }
 
-// Doc updates (open, change, save)
-void ServerDriver::updateDoc(SlangDoc& doc, FileUpdateType type, const lsp::RequestContext& ctx) {
+void ServerDriver::analyzeDocument(SlangDoc& doc, const lsp::RequestContext& ctx) {
     ctx.throwIfCancelled("before diagnostics");
-
-    if (comp && type == FileUpdateType::REOPEN) {
-        publishInactiveRegions(doc, ctx);
-        return;
-    }
 
     // Clear and re-issue diagnostics for this document
     diagClient->clear(doc.getURI());
 
-    // Pragma mappings are populated while parsing the syntax tree.
+    // Pragma mappings are populated from the preprocessor/lexer
     doc.getSyntaxTree();
 
     // Update pragma mappings for the changed buffer
     diagEngine.setMappingsFromPragmas(doc.getBuffer());
 
-    if (comp && type == FileUpdateType::SAVE) {
-        // Clear just the data structures; add all uris to dirty set
-        diagClient->clear();
-
-        // Re-issue parse diagnostics for all documents, since we cleared
-        for (const auto& [uri, d] : docs) {
-            d->issueParseDiagnostics(diagEngine);
-        }
-        // Elaborate; Issue semantic diagnostics from full compilation
-        comp->refresh();
-        comp->issueDiagnosticsTo(diagEngine);
-    }
-    else {
-        // In explore mode: issue normal shallow diags on changes
-        doc.issueDiagnosticsTo(diagEngine, ctx);
-    }
+    doc.issueDiagnosticsTo(diagEngine, ctx);
     ctx.throwIfCancelled("before publishing diagnostics");
     diagClient->pushDiags(doc.getURI());
 
     publishInactiveRegions(doc, ctx);
 }
 
-void ServerDriver::publishCompilationDiagnostics(
-    const std::vector<std::shared_ptr<SlangDoc>>& documents) {
+void ServerDriver::onDocDidSave(SlangDoc& doc) {
+    m_indexer.updateDocument(doc.getURI().getPath(), *doc.getSyntaxTree());
+
+    if (!comp) {
+        analyzeDocument(doc);
+        // Reanalyze open documents whose dependency buffers were invalidated
+        for (const auto& uri : m_openDocs) {
+            if (uri == doc.getURI())
+                continue;
+
+            auto it = docs.find(uri);
+            if (it == docs.end()) {
+                ERROR("Open Doc {} not found", uri.getPath());
+                continue;
+            }
+            if (it->second->hasAnalysis())
+                continue;
+
+            analyzeDocument(*it->second);
+        }
+    }
+    else {
+        diagClient->clear();
+        comp->refresh();
+        publishCompilationDiagnostics(&doc.getURI());
+        publishInactiveRegions(doc);
+    }
+}
+
+void ServerDriver::publishCompilationDiagnostics(const URI* priorityUri) {
     diagEngine.setMappingsFromPragmas();
-    for (const auto& document : documents) {
-        document->issueParseDiagnostics(diagEngine);
+    for (const auto& entry : docs) {
+        entry.second->issueParseDiagnostics(diagEngine);
     }
     comp->issueDiagnosticsTo(diagEngine);
-    diagClient->pushDiags();
+    if (priorityUri)
+        diagClient->pushDiags(*priorityUri);
+    else
+        diagClient->pushDiags();
 }
 
 void ServerDriver::copyOpenDocumentsFrom(const ServerDriver* oldDriver) {
@@ -204,14 +214,10 @@ void ServerDriver::copyOpenDocumentsFrom(const ServerDriver* oldDriver) {
             continue;
         }
 
-        auto newDocIt = docs.find(uri);
-        if (newDocIt == docs.end()) {
-            openDocument(uri, docIt->second->getText());
-        }
-        else {
-            m_openDocs.insert(uri);
-            updateDoc(*newDocIt->second, FileUpdateType::REOPEN);
-        }
+        // openDocument expects no \0
+        auto text = docIt->second->getText();
+        text.remove_suffix(1);
+        openDocument(uri, text);
     }
 }
 
@@ -243,14 +249,13 @@ std::unique_ptr<ServerDriver> ServerDriver::createFromFileLists(
         return newDriver;
     }
 
-    auto diagnosticDocuments = buildDocuments;
     newDriver->comp = std::make_unique<ServerCompilation>(std::move(buildDocuments),
                                                           newDriver->options, newDriver->sm,
                                                           newDriver->client);
 
     newDriver->diagClient->clear();
     newDriver->copyOpenDocumentsFrom(oldDriver);
-    newDriver->publishCompilationDiagnostics(diagnosticDocuments);
+    newDriver->publishCompilationDiagnostics();
     return newDriver;
 }
 
@@ -286,7 +291,7 @@ void ServerDriver::openDocument(const URI& uri, const std::string_view text) {
         publishInactiveRegions(*doc);
     }
     else {
-        updateDoc(*doc, FileUpdateType::OPEN);
+        analyzeDocument(*doc);
     }
 
     // Track this as an open document
@@ -322,8 +327,7 @@ void ServerDriver::onDocDidChange(const lsp::DidChangeTextDocumentParams& params
         ctx.info("Applied changes for {}; skipping superseded analysis", doc->getWsRelativePath());
         ctx.throwIfCancelled("before analysis");
     }
-    // Update Tree and Compilation
-    updateDoc(*doc, FileUpdateType::CHANGE, ctx);
+    analyzeDocument(*doc, ctx);
 }
 
 void ServerDriver::closeDocument(const URI& uri) {
@@ -353,7 +357,7 @@ void ServerDriver::reloadDocument(const URI& uri) {
     INFO("Reloaded document {} from disk", uri.getPath());
 
     // Update the document (reparse and issue diagnostics)
-    updateDoc(*doc, FileUpdateType::CHANGE);
+    analyzeDocument(*doc);
 }
 
 void ServerDriver::onWorkspaceDidChangeWatchedFiles(
@@ -393,7 +397,7 @@ void ServerDriver::onWorkspaceDidChangeWatchedFiles(
 
     // Update all open docs after all buffers have been reloaded
     for (auto& doc : updatedDocs) {
-        updateDoc(*doc, FileUpdateType::CHANGE);
+        analyzeDocument(*doc);
     }
 }
 
@@ -544,7 +548,7 @@ std::unique_ptr<ServerDriver> ServerDriver::createFromTop(
                                                           newDriver->sm, newDriver->client,
                                                           std::move(topName));
 
-    newDriver->publishCompilationDiagnostics(documents);
+    newDriver->publishCompilationDiagnostics();
     return newDriver;
 }
 

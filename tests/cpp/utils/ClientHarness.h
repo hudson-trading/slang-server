@@ -23,6 +23,8 @@ class ClientHarness : public SlangLspClient {
     std::vector<std::string> warnings;
 
 public:
+    std::vector<URI> diagnosticPublications;
+
     ~ClientHarness() {
         for (const auto& error : errors) {
             FAIL_CHECK("Unhandled client error: " << error);
@@ -42,6 +44,7 @@ public:
     }
 
     void onDocPublishDiagnostics(const lsp::PublishDiagnosticsParams& params) override {
+        diagnosticPublications.push_back(params.uri);
         m_diagnostics.insert_or_assign(params.uri, params.diagnostics);
     }
 

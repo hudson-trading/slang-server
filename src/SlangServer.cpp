@@ -693,12 +693,11 @@ void SlangServer::onDocDidSave(const lsp::DidSaveTextDocumentParams& params) {
             // Recover by overwriting the buffer with the saved text
             INFO("Document text does not match on save, overwriting");
             m_driver->openDocument(params.textDocument.uri, text);
+            doc = m_driver->getDocument(params.textDocument.uri);
         }
     }
-    m_driver->updateDoc(*doc, FileUpdateType::SAVE);
 
-    // Update the indexer with new symbols
-    m_indexer.updateDocument(params.textDocument.uri.getPath(), *doc->getSyntaxTree());
+    m_driver->onDocDidSave(*doc);
 }
 
 void SlangServer::onDocDidClose(const lsp::DidCloseTextDocumentParams& params) {
