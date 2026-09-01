@@ -1,6 +1,9 @@
 local hl = require("slang-server._core.highlights")
 local ui = require("slang-server._core.ui")
 local util = require("slang-server.util")
+local client = require("slang-server._lsp.client")
+local capabilities = require("slang-server._lsp.capabilities")
+local handlers = require("slang-server.handlers")
 local hier = require("slang-server.navigation/hierarchy")
 local cells = require("slang-server.navigation/cells")
 
@@ -89,9 +92,39 @@ function M.get_node_id(node)
    return node._uid
 end
 
+---Focus the most recently used source window and return its buffer.
+---@return integer?
+function M.focus_source()
+   local source_win = M.state.sv_win
+   if not source_win or not capabilities.get_client(source_win.bufnr) then
+      vim.notify("Cannot jump to location: invalid target window", vim.log.levels.ERROR)
+      return nil
+   end
+
+   vim.api.nvim_set_current_win(source_win.winid)
+   return source_win.bufnr
+end
+
+---Ask the server to open a hierarchy path in the remembered source window.
+---@param hier_path string
+function M.show_hier_location(hier_path)
+   local bufnr = M.focus_source()
+   if not bufnr then
+      return
+   end
+
+   client.showHierLocation(bufnr, {
+      on_success = function() end,
+      on_failure = handlers.defaultOnFailure,
+   }, { hierPath = hier_path, takeFocus = true })
+end
+
 ---@param top slang-server.navigation.Path The top level at which to initialise the hierarchy
 function M.show(top)
    if M.state.open then
+      if hier.state.split and vim.api.nvim_win_is_valid(hier.state.split.winid) then
+         vim.api.nvim_set_current_win(hier.state.split.winid)
+      end
       return
    end
 

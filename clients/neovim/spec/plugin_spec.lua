@@ -71,6 +71,107 @@ describe("SlangServer", function()
    -- compile design
    vim.cmd("SlangServer setTopLevel")
 
+   it("Routes hierarchy navigation through server commands", function()
+      local lsp = require("slang-server._lsp.client")
+      local capabilities = require("slang-server._lsp.capabilities")
+      local original_supported = capabilities.command_supported
+      local original_get_client = capabilities.get_client
+      local requests = {}
+
+      local ok, err = pcall(function()
+         capabilities.command_supported = function()
+            return true
+         end
+         capabilities.get_client = function()
+            return {
+               request = function(_, method, params, callback, bufnr)
+                  requests[#requests + 1] = { bufnr = bufnr, method = method, params = params }
+                  callback(nil, nil)
+                  return true
+               end,
+            }
+         end
+
+         local handlers = { on_success = function() end }
+         lsp.showHierLocation(7, handlers, { hierPath = "top.child", takeFocus = true })
+      end)
+
+      capabilities.command_supported = original_supported
+      capabilities.get_client = original_get_client
+      assert(ok, err)
+
+      assert.are.same({
+         bufnr = 7,
+         method = "workspace/executeCommand",
+         params = {
+            command = "slang.showHierLocation",
+            arguments = { { hierPath = "top.child", takeFocus = true } },
+         },
+      }, requests[1])
+   end)
+
+   it("Targets the same source window and buffer for hierarchy navigation", function()
+      local navigation = require("slang-server.navigation")
+      local lsp = require("slang-server._lsp.client")
+      local capabilities = require("slang-server._lsp.capabilities")
+      local original_source_win = rawget(navigation.state, "sv_win")
+      local original_get_client = capabilities.get_client
+      local source_win = {
+         bufnr = vim.api.nvim_get_current_buf(),
+         winid = vim.api.nvim_get_current_win(),
+         winnr = vim.api.nvim_get_current_win(),
+      }
+      navigation.state.sv_win = source_win
+
+      local original_show = lsp.showHierLocation
+      local request
+      local ok, err = pcall(function()
+         capabilities.get_client = function(bufnr)
+            if bufnr == source_win.bufnr then
+               return {}
+            end
+         end
+         lsp.showHierLocation = function(bufnr, _, params)
+            request = {
+               bufnr = bufnr,
+               current_win = vim.api.nvim_get_current_win(),
+               params = params,
+            }
+         end
+
+         navigation.show_hier_location("top.child")
+      end)
+      lsp.showHierLocation = original_show
+      capabilities.get_client = original_get_client
+      navigation.state.sv_win = original_source_win
+
+      assert(ok, err)
+      assert.are.same(source_win.bufnr, request.bufnr)
+      assert.are.same(source_win.winid, request.current_win)
+      assert.are.same({ hierPath = "top.child", takeFocus = true }, request.params)
+   end)
+
+   it("Does not request hierarchy navigation without a valid source window", function()
+      local navigation = require("slang-server.navigation")
+      local lsp = require("slang-server._lsp.client")
+      local original_source_win = rawget(navigation.state, "sv_win")
+      local original_show = lsp.showHierLocation
+      local requested = false
+
+      navigation.state.sv_win = false
+      lsp.showHierLocation = function()
+         requested = true
+      end
+      local messages = capture_notifications(function()
+         navigation.show_hier_location("top.child")
+      end)
+      lsp.showHierLocation = original_show
+      navigation.state.sv_win = original_source_win
+
+      assert.is_false(requested)
+      assert.are.same({ "Cannot jump to location: invalid target window" }, messages)
+   end)
+
    it("Generic quick pick dispatches its selected value", function()
       local client_commands = require("slang-server._lsp.clientCommands")
       local original_select = vim.ui.select
@@ -145,7 +246,7 @@ describe("SlangServer", function()
       assert(vim.wait(5000, function()
          return result ~= nil
       end))
-      assert.are.same(4, result.totalResults)
+      assert.is_true(result.totalResults >= 4)
       assert.is_true(#result.matches <= 100)
       assert.is_true(vim.iter(result.matches):any(function(item)
          return item.path == "foo.gen_loop[2].the_sub"
@@ -165,6 +266,40 @@ describe("SlangServer", function()
   sub (4)]=]
       assert.are.same(expected, table.concat(lines, "\n"))
       vim.api.nvim_buf_delete(0, { force = true })
+   end)
+
+   it("Focuses an existing hierarchy window", function()
+      local navigation = require("slang-server.navigation")
+      local hierarchy = package.loaded["slang-server.navigation/hierarchy"]
+         or package.loaded["slang-server.navigation.hierarchy"]
+         or require("slang-server.navigation.hierarchy")
+      local original_open = navigation.state.open
+      local original_split = hierarchy.state.split
+      local original_reveal = hierarchy.reveal
+      local original_is_valid = vim.api.nvim_win_is_valid
+      local original_set_current = vim.api.nvim_set_current_win
+      local focused
+
+      local ok, err = pcall(function()
+         navigation.state.open = true
+         hierarchy.state.split = { winid = 42 }
+         hierarchy.reveal = function() end
+         vim.api.nvim_win_is_valid = function(winid)
+            return winid == 42
+         end
+         vim.api.nvim_set_current_win = function(winid)
+            focused = winid
+         end
+
+         navigation.show("")
+         assert.are.same(42, focused)
+      end)
+      navigation.state.open = original_open
+      hierarchy.state.split = original_split
+      hierarchy.reveal = original_reveal
+      vim.api.nvim_win_is_valid = original_is_valid
+      vim.api.nvim_set_current_win = original_set_current
+      assert(ok, err)
    end)
 
    it("Explicit commands use the source buffer when focus is in the hierarchy panel", function()

@@ -7,7 +7,12 @@ M.hierarchy = {
    impl = function(args, opts)
       local capabilities = require("slang-server._lsp.capabilities")
       local bufnr = capabilities.get_source_context()
-      local required = { "slang.getScope", "slang.getScopesByModule", "slang.getInstancesOfModule" }
+      local required = {
+         "slang.getScope",
+         "slang.getScopesByModule",
+         "slang.getInstancesOfModule",
+         "slang.showHierLocation",
+      }
       if not capabilities.check_or_notify(bufnr, required) then
          return
       end

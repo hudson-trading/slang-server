@@ -52,8 +52,8 @@ local function map_keys(split, tree)
       },
       ["<cr>"] = {
          impl = function(node)
-            if node and node.instLoc then
-               util.jump_loc(node.instLoc, navigation.state.sv_win.winnr)
+            if node and node.path then
+               navigation.show_hier_location(node.path)
             end
          end,
          opts = { noremap = true },

@@ -48,11 +48,13 @@ local function scope_jump(node)
    local navigation = require("slang-server.navigation")
    local hier = require("slang-server.navigation/hierarchy")
    local instPath = nil
-   if node and node.instLoc then
-      util.jump_loc(node.instLoc, navigation.state.sv_win.winnr)
+   if node and node.instPath then
       instPath = node.instPath
-   elseif node and node.declLoc then
-      util.jump_loc(node.declLoc, navigation.state.sv_win.winnr)
+      navigation.show_hier_location(node.instPath)
+   elseif node and node.declName then
+      if node.declLoc then
+         util.jump_loc(node.declLoc, navigation.state.sv_win.winnr)
+      end
       local children = node:get_child_ids()
       if children then
          local child = M.state.tree:get_node(children[1])
