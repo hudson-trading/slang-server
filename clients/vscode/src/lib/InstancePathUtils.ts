@@ -1,3 +1,18 @@
+// Matches dotted instance paths like "top.sub.module" or "top.sub[0].module[1]"
+// but not file paths (containing /) or SystemVerilog file extensions (.sv, .v, etc.)
+
+// Lookbehind rejects word chars, '.', '/', '\' — ensuring we match from the
+// start of an identifier, not mid-word or mid-file-path.
+// Lookahead also rejects continuations like `.foo` or `/child`, so we don't
+// backtrack to a shorter dotted prefix of a longer file or path string.
+const RE_INSTANCE_PATHS = /(?<![/\\\w$.])[\w$]+(\[\d+\])?(\.[\w$]+(\[\d+\])?)+(?![\w$./\\[])/g
+const RE_SV_EXTENSION = /\.(sv|svh|v|vh)$/i
+
+export interface InstancePathMatch {
+  path: string
+  index: number
+}
+
 export interface HierarchyLookupChild {
   instName: string
   path: string
@@ -6,6 +21,23 @@ export interface HierarchyLookupChild {
 export interface ResolvedHierarchyChild<T extends HierarchyLookupChild> {
   child: T | undefined
   nextIndex: number
+}
+
+// Extract hierarchy-like instance paths from free-form text such as log lines.
+export function findInstancePaths(line: string): InstancePathMatch[] {
+  RE_INSTANCE_PATHS.lastIndex = 0
+  const results: InstancePathMatch[] = []
+  for (const match of line.matchAll(RE_INSTANCE_PATHS)) {
+    const startIndex = match.index
+    if (startIndex === undefined) {
+      continue
+    }
+    if (RE_SV_EXTENSION.test(match[0])) {
+      continue
+    }
+    results.push({ path: match[0], index: startIndex })
+  }
+  return results
 }
 
 // Split a scope path into parts, handling array indices and package-qualified

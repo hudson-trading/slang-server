@@ -66,6 +66,8 @@ export interface Config__InlayHints {
   portTypes?: boolean
   /** Hints for inferred assignment pattern types */
   assignmentPatternTypes?: boolean
+  /** Hints for active instance parameter and localparam values */
+  activeParameterValues?: boolean
   /** Hints for names of ordered ports and params */
   orderedInstanceNames?: boolean
   /** Hints for port names in wildcard (.*) ports */

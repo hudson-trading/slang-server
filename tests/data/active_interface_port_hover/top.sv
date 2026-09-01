@@ -64,4 +64,5 @@ module top;
     );
 
     BusArrayTap array_tap(.buses(bus_array));
+    DualBusTap dual_tap(.first(bus8), .second(bus16));
 endmodule

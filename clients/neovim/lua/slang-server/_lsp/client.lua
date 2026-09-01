@@ -125,6 +125,16 @@ end
 
 ---@param bufnr integer
 ---@param handlers RespHandlers
+---@param params { hierPath: string }
+M.setActiveInstance = function(bufnr, handlers, params)
+   lsp_execute(bufnr, {
+      command = "slang.setActiveInstance",
+      arguments = { params.hierPath },
+   }, handlers)
+end
+
+---@param bufnr integer
+---@param handlers RespHandlers
 ---@param params { uri: string }
 M.openWaveform = function(bufnr, handlers, params)
    lsp_execute(bufnr, {

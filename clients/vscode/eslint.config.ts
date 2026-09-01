@@ -50,6 +50,8 @@ export default [
       '@typescript-eslint/no-floating-promises': 'error',
       '@typescript-eslint/await-thenable': 'error',
       '@typescript-eslint/no-misused-promises': 'error',
+      'no-redeclare': 'off',
+      '@typescript-eslint/no-redeclare': ['error', { ignoreDeclarationMerge: true }],
       curly: 'warn',
       eqeqeq: 'error',
       'no-throw-literal': 'warn',

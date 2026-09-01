@@ -35,6 +35,14 @@ local default_config = {
          },
       },
    },
+   -- Global command mappings; disabled by default
+   keymaps = {
+      -- Each mapping inherits enable_defaults unless it sets enabled explicitly.
+      enable_defaults = false,
+      hierarchy = { key = "<leader>vh" }, -- Open the design hierarchy
+      searchHierarchy = { key = "<leader>vs" }, -- Search for an object and reveal it in the hierarchy
+      selectActive = { key = "<leader>va" }, -- Select the active instance or generate iteration under the cursor
+   },
    search = {
       picker = "auto", -- "fzf-lua", "telescope", "snacks", "vim.ui", or a custom picker function
       query_delay = 150, -- Debounce in ms, in addition to any delay imposed by the picker

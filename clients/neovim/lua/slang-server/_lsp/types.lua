@@ -56,6 +56,13 @@
 ---@field path string
 ---@field children slang-server.lsp.Node[]
 
+---@class slang-server.lsp.ActivateInstanceParams
+---@field hierPath string
+---@field interactionSource string
+
+---@class slang-server.lsp.ClientState
+---@field active_path string?
+
 ---@class slang-server.lsp.HierarchySearchItem
 ---@field name string
 ---@field path string

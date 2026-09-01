@@ -1,28 +1,22 @@
 -- Parser for :SlangServer setTopLevel
 
 local M = {}
+local capabilities = require("slang-server._lsp.capabilities")
 
 ---@type slang-server.ui.Subcommand
 M.setTopLevel = {
-   impl = function(args, opts)
-      local capabilities = require("slang-server._lsp.capabilities")
-      local file = args[1]
-      local bufnr
-      if file then
-         bufnr = capabilities.get_source_context()
-      else
-         bufnr = vim.api.nvim_get_current_buf()
-         if not capabilities.get_client(bufnr) then
-            vim.notify(
-               "slang-server: setTopLevel without a file must be run from a buffer with an attached slang-server LSP client.",
-               vim.log.levels.ERROR
-            )
-            return
-         end
-         file = vim.api.nvim_buf_get_name(bufnr)
+   desc = "Set the current design top level",
+   required_commands = { "slang.setTopLevel" },
+   context = function(args)
+      if args[1] then
+         return capabilities.get_source_context()
       end
-      if not capabilities.check_or_notify(bufnr, { "slang.setTopLevel" }) then
-         return
+      return capabilities.get_current_context()
+   end,
+   impl = function(args, opts, bufnr)
+      local file = args[1]
+      if not file then
+         file = vim.api.nvim_buf_get_name(bufnr)
       end
 
       local client = require("slang-server._lsp.client")

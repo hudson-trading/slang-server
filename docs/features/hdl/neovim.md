@@ -33,11 +33,15 @@ This uses a file to run a compilation using the top-most module in the provided 
 :SlangServer hierarchy [SCOPE]
 ```
 
-This opens the hierarchy view and, if `SCOPE` is provided, expands the view to that scope.
+This opens the hierarchy view and, if `SCOPE` is provided, expands the view to that scope. Without `SCOPE`, it reveals the known active path when available.
 
 ![Hierarchy View](neovim/hierarchy.png)
 
-Press `/` in either view to search the hierarchy. Press `?` for help, or see the [default mappings](https://github.com/hudson-trading/slang-server/blob/main/clients/neovim/lua/slang-server/_core/config.lua).
+The hierarchy opens with a Cells view that groups elaborated instances by module. Press `<Space>` on a module to list its instances, then `<CR>` on an instance to make it active, jump to its source, and reveal it in the hierarchy. Pressing `<CR>` on an instance in the hierarchy also makes it active; `gd` opens its declaration without changing the selection. Press `/` in either view to search the hierarchy. Press `?` for help, or see the [default mappings](https://github.com/hudson-trading/slang-server/blob/main/clients/neovim/lua/slang-server/_core/config.lua).
+
+If Neovim code-lens display is enabled, module and interface declarations show the active path and instance count. Activating that code lens opens `vim.ui.select` when multiple instances are available. Generate-loop code lenses similarly select an active elaborated iteration.
+
+The active instance supplies the context for resolved parameter values, dependent types and widths, interface connections, hovers, and parameter-value inlay hints. An open hierarchy follows active-instance changes initiated by a code lens or Go to Definition.
 
 ### Search hierarchy
 
@@ -46,6 +50,14 @@ Press `/` in either view to search the hierarchy. Press `?` for help, or see the
 ```
 
 This opens an interactive search over the compiled design and reveals the selected object in the hierarchy. FzfLua, Telescope, and Snacks Picker are supported when installed, with a two-step `vim.ui.input` and `vim.ui.select` fallback.
+
+### Select active instance
+
+```
+:SlangServer selectActive
+```
+
+This runs an active-instance or active-generate-iteration code lens on the current source line. Code lenses must be enabled as described in the [installation guide](/start/installing.md#code-lenses).
 
 ## Cone Tracing (experimental)
 

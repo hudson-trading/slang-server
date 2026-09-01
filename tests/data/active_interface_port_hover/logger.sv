@@ -15,3 +15,8 @@ endmodule
 
 module BusArrayTap(StreamBus.source buses[2]);
 endmodule
+
+module DualBusTap(StreamBus first, StreamBus second);
+    localparam int first_width = $bits(first.typed_payload);
+    localparam int second_width = $bits(second.typed_payload);
+endmodule
