@@ -28,6 +28,10 @@
 
 ---@alias slang-server.config.Highlights table<string, vim.api.keyset.highlight>
 
+---@class (exact) slang-server.SearchHierarchyOptions
+---@field bufnr integer?
+---@field on_error fun(message: string)?
+
 --- Navigation types
 
 ---@alias slang-server.navigation.Path string

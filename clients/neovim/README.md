@@ -9,6 +9,16 @@ Neovim supports all standard [LSP](https://microsoft.github.io/language-server-p
 This plugin is for the following features which extend the standard LSP interface.
 More information on plugin features can be [found here](https://hudson-trading.github.io/slang-server/hdl/neovim/).
 
+Hierarchy search is also available to Neovim integrations without transferring the full design:
+
+```lua
+require("slang-server").search_hierarchy("fifo.data", function(result)
+  vim.print(result.totalResults, result.matches)
+end)
+```
+
+The server performs the fuzzy match and returns at most 100 entries per query.
+
 ## Requirements
 
 * `slang-server` configured as a Neovim language server

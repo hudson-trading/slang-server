@@ -53,12 +53,21 @@ export async function run(): Promise<void> {
   try {
     await vscode.commands.executeCommand('slang.setTopLevel', uri.fsPath)
 
-    editor.selection = new vscode.Selection(instanceLine, 0, instanceLine, 0)
+    const lenses = await vscode.commands.executeCommand<vscode.CodeLens[]>(
+      'vscode.executeCodeLensProvider',
+      uri
+    )
+    const gotoInstantiation = lenses.find((lens) => {
+      const params = lens.command?.arguments?.[0] as { hierPath?: string } | undefined
+      return lens.command?.title === 'Go to Instantiation' && params?.hierPath === 'top.u_child'
+    })
+    assert.ok(gotoInstantiation?.command, 'missing child module CodeLens')
+    editor.selection = new vscode.Selection(moduleLine, 0, moduleLine, 0)
     await executeAndExpectLocation(
-      'slang.showModuleDefinition',
-      { moduleName: 'child', takeFocus: true },
+      gotoInstantiation.command.command,
+      gotoInstantiation.command.arguments?.[0],
       uri,
-      moduleLine
+      instanceLine
     )
 
     editor.selection = new vscode.Selection(moduleLine, 0, moduleLine, 0)

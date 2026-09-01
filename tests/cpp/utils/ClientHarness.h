@@ -72,10 +72,15 @@ public:
     }
 
     std::deque<lsp::ShowDocumentParams> m_showDocuments;
+    std::deque<ActivateInstanceParams> m_activeInstanceChanges;
 
     void onShowDocument(const lsp::ShowDocumentParams& params) final {
         m_showDocuments.push_back(params);
         // TODO -- ServerHarness::openFile() once the client and server harnesses are merged
+    }
+
+    void onActiveInstanceChanged(const ActivateInstanceParams& params) final {
+        m_activeInstanceChanges.push_back(params);
     }
 
 private:

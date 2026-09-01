@@ -291,6 +291,7 @@ add_library(
   slang_server_obj_lib OBJECT
   ${CMAKE_CURRENT_BINARY_DIR}/VersionInfo.cpp
   src/SystemTaskDocs.cpp
+  src/ast/ActiveDesignContext.cpp
   src/ast/ServerCompilation.cpp
   src/ast/ServerCompilationAnalysis.cpp
   src/ast/WcpClient.cpp

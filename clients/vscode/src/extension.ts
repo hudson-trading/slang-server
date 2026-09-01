@@ -35,6 +35,20 @@ import { InactiveRegionsFeature } from './lib/inactiveRegions'
 
 export var ext: SlangExtension
 
+interface QuickPickItem extends vscode.QuickPickItem {
+  value: unknown
+}
+
+interface QuickPickAction {
+  onSelectCommand: string
+  interactionSource?: slang.InteractionSource
+}
+
+interface QuickPickParams extends QuickPickAction {
+  placeholder: string
+  items: QuickPickItem[]
+}
+
 export class SlangExtension extends ActivityBarComponent {
   ////////////////////////////////////////////////
   /// top level configs
@@ -96,6 +110,31 @@ File input is sent to stdin, and formatted output is read from stdout.',
   /// top level commands and configs
   ////////////////////////////////////////////////
   expandDir: vscode.Uri | undefined = undefined
+
+  private async executeQuickPickAction(params: QuickPickAction, value: unknown): Promise<void> {
+    if (params.interactionSource !== undefined && typeof value === 'string') {
+      await this.project.setInstance.func(value, params.interactionSource)
+      return
+    }
+
+    await vscode.commands.executeCommand(params.onSelectCommand, value)
+  }
+
+  quickPick: CommandNode = new CommandNode(
+    {
+      title: 'Quick Pick',
+    },
+    async (params: QuickPickParams) => {
+      const picked = await vscode.window.showQuickPick(params.items, {
+        placeHolder: params.placeholder,
+      })
+      if (!picked) {
+        return
+      }
+
+      await this.executeQuickPickAction(params, picked.value)
+    }
+  )
 
   rewrite: EditorButton = new EditorButton(
     {
@@ -182,6 +221,15 @@ File input is sent to stdin, and formatted output is read from stdout.',
     }
 
     this.client = new LanguageClient('slang-server', serverOptions, clientOptions)
+
+    this.context.subscriptions.push(
+      this.client.onNotification(
+        'slang/activeInstanceChanged',
+        (params: slang.ActivateInstanceParams) => {
+          void this.project.onActiveInstanceChanged(params)
+        }
+      )
+    )
 
     this.client.registerFeature(this.inactiveRegions)
     this.inactiveRegions.register(this.client)

@@ -8,6 +8,7 @@
 
 #include "document/ShallowAnalysis.h"
 
+#include "ast/ServerCompilation.h"
 #include "document/InlayHintCollector.h"
 #include "lsp/LspTypes.h"
 #include "util/Converters.h"
@@ -64,7 +65,8 @@ static bool symbolsMatch(const ast::Symbol* a, const ast::Symbol* b) {
 }
 ShallowAnalysis::ShallowAnalysis(SourceManager& sourceManager, slang::BufferID buffer,
                                  std::shared_ptr<syntax::SyntaxTree> tree, slang::Bag options,
-                                 const std::vector<std::shared_ptr<syntax::SyntaxTree>>& allTrees) :
+                                 const std::vector<std::shared_ptr<syntax::SyntaxTree>>& allTrees,
+                                 const ServerCompilation* design) :
     syntaxes(*tree), m_sourceManager(sourceManager), m_buffer(buffer), m_tree(tree),
     m_allTrees(allTrees), m_analysisOptions(options.getOrDefault<analysis::AnalysisOptions>()),
     m_symbolTreeVisitor(m_sourceManager), m_symbolIndexer(buffer) {
@@ -106,6 +108,15 @@ ShallowAnalysis::ShallowAnalysis(SourceManager& sourceManager, slang::BufferID b
     for (auto& depTree : m_allTrees) {
         m_compilation->addSyntaxTree(depTree);
     }
+    if (design) {
+        std::vector<std::string_view> definitionNames;
+        for (auto* symbol : m_compilation->getDefinitions()) {
+            if (auto* definition = symbol->as_if<ast::DefinitionSymbol>())
+                definitionNames.push_back(definition->name);
+        }
+        m_activeDesign = design->createActiveDesignContext(definitionNames);
+        m_activeDesign->applyOverrides(*m_compilation);
+    }
 
     // Elaborate and index
     // - token -> symbol defs
@@ -129,6 +140,73 @@ const Diagnostics& ShallowAnalysis::getSemanticDiagnostics() {
     }
 
     return m_compilation->getSemanticDiagnostics();
+}
+
+const InterfaceConnection* ShallowAnalysis::getActiveInterfaceConnection(
+    const ast::InterfacePortSymbol& port) const {
+    return m_activeDesign ? m_activeDesign->getInterfaceConnection(port) : nullptr;
+}
+
+const ast::Symbol* ShallowAnalysis::getDesignSymbol(const ast::Symbol& shallowSymbol) const {
+    return m_activeDesign ? m_activeDesign->getDesignSymbol(shallowSymbol) : nullptr;
+}
+
+std::optional<std::string> ShallowAnalysis::getDesignInstancePathAtToken(
+    const parsing::Token* token) const {
+    if (!m_activeDesign || !token)
+        return {};
+
+    auto* syntax = syntaxes.getTokenParent(token);
+    if (!syntax)
+        return {};
+
+    const syntax::HierarchicalInstanceSyntax* instanceSyntax = nullptr;
+    if (auto* port = syntax->as_if<syntax::NamedPortConnectionSyntax>()) {
+        if (&port->name != token)
+            return {};
+
+        for (auto parent = syntax->parent; parent; parent = parent->parent) {
+            if (auto* instance = parent->as_if<syntax::HierarchicalInstanceSyntax>()) {
+                instanceSyntax = instance;
+                break;
+            }
+        }
+    }
+    else {
+        const syntax::HierarchyInstantiationSyntax* instantiation = nullptr;
+        if (auto* hierarchy = syntax->as_if<syntax::HierarchyInstantiationSyntax>()) {
+            if (&hierarchy->type == token)
+                instantiation = hierarchy;
+        }
+        else if (auto* parameter = syntax->as_if<syntax::NamedParamAssignmentSyntax>()) {
+            if (&parameter->name != token)
+                return {};
+
+            for (auto parent = syntax->parent; parent; parent = parent->parent) {
+                if (auto* hierarchy = parent->as_if<syntax::HierarchyInstantiationSyntax>()) {
+                    instantiation = hierarchy;
+                    break;
+                }
+            }
+        }
+
+        // A shared type or parameter token cannot distinguish comma-separated instances.
+        if (!instantiation || instantiation->instances.size() != 1)
+            return {};
+        instanceSyntax = instantiation->instances[0];
+    }
+
+    auto* shallowInstance = instanceSyntax ? m_symbolIndexer.getSymbol(instanceSyntax) : nullptr;
+    auto* designInstance = shallowInstance ? getDesignSymbol(*shallowInstance) : nullptr;
+    while (auto* array = designInstance ? designInstance->as_if<ast::InstanceArraySymbol>()
+                                        : nullptr) {
+        if (array->elements.empty())
+            return {};
+        designInstance = array->elements.front();
+    }
+
+    auto* instance = designInstance ? designInstance->as_if<ast::InstanceSymbol>() : nullptr;
+    return instance ? std::optional(instance->getHierarchicalPath()) : std::nullopt;
 }
 
 std::vector<lsp::DocumentSymbol> ShallowAnalysis::getDocSymbols() {
@@ -1084,6 +1162,12 @@ const slang::analysis::AnalysisManager* ShallowAnalysis::getAnalysisManager() {
 
 std::vector<const slang::analysis::ValueDriver*> ShallowAnalysis::getDrivers(
     const slang::ast::ValueSymbol& symbol) {
+    if (m_activeDesign) {
+        auto* designSymbol = getDesignSymbol(symbol);
+        if (auto* designValue = designSymbol ? designSymbol->as_if<ast::ValueSymbol>() : nullptr)
+            return m_activeDesign->getAnalysis().getDrivers(*designValue);
+    }
+
     auto* manager = getAnalysisManager();
     if (!manager) {
         return {};

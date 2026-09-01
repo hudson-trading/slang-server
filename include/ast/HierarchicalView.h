@@ -79,8 +79,8 @@ struct Instance;
 
 using HierItem_t = rfl::Variant<Var, Scope, Instance>;
 
-// TODO: Migrate the Neovim hierarchy and cells views to slang.showHierLocation and
-// slang.showModuleDefinition before removing the deprecated location fields below.
+// TODO: Migrate the Neovim hierarchy and cells views to slang.showHierLocation before removing
+// the deprecated instance location fields below.
 struct Item {
     SlangKind kind;
     std::string instName;
@@ -116,7 +116,6 @@ struct Instance {
     lsp::Location instLoc;
     std::optional<bool> fromExpansion;
     std::string declName;
-    /// @deprecated Use slang.showModuleDefinition with declName.
     lsp::Location declLoc;
     DeclKind declKind = DeclKind::Module;
     // True when the instance body has at least one member that the hierarchy view would
@@ -126,7 +125,7 @@ struct Instance {
     std::vector<HierItem_t> children;
 };
 
-// Instances View
+// Module index
 struct QualifiedInstance {
     std::string instPath;
     /// @deprecated Use slang.showHierLocation with instPath.
@@ -138,9 +137,21 @@ struct ScopeStep {
     std::vector<HierItem_t> children;
 };
 
+struct HierarchySearchItem {
+    std::string name;
+    std::string path;
+    SlangKind kind;
+    std::optional<std::string> description;
+    std::optional<std::string> containerName;
+};
+
+struct HierarchySearchResult {
+    size_t totalResults;
+    std::vector<HierarchySearchItem> matches;
+};
+
 struct InstanceSet {
     std::string declName;
-    /// @deprecated Use slang.showModuleDefinition with declName.
     lsp::Location declLoc;
     size_t instCount;
     // Will be filled if there's only one

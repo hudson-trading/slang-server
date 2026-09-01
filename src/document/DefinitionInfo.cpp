@@ -651,6 +651,26 @@ RenderedSymbolHover renderSymbolHover(const DefinitionInfo::SymbolTarget& target
     if (!label.empty())
         result.header.appendBold(label);
     renderSymbolHeader(result.header, *target.symbol);
+
+    // Show design info for iface ports
+    if (auto* ifacePort = target.renderInterfaceConnection
+                              ? target.symbol->as_if<ast::InterfacePortSymbol>()
+                              : nullptr) {
+        if (auto* activeConnection = target.analysis->getActiveInterfaceConnection(*ifacePort);
+            activeConnection && !activeConnection->sourcePath.empty()) {
+            auto* connection = activeConnection->sourcePath.back();
+            if (sm.getFullyOriginalLoc(connection->location) !=
+                sm.getFullyOriginalLoc(ifacePort->location)) {
+                result.header.appendText("Connected to ");
+                if (!appendSourceLink(result.header, connection->location, sm,
+                                      connection->getHierarchicalPath())) {
+                    result.header.appendCode(connection->getHierarchicalPath());
+                }
+                result.header.newLine();
+            }
+        }
+    }
+
     renderSymbolType(result.type, *target.symbol, sm);
     if (target.generatedSignalCount > 1) {
         result.generatedSignals.appendText("Generated signals: ")

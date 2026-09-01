@@ -71,6 +71,87 @@ describe("SlangServer", function()
    -- compile design
    vim.cmd("SlangServer setTopLevel")
 
+   it("Generic quick pick dispatches its selected value", function()
+      local client_commands = require("slang-server._lsp.clientCommands")
+      local original_select = vim.ui.select
+      local original_execute = client_commands.executeServerCommand
+      local command
+      local selected
+
+      local ok, err = pcall(function()
+         client_commands.executeServerCommand = function(selected_command, value)
+            command = selected_command
+            selected = value
+         end
+         vim.ui.select = function(items, options, on_choice)
+            assert.are.same("Pick one", options.prompt)
+            assert.are.same("second (current)", options.format_item(items[2]))
+            on_choice(items[2])
+         end
+         vim.lsp.commands["slang.quickPick"]({
+            arguments = {
+               {
+                  placeholder = "Pick one",
+                  items = {
+                     { label = "first", value = 1 },
+                     { label = "second", description = "(current)", value = 2 },
+                  },
+                  onSelectCommand = "test.callback",
+               },
+            },
+         }, { bufnr = 0 })
+      end)
+      vim.ui.select = original_select
+      client_commands.executeServerCommand = original_execute
+
+      assert(ok, err)
+      assert.are.same("test.callback", command)
+      assert.are.same(2, selected)
+   end)
+
+   it("Active instance notifications reveal an open hierarchy", function()
+      local client_commands = require("slang-server._lsp.clientCommands")
+      local navigation = require("slang-server.navigation")
+      local hierarchy = require("slang-server.navigation/hierarchy")
+      local original_open = hierarchy.open_remainder
+      local original_state = navigation.state.open
+      local revealed
+
+      local ok, err = pcall(function()
+         hierarchy.open_remainder = function(parent, root, path, from_cell)
+            revealed = { parent, root, path, from_cell }
+         end
+
+         navigation.state.open = false
+         client_commands.activeInstanceChanged(nil, { hierPath = "top.hidden" })
+         assert.is_nil(revealed)
+
+         navigation.state.open = true
+         client_commands.activeInstanceChanged(nil, { hierPath = "top.visible" })
+         assert.are.same({ nil, true, "top.visible", false }, revealed)
+      end)
+      hierarchy.open_remainder = original_open
+      navigation.state.open = original_state
+
+      assert(ok, err)
+   end)
+
+   it("Searches hierarchy members through the server API", function()
+      local result
+      require("slang-server").search_hierarchy("the_sub", function(resp)
+         result = resp
+      end)
+
+      assert(vim.wait(5000, function()
+         return result ~= nil
+      end))
+      assert.are.same(4, result.totalResults)
+      assert.is_true(#result.matches <= 100)
+      assert.is_true(vim.iter(result.matches):any(function(item)
+         return item.path == "foo.gen_loop[2].the_sub"
+      end))
+   end)
+
    it("Hierarchy no args", function()
       vim.cmd("SlangServer hierarchy")
       local lines = wait_on("Slang-server: Hierarchy")

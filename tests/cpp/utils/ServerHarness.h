@@ -84,6 +84,11 @@ public:
     void checkConeCommand(const std::string& command, const std::string& path,
                           const std::set<ExpectedConeResult>& expected);
 
+    std::optional<lsp::LSPAny> executeCommand(const lsp::ExecuteCommandParams& params,
+                                              const lsp::RequestContext& ctx = {}) {
+        return getWorkspaceExecuteCommand(params, ctx);
+    }
+
     std::shared_ptr<server::SlangDoc> getDoc(const URI& uri);
 
     // Wrapper for getModulesInFile that handles relative paths

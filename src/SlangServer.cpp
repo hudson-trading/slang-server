@@ -35,7 +35,9 @@
 #include "slang/ast/Scope.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
 #include "slang/driver/Driver.h"
+#include "slang/syntax/AllSyntax.h"
 #include "slang/syntax/SyntaxPrinter.h"
+#include "slang/syntax/SyntaxVisitor.h"
 #include "slang/text/SourceLocation.h"
 #include "slang/text/SourceManager.h"
 #include "slang/util/OS.h"
@@ -72,6 +74,7 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     registerCompletionItemResolve();
     registerDocDocumentHighlight();
 
+    registerDocCodeLens();
     registerDocInlayHint();
     registerDocReferences();
     registerDocRename();
@@ -121,20 +124,29 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
         "slang.getScope");
     registerCommand<std::string, std::vector<hier::ScopeStep>, &SlangServer::getScopes>(
         "slang.getScopes");
+    registerDesignCommand<std::string, hier::HierarchySearchResult>(
+        "slang.searchHierarchy", [](ServerCompilation& comp, const std::string& query) {
+            return comp.searchHierarchy(query);
+        });
     registerCommand<ShowHierLocationArgs, std::monostate, &SlangServer::showHierLocation>(
         "slang.showHierLocation");
-    registerCommand<ShowModuleDefinitionArgs, std::monostate, &SlangServer::showModuleDefinition>(
-        "slang.showModuleDefinition");
 
     // Terminal Links
     registerCommand<std::string, std::vector<std::string>, &SlangServer::getFilesContainingModule>(
         "slang.getFilesContainingModule");
 
-    // Instances View
+    // Hierarchy and active instance selection
     registerCommand<std::monostate, std::vector<hier::InstanceSet>,
                     &SlangServer::getScopesByModule>("slang.getScopesByModule");
     registerCommand<std::string, std::vector<hier::QualifiedInstance>,
                     &SlangServer::getInstancesOfModule>("slang.getInstancesOfModule");
+    registerCommand<std::string, bool, &SlangServer::setActiveInstance>("slang.setActiveInstance");
+    registerCommand<SlangLspClient::ActivateInstanceParams, bool, &SlangServer::activateInstance>(
+        "slang.activateInstance");
+    registerCommand<std::string, std::optional<hier::QualifiedInstance>,
+                    &SlangServer::getActiveInstance>("slang.getActiveInstance");
+    registerCommand<ActiveInstanceAtPositionArgs, std::optional<std::string>,
+                    &SlangServer::getActiveInstanceAtPosition>("slang.getActiveInstanceAtPosition");
 
     // File features
     registerCommand<ExpandMacroArgs, bool, &SlangServer::expandMacros>("slang.expandMacros");
@@ -202,6 +214,10 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
                 .documentHighlightProvider = true,
                 .documentSymbolProvider = true,
                 .codeActionProvider = true,
+                .codeLensProvider =
+                    lsp::CodeLensOptions{
+                        .resolveProvider = false,
+                    },
                 .documentLinkProvider =
                     lsp::DocumentLinkOptions{
                         .resolveProvider = false,
@@ -353,17 +369,17 @@ std::vector<hier::QualifiedInstance> SlangServer::getInstancesOfModule(
         ERROR("No compilation available, cannot get instances of module {}", moduleName);
         return {};
     }
-    auto result = m_driver->comp->getInstancesOfModule(moduleName);
-    if (result.empty()) {
+    auto instances = m_driver->comp->getInstancesOfModule(moduleName);
+    if (instances.empty()) {
         m_client.showError(fmt::format("Module {} not found", moduleName));
         return {};
     }
-    std::vector<hier::QualifiedInstance> qualifiedInstances;
-    qualifiedInstances.reserve(result.size());
-    for (const auto* inst : result) {
-        qualifiedInstances.push_back(hier::toQualifiedInstance(*inst, m_driver->sm));
+    std::vector<hier::QualifiedInstance> result;
+    result.reserve(instances.size());
+    for (const auto* inst : instances) {
+        result.push_back(hier::toQualifiedInstance(*inst, m_driver->sm));
     }
-    return qualifiedInstances;
+    return result;
 }
 
 bool SlangServer::expandMacros(ExpandMacroArgs args) {
@@ -397,12 +413,60 @@ std::vector<hier::HierItem_t> SlangServer::getScope(const std::string& hierPath)
     return m_driver->comp->getScope(hierPath);
 }
 
-std::vector<hier::ScopeStep> SlangServer::getScopes(const std::string& hierPath) {
+// Returns scopes up to the last resolvable segment of the provided hierarchical path.
+std::vector<hier::ScopeStep> SlangServer::getScopes(const std::string& hierPath,
+                                                    const lsp::RequestContext& ctx) {
     if (!m_driver->comp) {
-        ERROR("No compilation available, cannot get scopes for {}", hierPath);
+        ctx.error("No compilation available, cannot get scopes for {}", hierPath);
         return {};
     }
-    return m_driver->comp->getScopes(hierPath);
+    auto scopes = m_driver->comp->getScopes(hierPath, ctx);
+    ctx.info("Resolved {} hierarchy scopes for {}", scopes.size(), hierPath);
+    return scopes;
+}
+
+bool SlangServer::setActiveInstance(const std::string& hierPath) {
+    if (!m_driver || !m_driver->setActiveInstance(hierPath)) {
+        m_client.showError(fmt::format("Failed to set active instance {}", hierPath));
+        return false;
+    }
+    return true;
+}
+
+bool SlangServer::activateInstance(const SlangLspClient::ActivateInstanceParams& params,
+                                   const lsp::RequestContext& ctx) {
+    ctx.throwIfCancelled("before activating instance");
+    if (!setActiveInstance(params.hierPath))
+        return false;
+
+    m_client.onActiveInstanceChanged(params);
+    if (params.interactionSource == SlangLspClient::InteractionSource::codeLensGotoInstantiation) {
+        showHierLocation({.hierPath = params.hierPath, .takeFocus = true});
+    }
+    ctx.info("Activated instance {}", params.hierPath);
+    return true;
+}
+
+std::optional<hier::QualifiedInstance> SlangServer::getActiveInstance(
+    const std::string& moduleName) {
+    if (!m_driver->comp) {
+        ERROR("No compilation available, cannot get active instance for {}", moduleName);
+        return std::nullopt;
+    }
+    return m_driver->comp->getActiveInstance(moduleName);
+}
+
+std::optional<std::string> SlangServer::getActiveInstanceAtPosition(
+    const ActiveInstanceAtPositionArgs& args) {
+    if (!m_driver->comp) {
+        ERROR("No compilation available, cannot get active instance for {}", args.moduleName);
+        return std::nullopt;
+    }
+    return m_driver->comp->getActiveInstanceAtPosition(args.moduleName,
+                                                       lsp::TextDocumentPositionParams{
+                                                           .textDocument = args.textDocument,
+                                                           .position = args.position,
+                                                       });
 }
 
 std::optional<lsp::Location> SlangServer::getHierLocation(const std::string& hierPath) {
@@ -456,29 +520,6 @@ std::monostate SlangServer::showHierLocation(const ShowHierLocationArgs& args) {
         .uri = location->uri,
         .takeFocus = args.takeFocus,
         .selection = location->range,
-    });
-    return {};
-}
-
-std::monostate SlangServer::showModuleDefinition(const ShowModuleDefinitionArgs& args) {
-    if (!m_driver->comp) {
-        ERROR("No compilation available, cannot show module definition for {}", args.moduleName);
-        return {};
-    }
-    auto instances = m_driver->comp->getInstancesOfModule(args.moduleName);
-    if (instances.empty()) {
-        WARN("showModuleDefinition: module {} has no instances", args.moduleName);
-        return {};
-    }
-    auto declLoc = toLocation(instances[0]->getDefinition().location, m_driver->sm);
-    if (declLoc.uri.getPath().empty()) {
-        WARN("showModuleDefinition: module {} declaration has no source location", args.moduleName);
-        return {};
-    }
-    m_client.onShowDocument(lsp::ShowDocumentParams{
-        .uri = declLoc.uri,
-        .takeFocus = args.takeFocus,
-        .selection = declLoc.range,
     });
     return {};
 }
@@ -744,6 +785,11 @@ std::monostate SlangServer::addDefine(const std::string& macroName) {
 
 rfl::Variant<lsp::Definition, std::vector<lsp::DefinitionLink>, std::monostate> SlangServer::
     getDocDefinition(const lsp::DefinitionParams& params) {
+    if (auto instance = m_driver->getDesignInstancePathAt(params.textDocument.uri,
+                                                          params.position)) {
+        m_driver->setActiveInstance(*instance);
+    }
+
     auto info = m_driver->getDefinitionInfoAt(params.textDocument.uri, params.position);
     if (m_client.capabilities.definitionLinksSupported)
         return info ? info->getDefinitionLspLinks() : std::vector<lsp::DefinitionLink>{};
@@ -952,6 +998,90 @@ std::optional<std::vector<lsp::InlayHint>> SlangServer::getDocInlayHint(
     auto hints = doc->getAnalysis()->getInlayHints(params.range, m_config.inlayHints.get());
     INFO("Providing {} inlay hints for {}", hints.size(), doc->getWsRelativePath());
     return hints;
+}
+
+std::optional<std::vector<lsp::CodeLens>> SlangServer::getDocCodeLens(
+    const lsp::CodeLensParams& params) {
+    if (!m_driver->comp) {
+        return std::nullopt;
+    }
+    auto doc = m_driver->getDocument(params.textDocument.uri);
+    if (!doc) {
+        return std::nullopt;
+    }
+
+    std::vector<lsp::CodeLens> lenses;
+    auto& meta = doc->getSyntaxTree()->getMetadata();
+    for (const auto& [decl, _] : meta.nodeMeta) {
+        if (!decl || !decl->header) {
+            continue;
+        }
+
+        const auto& nameToken = decl->header->name;
+        auto moduleName = std::string(nameToken.valueText());
+        if (moduleName.empty()) {
+            continue;
+        }
+
+        const auto& instances = m_driver->comp->getInstancesOfModule(moduleName);
+        if (instances.empty()) {
+            continue;
+        }
+
+        // Module isn't reachable from the active build.
+        auto* activeInstance = m_driver->comp->getActiveInstanceSymbol(moduleName);
+        if (!activeInstance) {
+            continue;
+        }
+
+        std::vector<std::string> instancePaths;
+        instancePaths.reserve(instances.size());
+        for (auto* instance : instances)
+            instancePaths.push_back(instance->getHierarchicalPath());
+
+        auto range = toRange(nameToken.location(), m_driver->sm, nameToken.rawText().size());
+        lenses.push_back(lsp::CodeLens{
+            .range = range,
+            .command = m_client.makeQuickPickCommand(
+                fmt::format("{} ({})", activeInstance->getHierarchicalPath(), instances.size()),
+                fmt::format("Select active instance for {}", moduleName),
+                fmt::format("Select active instance for {}", moduleName),
+                activeInstance->getHierarchicalPath(), instancePaths, "slang.activateInstance",
+                SlangLspClient::InteractionSource::codeLensSelect),
+        });
+        if (!activeInstance->isTopLevel()) {
+            lenses.push_back(lsp::CodeLens{
+                .range = range,
+                .command = m_client.makeActivateInstanceCommand(
+                    "Go to Instantiation", "", activeInstance->getHierarchicalPath(),
+                    SlangLspClient::InteractionSource::codeLensGotoInstantiation),
+            });
+        }
+
+        auto generateVisitor = syntax::makeSyntaxVisitor(
+            [&](auto& visitor, const syntax::LoopGenerateSyntax& loop) {
+                if (auto activeLoop = m_driver->comp->getActiveGenerateLoop(moduleName, loop)) {
+                    auto range = toRange(loop.keyword.location(), m_driver->sm,
+                                         loop.keyword.rawText().size());
+                    lenses.push_back(lsp::CodeLens{
+                        .range = range,
+                        .command = m_client.makeQuickPickCommand(
+                            activeLoop->activePath, "Select active generate iteration",
+                            "Select active generate iteration", activeLoop->activePath,
+                            activeLoop->iterationPaths, "slang.activateInstance",
+                            SlangLspClient::InteractionSource::codeLensSelect),
+                    });
+                }
+                visitor.visitDefault(loop);
+            },
+            [&](auto& visitor, const syntax::ModuleDeclarationSyntax& module) {
+                if (&module == decl)
+                    visitor.visitDefault(module);
+            });
+        generateVisitor.visit(*decl);
+    }
+
+    return lenses;
 }
 
 std::optional<std::vector<lsp::Location>> SlangServer::getDocReferences(
