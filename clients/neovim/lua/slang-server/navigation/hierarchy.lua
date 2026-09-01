@@ -7,6 +7,22 @@ local util = require("slang-server.util")
 
 local M = {}
 
+local expandable_kinds = {
+   Instance = true,
+   Scope = true,
+   InstanceArray = true,
+   ScopeArray = true,
+   InterfacePort = true,
+   InterfacePortArray = true,
+   Package = true,
+}
+
+---@param kind slang-server.SlangKind
+---@return boolean
+local function is_expandable_kind(kind)
+   return expandable_kinds[kind] == true
+end
+
 ---@type slang-server.navigation.hierarchy.State
 M.state = {}
 
@@ -131,13 +147,7 @@ local function prepare_node(node, parent_node)
       local decoration = config.kinds[string.lower(node.kind)]
       local expander = " "
 
-      if
-         node.kind == "Instance"
-         or node.kind == "Scope"
-         or node.kind == "InstanceArray"
-         or node.kind == "ScopeArray"
-         or node.kind == "Package"
-      then
+      if is_expandable_kind(node.kind) then
          if node.children and not node:is_expanded() then
             expander = ""
          else
@@ -189,7 +199,7 @@ local function parse_nodes(nodes, parent_node)
    for _, node in ipairs(nodes) do
       local treeNode = {}
 
-      local sep = string.match(node.instName, "%[%d+%]") and "" or "."
+      local sep = node.instName:sub(1, 1) == "[" and "" or "."
       treeNode.path = parent_node and (parent_node.path .. sep .. node.instName) or node.instName
       treeNode._uid = parent_node and (parent_node._uid .. sep .. node.instName) or node.instName
 

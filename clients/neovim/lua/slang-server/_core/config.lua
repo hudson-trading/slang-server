@@ -16,6 +16,8 @@ local default_config = {
       instancearray = { icon = "", hl = "SlangServerInstanceArray" },
       scope = { icon = "󰅩", hl = "SlangServerScope" },
       scopearray = { icon = "󰅩", hl = "SlangServerScopeArray" },
+      interfaceport = { icon = "󰈀", hl = "SlangServerInterfacePort" },
+      interfaceportarray = { icon = "󰈀", hl = "SlangServerInterfacePortArray" },
       package = { icon = "📦", hl = "SlangServerPackage" },
       port = {
          input = { icon = "", hl = "SlangServerPortInput" },
@@ -32,6 +34,8 @@ local default_config = {
       SlangServerInstanceArray = { fg = "#efbd5d" },
       SlangServerScope = { fg = "#41a7fc" },
       SlangServerScopeArray = { fg = "#41a7fc" },
+      SlangServerInterfacePort = { fg = "#34bfd0" },
+      SlangServerInterfacePortArray = { fg = "#34bfd0" },
       SlangServerPackage = { fg = "#f48fb1" },
       SlangServerPortInput = { fg = "#8bcd5b" },
       SlangServerPortOutput = { fg = "#f65866" },

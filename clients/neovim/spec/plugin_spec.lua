@@ -359,6 +359,35 @@ describe("SlangServer", function()
       assert.are.same(expected, table.concat(lines, "\n"))
       vim.api.nvim_buf_delete(0, { force = true })
    end)
+
+   it("Renders and expands interface ports", function()
+      local ok, err = pcall(function()
+         local interface_file = vim.fn.fnamemodify("tests/interface_ports.sv", ":p")
+         vim.cmd("SlangServer setTopLevel " .. vim.fn.fnameescape(interface_file))
+         vim.cmd("SlangServer hierarchy interface_port_top.dut.bus.valid")
+
+         local lines = wait_on("Slang-server: Hierarchy")
+         local rendered = table.concat(lines, "\n")
+         assert.is_not_nil(string.find(rendered, "󰈀 bus test_bus", 1, true))
+         assert.is_not_nil(string.find(rendered, "valid logic", 1, true))
+
+         require("slang-server.navigation").on_close()
+         vim.cmd("SlangServer hierarchy interface_port_top.dut.buses[-1].valid")
+         lines = wait_on("Slang-server: Hierarchy")
+         rendered = table.concat(lines, "\n")
+         assert.is_not_nil(string.find(rendered, "󰈀 buses test_bus", 1, true))
+         assert.is_not_nil(string.find(rendered, "󰈀 [-1] test_bus", 1, true))
+         assert.is_not_nil(string.find(rendered, "valid logic", 1, true))
+      end)
+
+      local navigation = require("slang-server.navigation")
+      if navigation.state.open then
+         navigation.on_close()
+      end
+      local foo_file = vim.fn.fnamemodify("tests/foo.sv", ":p")
+      vim.cmd("SlangServer setTopLevel " .. vim.fn.fnameescape(foo_file))
+      assert(ok, err)
+   end)
 end)
 
 -- TODO (tests)

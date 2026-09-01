@@ -9,10 +9,15 @@
 
 ---@alias slang-server.SlangKind
 ---| '"Instance"'
+---| '"InstanceArray"'
 ---| '"Scope"'
+---| '"ScopeArray"'
+---| '"InterfacePort"'
+---| '"InterfacePortArray"'
 ---| '"Param"'
 ---| '"Port"'
 ---| '"Logic"'
+---| '"Package"'
 
 ---@class slang-server.lsp.Item
 ---@field kind slang-server.SlangKind
@@ -26,6 +31,7 @@
 ---@field value string
 
 ---@class slang-server.lsp.Scope : slang-server.lsp.Item
+---@field type string?
 ---@field children slang-server.lsp.Item[]
 
 ---@class slang-server.lsp.Instance : slang-server.lsp.Item
