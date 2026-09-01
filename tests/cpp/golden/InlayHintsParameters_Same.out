@@ -9,5 +9,7 @@ endmodule
 
 module top;
     logic clk;
-    fifo #(/*DEPTH:*/ 32, /*WIDTH:*/ 16) u_fifo(clk);
+    localparam int DEPTH = 32;
+    localparam int WIDTH = 16;
+    fifo #(DEPTH, WIDTH) u_fifo(clk);
 endmodule
