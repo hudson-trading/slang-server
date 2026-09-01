@@ -401,6 +401,23 @@ TEST_CASE("OpenBuildFileDoesNotOverwriteCompilationDiags") {
     }
 }
 
+TEST_CASE("OpeningSingleUnitBuildFilePreservesCompilationDiags") {
+    ServerHarness server("single_unit_build");
+
+    auto hasInstanceDiag = [](const std::vector<lsp::Diagnostic>& diagnostics) {
+        return std::ranges::any_of(diagnostics, [](const auto& diagnostic) {
+            return diagnostic.message.find("instance width differs") != std::string::npos;
+        });
+    };
+
+    for (std::string_view fileName : {"submodule.sv", "submodule_two.sv"}) {
+        auto childUri = URI::fromFile(fs::current_path() / fileName);
+        REQUIRE(hasInstanceDiag(server.client.getDiagnostics(childUri)));
+        server.openFile(std::string(fileName));
+        CHECK(hasInstanceDiag(server.client.getDiagnostics(childUri)));
+    }
+}
+
 TEST_CASE("OpenNonBuildFileGetsShallowDiags") {
     ServerHarness server("comp_repo");
     server.setBuildFile("cpu_design.f");

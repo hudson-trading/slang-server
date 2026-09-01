@@ -30,6 +30,7 @@ namespace server {
 using namespace slang;
 enum FileUpdateType {
     OPEN,
+    REOPEN,
     CHANGE,
     SAVE,
 };
@@ -40,9 +41,14 @@ enum FileUpdateType {
 /// options passed in a filelist
 class ServerDriver {
 public:
-    static std::unique_ptr<ServerDriver> create(
+    static std::unique_ptr<ServerDriver> createForExplore(
         Indexer& indexer, SlangLspClient& client, const Config& config,
-        std::vector<std::string> buildfiles = {},
+        std::optional<std::string_view> workspaceFolder = std::nullopt,
+        const ServerDriver* oldDriver = nullptr);
+
+    static std::unique_ptr<ServerDriver> createFromFileLists(
+        Indexer& indexer, SlangLspClient& client, const Config& config,
+        std::vector<std::string> buildfiles,
         std::optional<std::string_view> workspaceFolder = std::nullopt,
         const ServerDriver* oldDriver = nullptr);
     /// Mapping of URI to SlangDoc, which may hold a shallow analysis of the document
@@ -139,14 +145,9 @@ public:
     std::optional<lsp::WorkspaceEdit> getDocRename(const URI& uri, const lsp::Position& position,
                                                    std::string_view newName);
 
-    /// @brief Creates a compilation from the given URI and top module name.
-    /// @return True if the compilation was created successfully
-    bool createCompilation(std::shared_ptr<SlangDoc> doc, std::string_view top);
-
-    /// @brief Creates a compilation from the given syntax trees, typically when the .f already
-    /// specifies the top level(s). Does not use the index.
-    /// @return True if the compilation was created successfully
-    bool createCompilation();
+    static std::unique_ptr<ServerDriver> createFromTop(
+        Indexer& indexer, SlangLspClient& client, const Config& config, const URI& topUri,
+        std::optional<std::string_view> workspaceFolder, const ServerDriver* oldDriver);
 
     /// @brief Constructs a new ServerDriver instance by creating and configuring a driver
     /// internally
@@ -188,6 +189,13 @@ private:
 
     /// Set of URIs for documents that are explicitly opened by the client
     flat_hash_set<URI> m_openDocs;
+
+    /// Every source file covered by the build, including secondary single-unit buffers.
+    flat_hash_set<URI> m_buildSourceUris;
+
+    void copyOpenDocumentsFrom(const ServerDriver* oldDriver);
+
+    void publishCompilationDiagnostics(const std::vector<std::shared_ptr<SlangDoc>>& documents);
 
     /// Helper to add member references to the references vector
     void addMemberReferences(std::vector<lsp::Location>& references,
