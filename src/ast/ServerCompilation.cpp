@@ -20,11 +20,145 @@
 #include <tuple>
 
 #include "slang/ast/Compilation.h"
+#include "slang/ast/symbols/PortSymbols.h"
+#include "slang/syntax/AllSyntax.h"
 #include "slang/text/SourceManager.h"
+
+namespace fs = std::filesystem;
 
 namespace server {
 
 namespace {
+
+// Among instances of the same module, pick the one closest to the root, breaking ties by
+// source location, then by hierarchical path. Used as a deterministic default "active"
+// instance when the user hasn't picked one.
+const slang::ast::InstanceSymbol* choosePreferredInstance(
+    const std::vector<const slang::ast::InstanceSymbol*>& instances) {
+    auto depth = [](const slang::ast::InstanceSymbol& i) {
+        auto p = i.getHierarchicalPath();
+        return std::count(p.begin(), p.end(), '.');
+    };
+    auto sortLoc = [](const slang::ast::InstanceSymbol& i) {
+        auto* syntax = i.getSyntax();
+        return syntax ? syntax->sourceRange().start() : i.location;
+    };
+
+    auto less = [&](const slang::ast::InstanceSymbol* a, const slang::ast::InstanceSymbol* b) {
+        if (auto da = depth(*a), db = depth(*b); da != db) {
+            return da < db;
+        }
+        auto la = sortLoc(*a), lb = sortLoc(*b);
+        if (la.valid() != lb.valid()) {
+            return la.valid();
+        }
+        if (la.valid() && la != lb) {
+            return la < lb;
+        }
+        return a->getHierarchicalPath() < b->getHierarchicalPath();
+    };
+
+    const slang::ast::InstanceSymbol* preferred = nullptr;
+    for (const auto* inst : instances) {
+        if (!preferred || less(inst, preferred)) {
+            preferred = inst;
+        }
+    }
+    return preferred;
+}
+
+void setActiveInterfaceInstance(
+    const slang::ast::Symbol& symbol,
+    std::unordered_map<std::string, hier::QualifiedInstance>& activeInstancesByModule,
+    const SourceManager& sourceManager) {
+    if (auto inst = symbol.as_if<slang::ast::InstanceSymbol>()) {
+        activeInstancesByModule[std::string(inst->getDefinition().name)] =
+            hier::toQualifiedInstance(*inst, sourceManager);
+        return;
+    }
+
+    if (auto arr = symbol.as_if<slang::ast::InstanceArraySymbol>()) {
+        for (const auto* element : arr->elements) {
+            if (element) {
+                setActiveInterfaceInstance(*element, activeInstancesByModule, sourceManager);
+            }
+        }
+    }
+    else if (auto* port = symbol.as_if<slang::ast::InterfacePortSymbol>()) {
+        auto connection = resolveInterfaceConnection(*port);
+        if (connection.resolvedEndpoint && connection.resolvedEndpoint != &symbol)
+            setActiveInterfaceInstance(*connection.resolvedEndpoint, activeInstancesByModule,
+                                       sourceManager);
+    }
+}
+
+void setConnectedInterfaceInstances(
+    const slang::ast::InstanceSymbol& inst,
+    std::unordered_map<std::string, hier::QualifiedInstance>& activeInstancesByModule,
+    const SourceManager& sourceManager) {
+    for (const auto* conn : inst.getPortConnections()) {
+        if (!conn || conn->port.kind != slang::ast::SymbolKind::InterfacePort) {
+            continue;
+        }
+
+        auto [connectedSym, _modport] = conn->getIfaceConn();
+        if (!connectedSym) {
+            continue;
+        }
+
+        setActiveInterfaceInstance(*connectedSym, activeInstancesByModule, sourceManager);
+    }
+}
+
+const slang::ast::InstanceSymbol* getEnclosingInstance(const slang::ast::Symbol& symbol) {
+    for (auto* scope = symbol.getParentScope(); scope; scope = scope->asSymbol().getParentScope()) {
+        auto& scopeSymbol = scope->asSymbol();
+        if (auto* body = scopeSymbol.as_if<slang::ast::InstanceBodySymbol>()) {
+            return body->parentInstance;
+        }
+    }
+    return nullptr;
+}
+
+void setActiveInstanceChain(
+    const slang::ast::InstanceSymbol& target,
+    std::unordered_map<std::string, hier::QualifiedInstance>& activeInstancesByModule,
+    const SourceManager& sourceManager) {
+    std::vector<const slang::ast::InstanceSymbol*> chain;
+    auto* current = &target;
+    while (current) {
+        chain.push_back(current);
+        current = getEnclosingInstance(*current);
+    }
+
+    for (auto* instance : chain | std::views::reverse) {
+        setConnectedInterfaceInstances(*instance, activeInstancesByModule, sourceManager);
+        // Let deeper selections override interface connections discovered on their ancestors.
+        activeInstancesByModule[std::string(instance->getDefinition().name)] =
+            hier::toQualifiedInstance(*instance, sourceManager);
+    }
+}
+
+void setActiveGenerateScopes(
+    const slang::ast::Symbol& symbol,
+    std::unordered_map<std::string, std::string>& activeGenerateScopesByArray) {
+    auto setActiveGenerateScope = [&](const slang::ast::GenerateBlockSymbol& block) {
+        auto* parentScope = block.getParentScope();
+        auto* array = parentScope
+                          ? parentScope->asSymbol().as_if<slang::ast::GenerateBlockArraySymbol>()
+                          : nullptr;
+        if (array) {
+            activeGenerateScopesByArray[array->getHierarchicalPath()] = block.getHierarchicalPath();
+        }
+    };
+
+    if (auto* block = symbol.as_if<slang::ast::GenerateBlockSymbol>())
+        setActiveGenerateScope(*block);
+    for (auto* scope = symbol.getParentScope(); scope; scope = scope->asSymbol().getParentScope()) {
+        if (auto* block = scope->asSymbol().as_if<slang::ast::GenerateBlockSymbol>())
+            setActiveGenerateScope(*block);
+    }
+}
 
 const slang::ast::Symbol* lookupHierSymbol(slang::ast::Compilation& compilation,
                                            std::string_view path) {
@@ -88,6 +222,66 @@ bool isHierarchicalScope(const slang::ast::Symbol& sym) {
         default:
             return false;
     }
+}
+
+void collectGenerateArrays(const slang::ast::Scope& scope,
+                           const slang::syntax::LoopGenerateSyntax& loop,
+                           std::vector<const slang::ast::GenerateBlockArraySymbol*>& result) {
+    for (auto& member : scope.members()) {
+        if (auto* array = member.as_if<slang::ast::GenerateBlockArraySymbol>()) {
+            if (array->getSyntax() == &loop)
+                result.push_back(array);
+            for (auto* entry : array->entries)
+                collectGenerateArrays(*entry, loop, result);
+        }
+        else if (auto* block = member.as_if<slang::ast::GenerateBlockSymbol>()) {
+            collectGenerateArrays(*block, loop, result);
+        }
+    }
+}
+
+std::optional<size_t> getActiveAncestorCount(
+    const slang::ast::GenerateBlockArraySymbol& array,
+    const std::unordered_map<std::string, std::string>& activeGenerateScopesByArray) {
+    size_t count = 0;
+    for (auto* scope = array.getParentScope(); scope; scope = scope->asSymbol().getParentScope()) {
+        auto* block = scope->asSymbol().as_if<slang::ast::GenerateBlockSymbol>();
+        if (!block)
+            continue;
+
+        auto* parentScope = block->getParentScope();
+        auto* parentArray =
+            parentScope ? parentScope->asSymbol().as_if<slang::ast::GenerateBlockArraySymbol>()
+                        : nullptr;
+        if (!parentArray)
+            continue;
+
+        auto active = activeGenerateScopesByArray.find(parentArray->getHierarchicalPath());
+        if (active == activeGenerateScopesByArray.end())
+            continue;
+        if (active->second != block->getHierarchicalPath())
+            return std::nullopt;
+        count++;
+    }
+    return count;
+}
+
+const slang::ast::GenerateBlockArraySymbol* chooseGenerateArray(
+    const std::vector<const slang::ast::GenerateBlockArraySymbol*>& arrays,
+    const std::unordered_map<std::string, std::string>& activeGenerateScopesByArray) {
+    const slang::ast::GenerateBlockArraySymbol* best = nullptr;
+    std::tuple<int, int, std::string> bestKey;
+    for (auto* array : arrays) {
+        auto activeAncestorCount = getActiveAncestorCount(*array, activeGenerateScopesByArray);
+        auto key = std::tuple(activeAncestorCount ? 0 : 1,
+                              -static_cast<int>(activeAncestorCount.value_or(0)),
+                              array->getHierarchicalPath());
+        if (!best || key < bestKey) {
+            best = array;
+            bestKey = std::move(key);
+        }
+    }
+    return best;
 }
 
 std::vector<hier::HierItem_t> getChildrenForScopeSymbol(const slang::ast::Symbol& sym,
@@ -212,6 +406,7 @@ std::optional<lsp::ShowDocumentParams> makeShowDocumentParams(const SourceLocati
 
 } // namespace
 
+// Resolve through the owning document so edits use current locations without rebuilding others.
 const slang::ast::Symbol* ServerCompilation::toShallowSymbol(
     const slang::ast::Symbol& symbol) const {
     using slang::ast::SymbolKind;
@@ -269,8 +464,13 @@ const slang::ast::Symbol* ServerCompilation::toShallowSymbol(
 ServerCompilation::ServerCompilation(std::vector<std::shared_ptr<SlangDoc>> documents, Bag options,
                                      SourceManager& sourceManager, lsp::LspClient& client,
                                      std::optional<std::string> top) :
-    m_documents(std::move(documents)), m_options(std::move(options)), m_top(std::move(top)),
-    m_sourceManager(sourceManager), m_client(client) {
+    m_options(std::move(options)), m_top(std::move(top)), m_sourceManager(sourceManager),
+    m_client(client) {
+
+    m_documents.reserve(documents.size());
+    for (auto& doc : documents) {
+        m_documents.emplace(doc->getPath(), std::move(doc));
+    }
 
     if (m_top) {
         m_options.insertOrGet<slang::ast::CompilationOptions>().topModules = {*m_top};
@@ -281,7 +481,7 @@ ServerCompilation::ServerCompilation(std::vector<std::shared_ptr<SlangDoc>> docu
 
 void ServerCompilation::indexModuleDocs() {
     m_moduleToDoc.clear();
-    for (const auto& doc : m_documents) {
+    for (const auto& [path, doc] : m_documents) {
         auto tree = doc->getSyntaxTree();
         if (!tree) {
             continue;
@@ -293,10 +493,11 @@ void ServerCompilation::indexModuleDocs() {
 }
 
 void ServerCompilation::refresh() {
-    m_analysis = std::make_unique<ServerCompilationAnalysis>(m_documents, m_options,
+    m_analysis = std::make_shared<ServerCompilationAnalysis>(m_documents, m_options,
                                                              m_sourceManager);
     m_hierarchySearchItems.clear();
     m_hierarchySearchIndexed = false;
+    syncActiveInstances();
 }
 
 std::vector<hier::InstanceSet> ServerCompilation::getScopesByModule() {
@@ -312,8 +513,8 @@ std::vector<hier::InstanceSet> ServerCompilation::getScopesByModule() {
             .declLoc = toLocation(definition.getSyntax()->sourceRange(), m_sourceManager),
             .instCount = instances.size(),
         };
-        if (instances.size() == 1) {
-            instSet.inst = hier::toQualifiedInstance(*instances[0], m_sourceManager);
+        if (auto activeInstance = getActiveInstanceSelection(instSet.declName)) {
+            instSet.inst = std::move(*activeInstance);
         }
         result.push_back(instSet);
     }
@@ -328,6 +529,187 @@ const std::vector<const slang::ast::InstanceSymbol*>& ServerCompilation::getInst
         return empty;
     }
     return it->second;
+}
+
+std::optional<hier::QualifiedInstance> ServerCompilation::getActiveInstanceSelection(
+    std::string_view moduleName) const {
+    auto activeIt = m_activeInstancesByModule.find(std::string(moduleName));
+    if (activeIt == m_activeInstancesByModule.end()) {
+        return std::nullopt;
+    }
+    return activeIt->second;
+}
+
+const slang::ast::InstanceSymbol* ServerCompilation::getActiveInstanceSymbol(
+    std::string_view moduleName) const {
+    auto it = m_analysis->instances.moduleToInstances.find(std::string(moduleName));
+    if (it == m_analysis->instances.moduleToInstances.end()) {
+        return nullptr;
+    }
+
+    if (auto activeInstance = getActiveInstanceSelection(moduleName)) {
+        for (const auto* instance : it->second) {
+            if (instance->getHierarchicalPath() == activeInstance->instPath)
+                return instance;
+        }
+    }
+
+    if (!it->second.empty()) {
+        return choosePreferredInstance(it->second);
+    }
+
+    return nullptr;
+}
+
+ActiveDesignContext ServerCompilation::createActiveDesignContext(
+    std::span<const std::string_view> definitionNames) const {
+    ActiveDesignContext result(m_analysis);
+    for (auto name : definitionNames) {
+        if (auto* instance = getActiveInstanceSymbol(name))
+            result.bindInstance(*instance);
+    }
+    return result;
+}
+
+std::optional<ActiveGenerateLoop> ServerCompilation::getActiveGenerateLoop(
+    std::string_view moduleName, const syntax::LoopGenerateSyntax& loop) const {
+    auto* activeInstance = getActiveInstanceSymbol(moduleName);
+    if (!activeInstance)
+        return std::nullopt;
+
+    std::vector<const ast::GenerateBlockArraySymbol*> arrays;
+    collectGenerateArrays(activeInstance->body, loop, arrays);
+    if (arrays.empty())
+        return std::nullopt;
+
+    auto* array = chooseGenerateArray(arrays, m_activeGenerateScopesByArray);
+    if (!array || array->entries.empty())
+        return std::nullopt;
+
+    ActiveGenerateLoop result;
+    result.iterationPaths.reserve(array->entries.size());
+    auto selected = m_activeGenerateScopesByArray.find(array->getHierarchicalPath());
+    for (auto* entry : array->entries) {
+        auto path = entry->getHierarchicalPath();
+        result.iterationPaths.push_back(path);
+        if (selected != m_activeGenerateScopesByArray.end() && selected->second == path)
+            result.activePath = path;
+    }
+    if (result.activePath.empty())
+        result.activePath = result.iterationPaths.front();
+    return result;
+}
+
+std::optional<std::string> ServerCompilation::getPreferredSymbolPath(std::string_view name) const {
+    auto& compilation = m_analysis->compilation;
+    auto& root = compilation.getRoot();
+
+    if (auto def = compilation.tryGetDefinition(name, root); def.definition) {
+        auto loc = m_sourceManager.getFullyOriginalLoc(def.definition->location);
+        auto fullPath = m_sourceManager.getFullPath(loc.buffer());
+        if (!fullPath.empty()) {
+            return fullPath.string();
+        }
+    }
+
+    if (auto pkg = compilation.getPackage(name)) {
+        auto syntax = pkg->getSyntax();
+        if (syntax) {
+            auto fullPath = m_sourceManager.getFullPath(
+                m_sourceManager.getFullyOriginalLoc(syntax->sourceRange().start()).buffer());
+            if (!fullPath.empty()) {
+                return fullPath.string();
+            }
+        }
+    }
+
+    return std::nullopt;
+}
+
+bool ServerCompilation::setActiveInstance(const std::string& hierPath) {
+    auto* sym = lookupHierSymbol(m_analysis->compilation, hierPath);
+    if (!sym) {
+        return false;
+    }
+
+    setActiveGenerateScopes(*sym, m_activeGenerateScopesByArray);
+
+    if (auto* port = sym->as_if<ast::InterfacePortSymbol>()) {
+        if (auto* enclosing = getEnclosingInstance(*port)) {
+            setActiveInstanceChain(*enclosing, m_activeInstancesByModule, m_sourceManager);
+        }
+        auto connection = resolveInterfaceConnection(*port);
+        for (auto* connected : connection.sourcePath) {
+            setActiveGenerateScopes(*connected, m_activeGenerateScopesByArray);
+            if (auto* connectedPort = connected->as_if<ast::InterfacePortSymbol>()) {
+                if (auto* enclosing = getEnclosingInstance(*connectedPort)) {
+                    setActiveInstanceChain(*enclosing, m_activeInstancesByModule, m_sourceManager);
+                }
+            }
+        }
+        if (connection.resolvedEndpoint &&
+            std::ranges::find(connection.sourcePath, connection.resolvedEndpoint) ==
+                connection.sourcePath.end()) {
+            setActiveGenerateScopes(*connection.resolvedEndpoint, m_activeGenerateScopesByArray);
+        }
+        sym = connection.resolvedEndpoint;
+    }
+
+    if (auto* target = sym ? sym->as_if<ast::InstanceSymbol>() : nullptr) {
+        setActiveInstanceChain(*target, m_activeInstancesByModule, m_sourceManager);
+        return true;
+    }
+
+    if (!sym)
+        return false;
+    if (auto* enclosing = getEnclosingInstance(*sym)) {
+        setActiveInstanceChain(*enclosing, m_activeInstancesByModule, m_sourceManager);
+        return true;
+    }
+    return false;
+}
+
+std::optional<hier::QualifiedInstance> ServerCompilation::getActiveInstance(
+    const std::string& moduleName) {
+    auto& byModule = m_analysis->instances.moduleToInstances;
+    if (byModule.find(moduleName) == byModule.end()) {
+        return std::nullopt;
+    }
+    // Prefer the stored path verbatim, even if the latest recompile dropped the
+    // corresponding instance symbol; otherwise fall back to the preferred instance.
+    if (auto activeInstance = getActiveInstanceSelection(moduleName)) {
+        return activeInstance;
+    }
+    if (auto* inst = getActiveInstanceSymbol(moduleName)) {
+        return hier::toQualifiedInstance(*inst, m_sourceManager);
+    }
+    return std::nullopt;
+}
+
+void ServerCompilation::syncActiveInstances() {
+    std::unordered_map<std::string, hier::QualifiedInstance> nextActiveInstances;
+    for (const auto& [moduleName, instances] : m_analysis->instances.moduleToInstances) {
+        if (instances.empty()) {
+            continue;
+        }
+
+        if (auto activeInstance = getActiveInstanceSelection(moduleName)) {
+            auto stillExists = std::ranges::any_of(instances, [&](const auto* instance) {
+                return instance->getHierarchicalPath() == activeInstance->instPath;
+            });
+            if (stillExists) {
+                nextActiveInstances[moduleName] = std::move(*activeInstance);
+                continue;
+            }
+        }
+
+        if (instances.size() == 1) {
+            nextActiveInstances[moduleName] = hier::toQualifiedInstance(*instances[0],
+                                                                        m_sourceManager);
+        }
+    }
+
+    m_activeInstancesByModule = std::move(nextActiveInstances);
 }
 
 std::vector<hier::HierItem_t> ServerCompilation::getScope(const std::string& hierPath) {
@@ -523,7 +905,7 @@ std::optional<lsp::Location> ServerCompilation::getHierLocation(const std::strin
     // Edit fallback: the full compilation is stale (only refreshed on save). A signal
     // typed since the last build won't resolve in the full comp, so split the path at
     // the deepest dot-segment that still resolves to an instance and look up the
-    // remainder against that module's shallow compilation (which rebuilds per-edit).
+    // remainder against that module's *shallow* compilation (which rebuilds per-edit).
     if (!sym) {
         for (auto dot = hierPath.rfind('.'); dot != std::string::npos;
              dot = hierPath.rfind('.', dot - 1)) {
@@ -542,17 +924,16 @@ std::optional<lsp::Location> ServerCompilation::getHierLocation(const std::strin
             if (!freshDef) {
                 break;
             }
-
+            // Build a path rooted at the module name in its own shallow comp:
+            //   "<moduleName>.<remainder>"
             std::string remainder = hierPath.substr(dot + 1);
             auto modulePath = fmt::format("{}.{}", freshDef->name, remainder);
-            auto fullPath = m_sourceManager.getFullPath(freshDef->location.buffer()).string();
-            auto docIt = std::ranges::find_if(m_documents, [&](const auto& doc) {
-                return doc->getPath() == fullPath;
-            });
-            if (docIt == m_documents.end()) {
+            auto it = m_documents.find(
+                m_sourceManager.getFullPath(freshDef->location.buffer()).string());
+            if (it == m_documents.end()) {
                 break;
             }
-            auto& shallowComp = *(*docIt)->getAnalysis()->getCompilation();
+            auto& shallowComp = *it->second->getAnalysis()->getCompilation();
             sym = lookupHierSymbol(shallowComp, modulePath);
             break;
         }
@@ -569,6 +950,8 @@ std::optional<lsp::Location> ServerCompilation::getHierLocation(const std::strin
         sym = freshSym;
     }
 
+    // Instances: prefer the instantiation site, fall back to the definition.
+    std::optional<lsp::ShowDocumentParams> params;
     if (auto* inst = sym->as_if<slang::ast::InstanceSymbol>()) {
         auto* syntax = inst->getSyntax();
         if (!syntax) {
@@ -577,19 +960,21 @@ std::optional<lsp::Location> ServerCompilation::getHierLocation(const std::strin
         if (!syntax) {
             return std::nullopt;
         }
-        auto params = makeShowDocumentParams(syntax->sourceRange(), m_sourceManager);
+        params = makeShowDocumentParams(syntax->sourceRange(), m_sourceManager);
+    }
+    else {
+        // Non-instance: try .location first. Interface ports and other parameterized
+        // symbols often have synthesized locations though, so fall back to the syntax
+        // range when location-based fails (makeShowDocumentParams already walks
+        // macro expansions / fully-original locs for both paths).
+        params = makeShowDocumentParams(sym->location, sym->name.length(), m_sourceManager);
         if (!params || !params->selection) {
-            return std::nullopt;
+            if (auto* syntax = sym->getSyntax()) {
+                params = makeShowDocumentParams(syntax->sourceRange(), m_sourceManager);
+            }
         }
-        return lsp::Location{.uri = params->uri, .range = *params->selection};
     }
 
-    auto params = makeShowDocumentParams(sym->location, sym->name.length(), m_sourceManager);
-    if (!params || !params->selection) {
-        if (auto* syntax = sym->getSyntax()) {
-            params = makeShowDocumentParams(syntax->sourceRange(), m_sourceManager);
-        }
-    }
     if (!params || !params->selection) {
         return std::nullopt;
     }
@@ -598,18 +983,13 @@ std::optional<lsp::Location> ServerCompilation::getHierLocation(const std::strin
 
 std::vector<std::string> ServerCompilation::getInstances(
     const lsp::TextDocumentPositionParams& params) {
-    std::shared_ptr<SlangDoc> doc;
-    // NOCOMMIT -- be better, index by URI
-    for (const auto& document : m_documents) {
-        if (document->getPath() == params.textDocument.uri.getPath()) {
-            doc = document;
-            break;
-        }
-    }
-    if (!doc) {
-        ERROR("Unknown doc: {}", params.textDocument.uri.getPath());
+    auto path = std::string(params.textDocument.uri.getPath());
+    auto it = m_documents.find(path);
+    if (it == m_documents.end()) {
+        ERROR("Unknown doc: {}", path);
         return {};
     }
+    auto& doc = it->second;
     auto location = toSourceLocation(doc->getBuffer(), params.position, m_sourceManager);
     if (location) {
         inst::InstanceVisitor visitor(*location);
