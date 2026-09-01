@@ -770,7 +770,7 @@ module NoDefaults #(
 
 
     if (gen_branch) begin : gen_branch_block
-        ^^^^^^^^^^ Ref -> **Parameter** `gen_branch` in `NoDefaults`  \n\Type: `bit`  \n\Value: `1'b0`  \n\\n\\n\---\n\\n\`parameter bit gen_branch = 0`
+        ^^^^^^^^^^ Ref -> **Parameter** `gen_branch` in `NoDefaults`  \n\Type: `bit`  \n\Value: `0`  \n\\n\\n\---\n\\n\`parameter bit gen_branch = 0`
                             ^^^^^^^^^^^^^^^^ Sym gen_branch_block : GenerateBlock
 
         Sub #(

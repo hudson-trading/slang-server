@@ -167,6 +167,21 @@ function M.get_node_id(node)
    return node._uid
 end
 
+---@param hier_path string
+---@param on_success fun()?
+function M.set_active_instance(hier_path, on_success)
+   local source = M.state.sv_buf
+   if not source then
+      vim.notify("No SV buffer", vim.log.levels.ERROR)
+      return
+   end
+
+   client.setActiveInstance(source.bufnr, {
+      on_success = on_success or function() end,
+      on_failure = handlers.defaultOnFailure,
+   }, { hierPath = hier_path })
+end
+
 ---Focus the most recently used source window and return its buffer.
 ---@return integer?
 function M.focus_source()

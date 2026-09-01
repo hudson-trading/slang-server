@@ -15,6 +15,7 @@
 #include "slang/ast/symbols/CompilationUnitSymbols.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
 #include "slang/ast/symbols/MemberSymbols.h"
+#include "slang/ast/symbols/ParameterSymbols.h"
 #include "slang/ast/symbols/PortSymbols.h"
 #include "slang/syntax/AllSyntax.h"
 #include "slang/syntax/SyntaxKind.h"
@@ -39,9 +40,34 @@ InlayHintCollector::InlayHintCollector(const ShallowAnalysis& analysis, lsp::Ran
                                        const Config::InlayHints& config) :
     m_analysis(analysis), m_range(range), m_portTypes(config.portTypes.value()),
     m_assignmentPatternTypes(config.assignmentPatternTypes.value()),
+    m_activeParameterValues(config.activeParameterValues.value()),
     m_orderedInstanceNames(config.orderedInstanceNames.value()),
     m_wildcardNames(config.wildcardNames.value()), m_funcArgNames(config.funcArgNames.value()),
     m_macroArgNames(config.macroArgNames.value()) {
+}
+
+void InlayHintCollector::handle(const ParameterDeclarationSyntax& syntax) {
+    if (!m_activeParameterValues)
+        return;
+
+    for (auto* declarator : syntax.declarators) {
+        auto* shallowSymbol = m_analysis.getSymbolAtToken(&declarator->name);
+        auto* designSymbol = shallowSymbol ? m_analysis.getDesignSymbol(*shallowSymbol) : nullptr;
+        auto* parameter = designSymbol ? designSymbol->as_if<ast::ParameterSymbol>() : nullptr;
+        if (!parameter)
+            continue;
+
+        const auto& value = parameter->getValue();
+        if (value.bad())
+            continue;
+
+        result.push_back(lsp::InlayHint{
+            .position = toPosition(declarator->name.range().end(), m_analysis.m_sourceManager),
+            .label = formatConstantValue(value),
+            .kind = lsp::InlayHintKind::Parameter,
+            .paddingLeft = true,
+        });
+    }
 }
 
 void InlayHintCollector::handle(const HierarchyInstantiationSyntax& syntax) {
@@ -439,6 +465,9 @@ void InlayHintCollector::collectHints() {
 
     for (auto it = start; it != end; ++it) {
         switch (it->second->kind) {
+            case syntax::SyntaxKind::ParameterDeclaration:
+                handle(it->second->as<ParameterDeclarationSyntax>());
+                break;
             case syntax::SyntaxKind::HierarchyInstantiation:
                 handle(it->second->as<HierarchyInstantiationSyntax>());
                 break;

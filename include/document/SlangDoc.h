@@ -99,6 +99,11 @@ public:
     /// Returns a shared_ptr so callers can hold the analysis alive independently of this document.
     std::shared_ptr<ShallowAnalysis> getAnalysis(const lsp::RequestContext& ctx = {});
 
+    /// @brief Drop the cached analysis so the next getAnalysis() rebuilds it.
+    /// Used when an external change (e.g. active-instance selection) means cached
+    /// goto/hover results must be recomputed.
+    void invalidateAnalysis() { m_analysis.reset(); }
+
     ////////////////////////////////////////////////
     /// Indexed Syntax Tree Methods
     ////////////////////////////////////////////////

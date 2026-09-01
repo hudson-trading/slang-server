@@ -9,6 +9,8 @@ Neovim supports all standard [LSP](https://microsoft.github.io/language-server-p
 This plugin is for the following features which extend the standard LSP interface.
 More information on plugin features can be [found here](https://hudson-trading.github.io/slang-server/features/hdl/neovim/).
 
+The hierarchy and Cells views can select an active elaborated instance for each module or interface. That selection drives instance-specific hovers and inlay hints, and stays synchronized with CodeLens and Go to Definition navigation.
+
 Hierarchy search is also available to Neovim integrations without transferring the full design:
 
 ```lua
@@ -19,8 +21,13 @@ end)
 
 The server performs the fuzzy match and returns at most 100 entries per query.
 
+Active-instance selection uses standard LSP code lenses. To display and run
+these lenses, configure Neovim as described in the
+[Code lenses documentation](https://hudson-trading.github.io/slang-server/start/installing/#code-lenses).
+
 ## Requirements
 
+* Neovim 0.10.0 or newer
 * `slang-server` configured as a Neovim language server
 * [Nerd Font](https://www.nerdfonts.com/) is recommended
 

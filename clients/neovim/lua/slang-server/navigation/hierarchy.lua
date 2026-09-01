@@ -208,7 +208,9 @@ local function map_keys(split, tree)
    navigation.add_mapping(mappings, keys.jump, {
          impl = function(node)
             if node and node.path then
-               navigation.show_hier_location(node.path)
+               navigation.set_active_instance(node.path, function()
+                  navigation.show_hier_location(node.path)
+               end)
             end
          end,
          opts = { noremap = true },

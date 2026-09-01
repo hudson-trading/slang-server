@@ -31,7 +31,7 @@ Intuitive completions for module instances and macros, as well as scope members 
 
 ![Completions](https://github.com/hudson-trading/slang-server/blob/main/docs/assets/images/completions.gif?raw=true)
 
-HDL-specific features that allow you to easily set a filelist or top level for a design, browse the elaborated hierarchy, and interact with waveform viewers.
+HDL-specific features that allow you to set a filelist or top level, browse the elaborated hierarchy, select the active instance of each module, inspect instance-specific values, and interact with waveform viewers.
 
 ![HDL Features](https://github.com/hudson-trading/slang-server/blob/main/docs/assets/images/hdl.gif?raw=true)
 

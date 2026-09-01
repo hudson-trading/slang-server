@@ -74,6 +74,7 @@ struct DefinitionInfo {
         std::vector<SyntaxTarget> syntaxes;
         const slang::ast::Symbol* symbol;
         std::shared_ptr<ShallowAnalysis> analysis;
+        bool renderInterfaceConnection = true;
         bool renderInputPortDriver = false;
         size_t generatedSignalCount = 1;
 
@@ -81,6 +82,7 @@ struct DefinitionInfo {
 
         bool operator==(const SymbolTarget& other) const {
             return syntaxes == other.syntaxes && symbol == other.symbol &&
+                   renderInterfaceConnection == other.renderInterfaceConnection &&
                    renderInputPortDriver == other.renderInputPortDriver &&
                    generatedSignalCount == other.generatedSignalCount;
         }

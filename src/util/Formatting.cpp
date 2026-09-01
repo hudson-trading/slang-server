@@ -623,6 +623,12 @@ bool isValidUtf8(std::string_view s) {
 }
 
 std::string formatConstantValue(const ConstantValue& value) {
+    if (value.isInteger()) {
+        const auto& integer = value.integer();
+        if (integer.getBitWidth() == 1 && !integer.hasUnknown())
+            return value.isTrue() ? "1" : "0";
+    }
+
     if (value.isString()) {
         const auto& str = value.str();
         if (isValidUtf8(str)) {
@@ -634,7 +640,7 @@ std::string formatConstantValue(const ConstantValue& value) {
             return escapeInvalidUtf8(str);
         }
     }
-    // For non-string values, use default toString
+    // For other values, use default toString
     return value.toString();
 }
 

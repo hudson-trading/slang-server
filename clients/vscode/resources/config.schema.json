@@ -190,6 +190,10 @@
           "description": "Hints for inferred assignment pattern types",
           "type": "boolean"
         },
+        "activeParameterValues": {
+          "description": "Hints for active instance parameter and localparam values",
+          "type": "boolean"
+        },
         "orderedInstanceNames": {
           "description": "Hints for names of ordered ports and params",
           "type": "boolean"

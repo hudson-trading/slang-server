@@ -96,6 +96,11 @@ public:
 
     std::shared_ptr<SlangDoc> getDocument(const URI& uri);
 
+    /// Record the active instance for the module reached by `instPath`, then invalidate
+    /// every open document's cached analysis so subsequent hovers/gotos see the new
+    /// selection. Refreshes client-side code lenses and inlay hints.
+    bool setActiveInstance(std::string_view hierPath);
+
     std::vector<std::shared_ptr<syntax::SyntaxTree>> getDependentTrees(
         std::shared_ptr<syntax::SyntaxTree> tree);
 
@@ -108,6 +113,10 @@ public:
     /// @return Optional definition information
     std::optional<DefinitionInfo> getDefinitionInfoAt(const URI& uri,
                                                       const lsp::Position& position);
+
+    /// Return the concrete full-design instance referenced by an instantiation token.
+    std::optional<std::string> getDesignInstancePathAt(const URI& uri,
+                                                       const lsp::Position& position);
 
     /// @brief Gets hover information for a symbol at an LSP position
     /// @param uri The URI of the document
@@ -177,6 +186,9 @@ private:
 
     /// Parse config flags and build files, load sources, create documents
     void parseAndLoadSources(const std::vector<std::string>& buildfiles);
+
+    /// Drop analysis state derived from the active design and refresh client-side annotations.
+    void invalidateAnalysesAndRefreshClient();
 
     std::optional<DefinitionInfo> getMacroDefinitionInfo(const ShallowAnalysis& analysis,
                                                          const parsing::Token& token,

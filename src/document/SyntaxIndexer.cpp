@@ -59,6 +59,12 @@ void SyntaxIndexer::visit(const slang::syntax::SyntaxNode& node) {
             collectedHints.emplace(static_cast<uint32_t>(node.getFirstToken().location().offset()),
                                    &node);
             break;
+        case syntax::SyntaxKind::ParameterDeclaration:
+            if (node.getFirstToken().location().buffer() == m_buffer) {
+                collectedHints.emplace(
+                    static_cast<uint32_t>(node.getFirstToken().location().offset()), &node);
+            }
+            break;
         default:
             break;
     }

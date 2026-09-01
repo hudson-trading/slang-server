@@ -1,5 +1,7 @@
 local _CMD = "SlangServer"
 
+require("slang-server._core.version")
+
 -- Advertise this plugin's name and version to slang-server so it can warn on a
 -- version mismatch. This is additive to whatever the user (or nvim-lspconfig)
 -- already configured, and is a no-op if the client is already running.
@@ -12,6 +14,8 @@ if vim.lsp.config then
       },
    })
 end
+
+require("slang-server._lsp.clientCommands").register()
 
 local subcommands = {}
 subcommands = vim.tbl_deep_extend("error", subcommands, require("slang-server._commands.setTopLevel"))
