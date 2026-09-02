@@ -47,10 +47,12 @@
 ---@field hover NuiPopup?
 ---@field split NuiSplit?
 ---@field tree NuiTree?
+---@field generation integer
 
 ---@class slang-server.navigation.cells.State
 ---@field tree NuiTree?
 ---@field split NuiSplit?
+---@field generation integer
 
 ---@class slang-server.navigation.TreeNode: NuiTree.Node
 ---@field path string
@@ -73,13 +75,13 @@
 
 ---@class slang-server.navigation.InstNode: NuiTree.Node
 ---@field instPath string
----@field instLoc slang-server.SourceLoc
+---@field instLoc slang-server.ScopedRange
 ---@field last boolean
 ---@field _uid string
 
 ---@class slang-server.navigation.CellNode: NuiTree.Node
 ---@field declName string
----@field declLoc slang-server.SourceLoc
+---@field declLoc slang-server.ScopedRange
 ---@field instCount integer
 ---@field _uid string
 

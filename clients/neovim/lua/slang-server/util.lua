@@ -1,4 +1,4 @@
-M = {}
+local M = {}
 
 ---@param arg_lead string
 ---@param opts table

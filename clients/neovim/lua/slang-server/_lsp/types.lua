@@ -44,11 +44,11 @@
 
 ---@class slang-server.lsp.QualifiedInstance
 ---@field instPath string
----@field instLoc string
+---@field instLoc slang-server.ScopedRange
 
 ---@class slang-server.lsp.InstanceSet
 ---@field declName string
----@field declLoc slang-server.SourceLoc
+---@field declLoc slang-server.ScopedRange
 ---@field instCount integer
 ---@field inst slang-server.lsp.QualifiedInstance?
 

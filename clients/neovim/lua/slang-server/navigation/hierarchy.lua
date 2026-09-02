@@ -24,9 +24,10 @@ local function is_expandable_kind(kind)
 end
 
 ---@type slang-server.navigation.hierarchy.State
-M.state = {}
+M.state = { generation = 0 }
 
 function M.on_close()
+   M.state.generation = M.state.generation + 1
    vim.api.nvim_buf_delete(M.state.split.bufnr, { force = true })
    M.state.tree = nil
    M.state.split = nil
@@ -274,6 +275,8 @@ end
 ---@param from_cell boolean?
 function M._lazy_open(path_or_node, root, remaining_path, from_cell)
    local navigation = require("slang-server.navigation")
+   local generation = M.state.generation
+   local tree = M.state.tree
    local node
    local path
 
@@ -299,15 +302,24 @@ function M._lazy_open(path_or_node, root, remaining_path, from_cell)
          focus_tree(node)
       end
 
-      if not navigation.state.sv_buf then
+      local source = navigation.state.sv_buf
+      if not source then
          vim.notify("No SV buffer", vim.log.levels.ERROR)
+         return
       end
 
-      client.getScope(navigation.state.sv_buf.bufnr, {
+      client.getScope(source.bufnr, {
          on_success = function(resp)
+            if not navigation.session_active(M.state, generation) or M.state.tree ~= tree then
+               return
+            end
             show_nodes(resp, node, root, remaining_path, from_cell)
          end,
-         on_failure = handlers.defaultOnFailure,
+         on_failure = function(message)
+            if navigation.session_active(M.state, generation) and M.state.tree == tree then
+               handlers.defaultOnFailure(message)
+            end
+         end,
       }, { hierPath = path })
    end
 end
@@ -342,7 +354,8 @@ local function on_hover()
 end
 
 ---@param top slang-server.navigation.Path The top level at which to initialise the hierarchy
-function M.show(top)
+---@param focus_path boolean? Move the hierarchy cursor to the resolved path
+function M.show(top, focus_path)
    local navigation = require("slang-server.navigation")
    local hierarchy_config = config.hierarchy
    local split = ui.NuiSplit({
@@ -375,8 +388,9 @@ function M.show(top)
 
    M.state.split = split
    M.state.tree = tree
+   M.state.generation = M.state.generation + 1
 
-   M._lazy_open("", true, top)
+   M._lazy_open("", true, top, focus_path)
 end
 
 return M

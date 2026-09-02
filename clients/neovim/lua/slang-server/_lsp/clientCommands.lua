@@ -1,6 +1,6 @@
 local M = {}
 
----@param callback string
+---@param command string
 ---@param value any
 ---@param ctx table
 M.executeServerCommand = function(command, value, ctx)
@@ -54,14 +54,14 @@ M.quickPick = function(command, ctx)
    end)
 end
 
----@param _err lsp.ResponseError?
+---@param _ lsp.ResponseError?
 ---@param params { hierPath: string }
-M.activeInstanceChanged = function(_err, params)
+M.activeInstanceChanged = function(_, params)
    local navigation = require("slang-server.navigation")
    if not navigation.state.open then
       return
    end
-   require("slang-server.navigation/hierarchy").open_remainder(
+   require("slang-server.navigation.hierarchy").open_remainder(
       nil,
       true,
       params.hierPath,

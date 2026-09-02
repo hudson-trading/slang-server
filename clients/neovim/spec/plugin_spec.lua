@@ -190,6 +190,8 @@ describe("SlangServer", function()
             on_choice(items[2])
          end
          vim.lsp.commands["slang.quickPick"]({
+            title = "Pick an item",
+            command = "slang.quickPick",
             arguments = {
                {
                   placeholder = "Pick one",
@@ -210,10 +212,199 @@ describe("SlangServer", function()
       assert.are.same(2, selected)
    end)
 
+   it("Opens navigation and searches instances from the standalone command", function()
+      local navigation = require("slang-server.navigation")
+      local original_select = vim.ui.select
+      local selected_items
+      local selected_path
+      local was_open_when_picker_shown
+      local focused_line
+
+      local ok, err = pcall(function()
+         vim.ui.select = function(items, opts, on_choice)
+            selected_items = items
+            was_open_when_picker_shown = navigation.state.open
+            assert.are.same("Select instance", opts.prompt)
+            selected_path = items[3]
+            on_choice(selected_path)
+         end
+
+         vim.cmd("SlangServer findInstance")
+         assert(vim.wait(5000, function()
+            return selected_items ~= nil
+         end))
+         wait_on("Slang-server: Hierarchy")
+         local hierarchy = require("slang-server.navigation.hierarchy")
+         local cursor = vim.api.nvim_win_get_cursor(hierarchy.state.split.winid)
+         focused_line = vim.api.nvim_buf_get_lines(
+            hierarchy.state.split.bufnr,
+            cursor[1] - 1,
+            cursor[1],
+            false
+         )[1]
+      end)
+
+      vim.ui.select = original_select
+      local opened_after_selection = navigation.state.open
+      if navigation.state.open then
+         navigation.on_close()
+      end
+
+      assert(ok, err)
+      assert.are.same({
+         "foo",
+         "foo.gen_loop[0].the_sub",
+         "foo.gen_loop[1].the_sub",
+         "foo.gen_loop[2].the_sub",
+         "foo.gen_loop[3].the_sub",
+      }, selected_items)
+      assert.are.same("foo.gen_loop[1].the_sub", selected_path)
+      assert.is_false(was_open_when_picker_shown)
+      assert.is_true(opened_after_selection)
+      assert.is_not_nil(string.find(focused_line, "the_sub", 1, true))
+   end)
+
+   it("Leaves navigation closed when instance selection is cancelled", function()
+      local navigation = require("slang-server.navigation")
+      local original_select = vim.ui.select
+      local picker_shown = false
+
+      local ok, err = pcall(function()
+         vim.ui.select = function(_, _, on_choice)
+            picker_shown = true
+            on_choice(nil)
+         end
+         vim.cmd("SlangServer findInstance")
+         assert(vim.wait(5000, function()
+            return picker_shown
+         end))
+      end)
+      vim.ui.select = original_select
+
+      assert(ok, err)
+      assert.is_false(navigation.state.open)
+   end)
+
+   it("Ignores stale standalone instance search responses", function()
+      local command = require("slang-server._commands.findInstance").findInstance
+      local capabilities = require("slang-server._lsp.capabilities")
+      local lsp = require("slang-server._lsp.client")
+      local handlers = require("slang-server.handlers")
+      local original_check = capabilities.check_or_notify
+      local original_get_scopes = lsp.getScopesByModule
+      local original_get_instances = lsp.getInstancesOfModule
+      local original_select = vim.ui.select
+      local original_failure = handlers.defaultOnFailure
+      local responses = {}
+      local instance_responses = {}
+      local selections = {}
+
+      local ok, err = pcall(function()
+         capabilities.check_or_notify = function()
+            return true
+         end
+         lsp.getScopesByModule = function(_, response_handlers)
+            responses[#responses + 1] = response_handlers
+         end
+         lsp.getInstancesOfModule = function(_, response_handlers)
+            instance_responses[#instance_responses + 1] = response_handlers
+         end
+         vim.ui.select = function(items)
+            selections[#selections + 1] = items
+         end
+         handlers.defaultOnFailure = function() end
+
+         command.impl()
+         command.impl()
+         responses[2].on_success({
+            { declName = "new", instCount = 1, inst = { instPath = "top.new" } },
+         })
+         responses[1].on_success({
+            { declName = "old", instCount = 1, inst = { instPath = "top.old" } },
+         })
+         assert.are.same(1, #selections)
+         assert.are.same({ "top.new" }, selections[1])
+
+         selections = {}
+         command.impl()
+         command.impl()
+         responses[4].on_failure("new search failed")
+         responses[3].on_success({
+            { declName = "stale", instCount = 1, inst = { instPath = "top.stale" } },
+         })
+
+         command.impl()
+         responses[5].on_success({ { declName = "old", instCount = 2 } })
+         command.impl()
+         responses[6].on_success({ { declName = "new", instCount = 2 } })
+         instance_responses[2].on_success({ { instPath = "top.new" } })
+         instance_responses[1].on_success({ { instPath = "top.old" } })
+         assert.are.same({ { "top.new" } }, selections)
+      end)
+
+      capabilities.check_or_notify = original_check
+      lsp.getScopesByModule = original_get_scopes
+      lsp.getInstancesOfModule = original_get_instances
+      vim.ui.select = original_select
+      handlers.defaultOnFailure = original_failure
+
+      assert(ok, err)
+   end)
+
+   it("Discards hierarchy scope results from an older session", function()
+      local hierarchy = require("slang-server.navigation.hierarchy")
+      local navigation = require("slang-server.navigation")
+      local lsp = require("slang-server._lsp.client")
+      local original_tree = hierarchy.state.tree
+      local original_generation = hierarchy.state.generation
+      local original_open_state = navigation.state.open
+      local original_source_buf = rawget(navigation.state, "sv_buf")
+      local original_get_scope = lsp.getScope
+      local deferred
+      local new_tree_mutations = 0
+      local old_tree = {
+         get_node = function()
+            return nil
+         end,
+         set_nodes = function() end,
+         render = function() end,
+      }
+      local new_tree = {
+         set_nodes = function()
+            new_tree_mutations = new_tree_mutations + 1
+         end,
+         render = function() end,
+      }
+
+      local ok, err = pcall(function()
+         hierarchy.state.tree = old_tree
+         hierarchy.state.generation = 20
+         navigation.state.open = true
+         navigation.state.sv_buf = { bufnr = 7 }
+         lsp.getScope = function(_, handlers)
+            deferred = handlers.on_success
+         end
+
+         hierarchy._lazy_open("top", false, nil, false)
+         hierarchy.state.tree = new_tree
+         hierarchy.state.generation = 21
+         deferred({})
+      end)
+
+      hierarchy.state.tree = original_tree
+      hierarchy.state.generation = original_generation
+      navigation.state.open = original_open_state
+      navigation.state.sv_buf = original_source_buf
+      lsp.getScope = original_get_scope
+
+      assert(ok, err)
+      assert.are.same(0, new_tree_mutations)
+   end)
+
    it("Active instance notifications reveal an open hierarchy", function()
       local client_commands = require("slang-server._lsp.clientCommands")
       local navigation = require("slang-server.navigation")
-      local hierarchy = require("slang-server.navigation/hierarchy")
+      local hierarchy = require("slang-server.navigation.hierarchy")
       local original_open = hierarchy.open_remainder
       local original_state = navigation.state.open
       local revealed

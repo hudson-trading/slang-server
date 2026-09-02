@@ -7,17 +7,17 @@ local util = require("slang-server.util")
 local M = {}
 
 ---@type slang-server.navigation.cells.State
-M.state = {}
+M.state = { generation = 0 }
 
 function M.on_close()
+   M.state.generation = M.state.generation + 1
    vim.api.nvim_buf_delete(M.state.split.bufnr, { force = true })
    M.state.tree = nil
    M.state.split = nil
 end
 
 ---@param node slang-server.navigation.ScopeNode
----@param parent_node slang-server.navigation.CellNode?
-local function prepare_node(node, parent_node)
+local function prepare_node(node)
    local navigation = require("slang-server.navigation")
    local line = ui.NuiLine()
 
@@ -46,7 +46,7 @@ end
 ---@param node slang-server.navigation.ScopeNode
 local function scope_jump(node)
    local navigation = require("slang-server.navigation")
-   local hier = require("slang-server.navigation/hierarchy")
+   local hier = require("slang-server.navigation.hierarchy")
    local instPath = nil
    if node and node.instPath then
       instPath = node.instPath
@@ -125,15 +125,29 @@ local function map_keys(split, tree)
                node:expand()
                tree:render()
             else
-               if not navigation.state.sv_buf then
+               local source = navigation.state.sv_buf
+               if not source then
                   vim.notify("No SV buffer", vim.log.levels.ERROR)
+                  return
                end
 
-               client.getInstancesOfModule(navigation.state.sv_buf.bufnr, {
+               local generation = M.state.generation
+               local node_id = node:get_id()
+               client.getInstancesOfModule(source.bufnr, {
                   on_success = function(resp)
-                     show_insts(resp, node, true)
+                     if not navigation.session_active(M.state, generation) then
+                        return
+                     end
+                     local current_node = M.state.tree:get_node(node_id)
+                     if current_node then
+                        show_insts(resp, current_node, true)
+                     end
                   end,
-                  on_failure = handlers.defaultOnFailure,
+                  on_failure = function(message)
+                     if navigation.session_active(M.state, generation) then
+                        handlers.defaultOnFailure(message)
+                     end
+                  end,
                }, { moduleName = node.declName })
 
                navigation.message(M.state.tree, "Loading instances...", { parent = node, hl = hl.HIER_SUBTLE })
@@ -141,6 +155,13 @@ local function map_keys(split, tree)
          end,
          opts = { noremap = true },
          desc = "Expand / collapse node",
+      },
+      ["/"] = {
+         impl = function()
+            vim.cmd("SlangServer findInstance")
+         end,
+         opts = { noremap = true },
+         desc = "Search instances",
       },
       ["q"] = {
          impl = function()
@@ -162,9 +183,10 @@ local function map_keys(split, tree)
 end
 
 ---@param insts slang-server.lsp.InstanceSet[]
-local function show_nodes(insts)
+---@param generation integer
+local function show_nodes(insts, generation)
    local navigation = require("slang-server.navigation")
-   if not navigation.state.open then
+   if not navigation.session_active(M.state, generation) then
       return
    end
 
@@ -183,7 +205,7 @@ local function show_nodes(insts)
       local cell_nui_node = ui.NuiTree.Node(cell_node)
       M.state.tree:add_node(cell_nui_node)
       if cell.inst then
-         show_insts({ cell.inst }, cell_nui_node)
+         show_insts({ cell.inst }, cell_nui_node, false)
       end
    end
 
@@ -192,7 +214,7 @@ end
 
 function M.show()
    local navigation = require("slang-server.navigation")
-   local hier = require("slang-server.navigation/hierarchy")
+   local hier = require("slang-server.navigation.hierarchy")
 
    if not hier.state.split then
       return
@@ -228,18 +250,27 @@ function M.show()
 
    M.state.split = split
    M.state.tree = tree
+   M.state.generation = M.state.generation + 1
+   local generation = M.state.generation
 
-   if not navigation.state.sv_buf then
+   local source = navigation.state.sv_buf
+   if not source then
       vim.notify("No SV buffer", vim.log.levels.ERROR)
+      return
    end
 
    navigation.message(tree, "Loading cells...", { hl = hl.HIER_SUBTLE })
 
-   client.getScopesByModule(navigation.state.sv_buf.bufnr, {
+   client.getScopesByModule(source.bufnr, {
       on_success = function(resp)
-         show_nodes(resp)
+         show_nodes(resp, generation)
       end,
-      on_failure = handlers.defaultOnFailure,
+      on_failure = function(message)
+         if not navigation.session_active(M.state, generation) then
+            return
+         end
+         handlers.defaultOnFailure(message)
+      end,
    })
 
    vim.api.nvim_buf_set_name(split.bufnr, "Slang-server: Cells")
