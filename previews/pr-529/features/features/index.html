@@ -1148,6 +1148,7 @@ When a <a href="../hdl/hdl/">design is set</a>, the shallow compilation provides
 <li>The syntax that the symbol is derived from</li>
 <li>Macro usage, if symbol was defined from one.</li>
 </ul>
+<p>With an elaborated design, hovers use the <a href="../hdl/hdl/#active-instances">active instance</a> of the enclosing module or interface. Parameter values, dependent types and widths, interface connections, and driver information therefore reflect the selected instance rather than the default elaboration.</p>
 <p><img alt="goto-refs" src="../../assets/images/hovers.gif" /></p>
 <p>Planned features:</p>
 <ul>
@@ -1179,11 +1180,11 @@ When a <a href="../hdl/hdl/">design is set</a>, the shallow compilation provides
 <p><img alt="goto-refs" src="../../assets/images/port_inlays.png" /></p>
 <p><strong>Wildcard Ports</strong> - Show which signals are passed through
 <img alt="goto-refs" src="../../assets/images/port_wildcard_inlays.png" /></p>
-<p><strong>Positional args in Macros, Functions, Paramter/Port lists</strong> - Show the argument names
+<p><strong>Positional args in Macros, Functions, Parameter/Port lists</strong> - Show the argument names
 <img alt="goto-refs" src="../../assets/images/macro_inlays.png" /></p>
+<p><strong>Active parameter values</strong> - Show resolved parameter and localparam values for the <a href="../hdl/hdl/#active-instances">active instance</a>. These hints are enabled by default and can be controlled with <code>inlayHints.activeParameterValues</code>.</p>
 <p>Planned Inlays:</p>
 <ul>
-<li><strong>Constant Values</strong> - Show parameter values and resolved types</li>
 <li><strong>Signals</strong> - Show the value when a waveform is connected and an instance is selected.</li>
 <li><strong>Wildcard Imports</strong> - Show which symbols are used from the import</li>
 </ul>

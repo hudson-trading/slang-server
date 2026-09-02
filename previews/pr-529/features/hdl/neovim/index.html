@@ -1263,6 +1263,9 @@ Once installed the <code>SlangServer</code> command will provide a number of sub
 </code></pre></div>
 <p>This will open the hierarchy view and, if <code>SCOPE</code> is provided, expand the view to that scope.</p>
 <p><img alt="Hierarchy View" src="hierarchy.png" /></p>
+<p>The hierarchy opens with a Cells view that groups elaborated instances by module. Press <code>&lt;Space&gt;</code> on a module to list its instances, then <code>&lt;CR&gt;</code> on an instance to make it active, jump to its source, and reveal it in the hierarchy. Pressing <code>&lt;CR&gt;</code> on an instance in the hierarchy also makes it active; <code>gd</code> opens its declaration without changing the selection. Press <code>?</code> in either view for the complete key map.</p>
+<p>If Neovim CodeLens display is enabled, module and interface declarations show the active path and instance count. Activating that CodeLens opens <code>vim.ui.select</code> when multiple instances are available. Generate-loop CodeLenses similarly select an active elaborated iteration.</p>
+<p>The active instance supplies the context for resolved parameter values, dependent types and widths, interface connections, hovers, and parameter-value inlay hints. An open hierarchy follows active-instance changes initiated by CodeLens or Go to Definition.</p>
 <h2 id="cone-tracing-experimental">Cone Tracing (experimental)<a class="headerlink" href="#cone-tracing-experimental" title="Permanent link">&para;</a></h2>
 <p><div class="language-text highlight"><pre><span></span><code>:lua vim.lsp.buf.incoming_calls()
 </code></pre></div>
