@@ -38,12 +38,14 @@
 ---@field jump slang-server.config.Key?
 ---@field jump_to_declaration slang-server.config.Key?
 ---@field toggle slang-server.config.Key?
+---@field search_hierarchy slang-server.config.Key?
 ---@field close slang-server.config.Key?
 ---@field help slang-server.config.Key?
 
 ---@class (exact) slang-server.config.CellsKeymaps
 ---@field jump slang-server.config.Key?
 ---@field toggle slang-server.config.Key?
+---@field search_hierarchy slang-server.config.Key?
 ---@field close slang-server.config.Key?
 ---@field help slang-server.config.Key?
 

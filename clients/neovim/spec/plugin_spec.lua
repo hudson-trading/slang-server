@@ -247,6 +247,48 @@ describe("SlangServer", function()
       assert.are.same({ ["g<cr>"] = spec }, mappings)
    end)
 
+   it("Merges partial navigation keymap configuration", function()
+      local config = require("slang-server._core.config")
+      local original = config.CONFIG
+
+      config.update({
+         navigation = {
+            hierarchy = {
+               keymaps = {
+                  jump = "g<cr>",
+                  toggle = false,
+               },
+            },
+         },
+      })
+
+      assert.are.same("g<cr>", config.CONFIG.navigation.hierarchy.keymaps.jump)
+      assert.is_false(config.CONFIG.navigation.hierarchy.keymaps.toggle)
+      assert.are.same("q", config.CONFIG.navigation.hierarchy.keymaps.close)
+      assert.are.same("<cr>", config.CONFIG.navigation.cells.keymaps.jump)
+      assert.are.same("left", config.CONFIG.navigation.position)
+      assert.are.same(50, config.CONFIG.navigation.width)
+      assert.is_false(config.CONFIG.navigation.wrap)
+      assert.is_true(config.CONFIG.navigation.cells.show)
+      assert.are.same(25, config.CONFIG.navigation.cells.height)
+
+      config.CONFIG = original
+   end)
+
+   it("Adds configured mappings and skips disabled mappings", function()
+      local navigation = require("slang-server.navigation")
+      local mappings = {}
+      local spec = {
+         impl = function() end,
+         desc = "Test mapping",
+      }
+
+      navigation.add_mapping(mappings, "g<cr>", spec)
+      navigation.add_mapping(mappings, false, spec)
+
+      assert.are.same({ ["g<cr>"] = spec }, mappings)
+   end)
+
    it("Routes hierarchy navigation through server commands", function()
       local lsp = require("slang-server._lsp.client")
       local capabilities = require("slang-server._lsp.capabilities")

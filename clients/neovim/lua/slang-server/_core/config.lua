@@ -18,6 +18,7 @@ local default_config = {
             jump = "<cr>", -- Reveal the selected node in its source buffer
             jump_to_declaration = "gd", -- Reveal the selected node's declaration
             toggle = "<space>", -- Expand or collapse the selected hierarchy node
+            search_hierarchy = "/", -- Search for an object and reveal it in the hierarchy
             close = "q",
             help = "?",
          },
@@ -28,6 +29,7 @@ local default_config = {
          keymaps = {
             jump = "<cr>", -- Reveal the selected module or instance in the hierarchy
             toggle = "<space>", -- Expand or collapse a module's instance list
+            search_hierarchy = "/", -- Search for an object and reveal it in the hierarchy
             close = "q",
             help = "?",
          },
