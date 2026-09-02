@@ -31,6 +31,7 @@ import {
   toPosix,
 } from './utils'
 import { glob } from 'glob'
+import { SlangClientInfoFeature } from './lib/clientInfo'
 import { InactiveRegionsFeature } from './lib/inactiveRegions'
 
 export var ext: SlangExtension
@@ -182,7 +183,12 @@ File input is sent to stdin, and formatted output is read from stdout.',
     }
 
     this.client = new LanguageClient('slang-server', serverOptions, clientOptions)
+    const clientInfo = {
+      name: this.context.extension.packageJSON.name as string,
+      version: this.context.extension.packageJSON.version as string,
+    }
 
+    this.client.registerFeature(new SlangClientInfoFeature(clientInfo))
     this.client.registerFeature(this.inactiveRegions)
     this.inactiveRegions.register(this.client)
 
@@ -220,9 +226,8 @@ File input is sent to stdin, and formatted output is read from stdout.',
     await this.project.onStart()
 
     // Log and check version compatibility
-    const clientVersion = vscode.extensions.getExtension('Hudson-River-Trading.vscode-slang')
-      ?.packageJSON.version
-    this.logger.info(`Using slang-vscode v${clientVersion ?? 'unknown'}`)
+    const clientVersion = clientInfo.version
+    this.logger.info(`Using ${clientInfo.name} v${clientVersion}`)
 
     const serverInfo = this.client.initializeResult?.serverInfo
     const serverFullVersion = serverInfo?.version?.trim()

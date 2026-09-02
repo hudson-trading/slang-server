@@ -21,8 +21,14 @@ struct InactiveRegionsClientCapabilities {
     std::optional<bool> inactiveRegions;
 };
 
+struct SlangClientInfo {
+    std::optional<std::string> name;
+    std::optional<std::string> version;
+};
+
 struct ExperimentalClientCapabilities {
     std::optional<InactiveRegionsClientCapabilities> inactiveRegions;
+    std::optional<SlangClientInfo> slangClient;
 };
 
 struct InactiveRegionsParams {

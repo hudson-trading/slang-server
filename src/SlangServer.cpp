@@ -13,12 +13,14 @@
 #include "ast/WcpClient.h"
 #include "completions/CompletionContext.h"
 #include "completions/CompletionDispatch.h"
+#include "lsp/LspTypeExtensions.h"
 #include "lsp/LspTypes.h"
 #include "lsp/URI.h"
 #include "util/Converters.h"
 #include "util/Logging.h"
 #include <algorithm>
 #include <cctype>
+#include <charconv>
 #include <filesystem>
 #include <fmt/base.h>
 #include <fmt/ranges.h>
@@ -26,8 +28,10 @@
 #include <optional>
 #include <ranges>
 #include <rfl/Variant.hpp>
+#include <rfl/from_generic.hpp>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -165,6 +169,54 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
 
     loadConfig();
     m_driver->completions.resolveEdits = m_client.capabilities.completionEditResolveSupported;
+
+    if (params.capabilities.experimental) {
+        auto exp = rfl::from_generic<lsp::ExperimentalClientCapabilities>(
+            *params.capabilities.experimental);
+
+        if (exp) {
+            if (exp->slangClient) {
+                const auto& client = *exp->slangClient;
+                const auto clientName = client.name.value_or("slang client");
+                INFO("Using {} v{}", clientName, client.version.value_or("unknown"));
+                auto parseVersion = [](std::string_view version) {
+                    std::optional<std::pair<int, int>> result;
+                    if (version.starts_with('v'))
+                        version.remove_prefix(1);
+
+                    int major = 0;
+                    auto [majorEnd, majorError] =
+                        std::from_chars(version.data(), version.data() + version.size(), major);
+                    if (majorError != std::errc() || majorEnd == version.data() + version.size() ||
+                        *majorEnd != '.') {
+                        return result;
+                    }
+
+                    int minor = 0;
+                    auto [minorEnd, minorError] =
+                        std::from_chars(majorEnd + 1, version.data() + version.size(), minor);
+                    if (minorError != std::errc() ||
+                        (minorEnd != version.data() + version.size() && *minorEnd != '.')) {
+                        return result;
+                    }
+                    return std::optional(std::pair(major, minor));
+                };
+
+                const auto parsed = client.version ? parseVersion(*client.version) : std::nullopt;
+                const auto required = std::pair(VersionInfo::getMajor(), VersionInfo::getMinor());
+                if (!parsed) {
+                    m_client.showWarning(
+                        fmt::format("Could not determine the {} version. Please update {}.",
+                                    clientName, clientName));
+                }
+                else if (*parsed < required) {
+                    m_client.showWarning(fmt::format(
+                        "{} v{} is older than the server requirement {}.{}.x. Please update {}.",
+                        clientName, *client.version, required.first, required.second, clientName));
+                }
+            }
+        }
+    }
 
     auto result = lsp::InitializeResult{
         .capabilities =

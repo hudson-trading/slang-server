@@ -4,10 +4,16 @@ import { Config } from './config.gen'
 
 export type { Config }
 
+export interface SlangClientInfo {
+  name: string
+  version: string
+}
+
 export type ExperimentalCapabilities = {
   inactiveRegions?: {
     inactiveRegions: boolean
   }
+  slangClient?: SlangClientInfo
 }
 
 export enum SlangKind {
