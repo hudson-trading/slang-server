@@ -83,6 +83,8 @@ nav:
       - start/building.md
       - start/installing.md
       - start/config.md
+  - Development:
+      - Versioning and releases: development/versioning.md
   - Features:
       - features/features.md
       - features/formatting.md
