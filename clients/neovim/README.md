@@ -48,6 +48,28 @@ The plugin is lazily loaded by default on the first invocation of a `:SlangServe
 
 The default configuration can be found in [config.lua](./lua/slang-server/_core/config.lua). Override options can be defined in the global `vim.g.slang_server_config`, or passed to `opts = {...}` in the lazy.nvim plugin spec.
 
+```lua
+require("slang-server").setup({
+  navigation = {
+    position = "left",
+    width = 50,
+    wrap = false,
+    hierarchy = {
+      keymaps = {
+        jump = "<cr>",
+      },
+    },
+    cells = {
+      show = true,
+      height = 25, -- rows
+      keymaps = {
+        jump = "<cr>",
+      },
+    },
+  },
+})
+```
+
 ## GitHub Repos
 
 This plugin lives in two repos:

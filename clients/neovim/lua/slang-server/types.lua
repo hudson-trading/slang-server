@@ -5,28 +5,63 @@
 ---    The user's slang-server configuration
 ---@field kinds slang-server.config.Kinds?
 ---@field highlights slang-server.config.Highlights?
----@field hierarchy slang-server.config.Hierarchy?
+---@field navigation slang-server.config.Navigation?
 
----@class (exact) slang-server.config.Hierarchy
+---@class (exact) slang-server.config.Navigation
 ---@field position string?
----@field size integer?
+---@field width integer?
+---@field wrap boolean?
+---@field hierarchy slang-server.config.NavigationHierarchy?
+---@field cells slang-server.config.NavigationCells?
+
+---@class (exact) slang-server.config.NavigationHierarchy
+---@field keymaps slang-server.config.HierarchyKeymaps?
+
+---@class (exact) slang-server.config.NavigationCells
+---@field show boolean?
+---@field height integer?
+---@field keymaps slang-server.config.CellsKeymaps?
+
+---@alias slang-server.config.Key string|false
+
+---@class (exact) slang-server.config.HierarchyKeymaps
+---@field yank_path slang-server.config.Key?
+---@field yank_value slang-server.config.Key?
+---@field yank_file slang-server.config.Key?
+---@field jump slang-server.config.Key?
+---@field jump_to_declaration slang-server.config.Key?
+---@field toggle slang-server.config.Key?
+---@field close slang-server.config.Key?
+---@field help slang-server.config.Key?
+
+---@class (exact) slang-server.config.CellsKeymaps
+---@field jump slang-server.config.Key?
+---@field toggle slang-server.config.Key?
+---@field find_instance slang-server.config.Key?
+---@field close slang-server.config.Key?
+---@field help slang-server.config.Key?
 
 ---@class (exact) slang-server.config.Kinds
----@field instance slang-server.config.KindScoped?
----@field scope slang-server.config.KindScoped?
+---@field instance slang-server.config.Kind?
+---@field instancearray slang-server.config.Kind?
+---@field scope slang-server.config.Kind?
+---@field scopearray slang-server.config.Kind?
 ---@field interfaceport slang-server.config.Kind?
 ---@field interfaceportarray slang-server.config.Kind?
----@field port slang-server.config.Kind?
+---@field package slang-server.config.Kind?
+---@field port slang-server.config.PortKinds?
 ---@field param slang-server.config.Kind?
+---@field logic slang-server.config.Kind?
 ---@field reg slang-server.config.Kind?
 
 ---@class (exact) slang-server.config.Kind
 ---@field icon string?
 ---@field hl string?
 
----@class (exact) slang-server.config.KindScoped
----@field open slang-server.config.Kind?
----@field closed slang-server.config.Kind?
+---@class (exact) slang-server.config.PortKinds
+---@field input slang-server.config.Kind?
+---@field output slang-server.config.Kind?
+---@field inout slang-server.config.Kind?
 
 ---@alias slang-server.config.Highlights table<string, vim.api.keyset.highlight>
 
@@ -40,6 +75,7 @@
 
 ---@class slang-server.navigation.State
 ---@field open boolean
+---@field source_winid integer?
 ---@field sv_buf vim.fn.getbufinfo.ret.item?
 ---@field sv_win vim.fn.getwininfo.ret.item?
 
@@ -48,11 +84,13 @@
 ---@field split NuiSplit?
 ---@field tree NuiTree?
 ---@field generation integer
+---@field buffer_guard integer?
 
 ---@class slang-server.navigation.cells.State
 ---@field tree NuiTree?
 ---@field split NuiSplit?
 ---@field generation integer
+---@field buffer_guard integer?
 
 ---@class slang-server.navigation.TreeNode: NuiTree.Node
 ---@field path string

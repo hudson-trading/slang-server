@@ -3,6 +3,7 @@ local hl = require("slang-server._core.highlights")
 local client = require("slang-server._lsp.client")
 local handlers = require("slang-server.handlers")
 local util = require("slang-server.util")
+local config = require("slang-server._core.config").CONFIG
 
 local M = {}
 
@@ -10,10 +11,14 @@ local M = {}
 M.state = { generation = 0 }
 
 function M.on_close()
+   require("slang-server.navigation").unprotect_window(M.state)
    M.state.generation = M.state.generation + 1
-   vim.api.nvim_buf_delete(M.state.split.bufnr, { force = true })
+   local split = M.state.split
    M.state.tree = nil
    M.state.split = nil
+   if split and vim.api.nvim_buf_is_valid(split.bufnr) then
+      vim.api.nvim_buf_delete(split.bufnr, { force = true })
+   end
 end
 
 ---@param node slang-server.navigation.ScopeNode
@@ -105,15 +110,15 @@ end
 ---@param tree NuiTree
 local function map_keys(split, tree)
    local navigation = require("slang-server.navigation")
-   ---@type table<string, slang-server.ui.Mapping[]>
-   local mappings
-   mappings = {
-      ["<cr>"] = {
+   ---@type table<string, slang-server.ui.Mapping>
+   local mappings = {}
+   local keys = assert(config.navigation and config.navigation.cells.keymaps)
+   navigation.add_mapping(mappings, keys.jump, {
          impl = scope_jump,
          opts = { noremap = true },
          desc = "Jump to node in source",
-      },
-      ["<space>"] = {
+      })
+   navigation.add_mapping(mappings, keys.toggle, {
          impl = function(node)
             if not node or not node.declName then
                return
@@ -155,29 +160,28 @@ local function map_keys(split, tree)
          end,
          opts = { noremap = true },
          desc = "Expand / collapse node",
-      },
-      ["/"] = {
+      })
+   navigation.add_mapping(mappings, keys.find_instance, {
          impl = function()
             vim.cmd("SlangServer findInstance")
          end,
          opts = { noremap = true },
          desc = "Search instances",
-      },
-      ["q"] = {
+      })
+   navigation.add_mapping(mappings, keys.close, {
          impl = function()
             split:unmount()
          end,
          opts = { noremap = true },
          desc = "Close",
-      },
-      ["?"] = {
+      })
+   navigation.add_mapping(mappings, keys.help, {
          impl = function()
             util.show_help(mappings, "Cell view")
          end,
          opts = { noremap = true },
          desc = "Show help",
-      },
-   }
+      })
 
    navigation.map_keys(split, tree, mappings)
 end
@@ -215,6 +219,13 @@ end
 function M.show()
    local navigation = require("slang-server.navigation")
    local hier = require("slang-server.navigation.hierarchy")
+   local navigation_config = config.navigation
+   local cells_config = navigation_config.cells
+
+   if not cells_config.show then
+      M.on_close()
+      return
+   end
 
    if not hier.state.split then
       return
@@ -226,11 +237,15 @@ function M.show()
          winid = hier.state.split.winid,
       },
       position = "bottom",
-      size = "40%",
+      size = cells_config.height,
+      buf_options = {
+         bufhidden = "hide",
+      },
       win_options = {
          signcolumn = "no",
          number = false,
          relativenumber = false,
+         wrap = navigation_config.wrap,
       },
    })
 
@@ -249,6 +264,7 @@ function M.show()
    map_keys(split, tree)
 
    M.state.split = split
+   navigation.protect_window(M.state)
    M.state.tree = tree
    M.state.generation = M.state.generation + 1
    local generation = M.state.generation

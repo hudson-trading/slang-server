@@ -11,6 +11,43 @@ local M = {}
 ---@type slang-server.navigation.State
 M.state = { open = false }
 
+---Keep a navigation window dedicated to its buffer, redirecting attempted buffer
+---changes to the source window instead.
+---@param state { split: NuiSplit?, buffer_guard: integer? }
+function M.protect_window(state)
+   local split = assert(state.split)
+   local winid = split.winid
+   local bufnr = split.bufnr
+
+   state.buffer_guard = vim.api.nvim_create_autocmd("BufEnter", {
+      callback = function(args)
+         if not M.state.open or not vim.api.nvim_win_is_valid(winid) then
+            return
+         end
+         if vim.api.nvim_get_current_win() ~= winid or args.buf == bufnr then
+            return
+         end
+
+         local source_winid = M.state.source_winid
+         if source_winid and vim.api.nvim_win_is_valid(source_winid) then
+            vim.api.nvim_win_set_buf(source_winid, args.buf)
+         else
+            vim.notify("Cannot open buffer: invalid source window", vim.log.levels.ERROR)
+         end
+
+         vim.api.nvim_win_set_buf(winid, bufnr)
+      end,
+   })
+end
+
+---@param state { buffer_guard: integer? }
+function M.unprotect_window(state)
+   if state.buffer_guard then
+      pcall(vim.api.nvim_del_autocmd, state.buffer_guard)
+      state.buffer_guard = nil
+   end
+end
+
 ---Return whether a component's navigation split is still active for an async request.
 ---@param state { generation: integer, tree: NuiTree?, split: NuiSplit? }
 ---@param generation integer
@@ -65,6 +102,15 @@ function M.map_keys(split, tree, mappings)
          ---@cast node slang-server.navigation.Node
          spec.impl(node)
       end, spec.opts)
+   end
+end
+
+---@param mappings table<string, slang-server.ui.Mapping>
+---@param key slang-server.config.Key?
+---@param spec slang-server.ui.Mapping
+function M.add_mapping(mappings, key, spec)
+   if key then
+      mappings[key] = spec
    end
 end
 
@@ -159,6 +205,7 @@ function M.show(top, focus_path)
    end
 
    M.state.open = true
+   M.state.source_winid = vim.api.nvim_get_current_win()
 
    hier.show(top, focus_path)
    cells.show()

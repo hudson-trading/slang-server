@@ -5,12 +5,36 @@ M.CONFIG = {}
 
 ---@type slang-server.config.Configuration
 local default_config = {
-   -- Hierarchy split window layout
-   hierarchy = {
+   -- Navigation split window layout and buffer-local mappings
+   navigation = {
       position = "left",
-      size = 40,
+      width = 50,
+      wrap = false,
+      hierarchy = {
+         keymaps = {
+            yank_path = "yn", -- Yank the selected node's full hierarchical path
+            yank_value = "yv", -- Yank the selected signal or parameter value
+            yank_file = "yf", -- Yank the path of the file containing the selected node
+            jump = "<cr>", -- Reveal the selected node in its source buffer
+            jump_to_declaration = "gd", -- Reveal the selected node's declaration
+            toggle = "<space>", -- Expand or collapse the selected hierarchy node
+            close = "q",
+            help = "?",
+         },
+      },
+      cells = {
+         show = true,
+         height = 25,
+         keymaps = {
+            jump = "<cr>", -- Reveal the selected module or instance in the hierarchy
+            toggle = "<space>", -- Expand or collapse a module's instance list
+            find_instance = "/", -- Search all instances and reveal the selection in hierarchy
+            close = "q",
+            help = "?",
+         },
+      },
    },
-   -- Icon and highlight group for each element kind show in the hierarchy view
+   -- Icon and highlight group for each element kind
    kinds = {
       instance = { icon = "", hl = "SlangServerInstance" },
       instancearray = { icon = "", hl = "SlangServerInstanceArray" },

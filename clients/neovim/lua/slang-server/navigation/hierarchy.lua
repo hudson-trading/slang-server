@@ -27,6 +27,7 @@ end
 M.state = { generation = 0 }
 
 function M.on_close()
+   require("slang-server.navigation").unprotect_window(M.state)
    M.state.generation = M.state.generation + 1
    vim.api.nvim_buf_delete(M.state.split.bufnr, { force = true })
    M.state.tree = nil
@@ -38,9 +39,9 @@ end
 local function map_keys(split, tree)
    local navigation = require("slang-server.navigation")
    ---@type table<string, slang-server.ui.Mapping>
-   local mappings
-   mappings = {
-      ["yn"] = {
+   local mappings = {}
+   local keys = assert(config.navigation and config.navigation.hierarchy.keymaps)
+   navigation.add_mapping(mappings, keys.yank_path, {
          impl = function(node)
             if node and node.path then
                util.yank_and_notify(node.path)
@@ -48,8 +49,8 @@ local function map_keys(split, tree)
          end,
          opts = { noremap = true },
          desc = "Yank hierarchical node path",
-      },
-      ["yv"] = {
+      })
+   navigation.add_mapping(mappings, keys.yank_value, {
          impl = function(node)
             if node and node.value then
                util.yank_and_notify(node.value)
@@ -57,8 +58,8 @@ local function map_keys(split, tree)
          end,
          opts = { noremap = true },
          desc = "Yank node value",
-      },
-      ["yf"] = {
+      })
+   navigation.add_mapping(mappings, keys.yank_file, {
          impl = function(node)
             if node and node.instLoc and node.instLoc.uri then
                util.yank_and_notify(vim.uri_to_fname(node.instLoc.uri))
@@ -66,8 +67,8 @@ local function map_keys(split, tree)
          end,
          opts = { noremap = true },
          desc = "Yank enclosing file path",
-      },
-      ["<cr>"] = {
+      })
+   navigation.add_mapping(mappings, keys.jump, {
          impl = function(node)
             if node and node.path then
                navigation.show_hier_location(node.path)
@@ -75,17 +76,18 @@ local function map_keys(split, tree)
          end,
          opts = { noremap = true },
          desc = "Jump to node in source",
-      },
-      ["gd"] = {
+      })
+   navigation.add_mapping(mappings, keys.jump_to_declaration, {
          impl = function(node)
             if node and node.declLoc then
-               util.jump_loc(node.declLoc, navigation.state.sv_win.winnr)
+               local source_win = navigation.state.sv_win
+               util.jump_loc(node.declLoc, source_win and source_win.winnr)
             end
          end,
          opts = { noremap = true },
          desc = "Jump to node declaration in source",
-      },
-      ["<space>"] = {
+      })
+   navigation.add_mapping(mappings, keys.toggle, {
          impl = function(node)
             if not node then
                return
@@ -99,22 +101,21 @@ local function map_keys(split, tree)
          end,
          opts = { noremap = true },
          desc = "Expand / collapse node",
-      },
-      ["q"] = {
+      })
+   navigation.add_mapping(mappings, keys.close, {
          impl = function()
             split:unmount()
          end,
          opts = { noremap = true },
          desc = "Close",
-      },
-      ["?"] = {
+      })
+   navigation.add_mapping(mappings, keys.help, {
          impl = function()
             util.show_help(mappings, "Hierarchy view")
          end,
          opts = { noremap = true },
          desc = "Show help",
-      },
-   }
+      })
 
    navigation.map_keys(split, tree, mappings)
 end
@@ -357,15 +358,20 @@ end
 ---@param focus_path boolean? Move the hierarchy cursor to the resolved path
 function M.show(top, focus_path)
    local navigation = require("slang-server.navigation")
-   local hierarchy_config = config.hierarchy
+   local navigation_config = config.navigation
+   local hierarchy_config = navigation_config.hierarchy
    local split = ui.NuiSplit({
       relative = "win",
-      position = hierarchy_config.position,
-      size = hierarchy_config.size,
+      position = navigation_config.position,
+      size = navigation_config.width,
+      buf_options = {
+         bufhidden = "hide",
+      },
       win_options = {
          signcolumn = "no",
          number = false,
          relativenumber = false,
+         wrap = navigation_config.wrap,
       },
    })
 
@@ -387,6 +393,7 @@ function M.show(top, focus_path)
    map_keys(split, tree)
 
    M.state.split = split
+   navigation.protect_window(M.state)
    M.state.tree = tree
    M.state.generation = M.state.generation + 1
 

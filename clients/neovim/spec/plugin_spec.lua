@@ -71,6 +71,48 @@ describe("SlangServer", function()
    -- compile design
    vim.cmd("SlangServer setTopLevel")
 
+   it("Merges partial navigation keymap configuration", function()
+      local config = require("slang-server._core.config")
+      local original = config.CONFIG
+
+      config.update({
+         navigation = {
+            hierarchy = {
+               keymaps = {
+                  jump = "g<cr>",
+                  toggle = false,
+               },
+            },
+         },
+      })
+
+      assert.are.same("g<cr>", config.CONFIG.navigation.hierarchy.keymaps.jump)
+      assert.is_false(config.CONFIG.navigation.hierarchy.keymaps.toggle)
+      assert.are.same("q", config.CONFIG.navigation.hierarchy.keymaps.close)
+      assert.are.same("<cr>", config.CONFIG.navigation.cells.keymaps.jump)
+      assert.are.same("left", config.CONFIG.navigation.position)
+      assert.are.same(50, config.CONFIG.navigation.width)
+      assert.is_false(config.CONFIG.navigation.wrap)
+      assert.is_true(config.CONFIG.navigation.cells.show)
+      assert.are.same(25, config.CONFIG.navigation.cells.height)
+
+      config.CONFIG = original
+   end)
+
+   it("Adds configured mappings and skips disabled mappings", function()
+      local navigation = require("slang-server.navigation")
+      local mappings = {}
+      local spec = {
+         impl = function() end,
+         desc = "Test mapping",
+      }
+
+      navigation.add_mapping(mappings, "g<cr>", spec)
+      navigation.add_mapping(mappings, false, spec)
+
+      assert.are.same({ ["g<cr>"] = spec }, mappings)
+   end)
+
    it("Routes hierarchy navigation through server commands", function()
       local lsp = require("slang-server._lsp.client")
       local capabilities = require("slang-server._lsp.capabilities")
@@ -447,6 +489,10 @@ describe("SlangServer", function()
    it("Hierarchy no args", function()
       vim.cmd("SlangServer hierarchy")
       local lines = wait_on("Slang-server: Hierarchy")
+      local hierarchy = require("slang-server.navigation.hierarchy")
+      local cells = require("slang-server.navigation.cells")
+      assert.is_false(vim.api.nvim_get_option_value("wrap", { win = hierarchy.state.split.winid }))
+      assert.is_false(vim.api.nvim_get_option_value("wrap", { win = cells.state.split.winid }))
       local expected = [=[
    foo foo]=]
       assert.are.same(expected, table.concat(lines, "\n"))
@@ -456,6 +502,20 @@ describe("SlangServer", function()
    └╴foo
   sub (4)]=]
       assert.are.same(expected, table.concat(lines, "\n"))
+
+      local source_winid = require("slang-server.navigation").state.source_winid
+      local source_bufnr = vim.api.nvim_win_get_buf(source_winid)
+      for _, state in ipairs({ hierarchy.state, cells.state }) do
+         local target_bufnr = vim.api.nvim_create_buf(true, false)
+         vim.api.nvim_set_current_win(state.split.winid)
+         vim.api.nvim_win_set_buf(state.split.winid, target_bufnr)
+
+         assert.are.same(state.split.bufnr, vim.api.nvim_win_get_buf(state.split.winid))
+         assert.are.same(target_bufnr, vim.api.nvim_win_get_buf(source_winid))
+
+         vim.api.nvim_win_set_buf(source_winid, source_bufnr)
+         vim.api.nvim_buf_delete(target_bufnr, { force = true })
+      end
       vim.api.nvim_buf_delete(0, { force = true })
    end)
 
