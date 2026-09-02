@@ -48,6 +48,7 @@ M.quickPick = function(command, ctx)
 
    vim.ui.select(params.items, {
       prompt = params.placeholder,
+      kind = "slang.quickPick",
       format_item = function(item)
          if item.description then
             return item.label .. " " .. item.description

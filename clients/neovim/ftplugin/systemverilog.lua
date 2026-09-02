@@ -21,6 +21,7 @@ local subcommands = {}
 subcommands = vim.tbl_deep_extend("error", subcommands, require("slang-server._commands.setTopLevel"))
 subcommands = vim.tbl_deep_extend("error", subcommands, require("slang-server._commands.setBuildFile"))
 subcommands = vim.tbl_deep_extend("error", subcommands, require("slang-server._commands.hierarchy"))
+subcommands = vim.tbl_deep_extend("error", subcommands, require("slang-server._commands.searchHierarchy"))
 subcommands = vim.tbl_deep_extend("error", subcommands, require("slang-server._commands.openWaveform"))
 subcommands = vim.tbl_deep_extend("error", subcommands, require("slang-server._commands.addToWaves"))
 

@@ -33,6 +33,10 @@ local default_config = {
          },
       },
    },
+   search = {
+      picker = "auto", -- "fzf-lua", "telescope", "snacks", "vim.ui", or a custom picker function
+      query_delay = 150, -- Debounce in ms, in addition to any delay imposed by the picker
+   },
    -- Icon and highlight group for each element kind
    kinds = {
       instance = { icon = "", hl = "SlangServerInstance" },

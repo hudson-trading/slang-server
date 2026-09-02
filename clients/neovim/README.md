@@ -25,6 +25,11 @@ Active-instance selection uses standard LSP code lenses. To display and run
 these lenses, configure Neovim as described in the
 [Code lenses documentation](https://hudson-trading.github.io/slang-server/start/installing/#code-lenses).
 
+`:SlangServer searchHierarchy` provides an interactive search over the compiled
+design and reveals the selected object in the hierarchy view. It uses FzfLua,
+Telescope, or Snacks Picker when available, in that order, and otherwise falls
+back to `vim.ui.input` followed by `vim.ui.select`.
+
 ## Requirements
 
 * Neovim 0.10.0 or newer

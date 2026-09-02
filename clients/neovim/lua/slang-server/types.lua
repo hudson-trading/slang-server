@@ -6,6 +6,13 @@
 ---@field kinds slang-server.config.Kinds?
 ---@field highlights slang-server.config.Highlights?
 ---@field navigation slang-server.config.Navigation?
+---@field search slang-server.config.Search?
+
+---@alias slang-server.config.SearchPicker "auto"|"fzf-lua"|"telescope"|"snacks"|"vim.ui"|slang-server.navigation.SearchPicker
+
+---@class (exact) slang-server.config.Search
+---@field picker slang-server.config.SearchPicker?
+---@field query_delay integer? debounce in milliseconds, in addition to any picker delay
 
 ---@class (exact) slang-server.config.Navigation
 ---@field position string?

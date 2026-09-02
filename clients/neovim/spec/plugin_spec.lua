@@ -362,6 +362,7 @@ describe("SlangServer", function()
          end
          vim.ui.select = function(items, options, on_choice)
             assert.are.same("Pick one", options.prompt)
+            assert.are.same("slang.quickPick", options.kind)
             assert.are.same("second (current)", options.format_item(items[2]))
             on_choice(items[2])
          end
