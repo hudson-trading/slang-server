@@ -531,6 +531,21 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Neovim">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#enhanced-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      Enhanced features
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1066,6 +1081,21 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Neovim">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#enhanced-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      Enhanced features
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1105,7 +1135,8 @@
 <p><code>slang-server</code> is available in <a href="https://github.com/neovim/nvim-lspconfig">nvim-lspconfig</a> as <code>slang_server</code> (note the underscore) and in the <a href="https://github.com/mason-org/mason.nvim">mason.nvim</a> package registry as <code>slang-server</code>, so no additional configuration is required in most cases. The default configuration shipped with nvim-lspconfig can be found <a href="https://github.com/neovim/nvim-lspconfig/blob/master/lsp/slang_server.lua">here</a>.</p>
 <p>Install the binary via <code>:MasonInstall slang-server</code> (or otherwise place it on <code>PATH</code>), then enable the server with <code>vim.lsp.enable("slang_server")</code>, or follow your own Neovim configuration's convention for enabling servers.</p>
 <p>Restart and run <code>:LspInfo</code> to make sure the LSP was correctly installed.</p>
-<p>The optional <a href="https://github.com/hudson-trading/slang-server.nvim">slang-server.nvim</a> plugin provides enhanced HDL-specific features such as the design hierarchy view and waveform integration. It reports incompatible server versions after the configured LSP client attaches, but leaves installation and LSP configuration to your existing Neovim tooling.</p>
+<h4 id="enhanced-features">Enhanced features<a class="headerlink" href="#enhanced-features" title="Permanent link">&para;</a></h4>
+<p>Once the language server is installed, it is recommended to install the <a href="https://github.com/hudson-trading/slang-server.nvim">slang-server.nvim</a> plugin; this provides enhanced HDL specific features such as design hierarchy view and waveform integration.</p>
 <h3 id="other-editors">Other editors<a class="headerlink" href="#other-editors" title="Permanent link">&para;</a></h3>
 <p>Most modern editors can at least point to a language server binary for specific file types. This will provide standard LSP features, but not HDL specific features.</p>
 <p>If the editor also allows for executing LSP commands, HDL features like setting a compilation should be available.</p>

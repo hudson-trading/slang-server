@@ -621,27 +621,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#neovim-validation" class="md-nav__link">
-    <span class="md-ellipsis">
-      Neovim validation
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#server-release-assets" class="md-nav__link">
     <span class="md-ellipsis">
       Server release assets
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#publishing-the-neovim-client" class="md-nav__link">
-    <span class="md-ellipsis">
-      Publishing the Neovim client
     </span>
   </a>
   
@@ -1069,27 +1051,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#neovim-validation" class="md-nav__link">
-    <span class="md-ellipsis">
-      Neovim validation
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#server-release-assets" class="md-nav__link">
     <span class="md-ellipsis">
       Server release assets
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#publishing-the-neovim-client" class="md-nav__link">
-    <span class="md-ellipsis">
-      Publishing the Neovim client
     </span>
   </a>
   
@@ -1115,9 +1079,9 @@
 
 
 <h1 id="versioning-and-releases">Versioning and releases<a class="headerlink" href="#versioning-and-releases" title="Permanent link">&para;</a></h1>
-<p>The <code>slang-server</code> binary and its editor clients use independent semantic versions. Patch
-versions can advance independently, but the major and minor versions describe
-the shared feature set. Version-aware clients warn when either side has an
+<p>The <code>slang-server</code> binary and VS Code extension use independent semantic
+versions. Patch versions can advance independently, but the major and minor
+versions describe the shared feature set. Each side warns when the other has an
 older major or minor version.</p>
 <h2 id="version-sources">Version sources<a class="headerlink" href="#version-sources" title="Permanent link">&para;</a></h2>
 <table>
@@ -1139,65 +1103,24 @@ older major or minor version.</p>
 <td><a href="https://github.com/hudson-trading/slang-server/blob/main/clients/vscode/package.json"><code>clients/vscode/package.json</code></a></td>
 <td><code>vscode-publish.yml</code></td>
 </tr>
-<tr>
-<td>Neovim client</td>
-<td><code>clients/neovim/lua/slang-server/version.lua</code></td>
-<td><code>neovim-publish.yml</code></td>
-</tr>
 </tbody>
 </table>
-<p>The Neovim version is repeated in its rockspec filename, <code>version</code> field, and
-source tag. These values must remain synchronized so LuaRocks installs the same
-revision that the plugin reports to the server.</p>
 <h2 id="compatibility">Compatibility<a class="headerlink" href="#compatibility" title="Permanent link">&para;</a></h2>
-<p>The clients require a server with at least their major and minor version. The
-server also warns when a version-aware client has an older major or minor
+<p>The VS Code extension requires a server with at least its major and minor
+version. The server also warns when the extension has an older major or minor
 version. Patch differences do not generate compatibility warnings.</p>
-<p>For example, versions <code>0.2.3</code> and <code>0.2.10</code> are compatible. A <code>0.3.x</code> component
-used with a <code>0.2.x</code> component warns that the older component should be updated.</p>
-<p>The Neovim plugin checks the server version after an existing LSP client
-attaches. Users can also add the plugin's client capability to their LSP
-configuration so the server can check the plugin version during initialization.
-The plugin does not install, update, configure, or start the language server.</p>
-<h2 id="neovim-validation">Neovim validation<a class="headerlink" href="#neovim-validation" title="Permanent link">&para;</a></h2>
-<p>Run the following command from the repository root to validate the checked-in
-Neovim version:</p>
-<div class="language-bash highlight"><pre><span></span><code>scripts/ci/neovim-version.py<span class="w"> </span>check
-</code></pre></div>
-<p>The check verifies that:</p>
-<ul>
-<li><code>version.lua</code> contains one valid semantic version.</li>
-<li>Exactly one <code>slang-server.nvim</code> rockspec exists.</li>
-<li>The rockspec filename and <code>version</code> field match <code>version.lua</code>.</li>
-<li>The rockspec source tag is <code>v&lt;version&gt;</code>.</li>
-</ul>
-<p>The Python tests exercise major, minor, and patch bumps, recovery of an existing
-release, and invalid metadata. The Neovim tests also check that the plugin and
-rockspec versions agree.</p>
+<p>The extension advertises its name and version through the
+<code>experimental.slangClient</code> initialization capability. The server uses this
+information to detect an older extension during initialization.</p>
 <h2 id="server-release-assets">Server release assets<a class="headerlink" href="#server-release-assets" title="Permanent link">&para;</a></h2>
 <p>The server release workflow publishes one archive per supported platform. The
-VS Code installer and Mason use the canonical names, such as
+VS Code installer uses the canonical names, such as
 <code>slang-server-linux-x64.tar.gz</code>, <code>slang-server-macos.tar.gz</code>, and
 <code>slang-server-windows-x64.zip</code>.</p>
 <p>Releases also include <code>slang-server-old-linux-x64-gcc.tar.gz</code> and
 <code>slang-server-linux-arm64-clang.tar.gz</code> compatibility aliases for clients that
 predate the canonical Linux names. Keep these aliases until those client
 versions no longer need to install current server releases.</p>
-<h2 id="publishing-the-neovim-client">Publishing the Neovim client<a class="headerlink" href="#publishing-the-neovim-client" title="Permanent link">&para;</a></h2>
-<p>Run the <strong>Publish Neovim client</strong> workflow and select a major, minor, or patch
-update. The workflow:</p>
-<ol>
-<li>Runs <code>neovim-version.py prepare</code> to update and validate <code>version.lua</code> and the
-   rockspec.</li>
-<li>Commits the version bump to <code>main</code>.</li>
-<li>Mirrors <code>clients/neovim</code> to the <code>slang-server.nvim</code> repository and tags the
-   mirrored commit.</li>
-<li>Creates the GitHub release in the mirror repository.</li>
-</ol>
-<p>If publishing fails after the version bump reaches <code>main</code>, rerun the workflow
-with <strong>existing_tag</strong> set to the intended tag, such as <code>v0.2.1</code>. Recovery mode
-validates the existing version instead of incrementing it again, then resumes
-the mirroring and release steps.</p>
 
 
 
