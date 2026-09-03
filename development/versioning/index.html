@@ -1079,7 +1079,7 @@
 
 
 <h1 id="versioning-and-releases">Versioning and releases<a class="headerlink" href="#versioning-and-releases" title="Permanent link">&para;</a></h1>
-<p>The <code>slang-server</code> binary and VS Code extension use independent semantic
+<p>The <code>slang-server</code> binary and editor extensions use independent semantic
 versions. Patch versions can advance independently, but the major and minor
 versions describe the shared feature set. Each side warns when the other has an
 older major or minor version.</p>
@@ -1103,12 +1103,22 @@ older major or minor version.</p>
 <td><a href="https://github.com/hudson-trading/slang-server/blob/main/clients/vscode/package.json"><code>clients/vscode/package.json</code></a></td>
 <td><code>vscode-publish.yml</code></td>
 </tr>
+<tr>
+<td>Neovim plugin</td>
+<td><a href="https://github.com/hudson-trading/slang-server/blob/main/clients/neovim/lua/slang-server/_lsp/capabilities.lua"><code>CLIENT_VERSION</code></a> in <code>_lsp/capabilities.lua</code></td>
+<td><code>neovim-sync.yml</code> (mirror only)</td>
+</tr>
 </tbody>
 </table>
+<p>The Neovim plugin is mirrored to
+<a href="https://github.com/hudson-trading/slang-server.nvim">slang-server.nvim</a> rather
+than published to a registry, so its version is not derived from a package
+manifest. The rockspec is used for CI only and stays at <code>scm-1</code>; bump
+<code>CLIENT_VERSION</code> by hand when the plugin gains or requires new server features.</p>
 <h2 id="compatibility">Compatibility<a class="headerlink" href="#compatibility" title="Permanent link">&para;</a></h2>
-<p>The VS Code extension requires a server with at least its major and minor
-version. The server also warns when the extension has an older major or minor
-version. Patch differences do not generate compatibility warnings.</p>
+<p>Editor extensions require a server with at least their major and minor version.
+The server also warns when an extension has an older major or minor version.
+Patch differences do not generate compatibility warnings.</p>
 <p>The extension advertises its name and version through the
 <code>experimental.slangClient</code> initialization capability. The server uses this
 information to detect an older extension during initialization.</p>
