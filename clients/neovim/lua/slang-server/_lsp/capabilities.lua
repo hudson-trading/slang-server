@@ -5,7 +5,7 @@ local M = {}
 -- older than its own; we warn when the server's is older than ours. Patch
 -- differences are ignored in both directions. See docs/development/versioning.md.
 M.CLIENT_NAME = "neovim-slang"
-M.CLIENT_VERSION = "0.2.1"
+M.CLIENT_VERSION = "0.2"
 
 local UPGRADE_HINT = "Please upgrade slang-server and possibly also this plugin."
 local SOURCE_FILETYPES = { "verilog", "systemverilog" }

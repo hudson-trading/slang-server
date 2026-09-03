@@ -1,6 +1,19 @@
 name: Neovim Plugin Repo Sync
 
 on:
+  workflow_call:
+    inputs:
+      ref:
+        description: 'Source revision to mirror'
+        required: true
+        type: string
+      sync_event:
+        description: 'Mirror as a push or pull_request event'
+        required: true
+        type: string
+    secrets:
+      NEOVIM_PAT:
+        required: true
   push:
     branches:
       - main
@@ -25,13 +38,13 @@ jobs:
       - name: Checkout source repository
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ inputs.ref || github.event.pull_request.head.sha || github.sha }}
       - name: Set up uv
         uses: astral-sh/setup-uv@v7
       - name: Mirror the subdirectory to the plugin repo
         env:
           GH_PAT: ${{ secrets.NEOVIM_PAT }}
-          EVENT_NAME: ${{ github.event_name }}
+          EVENT_NAME: ${{ inputs.sync_event || github.event_name }}
           PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
           RUNNING_REPO: ${{ github.repository }}
           UPSTREAM_REPO: hudson-trading/slang-server
