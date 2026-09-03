@@ -99,6 +99,9 @@ public:
     std::vector<std::shared_ptr<syntax::SyntaxTree>> getDependentTrees(
         std::shared_ptr<syntax::SyntaxTree> tree);
 
+    /// @brief The workspace indexer backing this driver
+    Indexer& getIndexer() { return m_indexer; }
+
     std::vector<std::string> getModulesInFile(const std::string& path);
 
     /// @brief Gets definition information for a symbol at an LSP position, used for

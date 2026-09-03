@@ -11,6 +11,7 @@
 #include "ServerDriver.h"
 #include "codeactions/AddDefine.h"
 #include "codeactions/ExpandMacro.h"
+#include "codeactions/IncludeForMacro.h"
 #include "util/Converters.h"
 #include <rfl/Variant.hpp>
 
@@ -42,6 +43,7 @@ std::vector<rfl::Variant<lsp::Command, lsp::CodeAction>> CodeActionDispatch::get
 
     CodeActionContext ctx{
         .params = params,
+        .driver = m_driver,
         .doc = *doc,
         .analysis = *analysis,
         .sourceManager = m_sourceManager,
@@ -65,6 +67,11 @@ std::vector<rfl::Variant<lsp::Command, lsp::CodeAction>> CodeActionDispatch::get
                 break;
         }
     }
+
+    // An undefined macro leaves no token in the syntax index, so this finds the
+    // usage by cursor position directly.
+    if (loc)
+        codeactions::addIncludeForMacroAction(results, ctx, *loc);
 
     // Diagnostic-based actions
     // TODO: add quick fixes based on diagnostic code
