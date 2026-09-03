@@ -1,31 +1,57 @@
 local M = {}
 
-M.MIN_SERVER_VERSION = "0.2.2"
+-- Identity advertised to the server through the `experimental.slangClient`
+-- initialization capability. The server warns when our major/minor version is
+-- older than its own; we warn when the server's is older than ours. Patch
+-- differences are ignored in both directions. See docs/development/versioning.md.
+M.CLIENT_NAME = "neovim-slang"
+M.CLIENT_VERSION = "0.2.1"
 
 local UPGRADE_HINT = "Please upgrade slang-server and possibly also this plugin."
 local SOURCE_FILETYPES = { "verilog", "systemverilog" }
 
+---Parse the major and minor components of a semantic version. Tolerates a
+---leading "v", a "+githash" build suffix, and surrounding whitespace, e.g.
+---the server's "0.2.10+0492171\n".
 ---@param v string
----@return integer, integer, integer
-local function parse_version(v)
-   v = vim.trim(v):match("^[^+]+") or v
-   local major, minor, patch = v:match("^(%d+)%.(%d+)%.(%d+)")
-   return tonumber(major) or 0, tonumber(minor) or 0, tonumber(patch) or 0
+---@return integer? major, integer? minor
+local function parse_major_minor(v)
+   v = vim.trim(v):gsub("^v", "")
+   local major, minor = v:match("^(%d+)%.(%d+)")
+   if not major then
+      return nil, nil
+   end
+   return tonumber(major), tonumber(minor)
 end
 
----@param have string
----@param want string
----@return boolean
-local function version_at_least(have, want)
-   local hM, hm, hp = parse_version(have)
-   local wM, wm, wp = parse_version(want)
+---@return boolean true when `have` is an older major/minor than `want`
+local function is_older_major_minor(have, want)
+   local hM, hm = parse_major_minor(have)
+   local wM, wm = parse_major_minor(want)
+   if not hM or not wM then
+      return false
+   end
    if hM ~= wM then
-      return hM > wM
+      return hM < wM
    end
-   if hm ~= wm then
-      return hm > wm
-   end
-   return hp >= wp
+   return hm < wm
+end
+
+---This plugin's name and version, as sent to the server.
+---@return { name: string, version: string }
+function M.client_info()
+   return { name = M.CLIENT_NAME, version = M.CLIENT_VERSION }
+end
+
+---Add this plugin's identity to a set of LSP client capabilities.
+---@param base lsp.ClientCapabilities? defaults to Neovim's stock capabilities
+---@return lsp.ClientCapabilities
+function M.make_client_capabilities(base)
+   return vim.tbl_deep_extend("force", base or vim.lsp.protocol.make_client_capabilities(), {
+      experimental = {
+         slangClient = M.client_info(),
+      },
+   })
 end
 
 ---@param bufnr integer
@@ -62,35 +88,66 @@ end
 
 -- Per-client cached commands set. Keyed by client.id; populated lazily on the
 -- first successful static-check pass for that client and held for the client's
--- lifetime (server_info and server_capabilities don't change after the LSP
--- initialize handshake). Evicted by the LspDetach autocmd registered below.
+-- lifetime (server_capabilities doesn't change after the LSP initialize
+-- handshake). Evicted by the LspDetach autocmd registered below.
 ---@type table<integer, table<string, true>>
 local client_cache = {}
+
+-- Client ids already warned about a version mismatch, so the notification is
+-- shown once per server rather than on every command.
+---@type table<integer, true>
+local version_warned = {}
 
 vim.api.nvim_create_autocmd("LspDetach", {
    group = vim.api.nvim_create_augroup("slang-server.capabilities", { clear = true }),
    callback = function(args)
       client_cache[args.data.client_id] = nil
+      version_warned[args.data.client_id] = nil
    end,
 })
+
+---Warn if the server predates this plugin's feature set. This is the mirror of
+---the server's own check on `experimental.slangClient`: the server warns when we
+---are older, we warn when it is. Only advisory -- an older server still runs any
+---command it advertises, and unsupported ones are reported individually.
+---@param client vim.lsp.Client
+local function check_server_version(client)
+   if version_warned[client.id] then
+      return
+   end
+
+   local version = client.server_info and client.server_info.version
+   if not version then
+      version_warned[client.id] = true
+      vim.notify(
+         "slang-server: server did not report a version. " .. UPGRADE_HINT,
+         vim.log.levels.WARN
+      )
+      return
+   end
+
+   if is_older_major_minor(version, M.CLIENT_VERSION) then
+      version_warned[client.id] = true
+      vim.notify(
+         string.format(
+            "slang-server: server v%s is older than this plugin's v%s. Please upgrade slang-server.",
+            vim.trim(version),
+            M.CLIENT_VERSION
+         ),
+         vim.log.levels.WARN
+      )
+   end
+end
 
 ---Validate a client's static info and return its supported-command set.
 ---@param client vim.lsp.Client
 ---@return table<string, true>? commands, string? err_msg
 local function get_info(client)
+   check_server_version(client)
+
    local cmds = client_cache[client.id]
    if cmds then
       return cmds, nil
-   end
-
-   local version = client.server_info and client.server_info.version
-   if version and not version_at_least(version, M.MIN_SERVER_VERSION) then
-      return nil,
-         string.format(
-            "slang-server: server version %s is too old (need >= %s). Please upgrade slang-server.",
-            vim.trim(version),
-            M.MIN_SERVER_VERSION
-         )
    end
 
    local ecp = client.server_capabilities and client.server_capabilities.executeCommandProvider

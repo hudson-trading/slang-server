@@ -47,6 +47,36 @@ local function capture_notifications(fn)
    return messages
 end
 
+-- Number of `:messages` lines already accounted for, so each check only looks
+-- at what appeared since the previous one.
+local seen_message_lines = 0
+
+---@return string[]
+local function message_lines()
+   local output = vim.api.nvim_exec2("messages", { output = true }).output or ""
+   if output == "" then
+      return {}
+   end
+   return vim.split(output, "\n", { trimempty = true })
+end
+
+-- The server reports version mismatches and other problems via
+-- window/showMessage, which Neovim's default handler prints to `:messages`
+-- rather than raising an error. Nothing the tests do should provoke one, so
+-- treat any new line as a failure.
+local function assert_no_new_messages()
+   local lines = message_lines()
+   local new = vim.list_slice(lines, seen_message_lines + 1, #lines)
+   seen_message_lines = #lines
+   assert.are.same(
+      {},
+      new,
+      "slang-server wrote to :messages during this test (most likely a window/showMessage "
+         .. "notification from the server, which Neovim prints instead of raising). New :messages lines:\n  "
+         .. table.concat(new, "\n  ")
+   )
+end
+
 describe("SlangServer", function()
    -- load test SV
    vim.cmd("edit tests/foo.sv")
@@ -58,6 +88,7 @@ describe("SlangServer", function()
       cmd = { server_bin },
       filetypes = { "systemverilog" },
       root_dir = vim.uv.cwd(),
+      capabilities = require("slang-server._lsp.capabilities").make_client_capabilities(),
    })
    assert(client)
    -- wait for client to attach to this buffer
@@ -70,6 +101,10 @@ describe("SlangServer", function()
    vim.cmd("luafile lua/slang-server/init.lua")
    -- compile design
    vim.cmd("SlangServer setTopLevel")
+
+   -- Catches anything the server complained about, including messages emitted
+   -- during startup, which land before the first test runs.
+   after_each(assert_no_new_messages)
 
    it("Hierarchy no args", function()
       vim.cmd("SlangServer hierarchy")

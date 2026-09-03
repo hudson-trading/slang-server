@@ -327,13 +327,30 @@ std::monostate SlangServer::setTopLevel(const std::string& path) {
         setExplore();
         return std::monostate{};
     }
-    INFO("Setting top level to {}", path);
-    m_topFile = path;
 
     const auto workspacePath = m_workspaceFolder ? std::optional<std::string_view>(
                                                        m_workspaceFolder->uri.getPath())
                                                  : std::nullopt;
-    m_driver = ServerDriver::createFromTop(m_indexer, m_client, m_config, URI::fromFile(path),
+
+    // Resolve relative paths against the workspace folder. The driver keys its documents by
+    // absolute-path URI, so an unresolved relative path matches nothing and the top level
+    // silently fails to load.
+    auto topPath = fs::path(path);
+    if (topPath.is_relative()) {
+        if (!workspacePath) {
+            m_client.showError(fmt::format(
+                "Cannot set top level to relative path {}: no workspace folder to resolve it "
+                "against. Use an absolute path.",
+                path));
+            return std::monostate{};
+        }
+        topPath = (fs::path(*workspacePath) / topPath).lexically_normal();
+    }
+
+    INFO("Setting top level to {}", topPath.string());
+    m_topFile = topPath.string();
+
+    m_driver = ServerDriver::createFromTop(m_indexer, m_client, m_config, URI::fromFile(topPath),
                                            workspacePath, m_driver.get());
 
     return std::monostate{};

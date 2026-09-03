@@ -1,5 +1,7 @@
 rockspec_format = "3.0"
 package = "slang-server.nvim"
+-- NB: this rockspec is for CI purposes only and is not intended to control
+--     versioning or to be released on luarocks
 version = "scm-1"
 source = {
    url = "git+https://github.com/hudson-trading/slang-server.nvim",
