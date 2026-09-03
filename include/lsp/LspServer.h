@@ -25,7 +25,9 @@ namespace lsp {
 template<typename Impl>
 class LspServer : public JsonRpcServer<Impl> {
 protected:
-    std::unordered_map<std::string, std::function<rfl::Generic(rfl::Generic)>> m_commands;
+    std::unordered_map<std::string,
+                       std::function<rfl::Generic(rfl::Generic, const lsp::RequestContext&)>>
+        m_commands;
 
     // LspClient& m_lspClient;
 
@@ -34,8 +36,9 @@ protected:
     /// Register an rpc command with the given Params, Return, and handler
     template<typename P, typename R, typename Func>
     void registerCommand(const std::string& name, Func&& func) {
-        m_commands[name] = [func = std::forward<Func>(func)](
-                               std::optional<rfl::Generic> paramsJson) -> rfl::Generic {
+        m_commands[name] =
+            [func = std::forward<Func>(func)](std::optional<rfl::Generic> paramsJson,
+                                              const RequestContext& ctx) mutable -> rfl::Generic {
             // Deserialize params
             R result;
             if constexpr (!std::is_same_v<P, std::nullopt_t>) {
@@ -44,10 +47,18 @@ protected:
                 if (!params) {
                     throw std::runtime_error(params.error().what());
                 }
-                result = func(params.value());
+                if constexpr (std::is_invocable_v<Func&, P&, const RequestContext&>)
+                    result = func(params.value(), ctx);
+                else
+                    result = func(params.value());
             }
             else {
-                result = func(std::monostate{});
+                if constexpr (std::is_invocable_v<Func&, std::monostate, const RequestContext&>) {
+                    result = func(std::monostate{}, ctx);
+                }
+                else {
+                    result = func(std::monostate{});
+                }
             }
 
             if constexpr (std::is_same_v<R, std::monostate>) {
@@ -63,14 +74,21 @@ protected:
     /// Register an rpc method with the given Params, Return, and Method (name)
     template<typename P, typename R, auto Method>
     void registerCommand(const std::string& name) {
-        registerCommand<P, R>(name, [this](const auto& params) {
-            return (static_cast<Impl*>(this)->*Method)(params);
+        registerCommand<P, R>(name, [this](const P& params, const RequestContext& ctx) {
+            if constexpr (std::is_invocable_v<decltype(Method), Impl*, const P&,
+                                              const RequestContext&>) {
+                return (static_cast<Impl*>(this)->*Method)(params, ctx);
+            }
+            else {
+                return (static_cast<Impl*>(this)->*Method)(params);
+            }
         });
     }
 
     /// A request send from the client to the server to execute a command. The request might return
     /// a workspace edit which the client will apply to the workspace.
-    std::optional<lsp::LSPAny> getWorkspaceExecuteCommand(const lsp::ExecuteCommandParams& params) {
+    std::optional<lsp::LSPAny> getWorkspaceExecuteCommand(const lsp::ExecuteCommandParams& params,
+                                                          const RequestContext& ctx = {}) {
         std::cerr << " <---" << params.command << "(" << rfl::json::write(params.arguments)
                   << ")\n";
         auto command = m_commands.find(params.command);
@@ -94,7 +112,7 @@ protected:
                 throw std::runtime_error("Expected 0 or 1 argument for command");
             }
         }
-        auto x = command->second(args);
+        auto x = command->second(args, ctx);
 
         std::cerr << " ---> " << params.command << "\n";
 

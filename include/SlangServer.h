@@ -128,7 +128,8 @@ public:
     std::vector<hier::HierItem_t> getScope(const std::string& hierPath);
 
     // Return root-to-focus scope steps with child lists for each hierarchy segment.
-    std::vector<hier::ScopeStep> getScopes(const std::string& hierPath);
+    std::vector<hier::ScopeStep> getScopes(const std::string& hierPath,
+                                           const lsp::RequestContext& ctx = {});
 
     std::optional<lsp::Location> getHierLocation(const std::string& hierPath);
 

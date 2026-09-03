@@ -14,7 +14,10 @@
 #include "util/Converters.h"
 #include "util/Logging.h"
 #include <algorithm>
+#include <cctype>
 #include <memory>
+#include <ranges>
+#include <tuple>
 
 #include "slang/ast/Compilation.h"
 #include "slang/text/SourceManager.h"
@@ -292,6 +295,8 @@ void ServerCompilation::indexModuleDocs() {
 void ServerCompilation::refresh() {
     m_analysis = std::make_unique<ServerCompilationAnalysis>(m_documents, m_options,
                                                              m_sourceManager);
+    m_hierarchySearchItems.clear();
+    m_hierarchySearchIndexed = false;
 }
 
 std::vector<hier::InstanceSet> ServerCompilation::getScopesByModule() {
@@ -330,10 +335,12 @@ std::vector<hier::HierItem_t> ServerCompilation::getScope(const std::string& hie
     return scopeChildren.value_or(std::vector<hier::HierItem_t>{});
 }
 
-std::vector<hier::ScopeStep> ServerCompilation::getScopes(const std::string& hierPath) {
+std::vector<hier::ScopeStep> ServerCompilation::getScopes(const std::string& hierPath,
+                                                          const lsp::RequestContext& ctx) {
     std::vector<hier::ScopeStep> result;
     auto& compilation = m_analysis->compilation;
 
+    ctx.throwIfCancelled("before resolving root hierarchy scope");
     auto rootChildren = tryGetScopeChildren(compilation, m_sourceManager, std::string_view{});
     if (!rootChildren) {
         return result;
@@ -345,12 +352,160 @@ std::vector<hier::ScopeStep> ServerCompilation::getScopes(const std::string& hie
     }
 
     for (const auto* sym : lookupScopeChain(compilation, hierPath)) {
+        ctx.throwIfCancelled("while resolving hierarchy scopes");
         result.push_back({
             .path = sym->getHierarchicalPath(),
             .children = getChildrenForScopeSymbol(*sym, m_sourceManager),
         });
     }
 
+    return result;
+}
+
+hier::HierarchySearchResult ServerCompilation::searchHierarchy(const std::string& query) {
+    constexpr size_t maxResults = 100;
+    hier::HierarchySearchResult result{};
+
+    auto& compilation = m_analysis->compilation;
+
+    if (!m_hierarchySearchIndexed) {
+        auto roots = tryGetScopeChildren(compilation, m_sourceManager, std::string_view{});
+        auto collect = [&](auto&& self, const std::vector<hier::HierItem_t>& items,
+                           std::string_view parentPath, bool concatenateNames,
+                           std::string_view containerName) -> void {
+            for (const auto& item : items) {
+                rfl::visit(
+                    [&](const auto& entry) {
+                        using Entry = std::decay_t<decltype(entry)>;
+                        std::string path;
+                        if (parentPath.empty()) {
+                            path = entry.instName;
+                        }
+                        else {
+                            path = fmt::format("{}{}{}", parentPath, concatenateNames ? "" : ".",
+                                               entry.instName);
+                        }
+
+                        auto labelStart = path.rfind('.');
+                        auto label = labelStart == std::string::npos ? path
+                                                                     : path.substr(labelStart + 1);
+                        std::optional<std::string> description;
+                        if constexpr (std::is_same_v<Entry, hier::Var>) {
+                            description = entry.type;
+                            if (entry.value)
+                                *description += fmt::format(" = {}", *entry.value);
+                        }
+                        else if constexpr (std::is_same_v<Entry, hier::Scope>) {
+                            description = entry.type.value_or("scope");
+                        }
+                        else {
+                            description = entry.declName;
+                        }
+
+                        m_hierarchySearchItems.push_back({
+                            .name = std::move(label),
+                            .path = path,
+                            .kind = entry.kind,
+                            .description = std::move(description),
+                            .containerName = containerName.empty()
+                                                 ? std::nullopt
+                                                 : std::optional(std::string(containerName)),
+                        });
+
+                        if constexpr (std::is_same_v<Entry, hier::Scope>) {
+                            std::string childContainerName(containerName);
+                            if (entry.kind == hier::SlangKind::InterfacePort ||
+                                entry.kind == hier::SlangKind::InterfacePortArray) {
+                                if (entry.type)
+                                    childContainerName = *entry.type;
+                            }
+                            else {
+                                if (!childContainerName.empty() &&
+                                    !entry.instName.starts_with("[")) {
+                                    childContainerName += ".";
+                                }
+                                childContainerName += entry.instName;
+                            }
+                            self(self, entry.children, path,
+                                 entry.kind == hier::SlangKind::ScopeArray ||
+                                     entry.kind == hier::SlangKind::InterfacePortArray,
+                                 childContainerName);
+                        }
+                        else if constexpr (std::is_same_v<Entry, hier::Instance>) {
+                            if (!entry.children.empty()) {
+                                self(self, entry.children, path,
+                                     entry.kind == hier::SlangKind::InstanceArray, entry.declName);
+                            }
+                            else if (entry.hasChildren) {
+                                if (auto* symbol = lookupHierSymbol(compilation, path)) {
+                                    auto children = getChildrenForScopeSymbol(*symbol,
+                                                                              m_sourceManager);
+                                    self(self, children, path, false, entry.declName);
+                                }
+                            }
+                        }
+                    },
+                    item);
+            }
+        };
+        if (roots)
+            collect(collect, *roots, std::string_view{}, false, std::string_view{});
+        m_hierarchySearchIndexed = true;
+    }
+
+    auto lowercase = [](std::string_view text) {
+        std::string lowered;
+        lowered.reserve(text.size());
+        for (char c : text)
+            lowered.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+        return lowered;
+    };
+    auto lowerQuery = lowercase(query);
+    auto fuzzyMatches = [](std::string_view needle, std::string_view haystack) {
+        auto next = needle.begin();
+        for (char c : haystack) {
+            if (next != needle.end() && *next == c)
+                ++next;
+        }
+        return next == needle.end();
+    };
+
+    struct Match {
+        const hier::HierarchySearchItem* item;
+        int rank;
+    };
+    std::vector<Match> matches;
+    for (const auto& item : m_hierarchySearchItems) {
+        auto lowerLabel = lowercase(item.name);
+        auto lowerPath = lowercase(item.path);
+        int rank;
+        if (lowerQuery.empty())
+            rank = 0;
+        else if (lowerLabel == lowerQuery)
+            rank = 0;
+        else if (lowerLabel.starts_with(lowerQuery))
+            rank = 1;
+        else if (lowerLabel.find(lowerQuery) != std::string::npos)
+            rank = 2;
+        else if (lowerPath.find(lowerQuery) != std::string::npos)
+            rank = 3;
+        else if (fuzzyMatches(lowerQuery, lowerPath))
+            rank = 4;
+        else
+            continue;
+        matches.push_back({.item = &item, .rank = rank});
+    }
+
+    auto resultCount = std::min(matches.size(), maxResults);
+    std::ranges::partial_sort(
+        matches, matches.begin() + resultCount, [](const Match& left, const Match& right) {
+            return std::tuple(left.rank, left.item->path.size(), left.item->path) <
+                   std::tuple(right.rank, right.item->path.size(), right.item->path);
+        });
+    result.totalResults = matches.size();
+    result.matches.reserve(resultCount);
+    for (const auto& match : matches | std::views::take(resultCount))
+        result.matches.push_back(*match.item);
     return result;
 }
 
