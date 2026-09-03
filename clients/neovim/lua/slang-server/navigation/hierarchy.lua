@@ -124,13 +124,16 @@ local function parse_nodes(nodes, parent_node)
 end
 
 ---@param node NuiTree.Node
-local function focus_tree(node)
+---@param take_focus boolean?
+local function select_tree(node, take_focus)
    local _, start_linenr = M.state.tree:get_node(node:get_id())
    vim.api.nvim_win_set_cursor(M.state.split.winid, { start_linenr, 0 })
    vim.api.nvim_win_call(M.state.split.winid, function()
       vim.cmd("normal! zz")
    end)
-   vim.api.nvim_set_current_win(M.state.split.winid)
+   if take_focus then
+      vim.api.nvim_set_current_win(M.state.split.winid)
+   end
 end
 
 ---@param node slang-server.navigation.TreeNode
@@ -328,6 +331,7 @@ end
 
 ---@class slang-server.navigation.RevealOptions
 ---@field focus boolean?
+---@field select boolean?
 
 ---Reveal a hierarchy path without opening its source location.
 ---@param path string
@@ -408,8 +412,8 @@ function M.reveal(path, opts)
                vim.log.levels.WARN
             )
          end
-         if opts.focus and last_resolved then
-            focus_tree(last_resolved)
+         if (opts.select or opts.focus) and last_resolved then
+            select_tree(last_resolved, opts.focus)
          end
       end,
       on_failure = function(message)

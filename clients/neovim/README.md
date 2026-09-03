@@ -19,8 +19,13 @@ end)
 
 The server performs the fuzzy match and returns at most 100 entries per query.
 
+Active-instance selection uses standard LSP code lenses. To display and run
+these lenses, configure Neovim as described in the
+[Code lenses documentation](https://hudson-trading.github.io/slang-server/start/installing/#code-lenses).
+
 ## Requirements
 
+* Neovim 0.10.0 or newer
 * `slang-server` configured as a Neovim language server
 * [Nerd Font](https://www.nerdfonts.com/) is recommended
 

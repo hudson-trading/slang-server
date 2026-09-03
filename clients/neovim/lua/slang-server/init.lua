@@ -1,5 +1,7 @@
 -- Main module file
 
+require("slang-server._core.version")
+
 local config = require("slang-server._core.config")
 
 ---@class SlangModule

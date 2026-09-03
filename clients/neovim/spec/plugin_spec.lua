@@ -254,6 +254,28 @@ describe("SlangServer", function()
       assert.are.same(2, selected)
    end)
 
+   it("Reports when a quick-pick command cannot be sent", function()
+      local client_commands = require("slang-server._lsp.clientCommands")
+      local original_get_client = vim.lsp.get_client_by_id
+
+      local messages = capture_notifications(function()
+         vim.lsp.get_client_by_id = function()
+            return {
+               request = function()
+                  return false
+               end,
+            }
+         end
+         client_commands.executeServerCommand("slang.activateInstance", {}, {
+            bufnr = 0,
+            client_id = 42,
+         })
+      end)
+
+      vim.lsp.get_client_by_id = original_get_client
+      assert.are.same({ "slang-server: failed to send workspace/executeCommand request" }, messages)
+   end)
+
    it("Opens navigation and searches instances from the standalone command", function()
       local navigation = require("slang-server.navigation")
       local original_select = vim.ui.select
@@ -526,27 +548,62 @@ describe("SlangServer", function()
 
    it("Active instance notifications reveal an open hierarchy", function()
       local client_commands = require("slang-server._lsp.clientCommands")
+      local client_state = require("slang-server._lsp.state")
       local navigation = require("slang-server.navigation")
       local hierarchy = require("slang-server.navigation.hierarchy")
       local original_reveal = hierarchy.reveal
       local original_state = navigation.state.open
+      local original_get_client = vim.lsp.get_client_by_id
+      local original_refresh = vim.lsp.codelens.refresh
+      local client_id = 12345
+      local original_client_state = client_state.clients[client_id]
+      local bufnr = vim.api.nvim_get_current_buf()
+      local refreshes = {}
       local revealed
 
       local ok, err = pcall(function()
+         client_state.clients[client_id] = nil
          hierarchy.reveal = function(path, opts)
             revealed = { path, opts }
          end
+         vim.lsp.get_client_by_id = function(id)
+            assert.are.same(client_id, id)
+            return {
+               attached_buffers = { [bufnr] = true },
+               supports_method = function(_, method, method_bufnr)
+                  assert.are.same(vim.lsp.protocol.Methods.textDocument_codeLens, method)
+                  assert.are.same(bufnr, method_bufnr)
+                  return true
+               end,
+            }
+         end
+         vim.lsp.codelens.refresh = function(opts)
+            refreshes[#refreshes + 1] = opts.bufnr
+         end
 
          navigation.state.open = false
-         client_commands.activeInstanceChanged(nil, { hierPath = "top.hidden" })
+         client_commands.activeInstanceChanged(
+            nil,
+            { hierPath = "top.hidden", interactionSource = "codeLensSelect" },
+            { client_id = client_id }
+         )
          assert.is_nil(revealed)
 
          navigation.state.open = true
-         client_commands.activeInstanceChanged(nil, { hierPath = "top.visible" })
-         assert.are.same({ "top.visible", nil }, revealed)
+         client_commands.activeInstanceChanged(
+            nil,
+            { hierPath = "top.visible", interactionSource = "codeLensSelect" },
+            { client_id = client_id }
+         )
+         assert.are.same({ "top.visible", { select = true } }, revealed)
+         assert.are.same({ active_path = "top.visible" }, client_state.clients[client_id])
+         assert.are.same({ bufnr, bufnr }, refreshes)
       end)
       hierarchy.reveal = original_reveal
       navigation.state.open = original_state
+      vim.lsp.get_client_by_id = original_get_client
+      vim.lsp.codelens.refresh = original_refresh
+      client_state.clients[client_id] = original_client_state
 
       assert(ok, err)
    end)

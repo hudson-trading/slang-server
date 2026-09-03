@@ -1,5 +1,7 @@
 local _CMD = "SlangServer"
 
+require("slang-server._core.version")
+
 require("slang-server._lsp.clientCommands").register()
 
 local subcommands = {}
