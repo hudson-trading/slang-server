@@ -52,6 +52,10 @@
 ---@field instCount integer
 ---@field inst slang-server.lsp.QualifiedInstance?
 
+---@class slang-server.lsp.ScopeStep
+---@field path string
+---@field children slang-server.lsp.Node[]
+
 ---@class slang-server.lsp.HierarchySearchItem
 ---@field name string
 ---@field path string

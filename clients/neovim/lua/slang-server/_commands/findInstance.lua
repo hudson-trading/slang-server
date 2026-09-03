@@ -7,6 +7,7 @@ M.findInstance = {
       local bufnr = capabilities.get_source_context()
       local required = {
          "slang.getScope",
+         "slang.getScopes",
          "slang.getScopesByModule",
          "slang.getInstancesOfModule",
          "slang.showHierLocation",
@@ -20,8 +21,7 @@ M.findInstance = {
          local navigation = require("slang-server.navigation")
          if navigation.state.open then
             local hierarchy = require("slang-server.navigation.hierarchy")
-            vim.api.nvim_set_current_win(hierarchy.state.split.winid)
-            hierarchy.open_remainder(nil, true, inst_path, true)
+            hierarchy.reveal(inst_path, { focus = true })
          else
             navigation.show(inst_path, true)
          end

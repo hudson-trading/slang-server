@@ -61,12 +61,7 @@ M.activeInstanceChanged = function(_, params)
    if not navigation.state.open then
       return
    end
-   require("slang-server.navigation.hierarchy").open_remainder(
-      nil,
-      true,
-      params.hierPath,
-      false
-   )
+   require("slang-server.navigation.hierarchy").reveal(params.hierPath)
 end
 
 M.register = function()

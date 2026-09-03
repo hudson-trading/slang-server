@@ -4,8 +4,10 @@ local hl = require("slang-server._core.highlights")
 local client = require("slang-server._lsp.client")
 local handlers = require("slang-server.handlers")
 local util = require("slang-server.util")
+local hierarchy_path = require("slang-server.navigation.path")
 
 local M = {}
+local reveal_generation = 0
 
 local expandable_kinds = {
    Instance = true,
@@ -32,109 +34,6 @@ function M.on_close()
    vim.api.nvim_buf_delete(M.state.split.bufnr, { force = true })
    M.state.tree = nil
    M.state.split = nil
-end
-
----@param split NuiSplit
----@param tree NuiTree
-local function map_keys(split, tree)
-   local navigation = require("slang-server.navigation")
-   ---@type table<string, slang-server.ui.Mapping>
-   local mappings = {}
-   local keys = assert(config.navigation and config.navigation.hierarchy.keymaps)
-   navigation.add_mapping(mappings, keys.yank_path, {
-         impl = function(node)
-            if node and node.path then
-               util.yank_and_notify(node.path)
-            end
-         end,
-         opts = { noremap = true },
-         desc = "Yank hierarchical node path",
-      })
-   navigation.add_mapping(mappings, keys.yank_value, {
-         impl = function(node)
-            if node and node.value then
-               util.yank_and_notify(node.value)
-            end
-         end,
-         opts = { noremap = true },
-         desc = "Yank node value",
-      })
-   navigation.add_mapping(mappings, keys.yank_file, {
-         impl = function(node)
-            if node and node.instLoc and node.instLoc.uri then
-               util.yank_and_notify(vim.uri_to_fname(node.instLoc.uri))
-            end
-         end,
-         opts = { noremap = true },
-         desc = "Yank enclosing file path",
-      })
-   navigation.add_mapping(mappings, keys.jump, {
-         impl = function(node)
-            if node and node.path then
-               navigation.show_hier_location(node.path)
-            end
-         end,
-         opts = { noremap = true },
-         desc = "Jump to node in source",
-      })
-   navigation.add_mapping(mappings, keys.jump_to_declaration, {
-         impl = function(node)
-            if node and node.declLoc then
-               local source_win = navigation.state.sv_win
-               util.jump_loc(node.declLoc, source_win and source_win.winnr)
-            end
-         end,
-         opts = { noremap = true },
-         desc = "Jump to node declaration in source",
-      })
-   navigation.add_mapping(mappings, keys.toggle, {
-         impl = function(node)
-            if not node then
-               return
-            end
-
-            if node:is_expanded() and node:collapse() then
-               tree:render()
-            else
-               M._lazy_open(node)
-            end
-         end,
-         opts = { noremap = true },
-         desc = "Expand / collapse node",
-      })
-   navigation.add_mapping(mappings, keys.close, {
-         impl = function()
-            split:unmount()
-         end,
-         opts = { noremap = true },
-         desc = "Close",
-      })
-   navigation.add_mapping(mappings, keys.help, {
-         impl = function()
-            util.show_help(mappings, "Hierarchy view")
-         end,
-         opts = { noremap = true },
-         desc = "Show help",
-      })
-
-   navigation.map_keys(split, tree, mappings)
-end
-
----@param parent slang-server.navigation.TreeNode?
----@param root boolean?
----@param remaining_path slang-server.navigation.Path?
----@param from_cell boolean?
-function M.open_remainder(parent, root, remaining_path, from_cell)
-   local path = parent and parent.path or ""
-   if remaining_path ~= nil and remaining_path ~= "" then
-      local sep_loc = string.find(remaining_path, "[.[]", 2) or (string.len(remaining_path) + 1)
-      local is_bracket = string.sub(remaining_path, sep_loc, sep_loc) == "["
-      local before_sep = string.sub(remaining_path, 0, sep_loc - 1)
-      local after_sep = string.sub(remaining_path, sep_loc + (is_bracket and 0 or 1))
-      local before_is_bracket = string.sub(before_sep, 1, 1) == "["
-      path = path .. ((before_is_bracket or root) and "" or ".") .. before_sep
-      M._lazy_open(path, false, after_sep, from_cell)
-   end
 end
 
 ---@param node slang-server.navigation.HierNode
@@ -201,9 +100,12 @@ local function parse_nodes(nodes, parent_node)
    for _, node in ipairs(nodes) do
       local treeNode = {}
 
-      local sep = node.instName:sub(1, 1) == "[" and "" or "."
-      treeNode.path = parent_node and (parent_node.path .. sep .. node.instName) or node.instName
-      treeNode._uid = parent_node and (parent_node._uid .. sep .. node.instName) or node.instName
+      treeNode.path = hierarchy_path.join(
+         parent_node and parent_node.path or "",
+         node.instName,
+         parent_node and parent_node.kind or nil
+      )
+      treeNode._uid = treeNode.path
 
       if node.children then
          treeNode._populated = #node.children > 0
@@ -221,43 +123,6 @@ local function parse_nodes(nodes, parent_node)
    return nui_nodes
 end
 
----@param nodes slang-server.lsp.Node[]
----@param parent slang-server.navigation.TreeNode?
----@param root boolean?
----@param remaining_path slang-server.navigation.Path?
----@param from_cell boolean?
-local function show_nodes(nodes, parent, root, remaining_path, from_cell)
-   local navigation = require("slang-server.navigation")
-   if not navigation.state.open then
-      return
-   end
-
-   local tree_nodes
-   if root then
-      for _, node in ipairs(nodes) do
-         tree_nodes = parse_nodes(nodes)
-         M.state.tree:set_nodes(tree_nodes)
-      end
-   -- If the parent_path is already in the tree, we want to append children to the existing node
-   elseif parent then
-      tree_nodes = parse_nodes(nodes, parent)
-      M.state.tree:set_nodes(tree_nodes, parent:get_id())
-
-      parent._populated = true
-      parent:expand()
-   else
-      tree_nodes = parse_nodes(nodes)
-      M.state.tree:set_nodes(tree_nodes)
-
-      for _, node in ipairs(tree_nodes) do
-         node:expand()
-      end
-   end
-
-   M.state.tree:render()
-   M.open_remainder(parent, root, remaining_path, from_cell)
-end
-
 ---@param node NuiTree.Node
 local function focus_tree(node)
    local _, start_linenr = M.state.tree:get_node(node:get_id())
@@ -265,64 +130,294 @@ local function focus_tree(node)
    vim.api.nvim_win_call(M.state.split.winid, function()
       vim.cmd("normal! zz")
    end)
+   vim.api.nvim_set_current_win(M.state.split.winid)
 end
 
--- `path` can be string or nil, with nil representing $root and returning the first top level instance (TODO:)
--- If `path` is given and does not exist in the hierarchy, it is treated as a root node
--- If `path` is given and exists in the hierarchy, it is considered a subscope to be populated
----@param path_or_node slang-server.navigation.Path | slang-server.navigation.TreeNode
----@param root boolean?
----@param remaining_path slang-server.navigation.Path?
----@param from_cell boolean?
-function M._lazy_open(path_or_node, root, remaining_path, from_cell)
+---@param node slang-server.navigation.TreeNode
+local function lazy_open(node)
    local navigation = require("slang-server.navigation")
    local generation = M.state.generation
    local tree = M.state.tree
-   local node
-   local path
-
-   if type(path_or_node) == "string" then
-      node = M.state.tree:get_node(path_or_node) --[[@as slang-server.navigation.TreeNode?]]
-      path = path_or_node
-   else
-      node = path_or_node
-      path = node.path
-   end
 
    -- Don't reload if the node is already populated
-   if node and node._populated then
+   if node._populated then
       node:expand()
       M.state.tree:render()
-      if from_cell then
-         focus_tree(node)
-      end
-      M.open_remainder(node, root, remaining_path, from_cell)
    else
       navigation.message(M.state.tree, "Loading scope...", { parent = node, hl = hl.HIER_SUBTLE })
-      if node and from_cell then
-         focus_tree(node)
-      end
 
-      local source = navigation.state.sv_buf
-      if not source then
+      if not navigation.state.sv_buf then
          vim.notify("No SV buffer", vim.log.levels.ERROR)
-         return
       end
 
-      client.getScope(source.bufnr, {
+      client.getScope(navigation.state.sv_buf.bufnr, {
          on_success = function(resp)
-            if not navigation.session_active(M.state, generation) or M.state.tree ~= tree then
+            if not navigation.state.open or M.state.generation ~= generation or M.state.tree ~= tree then
                return
             end
-            show_nodes(resp, node, root, remaining_path, from_cell)
+            local children = parse_nodes(resp, node)
+            M.state.tree:set_nodes(children, node:get_id())
+            node._populated = true
+            node:expand()
+            M.state.tree:render()
          end,
          on_failure = function(message)
-            if navigation.session_active(M.state, generation) and M.state.tree == tree then
+            if
+               navigation.state.open
+               and M.state.generation == generation
+               and M.state.tree == tree
+            then
                handlers.defaultOnFailure(message)
             end
          end,
-      }, { hierPath = path })
+      }, { hierPath = node.path })
    end
+end
+
+---@param split NuiSplit
+---@param tree NuiTree
+local function map_keys(split, tree)
+   local navigation = require("slang-server.navigation")
+   ---@type table<string, slang-server.ui.Mapping>
+   local mappings = {}
+   local keys = assert(config.navigation and config.navigation.hierarchy.keymaps)
+   navigation.add_mapping(mappings, keys.yank_path, {
+         impl = function(node)
+            if node and node.path then
+               util.yank_and_notify(node.path)
+            end
+         end,
+         opts = { noremap = true },
+         desc = "Yank hierarchical node path",
+      })
+   navigation.add_mapping(mappings, keys.yank_value, {
+         impl = function(node)
+            if node and node.value then
+               util.yank_and_notify(node.value)
+            end
+         end,
+         opts = { noremap = true },
+         desc = "Yank node value",
+      })
+   navigation.add_mapping(mappings, keys.yank_file, {
+         impl = function(node)
+            if node and node.instLoc and node.instLoc.uri then
+               util.yank_and_notify(vim.uri_to_fname(node.instLoc.uri))
+            end
+         end,
+         opts = { noremap = true },
+         desc = "Yank enclosing file path",
+      })
+   navigation.add_mapping(mappings, keys.jump, {
+         impl = function(node)
+            if node and node.path then
+               navigation.show_hier_location(node.path)
+            end
+         end,
+         opts = { noremap = true },
+         desc = "Jump to node in source",
+      })
+   navigation.add_mapping(mappings, keys.jump_to_declaration, {
+         impl = function(node)
+            if node and node.declLoc then
+               local source_win = navigation.state.sv_win
+               util.jump_loc(node.declLoc, source_win and source_win.winnr)
+            end
+         end,
+         opts = { noremap = true },
+         desc = "Jump to node declaration in source",
+      })
+   navigation.add_mapping(mappings, keys.toggle, {
+         impl = function(node)
+            if not node then
+               return
+            end
+
+            if node:is_expanded() and node:collapse() then
+               tree:render()
+            else
+               lazy_open(node)
+            end
+         end,
+         opts = { noremap = true },
+         desc = "Expand / collapse node",
+      })
+   navigation.add_mapping(mappings, keys.close, {
+         impl = function()
+            split:unmount()
+         end,
+         opts = { noremap = true },
+         desc = "Close",
+      })
+   navigation.add_mapping(mappings, keys.help, {
+         impl = function()
+            util.show_help(mappings, "Hierarchy view")
+         end,
+         opts = { noremap = true },
+         desc = "Show help",
+      })
+
+   navigation.map_keys(split, tree, mappings)
+end
+
+---@param parent slang-server.navigation.TreeNode?
+---@return slang-server.navigation.TreeNode[]
+local function get_children(parent)
+   if not parent then
+      return M.state.tree:get_nodes()
+   end
+
+   local children = {}
+   for _, id in ipairs(parent:get_child_ids()) do
+      local child = M.state.tree:get_node(id)
+      if child then
+         children[#children + 1] = child
+      end
+   end
+   return children
+end
+
+---@param node slang-server.navigation.TreeNode
+---@return slang-server.navigation.TreeNode
+local function preserve_subtree(node)
+   local children = get_children(node)
+   for index, child in ipairs(children) do
+      children[index] = preserve_subtree(child)
+   end
+   node.__children = children
+   node._child_ids = nil
+   return node
+end
+
+---@param parent slang-server.navigation.TreeNode?
+---@param nodes slang-server.lsp.Node[]
+---@return slang-server.navigation.TreeNode[]
+local function refresh_children(parent, nodes)
+   local existing = {}
+   for _, child in ipairs(get_children(parent)) do
+      if child.instName then
+         existing[child.instName] = child
+      end
+   end
+
+   local refreshed = {}
+   for _, node in ipairs(nodes) do
+      local child = existing[node.instName]
+      if child then
+         for key, value in pairs(node) do
+            if key ~= "children" then
+               child[key] = value
+            end
+         end
+         preserve_subtree(child)
+         refreshed[#refreshed + 1] = child
+      else
+         refreshed[#refreshed + 1] = parse_nodes({ node }, parent)[1]
+      end
+   end
+
+   if parent then
+      M.state.tree:set_nodes(refreshed, parent:get_id())
+      parent._populated = true
+      parent:expand()
+   else
+      M.state.tree:set_nodes(refreshed)
+   end
+   return refreshed
+end
+
+---@class slang-server.navigation.RevealOptions
+---@field focus boolean?
+
+---Reveal a hierarchy path without opening its source location.
+---@param path string
+---@param opts slang-server.navigation.RevealOptions?
+function M.reveal(path, opts)
+   opts = opts or {}
+   local navigation = require("slang-server.navigation")
+   local source = navigation.state.sv_buf
+   if not source then
+      vim.notify("No SV buffer", vim.log.levels.ERROR)
+      return
+   end
+
+   local generation = M.state.generation
+   local tree = M.state.tree
+   if not tree then
+      return
+   end
+   reveal_generation = reveal_generation + 1
+   local request_generation = reveal_generation
+
+   local function active()
+      return reveal_generation == request_generation
+         and navigation.session_active(M.state, generation)
+         and M.state.tree == tree
+   end
+
+   if #tree:get_nodes() == 0 then
+      navigation.message(tree, "Loading hierarchy...", { hl = hl.HIER_SUBTLE })
+   end
+   client.getScopes(source.bufnr, {
+      on_success = function(scopes)
+         if not active() then
+            return
+         end
+
+         local parts = hierarchy_path.split(path)
+         local current
+         local last_resolved
+         local index = 1
+
+         while index <= #parts do
+            local step = scopes[index]
+            if not step then
+               break
+            end
+            local children = refresh_children(current, step.children)
+            local child, resolved_index = hierarchy_path.resolve_child(
+               children,
+               parts,
+               index,
+               last_resolved and last_resolved.path or nil
+            )
+            if not child then
+               break
+            end
+            last_resolved = child
+            current = child
+            index = resolved_index + 1
+         end
+
+         local final_step = scopes[index]
+         if last_resolved and index > #parts and final_step then
+            refresh_children(last_resolved, final_step.children)
+         elseif #parts == 0 and scopes[1] then
+            refresh_children(nil, scopes[1].children)
+         end
+
+         tree:render()
+         if index <= #parts then
+            vim.notify(
+               string.format(
+                  "Could not resolve hierarchy path '%s' at '%s' (last resolved: '%s')",
+                  path,
+                  parts[index],
+                  last_resolved and last_resolved.path or "root"
+               ),
+               vim.log.levels.WARN
+            )
+         end
+         if opts.focus and last_resolved then
+            focus_tree(last_resolved)
+         end
+      end,
+      on_failure = function(message)
+         if active() then
+            handlers.defaultOnFailure(message)
+         end
+      end,
+   }, { hierPath = path })
 end
 
 local function on_hover()
@@ -397,7 +492,7 @@ function M.show(top, focus_path)
    M.state.tree = tree
    M.state.generation = M.state.generation + 1
 
-   M._lazy_open("", true, top, focus_path)
+   M.reveal(top, { focus = focus_path })
 end
 
 return M

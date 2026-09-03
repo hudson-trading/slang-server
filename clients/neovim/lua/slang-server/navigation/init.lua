@@ -198,6 +198,7 @@ end
 ---@param focus_path boolean? Move the hierarchy cursor to the resolved path
 function M.show(top, focus_path)
    if M.state.open then
+      hier.reveal(top, { focus = focus_path })
       if hier.state.split and vim.api.nvim_win_is_valid(hier.state.split.winid) then
          vim.api.nvim_set_current_win(hier.state.split.winid)
       end

@@ -393,67 +393,148 @@ describe("SlangServer", function()
       assert(ok, err)
    end)
 
-   it("Discards hierarchy scope results from an older session", function()
+   it("Discards hierarchy reveal results from an older session", function()
       local hierarchy = require("slang-server.navigation.hierarchy")
       local navigation = require("slang-server.navigation")
       local lsp = require("slang-server._lsp.client")
       local original_tree = hierarchy.state.tree
+      local original_split = hierarchy.state.split
       local original_generation = hierarchy.state.generation
       local original_open_state = navigation.state.open
       local original_source_buf = rawget(navigation.state, "sv_buf")
-      local original_get_scope = lsp.getScope
+      local original_get_scopes = lsp.getScopes
       local deferred
-      local new_tree_mutations = 0
       local old_tree = {
-         get_node = function()
-            return nil
-         end,
-         set_nodes = function() end,
-         render = function() end,
-      }
-      local new_tree = {
-         set_nodes = function()
-            new_tree_mutations = new_tree_mutations + 1
+         get_nodes = function()
+            return { {} }
          end,
          render = function() end,
       }
 
       local ok, err = pcall(function()
          hierarchy.state.tree = old_tree
+         hierarchy.state.split = { winid = vim.api.nvim_get_current_win() }
          hierarchy.state.generation = 20
          navigation.state.open = true
          navigation.state.sv_buf = { bufnr = 7 }
-         lsp.getScope = function(_, handlers)
+         lsp.getScopes = function(_, handlers)
             deferred = handlers.on_success
          end
 
-         hierarchy._lazy_open("top", false, nil, false)
-         hierarchy.state.tree = new_tree
+         hierarchy.reveal("top", { focus = true })
          hierarchy.state.generation = 21
-         deferred({})
+         deferred({ { path = "", children = {} } })
       end)
 
       hierarchy.state.tree = original_tree
+      hierarchy.state.split = original_split
       hierarchy.state.generation = original_generation
       navigation.state.open = original_open_state
       navigation.state.sv_buf = original_source_buf
-      lsp.getScope = original_get_scope
+      lsp.getScopes = original_get_scopes
 
       assert(ok, err)
-      assert.are.same(0, new_tree_mutations)
+   end)
+
+   it("Discards older reveal results in the same hierarchy session", function()
+      local hierarchy = require("slang-server.navigation.hierarchy")
+      local navigation = require("slang-server.navigation")
+      local lsp = require("slang-server._lsp.client")
+      local original_tree = hierarchy.state.tree
+      local original_split = hierarchy.state.split
+      local original_generation = hierarchy.state.generation
+      local original_open_state = navigation.state.open
+      local original_source_buf = rawget(navigation.state, "sv_buf")
+      local original_get_scopes = lsp.getScopes
+      local responses = {}
+      local nodes = { {} }
+      local mutations = 0
+      local tree = {
+         get_nodes = function()
+            return nodes
+         end,
+         set_nodes = function(_, refreshed)
+            nodes = refreshed
+            mutations = mutations + 1
+         end,
+         render = function() end,
+      }
+
+      local ok, err = pcall(function()
+         hierarchy.state.tree = tree
+         hierarchy.state.split = { winid = vim.api.nvim_get_current_win() }
+         hierarchy.state.generation = 20
+         navigation.state.open = true
+         navigation.state.sv_buf = { bufnr = 7 }
+         lsp.getScopes = function(_, handlers)
+            responses[#responses + 1] = handlers
+         end
+
+         hierarchy.reveal("old")
+         hierarchy.reveal("new")
+         responses[2].on_success({
+            { path = "", children = { { instName = "new", kind = "Instance", children = {} } } },
+         })
+         responses[1].on_success({
+            { path = "", children = { { instName = "old", kind = "Instance", children = {} } } },
+         })
+
+         assert.are.same(1, mutations)
+         assert.are.same("new", nodes[1].instName)
+      end)
+
+      hierarchy.state.tree = original_tree
+      hierarchy.state.split = original_split
+      hierarchy.state.generation = original_generation
+      navigation.state.open = original_open_state
+      navigation.state.sv_buf = original_source_buf
+      lsp.getScopes = original_get_scopes
+
+      assert(ok, err)
+   end)
+
+   it("Reveals paths without reopening an active hierarchy", function()
+      local hierarchy = require("slang-server.navigation.hierarchy")
+      local navigation = require("slang-server.navigation")
+      local original_reveal = hierarchy.reveal
+      local original_show = hierarchy.show
+      local original_state = navigation.state.open
+      local revealed
+      local reopened = false
+
+      local ok, err = pcall(function()
+         hierarchy.reveal = function(path, opts)
+            revealed = { path, opts }
+         end
+         hierarchy.show = function()
+            reopened = true
+         end
+         navigation.state.open = true
+
+         navigation.show("top.child", true)
+
+         assert.are.same({ "top.child", { focus = true } }, revealed)
+         assert.is_false(reopened)
+      end)
+
+      hierarchy.reveal = original_reveal
+      hierarchy.show = original_show
+      navigation.state.open = original_state
+
+      assert(ok, err)
    end)
 
    it("Active instance notifications reveal an open hierarchy", function()
       local client_commands = require("slang-server._lsp.clientCommands")
       local navigation = require("slang-server.navigation")
       local hierarchy = require("slang-server.navigation.hierarchy")
-      local original_open = hierarchy.open_remainder
+      local original_reveal = hierarchy.reveal
       local original_state = navigation.state.open
       local revealed
 
       local ok, err = pcall(function()
-         hierarchy.open_remainder = function(parent, root, path, from_cell)
-            revealed = { parent, root, path, from_cell }
+         hierarchy.reveal = function(path, opts)
+            revealed = { path, opts }
          end
 
          navigation.state.open = false
@@ -462,12 +543,33 @@ describe("SlangServer", function()
 
          navigation.state.open = true
          client_commands.activeInstanceChanged(nil, { hierPath = "top.visible" })
-         assert.are.same({ nil, true, "top.visible", false }, revealed)
+         assert.are.same({ "top.visible", nil }, revealed)
       end)
-      hierarchy.open_remainder = original_open
+      hierarchy.reveal = original_reveal
       navigation.state.open = original_state
 
       assert(ok, err)
+   end)
+
+   it("Parses and resolves hierarchy path segments", function()
+      local path = require("slang-server.navigation.path")
+      assert.are.same(
+         { "pkg", "top", "gen", "[2]", "child" },
+         path.split("pkg::top.gen[2].child")
+      )
+      assert.are.same("pkg::member", path.join("pkg", "member", "Package"))
+      assert.are.same("top.array[2]", path.join("top.array", "[2]", "InstanceArray"))
+      assert.are.same("top.child", path.join("top", "child", "Instance"))
+
+      local combined = { { instName = "gen[2]", path = "top.gen[2]" } }
+      local child, index = path.resolve_child(combined, { "gen", "[2]" }, 1)
+      assert.are.same(combined[1], child)
+      assert.are.same(2, index)
+
+      local separate = { { instName = "[2]", path = "top.gen[2]" } }
+      child, index = path.resolve_child(separate, { "[2]" }, 1, "top.gen")
+      assert.are.same(separate[1], child)
+      assert.are.same(1, index)
    end)
 
    it("Searches hierarchy members through the server API", function()

@@ -50,16 +50,11 @@ end
 
 ---@param node slang-server.navigation.ScopeNode
 local function scope_jump(node)
-   local navigation = require("slang-server.navigation")
    local hier = require("slang-server.navigation.hierarchy")
    local instPath = nil
    if node and node.instPath then
       instPath = node.instPath
-      navigation.show_hier_location(node.instPath)
    elseif node and node.declName then
-      if node.declLoc then
-         util.jump_loc(node.declLoc, navigation.state.sv_win.winnr)
-      end
       local children = node:get_child_ids()
       if children then
          local child = M.state.tree:get_node(children[1])
@@ -73,7 +68,7 @@ local function scope_jump(node)
       return
    end
 
-   hier.open_remainder(nil, true, instPath, true)
+   hier.reveal(instPath, { focus = true })
 end
 
 ---@param insts slang-server.lsp.QualifiedInstance[]
@@ -116,7 +111,7 @@ local function map_keys(split, tree)
    navigation.add_mapping(mappings, keys.jump, {
          impl = scope_jump,
          opts = { noremap = true },
-         desc = "Jump to node in source",
+         desc = "Reveal node in hierarchy",
       })
    navigation.add_mapping(mappings, keys.toggle, {
          impl = function(node)

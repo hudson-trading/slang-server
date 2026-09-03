@@ -104,6 +104,8 @@
 ---@field children slang-server.navigation.TreeNode[]?
 ---@field declName string?
 ---@field declLoc slang-server.ScopedRange?
+---@field __children slang-server.navigation.TreeNode[]?
+---@field _child_ids string[]?
 
 ---@class slang-server.navigation.MessageNode: NuiTree.Node
 ---@field text string
