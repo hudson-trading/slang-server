@@ -476,6 +476,23 @@ describe("SlangServer", function()
       assert.are.same(1, index)
    end)
 
+   it("Searches hierarchy members through the server API", function()
+      local result
+      require("slang-server").search_hierarchy("the_sub", function(resp)
+         result = resp
+      end)
+
+      assert(vim.wait(5000, function()
+         return result ~= nil
+      end))
+      -- Fuzzy path matches include the four instances and their parameter children.
+      assert.are.same(8, result.totalResults)
+      assert.is_true(#result.matches <= 100)
+      assert.is_true(vim.iter(result.matches):any(function(item)
+         return item.path == "foo.gen_loop[2].the_sub"
+      end))
+   end)
+
    -- Catches anything the server complained about, including messages emitted
    -- during startup, which land before the first test runs.
    after_each(assert_no_new_messages)

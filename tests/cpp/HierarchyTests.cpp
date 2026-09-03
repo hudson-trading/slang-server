@@ -56,6 +56,87 @@ TEST_CASE("GetScopeNested") {
     golden.record("mem_ctrl_scope", memCtrlScope);
 }
 
+TEST_CASE("GetScopesCommandHonorsRequestCancellation") {
+    ServerHarness server("comp_repo");
+    server.setBuildFile("cpu_design.f");
+
+    lsp::RequestContext ctx("workspace/executeCommand", lsp::ID_t{1});
+    ctx.cancel();
+    CHECK_THROWS_AS(server.executeCommand(
+                        {
+                            .command = "slang.getScopes",
+                            .arguments = std::vector<lsp::LSPAny>{rfl::to_generic(
+                                std::string("cpu_testbench.dut.alu_inst"))},
+                        },
+                        ctx),
+                    lsp::RequestCancelled);
+}
+
+TEST_CASE("SearchHierarchyMembers") {
+    ServerHarness server("comp_repo");
+    server.setBuildFile("cpu_design.f");
+
+    auto containsPath = [](const hier::HierarchySearchResult& result, std::string_view path) {
+        return std::ranges::any_of(result.matches,
+                                   [&](const auto& item) { return item.path == path; });
+    };
+
+    auto instances = server.m_driver->comp->searchHierarchy("ALU_INST");
+    CHECK(containsPath(instances, "cpu_testbench.dut.alu_inst"));
+
+    auto signals = server.m_driver->comp->searchHierarchy("instruction");
+    CHECK(containsPath(signals, "cpu_testbench.dut.instruction"));
+    auto instruction = std::ranges::find(signals.matches, "cpu_testbench.dut.instruction",
+                                         &hier::HierarchySearchItem::path);
+    REQUIRE(instruction != signals.matches.end());
+    CHECK(instruction->containerName == "cpu");
+
+    auto parameters = server.m_driver->comp->searchHierarchy("data_width");
+    CHECK(containsPath(parameters, "cpu_testbench.dut.DATA_WIDTH"));
+
+    auto generateScopes = server.m_driver->comp->searchHierarchy("gen_alu_array[1]");
+    CHECK(containsPath(generateScopes, "cpu_testbench.dut.gen_alu_array[1]"));
+
+    auto generatedSignals = server.m_driver->comp->searchHierarchy("gen_alu_result");
+    auto generatedSignal = std::ranges::find(generatedSignals.matches,
+                                             "cpu_testbench.dut.gen_alu_array[1].gen_alu_result",
+                                             &hier::HierarchySearchItem::path);
+    REQUIRE(generatedSignal != generatedSignals.matches.end());
+    CHECK(generatedSignal->containerName == "cpu.gen_alu_array[1]");
+
+    auto empty = server.m_driver->comp->searchHierarchy("");
+    CHECK(empty.totalResults > 0);
+    CHECK(empty.matches.size() <= 100);
+}
+
+TEST_CASE("SearchHierarchyIncludesInterfacePortMembers") {
+    ServerHarness server("active_interface_port_hover");
+    server.setBuildFile("design.f");
+
+    auto result = server.m_driver->comp->searchHierarchy("tap8.data_bus.payload");
+    CHECK(std::ranges::any_of(result.matches, [](const auto& item) {
+        return item.path == "top.tap8.data_bus.payload";
+    }));
+}
+
+TEST_CASE("SearchHierarchyCapsTransferredMatches") {
+    ServerHarness server;
+    std::string source = "module top;\n";
+    for (int i = 0; i < 150; i++)
+        source += "logic signal_" + std::to_string(i) + ";\n";
+    source += "endmodule\n";
+
+    auto doc = server.openFile("hierarchy_search_limit.sv", source);
+    server.setTopLevel(std::string(doc.m_uri.getPath()));
+
+    auto result = server.m_driver->comp->searchHierarchy("signal");
+    CHECK(result.totalResults == 150);
+    CHECK(result.matches.size() == 100);
+    CHECK(std::ranges::all_of(result.matches, [](const auto& item) {
+        return item.kind == hier::SlangKind::Logic;
+    }));
+}
+
 TEST_CASE("GetScopeBranches") {
     ServerHarness server("comp_repo");
     JsonGoldenTest golden;

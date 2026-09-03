@@ -56,4 +56,15 @@
 ---@field path string
 ---@field children slang-server.lsp.Node[]
 
+---@class slang-server.lsp.HierarchySearchItem
+---@field name string
+---@field path string
+---@field kind slang-server.SlangKind
+---@field description string?
+---@field containerName string?
+
+---@class slang-server.lsp.HierarchySearchResult
+---@field totalResults integer
+---@field matches slang-server.lsp.HierarchySearchItem[]
+
 ---@alias RespHandlers {on_success: fun(resp: any), on_failure?: fun(message: string)}
