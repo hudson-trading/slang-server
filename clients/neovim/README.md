@@ -6,7 +6,12 @@ A Neovim plugin to support non-LSP features of [Slang Server](https://github.com
 
 Note that it is not necessary to install this plugin in order to use Slang Server.
 Neovim supports all standard [LSP](https://microsoft.github.io/language-server-protocol/) commands.
-This plugin is for the following features which extend the standard LSP interface.
+This plugin provides features which extend the standard LSP interface, such as:
+
+* Browse the elaborated design in hierarchy and cell views.
+* Search the hierarchy with FzfLua, Telescope, Snacks Picker, or `vim.ui`.
+* Open waveforms and add signals to them (experimental).
+
 More information on plugin features can be [found here](https://hudson-trading.github.io/slang-server/features/hdl/neovim/).
 
 ## Requirements
@@ -19,6 +24,11 @@ More information on plugin features can be [found here](https://hudson-trading.g
 If installing with lazy.nvim, plugin dependencies are resolved automatically.
 
 * [nui.nvim](https://github.com/MunifTanjim/nui.nvim)
+
+FzfLua, Telescope, or Snacks Picker are optional dependencies. If installed,
+the configured picker will be used for the `searchHierarchy` command;
+otherwise, a slightly degraded two-step search is provided by native
+`vim.ui.input` and `vim.ui.select`.
 
 ## Installation
 
@@ -38,27 +48,46 @@ The plugin is lazily loaded by default on the first invocation of a `:SlangServe
 
 The default configuration can be found in [config.lua](./lua/slang-server/_core/config.lua). Override options can be defined in the global `vim.g.slang_server_config`, or passed to `opts = {...}` in the lazy.nvim plugin spec.
 
+`search.query_delay` debounces requests made through the picker. This delay is
+added to any input or query delay applied by the selected picker engine itself;
+set it to `0` to rely solely on the picker's behaviour.
+
+A custom `searchHierarchy` picker can be supplied as a function accepting a
+`ctx`. Call `ctx.search` whenever its query changes; results arrive
+asynchronously and retain the server's fuzzy-match ordering. Call `ctx.select`
+with the chosen result item. E.g.:
+
 ```lua
 require("slang-server").setup({
-  navigation = {
-    position = "left",
-    width = 50,
-    wrap = false,
-    hierarchy = {
-      keymaps = {
-        jump = "<cr>",
-      },
-    },
-    cells = {
-      show = true,
-      height = 25, -- rows
-      keymaps = {
-        jump = "<cr>",
-      },
-    },
+  search = {
+    picker = function(ctx)
+      vim.ui.input({ prompt = "Hierarchy query: " }, function(query)
+        if not query then
+          return
+        end
+
+        ctx.search(query, function(result)
+          vim.ui.select(result.matches, {
+            prompt = ("Select result (%d total)"):format(result.totalResults),
+            format_item = function(item)
+              return item.path
+            end,
+          }, function(item)
+            if item then
+              ctx.select(item)
+            end
+          end)
+        end)
+      end)
+    end,
   },
 })
 ```
+
+`ctx.search(query, callback)` debounces requests and discards stale responses.
+Each result item contains `name`, `path`, `kind`, and optional `description` and
+`containerName` fields. The custom picker should pass the original item to
+`ctx.select(item)` so the plugin can reveal its path.
 
 ## GitHub Repos
 

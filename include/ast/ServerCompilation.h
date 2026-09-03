@@ -11,6 +11,7 @@
 #include "ServerCompilationAnalysis.h"
 #include "document/SlangDoc.h"
 #include "lsp/LspClient.h"
+#include "lsp/RequestContext.h"
 #include "util/Converters.h"
 #include <filesystem>
 #include <memory>
@@ -68,7 +69,11 @@ public:
     std::vector<hier::HierItem_t> getScope(const std::string& hierPath);
 
     /// Return root-to-focus scope steps with populated child lists for each path segment.
-    std::vector<hier::ScopeStep> getScopes(const std::string& hierPath);
+    std::vector<hier::ScopeStep> getScopes(const std::string& hierPath,
+                                           const lsp::RequestContext& ctx = {});
+
+    /// Search the elaborated hierarchy for instances, scopes, ports, parameters, and signals.
+    hier::HierarchySearchResult searchHierarchy(const std::string& query);
 
     /// Resolve the source location for a hierarchical instance path.
     std::optional<lsp::Location> getHierLocation(const std::string& hierPath);
@@ -158,6 +163,9 @@ private:
 
     /// The analysis state, rebuilt on refresh()
     std::unique_ptr<ServerCompilationAnalysis> m_analysis;
+    /// Flattened hierarchy entries, populated on the first search after each refresh.
+    std::vector<hier::HierarchySearchItem> m_hierarchySearchItems;
+    bool m_hierarchySearchIndexed = false;
 };
 
 } // namespace server

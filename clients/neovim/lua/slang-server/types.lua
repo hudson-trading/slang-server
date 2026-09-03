@@ -6,6 +6,13 @@
 ---@field kinds slang-server.config.Kinds?
 ---@field highlights slang-server.config.Highlights?
 ---@field navigation slang-server.config.Navigation?
+---@field search slang-server.config.Search?
+
+---@alias slang-server.config.SearchPicker "auto"|"fzf-lua"|"telescope"|"snacks"|"vim.ui"|slang-server.navigation.SearchPicker
+
+---@class (exact) slang-server.config.Search
+---@field picker slang-server.config.SearchPicker?
+---@field query_delay integer? debounce in milliseconds, in addition to any picker delay
 
 ---@class (exact) slang-server.config.Navigation
 ---@field position string?
@@ -31,12 +38,20 @@
 ---@field jump slang-server.config.Key?
 ---@field jump_to_declaration slang-server.config.Key?
 ---@field toggle slang-server.config.Key?
+---@field search_hierarchy slang-server.config.Key?
 ---@field close slang-server.config.Key?
 ---@field help slang-server.config.Key?
+
+---@class slang-server.navigation.SearchPickerOptions
+---@field search fun(query:string, callback:fun(result:slang-server.lsp.HierarchySearchResult))
+---@field select fun(item:slang-server.lsp.HierarchySearchItem)
+
+---@alias slang-server.navigation.SearchPicker fun(opts:slang-server.navigation.SearchPickerOptions)
 
 ---@class (exact) slang-server.config.CellsKeymaps
 ---@field jump slang-server.config.Key?
 ---@field toggle slang-server.config.Key?
+---@field search_hierarchy slang-server.config.Key?
 ---@field close slang-server.config.Key?
 ---@field help slang-server.config.Key?
 
