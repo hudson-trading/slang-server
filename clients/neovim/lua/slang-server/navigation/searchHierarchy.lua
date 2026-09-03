@@ -108,9 +108,7 @@ function M.start(bufnr)
          generation = generation + 1
          local navigation = require("slang-server.navigation")
          if navigation.state.open then
-            local hierarchy = require("slang-server.navigation.hierarchy")
-            vim.api.nvim_set_current_win(hierarchy.state.split.winid)
-            hierarchy.open_remainder(nil, true, item.path, true)
+            require("slang-server.navigation.hierarchy").reveal(item.path, { focus = true })
          else
             navigation.show(item.path, true)
          end
