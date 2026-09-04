@@ -68,6 +68,7 @@
               }
             },
             "declKind": "Module",
+            "hasChildren": false,
             "children": []
           }
         ]
