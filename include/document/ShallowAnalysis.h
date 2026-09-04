@@ -110,7 +110,7 @@ public:
     /// @brief Ensures the shallow compilation has been analyzed and returns the slang
     /// `AnalysisManager`. Returns nullptr if analysis could not be run, for example no top
     /// instances.
-    const slang::analysis::AnalysisManager* getAnalysisManager();
+    slang::analysis::AnalysisManager* getAnalysisManager();
 
     /// @brief Gets a list of drivers for a given value symbol
     std::vector<const slang::analysis::ValueDriver*> getDrivers(
