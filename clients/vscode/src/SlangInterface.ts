@@ -20,6 +20,8 @@ export enum SlangKind {
   Instance = 'Instance',
   Scope = 'Scope',
   ScopeArray = 'ScopeArray',
+  InterfacePort = 'InterfacePort',
+  InterfacePortArray = 'InterfacePortArray',
   Param = 'Param',
   Logic = 'Logic',
   Port = 'Port',
@@ -47,6 +49,8 @@ export interface Var extends Item {
 
 // scopes are the only items that can have children
 export interface Scope extends Item {
+  // For interface ports
+  type?: string
   children: Item[]
 }
 
