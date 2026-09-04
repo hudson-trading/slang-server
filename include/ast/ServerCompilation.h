@@ -164,6 +164,10 @@ public:
     }
 
 private:
+    /// Return hierarchy paths at a source position, restricted to one elaborated subtree.
+    std::vector<std::string> getInstances(const lsp::TextDocumentPositionParams&,
+                                          const slang::ast::Symbol& traversalRoot);
+
     /// Return the stored active selection for a module, if any.
     std::optional<hier::QualifiedInstance> getActiveInstanceSelection(
         std::string_view moduleName) const;

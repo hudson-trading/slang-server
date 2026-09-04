@@ -9,6 +9,7 @@ subcommands = vim.tbl_deep_extend("error", subcommands, require("slang-server._c
 subcommands = vim.tbl_deep_extend("error", subcommands, require("slang-server._commands.setBuildFile"))
 subcommands = vim.tbl_deep_extend("error", subcommands, require("slang-server._commands.hierarchy"))
 subcommands = vim.tbl_deep_extend("error", subcommands, require("slang-server._commands.findInstance"))
+subcommands = vim.tbl_deep_extend("error", subcommands, require("slang-server._commands.focus"))
 subcommands = vim.tbl_deep_extend("error", subcommands, require("slang-server._commands.openWaveform"))
 subcommands = vim.tbl_deep_extend("error", subcommands, require("slang-server._commands.addToWaves"))
 

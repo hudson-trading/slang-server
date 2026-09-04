@@ -113,6 +113,44 @@ describe("SlangServer", function()
       assert.are.same({ ["g<cr>"] = spec }, mappings)
    end)
 
+   it("Reveals the active hierarchy object at the source cursor", function()
+      local command = require("slang-server._commands.focus").focus
+      local lsp = require("slang-server._lsp.client")
+      local navigation = require("slang-server.navigation")
+      local original_get_modules = lsp.getModulesInFile
+      local original_get_active = lsp.getActiveInstanceAtPosition
+      local original_show = navigation.show
+      local module_request
+      local active_request
+      local reveals = {}
+
+      local ok, err = pcall(function()
+         lsp.getModulesInFile = function(_, handlers, params)
+            module_request = params
+            handlers.on_success({ "foo" })
+         end
+         lsp.getActiveInstanceAtPosition = function(_, handlers, params)
+            active_request = params
+            handlers.on_success("foo.signal")
+         end
+         navigation.show = function(path, focus)
+            reveals[#reveals + 1] = { path, focus }
+         end
+
+         command.impl()
+      end)
+
+      lsp.getModulesInFile = original_get_modules
+      lsp.getActiveInstanceAtPosition = original_get_active
+      navigation.show = original_show
+
+      assert(ok, err)
+      assert.are.same(vim.api.nvim_buf_get_name(0), module_request.path)
+      assert.are.same("foo", active_request.moduleName)
+      assert.are.same(vim.uri_from_bufnr(0), active_request.textDocument.uri)
+      assert.are.same({ { "", false }, { "foo.signal", true } }, reveals)
+   end)
+
    it("Routes hierarchy navigation through server commands", function()
       local lsp = require("slang-server._lsp.client")
       local capabilities = require("slang-server._lsp.capabilities")

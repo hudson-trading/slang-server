@@ -704,7 +704,11 @@ std::optional<std::string> ServerCompilation::getActiveInstanceAtPosition(
     if (!activeInstance)
         return std::nullopt;
 
-    auto matchingPaths = getInstances(params);
+    auto* activeSymbol = getActiveInstanceSymbol(moduleName);
+    if (!activeSymbol)
+        return activeInstance->instPath;
+
+    auto matchingPaths = getInstances(params, *activeSymbol);
     std::optional<std::string> bestPath;
     std::tuple<size_t, int, int, std::string> bestScore;
     for (auto& candidate : matchingPaths) {
@@ -1027,6 +1031,11 @@ std::optional<lsp::Location> ServerCompilation::getHierLocation(const std::strin
 
 std::vector<std::string> ServerCompilation::getInstances(
     const lsp::TextDocumentPositionParams& params) {
+    return getInstances(params, m_analysis->compilation.getRoot());
+}
+
+std::vector<std::string> ServerCompilation::getInstances(
+    const lsp::TextDocumentPositionParams& params, const slang::ast::Symbol& traversalRoot) {
     auto path = std::string(params.textDocument.uri.getPath());
     auto it = m_documents.find(path);
     if (it == m_documents.end()) {
@@ -1037,7 +1046,7 @@ std::vector<std::string> ServerCompilation::getInstances(
     auto location = toSourceLocation(doc->getBuffer(), params.position, m_sourceManager);
     if (location) {
         inst::InstanceVisitor visitor(*location);
-        m_analysis->compilation.getRoot().visit(visitor);
+        traversalRoot.visit(visitor);
         return visitor.getInstances();
     }
 

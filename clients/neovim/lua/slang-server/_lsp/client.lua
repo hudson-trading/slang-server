@@ -125,6 +125,26 @@ end
 
 ---@param bufnr integer
 ---@param handlers RespHandlers
+---@param params { path: string }
+M.getModulesInFile = function(bufnr, handlers, params)
+   lsp_execute(bufnr, {
+      command = "slang.getModulesInFile",
+      arguments = { params.path },
+   }, handlers)
+end
+
+---@param bufnr integer
+---@param handlers RespHandlers
+---@param params { moduleName: string, textDocument: { uri: string }, position: slang-server.SourceLoc }
+M.getActiveInstanceAtPosition = function(bufnr, handlers, params)
+   lsp_execute(bufnr, {
+      command = "slang.getActiveInstanceAtPosition",
+      arguments = { params },
+   }, handlers)
+end
+
+---@param bufnr integer
+---@param handlers RespHandlers
 ---@param params { uri: string }
 M.openWaveform = function(bufnr, handlers, params)
    lsp_execute(bufnr, {
