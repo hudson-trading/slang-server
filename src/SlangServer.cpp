@@ -121,6 +121,10 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
         "slang.getScope");
     registerCommand<std::string, std::vector<hier::ScopeStep>, &SlangServer::getScopes>(
         "slang.getScopes");
+    registerDesignCommand<std::string, hier::HierarchySearchResult>(
+        "slang.searchHierarchy", [](ServerCompilation& comp, const std::string& query) {
+            return comp.searchHierarchy(query);
+        });
     registerCommand<ShowHierLocationArgs, std::monostate, &SlangServer::showHierLocation>(
         "slang.showHierLocation");
     registerCommand<ShowModuleDefinitionArgs, std::monostate, &SlangServer::showModuleDefinition>(
@@ -436,12 +440,16 @@ std::vector<hier::HierItem_t> SlangServer::getScope(const std::string& hierPath)
     return m_driver->comp->getScope(hierPath);
 }
 
-std::vector<hier::ScopeStep> SlangServer::getScopes(const std::string& hierPath) {
+// Returns scopes up to the last resolvable segment of the provided hierarchical path.
+std::vector<hier::ScopeStep> SlangServer::getScopes(const std::string& hierPath,
+                                                    const lsp::RequestContext& ctx) {
     if (!m_driver->comp) {
-        ERROR("No compilation available, cannot get scopes for {}", hierPath);
+        ctx.error("No compilation available, cannot get scopes for {}", hierPath);
         return {};
     }
-    return m_driver->comp->getScopes(hierPath);
+    auto scopes = m_driver->comp->getScopes(hierPath, ctx);
+    ctx.info("Resolved {} hierarchy scopes for {}", scopes.size(), hierPath);
+    return scopes;
 }
 
 std::optional<lsp::Location> SlangServer::getHierLocation(const std::string& hierPath) {
