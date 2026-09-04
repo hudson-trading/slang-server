@@ -247,6 +247,11 @@ bool isPortDriver(const analysis::ValueDriver& driver) {
            driver.flags.has(analysis::DriverFlags::ViaIndirectPort);
 }
 
+bool isLogicThroughPort(const analysis::ValueDriver& driver) {
+    return driver.flags.has(analysis::DriverFlags::ViaIndirectPort) &&
+           !driver.isUnidirectionalPort();
+}
+
 std::string getDriverInstanceDescription(const DriverGroup& group) {
     const ast::InstanceSymbol* instance = nullptr;
     if (group.containingSymbol->kind == ast::SymbolKind::Instance) {
@@ -262,25 +267,40 @@ std::string getDriverInstanceDescription(const DriverGroup& group) {
     return fmt::format("{} {}", instance->getDefinition().name, instance->getArrayName());
 }
 
-std::string getDriverDescription(const analysis::ValueDriver& driver) {
-    if (isPortDriver(driver))
-        return "via port";
-
+std::string getDriverSourceDescription(const analysis::ValueDriver& driver) {
     if (driver.flags.has(analysis::DriverFlags::Initializer))
-        return "by initializer";
+        return "initializer";
 
     if (driver.source == analysis::DriverSource::Subroutine)
-        return "by subroutine";
+        return "subroutine";
 
     if (driver.source != analysis::DriverSource::Other) {
-        return fmt::format("by {}", ast::SemanticFacts::getProcedureKindStr(
-                                        static_cast<ast::ProceduralBlockKind>(driver.source)));
+        return std::string(ast::SemanticFacts::getProcedureKindStr(
+            static_cast<ast::ProceduralBlockKind>(driver.source)));
     }
 
     if (driver.kind == analysis::DriverKind::Continuous)
-        return "by continuous assignment";
+        return "continuous assignment";
 
-    return "by procedural assignment";
+    return "procedural assignment";
+}
+
+std::string getDriverDescription(const analysis::ValueDriver& driver) {
+    // When the logic is assigned directly through the module:
+    // ie:
+    // assign MODULE_INSTANCE_NAME.MODULE_PORT = LOGIC;
+    if (isLogicThroughPort(driver))
+        return fmt::format("through port by {}", getDriverSourceDescription(driver));
+
+    // When the logic is assigned through a port:
+    // ie:
+    // MODULE_DEFINITION_NAME MODULE_INSTANCE_NAME (
+    //    .MODULE_PORT(LOGIC)
+    // )
+    if (isPortDriver(driver))
+        return "via port";
+
+    return fmt::format("by {}", getDriverSourceDescription(driver));
 }
 
 std::string getDriverGroupHeader(const DriverGroup& group) {
@@ -288,8 +308,9 @@ std::string getDriverGroupHeader(const DriverGroup& group) {
     const auto instanceDescription = getDriverInstanceDescription(group);
     for (const auto* driver : group.drivers) {
         auto description = getDriverDescription(*driver);
-        if (isPortDriver(*driver) && !instanceDescription.empty())
+        if (!isLogicThroughPort(*driver) && isPortDriver(*driver) && !instanceDescription.empty())
             description += fmt::format(" from `{}`", instanceDescription);
+
         if (std::ranges::find(descriptions, description) == descriptions.end())
             descriptions.push_back(std::move(description));
     }
@@ -345,7 +366,7 @@ const syntax::SyntaxNode* getDriverDisplayNode(const analysis::ValueDriver& driv
     if (!node)
         return nullptr;
 
-    if (isPortDriver(driver)) {
+    if (!isLogicThroughPort(driver) && isPortDriver(driver)) {
         for (auto* current = node; current; current = current->parent) {
             switch (current->kind) {
                 case syntax::SyntaxKind::ExplicitAnsiPort:
