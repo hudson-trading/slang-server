@@ -27,8 +27,9 @@ these lenses, configure Neovim as described in the
 
 `:SlangServer searchHierarchy` provides an interactive search over the compiled
 design and reveals the selected object in the hierarchy view. It uses FzfLua,
-Telescope, or Snacks Picker when available, in that order, and otherwise falls
-back to `vim.ui.input` followed by `vim.ui.select`.
+Telescope, or Snacks Picker when available, in that order. These integrations
+are optional and require no picker-specific registration. Without one of those
+plugins, the command falls back to `vim.ui.input` followed by `vim.ui.select`.
 
 ## Requirements
 
@@ -54,11 +55,19 @@ return {
 }
 ```
 
-The plugin is lazily loaded by default on the first invocation of a `:SlangServer` command, so there's no need to rely on a plugin manager for lazy loading. To install without a plugin manager, simply clone and place the plugin directory in your Neovim runtimepath.
+The plugin defers command and mapping initialization until a Verilog or
+SystemVerilog ftplugin is loaded. Its lazy.nvim package specification therefore
+sets `lazy = false`; adding another plugin-manager lazy-loading trigger is neither
+required nor recommended. To install without a plugin manager, simply clone and
+place the plugin directory in your Neovim runtimepath.
 
 ## Configuration
 
 The default configuration can be found in [config.lua](./lua/slang-server/_core/config.lua). Override options can be defined in the global `vim.g.slang_server_config`, or passed to `opts = {...}` in the lazy.nvim plugin spec.
+
+Global mappings for plugin commands are disabled by default. Set
+`keymaps.enable_defaults = true` to enable them all; individual mappings
+can still override `enabled` or `key`:
 
 ```lua
 require("slang-server").setup({
@@ -79,8 +88,55 @@ require("slang-server").setup({
       },
     },
   },
+  keymaps = {
+    enable_defaults = true,
+    searchHierarchy = { key = "<leader>vs" },
+  },
+  search = {
+    -- "auto", "fzf-lua", "telescope", "snacks", "vim.ui", or a custom function
+    picker = "auto",
+    query_delay = 150, -- milliseconds
+  },
 })
 ```
+
+`search.query_delay` debounces requests made through the picker. This delay is
+added to any input or query delay applied by the selected picker engine itself;
+set it to `0` to rely solely on the picker's behavior. Only one server request
+is kept in flight; changes made while it runs are coalesced into a single request
+for the latest query.
+
+A custom picker can be supplied as a function. Call `ctx.search` whenever its
+query changes; results arrive asynchronously and retain the server's fuzzy-match
+ordering. Call `ctx.select` with the chosen result item:
+
+```lua
+require("slang-server").setup({
+  search = {
+    picker = function(ctx)
+      my_picker({
+        on_query = function(query, update_items)
+          ctx.search(query, function(result)
+            update_items(result.matches, result.totalResults)
+          end)
+        end,
+        on_select = function(item)
+          ctx.select(item)
+        end,
+      })
+    end,
+  },
+})
+```
+
+`ctx.search(query, callback)` debounces requests and discards stale responses.
+Each result item contains `name`, `path`, `kind`, and optional `description` and
+`containerName` fields. The custom picker should pass the original item to
+`ctx.select(item)` so the plugin can reveal its path.
+
+`selectActive` runs an active-instance or active-generate-iteration code lens on
+the current source line directly, normally skipping Neovim's code-lens picker.
+It requires code lenses to be enabled and refreshed as described above.
 
 ## GitHub Repos
 

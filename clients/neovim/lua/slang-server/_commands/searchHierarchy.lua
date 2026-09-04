@@ -1,17 +1,12 @@
 local M = {}
+local capabilities = require("slang-server._lsp.capabilities")
 
 ---@type slang-server.ui.Subcommand
 M.searchHierarchy = {
-   impl = function()
-      local capabilities = require("slang-server._lsp.capabilities")
-      local bufnr = capabilities.get_source_context()
-      if not capabilities.check_or_notify(bufnr, {
-         "slang.getScope",
-         "slang.getScopesByModule",
-         "slang.searchHierarchy",
-      }) then
-         return
-      end
+   desc = "Search the compiled design hierarchy",
+   required_commands = { "slang.searchHierarchy" },
+   context = capabilities.get_source_context,
+   impl = function(_, _, bufnr)
       require("slang-server.navigation.searchHierarchy").start(bufnr)
    end,
 }

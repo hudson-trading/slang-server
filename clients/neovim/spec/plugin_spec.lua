@@ -779,7 +779,7 @@ describe("SlangServer", function()
       wait_on("Slang-server: Hierarchy")
 
       local messages = capture_notifications(function()
-         vim.cmd("SlangServer setTopLevel tests/foo.sv")
+         vim.cmd("SlangServer setTopLevel " .. vim.fn.fnameescape(vim.fn.fnamemodify("tests/foo.sv", ":p")))
       end)
       for _, msg in ipairs(messages) do
          assert.is_nil(string.find(msg, "no slang-server LSP client attached", 1, true))
@@ -798,8 +798,8 @@ describe("SlangServer", function()
       end)
 
       assert.are.same({
-         "slang-server: setTopLevel without a file must be run from a buffer with an attached slang-server LSP client.",
-         "slang-server: addToWaves must be run from a buffer with an attached slang-server LSP client.",
+         "slang-server: 'setTopLevel' requires a buffer with an attached slang-server LSP client.",
+         "slang-server: 'addToWaves' requires a buffer with an attached slang-server LSP client.",
       }, messages)
 
       for _, msg in ipairs(messages) do
