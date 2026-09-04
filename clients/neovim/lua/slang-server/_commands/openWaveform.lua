@@ -1,16 +1,14 @@
 -- Parser for :SlangServer openWaveform
 
 local M = {}
+local capabilities = require("slang-server._lsp.capabilities")
 
 ---@type slang-server.ui.Subcommand
 M.openWaveform = {
-   impl = function(args, opts)
-      local capabilities = require("slang-server._lsp.capabilities")
-      local bufnr = capabilities.get_source_context()
-      if not capabilities.check_or_notify(bufnr, { "slang.openWaveform" }) then
-         return
-      end
-
+   desc = "Open a waveform file",
+   required_commands = { "slang.openWaveform" },
+   context = capabilities.get_source_context,
+   impl = function(args, opts, bufnr)
       local client = require("slang-server._lsp.client")
       local handlers = require("slang-server.handlers")
 

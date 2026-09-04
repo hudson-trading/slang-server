@@ -1,31 +1,19 @@
 local M = {}
+local capabilities = require("slang-server._lsp.capabilities")
 
 ---@type slang-server.ui.Subcommand
 M.focus = {
-   impl = function()
-      local capabilities = require("slang-server._lsp.capabilities")
-      local bufnr = vim.api.nvim_get_current_buf()
+   desc = "Reveal object in Slang Server hierarchy",
+   required_commands = {
+      "slang.getModulesInFile",
+      "slang.getActiveInstanceAtPosition",
+      "slang.getScopes",
+      "slang.getScopesByModule",
+   },
+   context = capabilities.get_current_context,
+   impl = function(args, opts, bufnr)
       local lsp_client = capabilities.get_client(bufnr)
-      if not lsp_client then
-         vim.notify(
-            "slang-server: focus must be run from a buffer with an attached slang-server LSP client.",
-            vim.log.levels.ERROR
-         )
-         return
-      end
-
-      local required = {
-         "slang.getModulesInFile",
-         "slang.getActiveInstanceAtPosition",
-         "slang.getScope",
-         "slang.getScopes",
-         "slang.getScopesByModule",
-         "slang.getInstancesOfModule",
-         "slang.showHierLocation",
-      }
-      if not capabilities.check_or_notify(bufnr, required) then
-         return
-      end
+      assert(lsp_client)
 
       local client = require("slang-server._lsp.client")
       local handlers = require("slang-server.handlers")

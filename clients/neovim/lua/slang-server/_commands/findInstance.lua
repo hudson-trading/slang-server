@@ -1,21 +1,16 @@
 local M = {}
+local capabilities = require("slang-server._lsp.capabilities")
 
 ---@type slang-server.ui.Subcommand
 M.findInstance = {
-   impl = function()
-      local capabilities = require("slang-server._lsp.capabilities")
-      local bufnr = capabilities.get_source_context()
-      local required = {
-         "slang.getScope",
-         "slang.getScopes",
-         "slang.getScopesByModule",
-         "slang.getInstancesOfModule",
-         "slang.showHierLocation",
-      }
-      if not capabilities.check_or_notify(bufnr, required) then
-         return
-      end
-
+   desc = "Find an instance in the compiled design",
+   required_commands = {
+      "slang.getScopes",
+      "slang.getScopesByModule",
+      "slang.getInstancesOfModule",
+   },
+   context = capabilities.get_source_context,
+   impl = function(args, opts, bufnr)
       local search = require("slang-server.navigation.findInstance")
       search.start(bufnr, function(inst_path)
          local navigation = require("slang-server.navigation")

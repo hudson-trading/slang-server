@@ -47,11 +47,19 @@ return {
 }
 ```
 
-The plugin is lazily loaded by default on the first invocation of a `:SlangServer` command, so there's no need to rely on a plugin manager for lazy loading. To install without a plugin manager, simply clone and place the plugin directory in your Neovim runtimepath.
+The plugin defers command and mapping initialization until a Verilog or
+SystemVerilog ftplugin is loaded. Its lazy.nvim package specification therefore
+sets `lazy = false`; adding another plugin-manager lazy-loading trigger is neither
+required nor recommended. To install without a plugin manager, simply clone and
+place the plugin directory in your Neovim runtimepath.
 
 ## Configuration
 
 The default configuration can be found in [config.lua](./lua/slang-server/_core/config.lua). Override options can be defined in the global `vim.g.slang_server_config`, or passed to `opts = {...}` in the lazy.nvim plugin spec.
+
+Global mappings for plugin commands are disabled by default. Set
+`keymaps.enable_defaults = true` to enable them all; individual mappings
+can still override `enabled` or `key`:
 
 ```lua
 require("slang-server").setup({
@@ -72,8 +80,17 @@ require("slang-server").setup({
       },
     },
   },
+  keymaps = {
+    enable_defaults = true,
+    focus = { enabled = false },
+    findInstance = { key = "<leader>vf" },
+  },
 })
 ```
+
+`selectActive` runs an active-instance or active-generate-iteration code lens on
+the current source line directly, normally skipping Neovim's code-lens picker.
+It requires code lenses to be enabled and refreshed as described above.
 
 ## GitHub Repos
 

@@ -4,14 +4,7 @@ require("slang-server._core.version")
 
 require("slang-server._lsp.clientCommands").register()
 
-local subcommands = {}
-subcommands = vim.tbl_deep_extend("error", subcommands, require("slang-server._commands.setTopLevel"))
-subcommands = vim.tbl_deep_extend("error", subcommands, require("slang-server._commands.setBuildFile"))
-subcommands = vim.tbl_deep_extend("error", subcommands, require("slang-server._commands.hierarchy"))
-subcommands = vim.tbl_deep_extend("error", subcommands, require("slang-server._commands.findInstance"))
-subcommands = vim.tbl_deep_extend("error", subcommands, require("slang-server._commands.focus"))
-subcommands = vim.tbl_deep_extend("error", subcommands, require("slang-server._commands.openWaveform"))
-subcommands = vim.tbl_deep_extend("error", subcommands, require("slang-server._commands.addToWaves"))
+local subcommands = require("slang-server._commands")
 
 ---@param opts table
 local function slang_server(opts)
@@ -27,7 +20,20 @@ local function slang_server(opts)
       return
    end
 
-   subcommand.impl(args, opts)
+   local bufnr = subcommand.context(args)
+   local capabilities = require("slang-server._lsp.capabilities")
+   if not capabilities.get_client(bufnr) then
+      vim.notify(
+         string.format("slang-server: '%s' requires a buffer with an attached slang-server LSP client.", subcommand_key),
+         vim.log.levels.ERROR
+      )
+      return
+   end
+   if not capabilities.check_or_notify(bufnr, subcommand.required_commands) then
+      return
+   end
+
+   subcommand.impl(args, opts, bufnr)
 end
 
 vim.api.nvim_create_user_command(_CMD, slang_server, {
@@ -50,3 +56,5 @@ vim.api.nvim_create_user_command(_CMD, slang_server, {
       end
    end,
 })
+
+require("slang-server._commands.keymaps").apply()

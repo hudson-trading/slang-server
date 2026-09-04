@@ -1,23 +1,17 @@
 -- Parser for :SlangServer hierarchy
 
 local M = {}
+local capabilities = require("slang-server._lsp.capabilities")
 
 ---@type slang-server.ui.Subcommand
 M.hierarchy = {
-   impl = function(args, opts)
-      local capabilities = require("slang-server._lsp.capabilities")
-      local bufnr = capabilities.get_source_context()
-      local required = {
-         "slang.getScope",
-         "slang.getScopes",
-         "slang.getScopesByModule",
-         "slang.getInstancesOfModule",
-         "slang.showHierLocation",
-      }
-      if not capabilities.check_or_notify(bufnr, required) then
-         return
-      end
-
+   desc = "Open Slang Server hierarchy",
+   required_commands = {
+      "slang.getScopes",
+      "slang.getScopesByModule",
+   },
+   context = capabilities.get_source_context,
+   impl = function(args, opts, bufnr)
       local top = args[1]
       if not top then
          local client = capabilities.get_client(bufnr)

@@ -34,6 +34,17 @@ local default_config = {
          },
       },
    },
+   -- Global command mappings; disabled by default
+   keymaps = {
+      -- Each mapping inherits enable_defaults unless it sets enabled explicitly.
+      -- For example, enable_defaults = true with focus = { enabled = false }
+      -- enables every default mapping except focus.
+      enable_defaults = false,
+      hierarchy = { key = "<leader>vh" }, -- Open the design hierarchy
+      findInstance = { key = "<leader>vi" }, -- Find an instance and reveal it in the hierarchy
+      focus = { key = "<leader>vf" }, -- Reveal the source object under the cursor in the hierarchy
+      selectActive = { key = "<leader>va" }, -- Select the active instance or generate iteration under the cursor
+   },
    -- Icon and highlight group for each element kind
    kinds = {
       instance = { icon = "", hl = "SlangServerInstance" },

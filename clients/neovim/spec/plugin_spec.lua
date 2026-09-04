@@ -33,6 +33,14 @@ local function wait_on(buf_name)
 end
 
 ---@param fn fun()
+---@param cleanup fun()
+local function with_cleanup(fn, cleanup)
+   local ok, err = xpcall(fn, debug.traceback)
+   cleanup()
+   assert(ok, err)
+end
+
+---@param fn fun()
 ---@return string[]
 local function capture_notifications(fn)
    local old_notify = vim.notify
@@ -41,9 +49,9 @@ local function capture_notifications(fn)
       messages[#messages + 1] = msg
    end
 
-   local ok, err = pcall(fn)
-   vim.notify = old_notify
-   assert(ok, err)
+   with_cleanup(fn, function()
+      vim.notify = old_notify
+   end)
    return messages
 end
 
@@ -75,28 +83,403 @@ describe("SlangServer", function()
       local config = require("slang-server._core.config")
       local original = config.CONFIG
 
-      config.update({
-         navigation = {
-            hierarchy = {
-               keymaps = {
-                  jump = "g<cr>",
-                  toggle = false,
+      with_cleanup(function()
+         config.update({
+            navigation = {
+               hierarchy = {
+                  keymaps = {
+                     jump = "g<cr>",
+                     toggle = false,
+                  },
+               },
+            },
+         })
+
+         assert.are.same("g<cr>", config.CONFIG.navigation.hierarchy.keymaps.jump)
+         assert.is_false(config.CONFIG.navigation.hierarchy.keymaps.toggle)
+         assert.are.same("q", config.CONFIG.navigation.hierarchy.keymaps.close)
+         assert.are.same("<cr>", config.CONFIG.navigation.cells.keymaps.jump)
+         assert.are.same("left", config.CONFIG.navigation.position)
+         assert.are.same(50, config.CONFIG.navigation.width)
+         assert.is_false(config.CONFIG.navigation.wrap)
+         assert.is_true(config.CONFIG.navigation.cells.show)
+         assert.are.same(25, config.CONFIG.navigation.cells.height)
+      end, function()
+         config.CONFIG = original
+      end)
+   end)
+
+   it("Keeps global command mappings disabled by default", function()
+      local mappings = require("slang-server._core.config").CONFIG.keymaps
+
+      assert.is_false(mappings.enable_defaults)
+      assert.is_nil(mappings.hierarchy.enabled)
+      assert.are.same("<leader>vh", mappings.hierarchy.key)
+      assert.is_nil(mappings.findInstance.enabled)
+      assert.are.same("<leader>vi", mappings.findInstance.key)
+      assert.is_nil(mappings.focus.enabled)
+      assert.are.same("<leader>vf", mappings.focus.key)
+      assert.is_nil(mappings.selectActive.enabled)
+      assert.are.same("<leader>va", mappings.selectActive.key)
+   end)
+
+   it("Declares metadata for every command", function()
+      local commands = require("slang-server._commands")
+      for name, command in pairs(commands) do
+         assert.are.same("string", type(command.desc), name)
+         assert.is_true(command.desc ~= "", name)
+         assert.are.same("table", type(command.required_commands), name)
+         assert.are.same("function", type(command.context), name)
+      end
+
+      assert.are.same({
+         "slang.getScopes",
+         "slang.getScopesByModule",
+      }, commands.hierarchy.required_commands)
+      assert.are.same({
+         "slang.getScopes",
+         "slang.getScopesByModule",
+         "slang.getInstancesOfModule",
+      }, commands.findInstance.required_commands)
+      assert.are.same({
+         "slang.getModulesInFile",
+         "slang.getActiveInstanceAtPosition",
+         "slang.getScopes",
+         "slang.getScopesByModule",
+      }, commands.focus.required_commands)
+   end)
+
+   it("Checks declarative command requirements against the resolved context", function()
+      local commands = require("slang-server._commands")
+      local capabilities = require("slang-server._lsp.capabilities")
+      local original_get_client = capabilities.get_client
+      local original_check = capabilities.check_or_notify
+      local invoked
+
+      local ok, err = pcall(function()
+         commands.testMetadata = {
+            desc = "Test metadata",
+            required_commands = { "slang.test" },
+            context = function(args)
+               assert.are.same({ "one", "two" }, args)
+               return 42
+            end,
+            impl = function(args, _, bufnr)
+               invoked = { args, bufnr }
+            end,
+         }
+         capabilities.get_client = function(bufnr)
+            assert.are.same(42, bufnr)
+            return {}
+         end
+         capabilities.check_or_notify = function(bufnr, required)
+            assert.are.same(42, bufnr)
+            assert.are.same({ "slang.test" }, required)
+            return true
+         end
+
+         vim.cmd("SlangServer testMetadata one two")
+      end)
+
+      commands.testMetadata = nil
+      capabilities.get_client = original_get_client
+      capabilities.check_or_notify = original_check
+      assert(ok, err)
+      assert.are.same({ { "one", "two" }, 42 }, invoked)
+   end)
+
+   it("Opens the hierarchy at the active path unless a path is provided", function()
+      local command = require("slang-server._commands.hierarchy").hierarchy
+      local capabilities = require("slang-server._lsp.capabilities")
+      local client_state = require("slang-server._lsp.state")
+      local navigation = require("slang-server.navigation")
+      local original_get_client = capabilities.get_client
+      local original_show = navigation.show
+      local client_id = 12345
+      local original_client_state = client_state.clients[client_id]
+      local shown = {}
+
+      local ok, err = pcall(function()
+         capabilities.get_client = function()
+            return { id = client_id }
+         end
+         navigation.show = function(path, focus)
+            shown[#shown + 1] = { path, focus }
+         end
+         client_state.set_active_path(client_id, "top.active")
+
+         command.impl({}, {}, 1)
+         command.impl({ "top.explicit" }, {}, 1)
+      end)
+
+      capabilities.get_client = original_get_client
+      navigation.show = original_show
+      client_state.clients[client_id] = original_client_state
+      assert(ok, err)
+      assert.are.same({
+         { "top.active", true },
+         { "top.explicit", true },
+      }, shown)
+   end)
+
+   it("Uses the slang-server position encoding when adding to waves", function()
+      local command = require("slang-server._commands.addToWaves").addToWaves
+      local capabilities = require("slang-server._lsp.capabilities")
+      local client = require("slang-server._lsp.client")
+      local original_get_client = capabilities.get_client
+      local original_get_instances = client.getInstances
+      local original_make_params = vim.lsp.util.make_position_params
+      local encoding
+
+      local ok, err = pcall(function()
+         capabilities.get_client = function()
+            return { offset_encoding = "utf-8" }
+         end
+         vim.lsp.util.make_position_params = function(_, position_encoding)
+            encoding = position_encoding
+            return {}
+         end
+         client.getInstances = function() end
+
+         command.impl({}, {}, vim.api.nvim_get_current_buf())
+      end)
+
+      capabilities.get_client = original_get_client
+      client.getInstances = original_get_instances
+      vim.lsp.util.make_position_params = original_make_params
+      assert(ok, err)
+      assert.are.same("utf-8", encoding)
+   end)
+
+   it("Does not expose the utility module as a global", function()
+      local module_name = "slang-server.util"
+      local original_module = package.loaded[module_name]
+      local original_global = _G.M
+      local sentinel = {}
+
+      _G.M = sentinel
+      package.loaded[module_name] = nil
+      require(module_name)
+
+      local exposed = _G.M
+      package.loaded[module_name] = original_module
+      _G.M = original_global
+      assert.are.same(sentinel, exposed)
+   end)
+
+   it("Defers mappings configured through setup until ftplugin initialization", function()
+      local plugin = require("slang-server")
+      local config = require("slang-server._core.config")
+      local original_config = config.CONFIG
+      local original_set = vim.keymap.set
+      local mappings = {}
+
+      local ok, err = pcall(function()
+         vim.keymap.set = function(mode, lhs, rhs, opts)
+            mappings[#mappings + 1] = { mode = mode, lhs = lhs, rhs = rhs, opts = opts }
+         end
+         plugin.setup({
+            keymaps = {
+               focus = { key = "gj", enabled = true },
+            },
+         })
+         assert.are.same(0, #mappings)
+         require("slang-server._commands.keymaps").apply()
+      end)
+
+      vim.keymap.set = original_set
+      config.CONFIG = original_config
+      assert(ok, err)
+      assert.are.same(1, #mappings)
+      assert.are.same("n", mappings[1].mode)
+      assert.are.same("gj", mappings[1].lhs)
+   end)
+
+   it("Configures global mappings through vim.g", function()
+      local module_name = "slang-server._core.config"
+      local original_module = package.loaded[module_name]
+      local original_global = vim.g.slang_server_config
+      local original_set = vim.keymap.set
+      local mappings = {}
+
+      local ok, err = pcall(function()
+         vim.g.slang_server_config = {
+            keymaps = {
+               findInstance = { key = "gi", enabled = true },
+            },
+         }
+         package.loaded[module_name] = nil
+         require(module_name)
+         vim.keymap.set = function(mode, lhs, rhs, opts)
+            mappings[#mappings + 1] = { mode = mode, lhs = lhs, rhs = rhs, opts = opts }
+         end
+         require("slang-server._commands.keymaps").apply()
+      end)
+
+      vim.keymap.set = original_set
+      vim.g.slang_server_config = original_global
+      package.loaded[module_name] = original_module
+      assert(ok, err)
+      assert.are.same(1, #mappings)
+      assert.are.same("n", mappings[1].mode)
+      assert.are.same("gi", mappings[1].lhs)
+   end)
+
+   it("Adds only enabled global command mappings", function()
+      local config = require("slang-server._core.config")
+      local original_config = config.CONFIG
+      local original_set = vim.keymap.set
+      local mappings = {}
+
+      local ok, err = pcall(function()
+         config.CONFIG = vim.tbl_deep_extend("force", {}, config.CONFIG, {
+            keymaps = {
+               hierarchy = { enabled = true },
+               findInstance = { enabled = true },
+               focus = { enabled = true },
+               selectActive = { enabled = true },
+            },
+         })
+         vim.keymap.set = function(mode, lhs, rhs, opts)
+            mappings[#mappings + 1] = { mode = mode, lhs = lhs, rhs = rhs, opts = opts }
+         end
+
+         require("slang-server._commands.keymaps").apply()
+      end)
+
+      vim.keymap.set = original_set
+      config.CONFIG = original_config
+      assert(ok, err)
+      assert.are.same(4, #mappings)
+
+      local invoked = {}
+      local by_key = {}
+      local original_cmd = vim.cmd
+      with_cleanup(function()
+         vim.cmd = function(command)
+            invoked[command] = true
+         end
+         for _, mapping in ipairs(mappings) do
+            assert.are.same("n", mapping.mode)
+            by_key[mapping.lhs] = mapping
+            mapping.rhs()
+         end
+      end, function()
+         vim.cmd = original_cmd
+      end)
+      assert.are.same("Open Slang Server hierarchy", by_key["<leader>vh"].opts.desc)
+      assert.are.same("Find an instance in the compiled design", by_key["<leader>vi"].opts.desc)
+      assert.are.same("Reveal object in Slang Server hierarchy", by_key["<leader>vf"].opts.desc)
+      assert.are.same("Select the active instance or generate iteration under the cursor", by_key["<leader>va"].opts.desc)
+      assert.is_true(invoked["SlangServer hierarchy"])
+      assert.is_true(invoked["SlangServer findInstance"])
+      assert.is_true(invoked["SlangServer focus"])
+      assert.is_true(invoked["SlangServer selectActive"])
+   end)
+
+   it("Enables default global mappings while allowing individual overrides", function()
+      local config = require("slang-server._core.config")
+      local original_config = config.CONFIG
+      local original_set = vim.keymap.set
+      local mappings = {}
+
+      local ok, err = pcall(function()
+         config.CONFIG = vim.tbl_deep_extend("force", {}, config.CONFIG, {
+            keymaps = {
+               enable_defaults = true,
+               focus = { enabled = false },
+               findInstance = { key = "gi" },
+            },
+         })
+         vim.keymap.set = function(_, lhs)
+            mappings[#mappings + 1] = lhs
+         end
+         require("slang-server._commands.keymaps").apply()
+      end)
+
+      vim.keymap.set = original_set
+      config.CONFIG = original_config
+      assert(ok, err)
+      table.sort(mappings)
+      assert.are.same({ "<leader>va", "<leader>vh", "gi" }, mappings)
+   end)
+
+   it("Runs active-selection code lenses without the code-lens picker", function()
+      local command = require("slang-server._commands.selectActive").selectActive
+      local capabilities = require("slang-server._lsp.capabilities")
+      local original_get_client = capabilities.get_client
+      local original_get_lenses = vim.lsp.codelens.get
+      local original_select = vim.ui.select
+      local selected = {}
+
+      assert.are.same({ "slang.activateInstance" }, command.required_commands)
+
+      local active_lens = {
+         range = { start = { line = vim.api.nvim_win_get_cursor(0)[1] - 1 } },
+         command = {
+            title = "top.cpu (2)",
+            command = "slang.quickPick",
+            arguments = {
+               {
+                  placeholder = "Select active instance for cpu",
+                  items = {},
+                  onSelectCommand = "slang.activateInstance",
+                  interactionSource = "codeLensSelect",
                },
             },
          },
-      })
+      }
 
-      assert.are.same("g<cr>", config.CONFIG.navigation.hierarchy.keymaps.jump)
-      assert.is_false(config.CONFIG.navigation.hierarchy.keymaps.toggle)
-      assert.are.same("q", config.CONFIG.navigation.hierarchy.keymaps.close)
-      assert.are.same("<cr>", config.CONFIG.navigation.cells.keymaps.jump)
-      assert.are.same("left", config.CONFIG.navigation.position)
-      assert.are.same(50, config.CONFIG.navigation.width)
-      assert.is_false(config.CONFIG.navigation.wrap)
-      assert.is_true(config.CONFIG.navigation.cells.show)
-      assert.are.same(25, config.CONFIG.navigation.cells.height)
+      local ok, err = pcall(function()
+         capabilities.get_client = function()
+            return {
+               exec_cmd = function(_, lens_command, ctx)
+                  selected[#selected + 1] = { lens_command.title, ctx }
+               end,
+            }
+         end
+         vim.lsp.codelens.get = function()
+            return {
+               active_lens,
+               {
+                  range = active_lens.range,
+                  command = { title = "Go to Instantiation", command = "slang.activateInstance" },
+               },
+            }
+         end
+         command.impl({}, {}, vim.api.nvim_get_current_buf())
 
-      config.CONFIG = original
+         active_lens.command.title = "top.cpu.lanes[1]"
+         active_lens.command.arguments[1].placeholder = "Select active generate iteration"
+         vim.lsp.codelens.get = function()
+            return { active_lens }
+         end
+         command.impl({}, {}, vim.api.nvim_get_current_buf())
+
+         local module_lens = vim.deepcopy(active_lens)
+         module_lens.command.title = "top.cpu (2)"
+         local generate_lens = vim.deepcopy(active_lens)
+         vim.lsp.codelens.get = function()
+            return { module_lens, generate_lens }
+         end
+         vim.ui.select = function(items, opts, on_choice)
+            assert.are.same("Select active-selection code lens", opts.prompt)
+            assert.are.same("top.cpu.lanes[1]", opts.format_item(items[2]))
+            on_choice(items[2])
+         end
+         command.impl({}, {}, vim.api.nvim_get_current_buf())
+      end)
+
+      capabilities.get_client = original_get_client
+      vim.lsp.codelens.get = original_get_lenses
+      vim.ui.select = original_select
+      assert(ok, err)
+      assert.are.same(3, #selected)
+      assert.are.same("top.cpu (2)", selected[1][1])
+      assert.are.same("top.cpu.lanes[1]", selected[2][1])
+      assert.are.same({ bufnr = vim.api.nvim_get_current_buf() }, selected[1][2])
+      assert.are.same({ bufnr = vim.api.nvim_get_current_buf() }, selected[2][2])
+      assert.are.same("top.cpu.lanes[1]", selected[3][1])
    end)
 
    it("Adds configured mappings and skips disabled mappings", function()
@@ -111,6 +494,20 @@ describe("SlangServer", function()
       navigation.add_mapping(mappings, false, spec)
 
       assert.are.same({ ["g<cr>"] = spec }, mappings)
+   end)
+
+   it("Ignores a more recent source buffer without an attached server", function()
+      local navigation = require("slang-server.navigation")
+      local attached_bufnr = vim.api.nvim_get_current_buf()
+
+      vim.cmd("vnew")
+      local unattached_bufnr = vim.api.nvim_get_current_buf()
+      vim.bo[unattached_bufnr].filetype = "systemverilog"
+
+      local source = navigation.state.sv_buf
+      vim.cmd("bwipeout!")
+
+      assert.are.same(attached_bufnr, source.bufnr)
    end)
 
    it("Reveals the active hierarchy object at the source cursor", function()
@@ -137,7 +534,7 @@ describe("SlangServer", function()
             reveals[#reveals + 1] = { path, focus }
          end
 
-         command.impl()
+         command.impl({}, {}, vim.api.nvim_get_current_buf())
       end)
 
       lsp.getModulesInFile = original_get_modules
@@ -238,15 +635,19 @@ describe("SlangServer", function()
       local original_show = lsp.showHierLocation
       local requested = false
 
-      navigation.state.sv_win = false
-      lsp.showHierLocation = function()
-         requested = true
-      end
-      local messages = capture_notifications(function()
-         navigation.show_hier_location("top.child")
+      local messages
+      with_cleanup(function()
+         navigation.state.sv_win = false
+         lsp.showHierLocation = function()
+            requested = true
+         end
+         messages = capture_notifications(function()
+            navigation.show_hier_location("top.child")
+         end)
+      end, function()
+         lsp.showHierLocation = original_show
+         navigation.state.sv_win = original_source_win
       end)
-      lsp.showHierLocation = original_show
-      navigation.state.sv_win = original_source_win
 
       assert.is_false(requested)
       assert.are.same({ "Cannot jump to location: invalid target window" }, messages)
@@ -296,21 +697,25 @@ describe("SlangServer", function()
       local client_commands = require("slang-server._lsp.clientCommands")
       local original_get_client = vim.lsp.get_client_by_id
 
-      local messages = capture_notifications(function()
-         vim.lsp.get_client_by_id = function()
-            return {
-               request = function()
-                  return false
-               end,
-            }
-         end
-         client_commands.executeServerCommand("slang.activateInstance", {}, {
-            bufnr = 0,
-            client_id = 42,
-         })
+      local messages
+      with_cleanup(function()
+         messages = capture_notifications(function()
+            vim.lsp.get_client_by_id = function()
+               return {
+                  request = function()
+                     return false
+                  end,
+               }
+            end
+            client_commands.executeServerCommand("slang.activateInstance", {}, {
+               bufnr = 0,
+               client_id = 42,
+            })
+         end)
+      end, function()
+         vim.lsp.get_client_by_id = original_get_client
       end)
 
-      vim.lsp.get_client_by_id = original_get_client
       assert.are.same({ "slang-server: failed to send workspace/executeCommand request" }, messages)
    end)
 
@@ -416,8 +821,8 @@ describe("SlangServer", function()
          end
          handlers.defaultOnFailure = function() end
 
-         command.impl()
-         command.impl()
+         command.impl({}, {}, vim.api.nvim_get_current_buf())
+         command.impl({}, {}, vim.api.nvim_get_current_buf())
          responses[2].on_success({
             { declName = "new", instCount = 1, inst = { instPath = "top.new" } },
          })
@@ -428,16 +833,16 @@ describe("SlangServer", function()
          assert.are.same({ "top.new" }, selections[1])
 
          selections = {}
-         command.impl()
-         command.impl()
+         command.impl({}, {}, vim.api.nvim_get_current_buf())
+         command.impl({}, {}, vim.api.nvim_get_current_buf())
          responses[4].on_failure("new search failed")
          responses[3].on_success({
             { declName = "stale", instCount = 1, inst = { instPath = "top.stale" } },
          })
 
-         command.impl()
+         command.impl({}, {}, vim.api.nvim_get_current_buf())
          responses[5].on_success({ { declName = "old", instCount = 2 } })
-         command.impl()
+         command.impl({}, {}, vim.api.nvim_get_current_buf())
          responses[6].on_success({ { declName = "new", instCount = 2 } })
          instance_responses[2].on_success({ { instPath = "top.new" } })
          instance_responses[1].on_success({ { instPath = "top.old" } })
@@ -716,6 +1121,31 @@ describe("SlangServer", function()
       vim.api.nvim_buf_delete(0, { force = true })
    end)
 
+   it("Can hide cells and wrap the hierarchy", function()
+      local config = require("slang-server._core.config").CONFIG.navigation
+      local navigation = require("slang-server.navigation")
+      local hierarchy = require("slang-server.navigation.hierarchy")
+      local cells = require("slang-server.navigation.cells")
+      local original_show = config.cells.show
+      local original_wrap = config.wrap
+
+      with_cleanup(function()
+         config.cells.show = false
+         config.wrap = true
+         vim.cmd("SlangServer hierarchy")
+         wait_on("Slang-server: Hierarchy")
+
+         assert.is_nil(cells.state.split)
+         assert.is_true(vim.api.nvim_get_option_value("wrap", { win = hierarchy.state.split.winid }))
+      end, function()
+         if navigation.state.open then
+            navigation.on_close()
+         end
+         config.cells.show = original_show
+         config.wrap = original_wrap
+      end)
+   end)
+
    it("Focuses an existing hierarchy window", function()
       local navigation = require("slang-server.navigation")
       local hierarchy = package.loaded["slang-server.navigation/hierarchy"]
@@ -774,8 +1204,8 @@ describe("SlangServer", function()
       end)
 
       assert.are.same({
-         "slang-server: setTopLevel without a file must be run from a buffer with an attached slang-server LSP client.",
-         "slang-server: addToWaves must be run from a buffer with an attached slang-server LSP client.",
+         "slang-server: 'setTopLevel' requires a buffer with an attached slang-server LSP client.",
+         "slang-server: 'addToWaves' requires a buffer with an attached slang-server LSP client.",
       }, messages)
 
       for _, msg in ipairs(messages) do

@@ -149,13 +149,15 @@ local function lazy_open(node)
    else
       navigation.message(M.state.tree, "Loading scope...", { parent = node, hl = hl.HIER_SUBTLE })
 
-      if not navigation.state.sv_buf then
+      local source = navigation.state.sv_buf
+      if not source then
          vim.notify("No SV buffer", vim.log.levels.ERROR)
+         return
       end
 
-      client.getScope(navigation.state.sv_buf.bufnr, {
+      client.getScope(source.bufnr, {
          on_success = function(resp)
-            if not navigation.state.open or M.state.generation ~= generation or M.state.tree ~= tree then
+            if not navigation.session_active(M.state, generation) or M.state.tree ~= tree then
                return
             end
             local children = parse_nodes(resp, node)
@@ -165,11 +167,7 @@ local function lazy_open(node)
             M.state.tree:render()
          end,
          on_failure = function(message)
-            if
-               navigation.state.open
-               and M.state.generation == generation
-               and M.state.tree == tree
-            then
+            if navigation.session_active(M.state, generation) and M.state.tree == tree then
                handlers.defaultOnFailure(message)
             end
          end,

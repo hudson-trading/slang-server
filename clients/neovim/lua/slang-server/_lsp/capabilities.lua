@@ -40,6 +40,11 @@ function M.get_client(bufnr)
 end
 
 ---@return integer bufnr
+function M.get_current_context()
+   return vim.api.nvim_get_current_buf()
+end
+
+---@return integer bufnr
 function M.get_source_context()
    local bufnr = vim.api.nvim_get_current_buf()
    if M.get_client(bufnr) then
