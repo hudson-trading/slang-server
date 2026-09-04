@@ -78,6 +78,21 @@ local function assert_no_new_messages()
 end
 
 describe("SlangServer", function()
+   local capabilities = require("slang-server._lsp.capabilities")
+
+   it("Advertises the Neovim client identity", function()
+      local client = capabilities.client_info()
+      assert.are.same("neovim-slang", client.name)
+      assert.matches("^%d+%.%d+$", client.version)
+
+      local version_file = io.open("../../VERSION", "r")
+      if version_file then
+         local server_version = version_file:read("*l")
+         version_file:close()
+         assert.are.same(server_version:match("^%d+%.%d+"), client.version)
+      end
+   end)
+
    -- load test SV
    vim.cmd("edit tests/foo.sv")
    vim.cmd("set filetype=systemverilog")
@@ -88,7 +103,7 @@ describe("SlangServer", function()
       cmd = { server_bin },
       filetypes = { "systemverilog" },
       root_dir = vim.uv.cwd(),
-      capabilities = require("slang-server._lsp.capabilities").make_client_capabilities(),
+      capabilities = capabilities.make_client_capabilities(),
    })
    assert(client)
    -- wait for client to attach to this buffer

@@ -1,4 +1,19 @@
 on:
+  workflow_call:
+    inputs:
+      kind:
+        description: 'Update kind (major, minor, patch)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Publish as pre-release'
+        type: boolean
+        default: false
+    secrets:
+      VS_MARKETPLACE_TOKEN:
+        required: true
+      OPEN_VSX_TOKEN:
+        required: true
   workflow_dispatch:
     inputs:
       kind:
@@ -18,6 +33,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          ref: main
       - name: Install pnpm
         uses: pnpm/action-setup@v5
         with:
