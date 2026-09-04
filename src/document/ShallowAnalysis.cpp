@@ -1054,7 +1054,7 @@ Diagnostics ShallowAnalysis::getAnalysisDiags() {
     return *m_cachedAnalysisDiags;
 }
 
-const slang::analysis::AnalysisManager* ShallowAnalysis::getAnalysisManager() {
+slang::analysis::AnalysisManager* ShallowAnalysis::getAnalysisManager() {
     if (m_driverAnalysis) {
         return m_driverAnalysis.get();
     }
@@ -1089,7 +1089,7 @@ std::vector<const slang::analysis::ValueDriver*> ShallowAnalysis::getDrivers(
         return {};
     }
 
-    return manager->getDrivers(symbol);
+    return manager->getDriversForInstance(symbol);
 }
 
 } // namespace server

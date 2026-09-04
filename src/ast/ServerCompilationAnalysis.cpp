@@ -53,12 +53,15 @@ void ServerCompilationAnalysis::issueDiagnosticsTo(slang::DiagnosticEngine& diag
 
     // Driver analysis diagnostics (multi-driven, unused, etc)
     // Use stored options with numThreads=1 to avoid persistent thread pool
-    slang::analysis::AnalysisManager driverAnalysis(m_analysisOptions);
-    compilation.freeze();
-    driverAnalysis.analyze(compilation);
-    compilation.unfreeze();
-    INFO("Driver analysis found {} diagnostics", driverAnalysis.getDiagnostics().size());
-    for (auto& diag : driverAnalysis.getDiagnostics()) {
+    if (!m_analysisManager) {
+        m_analysisManager.emplace(m_analysisOptions);
+        compilation.freeze();
+        m_analysisManager->analyze(compilation);
+        compilation.unfreeze();
+    }
+
+    INFO("Driver analysis found {} diagnostics", m_analysisManager->getDiagnostics().size());
+    for (auto& diag : m_analysisManager->getDiagnostics()) {
         diagEngine.issue(diag);
     }
 }
