@@ -15,8 +15,10 @@
 #include <filesystem>
 #include <memory>
 #include <set>
+#include <unordered_map>
 #include <vector>
 
+#include "slang/ast/symbols/InstanceSymbols.h"
 #include "slang/util/Bag.h"
 
 namespace server {
@@ -59,10 +61,14 @@ public:
     std::vector<hier::InstanceSet> getScopesByModule();
 
     /// Get instances of a specific module
-    std::vector<hier::QualifiedInstance> getInstancesOfModule(const std::string& moduleName);
+    const std::vector<const slang::ast::InstanceSymbol*>& getInstancesOfModule(
+        const std::string& moduleName) const;
 
     /// Retrun the children of the scope at the given hierarchical path
     std::vector<hier::HierItem_t> getScope(const std::string& hierPath);
+
+    /// Resolve the source location for a hierarchical instance path.
+    std::optional<lsp::Location> getHierLocation(const std::string& hierPath);
 
     /// Return instances for given doc position
     std::vector<std::string> getInstances(const lsp::TextDocumentPositionParams&);
@@ -118,8 +124,20 @@ public:
     }
 
 private:
+    // Used when going from hierPath -> compilation symbol -> shallow compilation symbol so
+    // server-side opens use locations from the up-to-date open document when possible.
+    const slang::ast::Symbol* toShallowSymbol(const slang::ast::Symbol& symbol) const;
+
+    /// Build m_moduleToDoc from the declared symbols of each document's syntax tree.
+    void indexModuleDocs();
+
     /// The Slang documents this compilation is based on
     std::vector<std::shared_ptr<SlangDoc>> m_documents;
+
+    /// Maps a declared module (/interface/program/class) name to the document that declares it.
+    /// Lets toShallowSymbol() find the owning shallow compilation without scanning all documents.
+    /// Rebuilt in the constructor since m_documents is fixed for this compilation's lifetime.
+    std::unordered_map<std::string, std::shared_ptr<SlangDoc>> m_moduleToDoc;
 
     /// Copy of compilation options
     Bag m_options;

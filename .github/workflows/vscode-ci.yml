@@ -37,6 +37,10 @@ jobs:
         working-directory: clients/vscode
         run: pnpm install --frozen-lockfile
 
+      - name: Checkout server dependencies
+        if: runner.os == 'Linux'
+        run: git submodule update --init --recursive
+
       - name: Run Lint
         working-directory: clients/vscode
         run: pnpm run lint
@@ -44,6 +48,19 @@ jobs:
       - name: Run Tests
         working-directory: clients/vscode
         run: pnpm run test
+
+      - name: Build language server for integration tests
+        if: runner.os == 'Linux'
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build -j8 --target slang_server
+
+      - name: Run language server integration tests
+        if: runner.os == 'Linux'
+        working-directory: clients/vscode
+        env:
+          SLANG_SERVER_PATH: ${{ github.workspace }}/build/bin/slang-server
+        run: xvfb-run -a pnpm run test:integration
 
       - name: Run Grammar Unit Tests
         if: runner.os == 'Linux'
