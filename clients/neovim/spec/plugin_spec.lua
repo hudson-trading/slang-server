@@ -4,12 +4,14 @@ local function wait_on(buf_name)
    local lines
 
    local buf = nil
-   for _, win in ipairs(vim.api.nvim_list_wins()) do
-      local this_buf = vim.api.nvim_win_get_buf(win)
+   local win = nil
+   for _, candidate_win in ipairs(vim.api.nvim_list_wins()) do
+      local this_buf = vim.api.nvim_win_get_buf(candidate_win)
       local this_name = vim.api.nvim_buf_get_name(this_buf)
 
       if string.find(this_name, buf_name, 1, true) then
          buf = this_buf
+         win = candidate_win
          break
       end
    end
@@ -29,7 +31,24 @@ local function wait_on(buf_name)
    end)
    assert(success, lines)
 
-   return lines
+   return lines, win
+end
+
+local function find_line(lines, text)
+   for index, line in ipairs(lines) do
+      if string.find(line, text, 1, true) then
+         return index
+      end
+   end
+   error("Could not find line containing " .. text)
+end
+
+local function press_key(win, line, key)
+   vim.api.nvim_set_current_win(win)
+   vim.api.nvim_win_set_cursor(win, { line, 0 })
+   local mapping = vim.fn.maparg(key, "n", false, true)
+   assert.is_function(mapping.callback)
+   mapping.callback()
 end
 
 ---@param fn fun()
@@ -96,6 +115,8 @@ describe("SlangServer", function()
    -- load test SV
    vim.cmd("edit tests/foo.sv")
    vim.cmd("set filetype=systemverilog")
+   local source_buf = vim.api.nvim_get_current_buf()
+   local source_win = vim.api.nvim_get_current_win()
    -- start slang-server
    local server_bin = os.getenv("SLANG_SERVER_BIN") or "../../build/bin/slang-server"
    local client = vim.lsp.start({
@@ -106,6 +127,60 @@ describe("SlangServer", function()
       capabilities = capabilities.make_client_capabilities(),
    })
    assert(client)
+   local function execute_server_command(command, arguments)
+      local done = false
+      local response
+      local request_error
+      vim.lsp.get_client_by_id(client):request(
+         "workspace/executeCommand",
+         { command = command, arguments = arguments },
+         function(err, result)
+            request_error = err
+            response = result
+            done = true
+         end,
+         source_buf
+      )
+      assert(vim.wait(5000, function()
+         return done
+      end))
+      assert.is_nil(request_error)
+      return response
+   end
+
+   local function press_key_and_wait_for_activation(win, line)
+      local navigation = require("slang-server.navigation")
+      local original_set_active_instance = navigation.set_active_instance
+      local activated_path
+      navigation.set_active_instance = function(hier_path, on_success)
+         original_set_active_instance(hier_path, function()
+            activated_path = hier_path
+            if on_success then
+               on_success()
+            end
+         end)
+      end
+
+      local ok, err = pcall(function()
+         press_key(win, line, "<CR>")
+         assert(vim.wait(5000, function()
+            return activated_path ~= nil
+         end))
+      end)
+      navigation.set_active_instance = original_set_active_instance
+      assert(ok, err)
+      return activated_path
+   end
+
+   local function focus_source()
+      if vim.api.nvim_win_is_valid(source_win) then
+         vim.api.nvim_set_current_win(source_win)
+      end
+      if vim.api.nvim_buf_is_valid(source_buf) then
+         vim.api.nvim_set_current_buf(source_buf)
+      end
+   end
+
    -- wait for client to attach to this buffer
    local success, _ = vim.wait(5000, function()
       return #vim.lsp.get_clients() > 0
@@ -115,7 +190,121 @@ describe("SlangServer", function()
    vim.cmd("luafile ftplugin/systemverilog.lua")
    vim.cmd("luafile lua/slang-server/init.lua")
    -- compile design
-   vim.cmd("SlangServer setTopLevel")
+   execute_server_command("slang.setTopLevel", { vim.api.nvim_buf_get_name(source_buf) })
+
+   before_each(focus_source)
+
+   after_each(function()
+      local navigation = require("slang-server.navigation")
+      local ok, err = pcall(function()
+         if navigation.state.open then
+            navigation.on_close()
+         end
+      end)
+      focus_source()
+      assert(ok, err)
+   end)
+
+   it("Generic quick pick dispatches its selected value", function()
+      local client_commands = require("slang-server._lsp.clientCommands")
+      local original_select = vim.ui.select
+      local original_execute = client_commands.executeServerCommand
+      local command
+      local selected
+
+      local ok, err = pcall(function()
+         client_commands.executeServerCommand = function(selected_command, value)
+            command = selected_command
+            selected = value
+         end
+         vim.ui.select = function(items, options, on_choice)
+            assert.are.same("Pick one", options.prompt)
+            assert.are.same("second (current)", options.format_item(items[2]))
+            on_choice(items[2])
+         end
+         vim.lsp.commands["slang.quickPick"]({
+            arguments = {
+               {
+                  placeholder = "Pick one",
+                  items = {
+                     { label = "first", value = 1 },
+                     { label = "second", description = "(current)", value = 2 },
+                  },
+                  onSelectCommand = "test.callback",
+               },
+            },
+         }, { bufnr = 0 })
+      end)
+      vim.ui.select = original_select
+      client_commands.executeServerCommand = original_execute
+
+      assert(ok, err)
+      assert.are.same("test.callback", command)
+      assert.are.same(2, selected)
+   end)
+
+   it("Active instance notifications reveal an open hierarchy", function()
+      local client_commands = require("slang-server._lsp.clientCommands")
+      local navigation = require("slang-server.navigation")
+      local hierarchy = require("slang-server.navigation/hierarchy")
+      local original_open = hierarchy.open_remainder
+      local original_state = navigation.state.open
+      local revealed
+
+      local ok, err = pcall(function()
+         hierarchy.open_remainder = function(parent, root, path, from_cell)
+            revealed = { parent, root, path, from_cell }
+         end
+
+         navigation.state.open = false
+         client_commands.activeInstanceChanged(nil, { hierPath = "top.hidden" })
+         assert.is_nil(revealed)
+
+         navigation.state.open = true
+         client_commands.activeInstanceChanged(nil, { hierPath = "top.visible" })
+         assert.are.same({ nil, true, "top.visible", false }, revealed)
+      end)
+      hierarchy.open_remainder = original_open
+      navigation.state.open = original_state
+
+      assert(ok, err)
+   end)
+
+   it("Single-instance code lenses reveal an open hierarchy", function()
+      local client_commands = require("slang-server._lsp.clientCommands")
+      local original_reveal = client_commands.revealInHierarchy
+      local shown
+
+      local ok, err = pcall(function()
+         client_commands.revealInHierarchy = function(params)
+            shown = params
+         end
+         vim.lsp.commands["slang.showInHierarchy"]({
+            arguments = { { hierPath = "top.only" } },
+         })
+      end)
+      client_commands.revealInHierarchy = original_reveal
+
+      assert(ok, err)
+      assert.are.same({ hierPath = "top.only" }, shown)
+   end)
+
+   it("Searches hierarchy members through the server API", function()
+      local result
+      require("slang-server").search_hierarchy("the_sub", function(resp)
+         result = resp
+      end)
+
+      assert(vim.wait(5000, function()
+         return result ~= nil
+      end))
+      -- Fuzzy path matches include the four instances and their parameter children.
+      assert.are.same(8, result.totalResults)
+      assert.is_true(#result.matches <= 100)
+      assert.is_true(vim.iter(result.matches):any(function(item)
+         return item.path == "foo.gen_loop[2].the_sub"
+      end))
+   end)
 
    -- Catches anything the server complained about, including messages emitted
    -- during startup, which land before the first test runs.
@@ -213,9 +402,8 @@ describe("SlangServer", function()
       set_top_level("tests/interface_ports.sv")
       vim.cmd("SlangServer hierarchy interface_top.u")
       local lines = wait_on("Slang-server: Hierarchy")
-      local rendered = table.concat(lines, "\n")
-      assert.is_truthy(string.find(rendered, "single_bus", 1, true))
-      assert.is_truthy(string.find(rendered, "bus_array", 1, true))
+      find_line(lines, "single_bus")
+      find_line(lines, "bus_array")
       vim.api.nvim_buf_delete(0, { force = true })
 
       local config = require("slang-server._core.config").CONFIG
@@ -224,12 +412,49 @@ describe("SlangServer", function()
       local ok, err = pcall(function()
          vim.cmd("SlangServer hierarchy interface_top.u")
          lines = wait_on("Slang-server: Hierarchy")
-         assert.is_truthy(string.find(table.concat(lines, "\n"), "? single_bus", 1, true))
+         find_line(lines, "? single_bus")
          vim.api.nvim_buf_delete(0, { force = true })
       end)
       config.kinds.interfaceport = interfaceport
       set_top_level("tests/foo.sv")
       assert(ok, err)
+   end)
+
+   it("Cell selections activate instances", function()
+      execute_server_command("slang.setTopLevel", { vim.api.nvim_buf_get_name(source_buf) })
+      vim.cmd("SlangServer hierarchy")
+
+      local lines, cells_win = wait_on("Slang-server: Cells")
+      press_key(cells_win, find_line(lines, "sub (4)"), "<Space>")
+      lines, cells_win = wait_on("Slang-server: Cells")
+      local target = "foo.gen_loop[2].the_sub"
+      local activated = press_key_and_wait_for_activation(cells_win, find_line(lines, target))
+      assert.are.same(target, activated)
+
+      local active = execute_server_command("slang.getActiveInstance", { "sub" })
+      assert.are.same(target, active.instPath)
+
+      local _, hierarchy_win = wait_on("Slang-server: Hierarchy")
+      vim.api.nvim_set_current_win(hierarchy_win)
+      vim.api.nvim_buf_delete(0, { force = true })
+   end)
+
+   it("Hierarchy selections activate instances", function()
+      execute_server_command("slang.setTopLevel", { vim.api.nvim_buf_get_name(source_buf) })
+      local target = "foo.gen_loop[3].the_sub"
+      vim.cmd("SlangServer hierarchy " .. target)
+
+      local lines, hierarchy_win = wait_on("Slang-server: Hierarchy")
+      local activated = press_key_and_wait_for_activation(
+         hierarchy_win,
+         find_line(lines, "the_sub sub")
+      )
+      assert.are.same(target, activated)
+
+      local active = execute_server_command("slang.getActiveInstance", { "sub" })
+      assert.are.same(target, active.instPath)
+      vim.api.nvim_set_current_win(hierarchy_win)
+      vim.api.nvim_buf_delete(0, { force = true })
    end)
 end)
 

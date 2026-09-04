@@ -931,6 +931,192 @@ endmodule
     CHECK(content.value.find("/// another line") != std::string::npos);
 }
 
+TEST_CASE("HoverConnectedInterfaceParametersUseActiveInstance") {
+    ServerHarness server("active_interface_port_hover");
+    server.setBuildFile("design.f");
+
+    auto doc = server.openFile("logger.sv");
+    auto interfaceDoc = server.openFile("valid_data.sv");
+    auto topDoc = server.openFile("top.sv");
+    auto payload = doc.before("payload);");
+    auto typedPayload = doc.before("typed_payload);");
+    auto interfaceWidth = doc.after("data_bus.");
+    auto interfacePort = doc.before("data_bus\n");
+    auto interfaceWidthDeclaration = interfaceDoc.before("width = 1");
+    auto interfaceTypeDeclaration = interfaceDoc.before("payload_t = logic");
+    auto forwardedPort = topDoc.before("data_bus\n");
+    auto connectedInstance = topDoc.before("bus8();");
+    auto selectedForwardedPort = topDoc.before("bundle\n");
+    auto selectedInstance = topDoc.before("nested_bus();");
+    auto getInterfaceHoverContent = [&](const Cursor& cursor) {
+        auto hover = interfaceDoc.getHoverAt(cursor.m_offset);
+        REQUIRE(hover);
+        return rfl::get<lsp::MarkupContent>(hover->contents).value;
+    };
+    auto getHoverContent = [&](const Cursor& cursor) {
+        auto hover = doc.getHoverAt(cursor.m_offset);
+        REQUIRE(hover);
+        return rfl::get<lsp::MarkupContent>(hover->contents).value;
+    };
+
+    REQUIRE(server.setActiveInstance("top.tap8"));
+    CHECK(getHoverContent(payload).find("Width: `8`") != std::string::npos);
+    CHECK(getHoverContent(typedPayload).find("Width: `8`") != std::string::npos);
+    CHECK(getHoverContent(interfaceWidth).find("Value: `8`") != std::string::npos);
+    CHECK(getHoverContent(interfacePort).find("Connected to [`top.bus8`](<file:") !=
+          std::string::npos);
+    CHECK(getInterfaceHoverContent(interfaceWidthDeclaration).find("Value: `8`") !=
+          std::string::npos);
+    CHECK(getInterfaceHoverContent(interfaceTypeDeclaration).find("Value: `byte`") !=
+          std::string::npos);
+
+    REQUIRE(server.setActiveInstance("top.tap16"));
+    CHECK(getHoverContent(payload).find("Width: `16`") != std::string::npos);
+    CHECK(getHoverContent(typedPayload).find("Width: `64`") != std::string::npos);
+    CHECK(getHoverContent(interfaceWidth).find("Value: `16`") != std::string::npos);
+    CHECK(getHoverContent(interfacePort).find("Connected to [`top.bus16`](<file:") !=
+          std::string::npos);
+    CHECK(getInterfaceHoverContent(interfaceWidthDeclaration).find("Value: `16`") !=
+          std::string::npos);
+    CHECK(getInterfaceHoverContent(interfaceTypeDeclaration).find("Value: `longint`") !=
+          std::string::npos);
+
+    REQUIRE(server.setActiveInstance("top.wrapper8.tap.data_bus"));
+    CHECK(getHoverContent(interfacePort).find("Connected to [`top.bus8`](<file:") !=
+          std::string::npos);
+    CHECK(getInterfaceHoverContent(interfaceWidthDeclaration).find("Value: `8`") !=
+          std::string::npos);
+    CHECK(getInterfaceHoverContent(interfaceTypeDeclaration).find("Value: `byte`") !=
+          std::string::npos);
+
+    auto definitions = interfacePort.getDefinitions();
+    CHECK(definitions.size() == 3);
+    auto hasDefinition = [&](const Cursor& expected) {
+        return std::ranges::any_of(definitions, [&](const auto& definition) {
+            return definition.targetUri == expected.getUri() &&
+                   definition.targetSelectionRange.start == expected.getPosition();
+        });
+    };
+    CHECK(hasDefinition(interfacePort));
+    CHECK(hasDefinition(forwardedPort));
+    CHECK(hasDefinition(connectedInstance));
+
+    REQUIRE(server.setActiveInstance("top.selected_wrapper.selected_tap.data_bus"));
+    CHECK(getHoverContent(interfacePort).find("Connected to [`top.bundle.nested_bus`](<file:") !=
+          std::string::npos);
+    CHECK(getInterfaceHoverContent(interfaceWidthDeclaration).find("Value: `16`") !=
+          std::string::npos);
+    CHECK(getInterfaceHoverContent(interfaceTypeDeclaration).find("Value: `longint`") !=
+          std::string::npos);
+
+    definitions = interfacePort.getDefinitions();
+    CHECK(definitions.size() == 3);
+    CHECK(hasDefinition(interfacePort));
+    CHECK(hasDefinition(selectedForwardedPort));
+    CHECK(hasDefinition(selectedInstance));
+}
+
+TEST_CASE("HoverAndGotoActiveInterfaceArrayConnection") {
+    ServerHarness server("active_interface_port_hover");
+    server.setBuildFile("design.f");
+
+    auto doc = server.openFile("logger.sv");
+    auto topDoc = server.openFile("top.sv");
+    auto interfacePort = doc.before("buses[2]");
+    auto connectedArray = topDoc.before("bus_array[2]");
+
+    REQUIRE(server.setActiveInstance("top.array_tap"));
+    auto hover = doc.getHoverAt(interfacePort.m_offset);
+    REQUIRE(hover);
+    auto content = rfl::get<lsp::MarkupContent>(hover->contents).value;
+    CHECK(content.find("Connected to [`top.bus_array`](<file:") != std::string::npos);
+
+    auto definitions = interfacePort.getDefinitions();
+    REQUIRE(definitions.size() == 2);
+    auto hasDefinition = [&](const Cursor& expected) {
+        return std::ranges::any_of(definitions, [&](const auto& definition) {
+            return definition.targetUri == expected.getUri() &&
+                   definition.targetSelectionRange.start == expected.getPosition();
+        });
+    };
+    CHECK(hasDefinition(interfacePort));
+    CHECK(hasDefinition(connectedArray));
+}
+
+TEST_CASE("HoverParameterValueUsesActiveInstance") {
+    ServerHarness server("active_interface_port_hover");
+    server.setBuildFile("design.f");
+
+    auto doc = server.openFile("logger.sv");
+    auto cursor = doc.before("width,");
+    auto getHoverContent = [&]() {
+        auto hover = doc.getHoverAt(cursor.m_offset);
+        REQUIRE(hover);
+        return rfl::get<lsp::MarkupContent>(hover->contents).value;
+    };
+
+    REQUIRE(server.setActiveInstance("top.tap8"));
+    auto tap8Hover = getHoverContent();
+    CHECK(countSubstring(tap8Hover, "Value: `8`") == 1);
+    CHECK(tap8Hover.find("Value: `16`") == std::string::npos);
+
+    REQUIRE(server.setActiveInstance("top.tap16"));
+    auto tap16Hover = getHoverContent();
+    CHECK(countSubstring(tap16Hover, "Value: `16`") == 1);
+    CHECK(tap16Hover.find("Value: `8`") == std::string::npos);
+}
+
+TEST_CASE("SavingDesignRefreshesActiveInstanceHover") {
+    ServerHarness server("active_interface_port_hover");
+    server.setBuildFile("design.f");
+
+    auto doc = server.openFile("logger.sv");
+    auto top = server.openFile("top.sv");
+    auto cursor = doc.before("width,");
+    auto getHoverContent = [&]() {
+        auto hover = doc.getHoverAt(cursor.m_offset);
+        REQUIRE(hover);
+        return rfl::get<lsp::MarkupContent>(hover->contents).value;
+    };
+
+    REQUIRE(server.setActiveInstance("top.tap8"));
+    CHECK(getHoverContent().find("Value: `8`") != std::string::npos);
+
+    auto tap = top.getText().find("StageTap #(.width(8)");
+    REQUIRE(tap != std::string::npos);
+    auto width = top.getText().find('8', tap);
+    REQUIRE(width != std::string::npos);
+    top.erase(width, width + 1);
+    top.insert(width, "12");
+    top.save();
+
+    auto refreshedHover = getHoverContent();
+    CHECK(refreshedHover.find("Value: `12`") != std::string::npos);
+    CHECK(refreshedHover.find("Value: `8`") == std::string::npos);
+}
+
+TEST_CASE("HoverTypeParameterAndDependentSignalUseActiveInstance") {
+    ServerHarness server("active_interface_port_hover");
+    server.setBuildFile("design.f");
+
+    auto doc = server.openFile("logger.sv");
+    auto typeParameter = doc.before("data_t\n");
+    auto signal = doc.before("typed_data;");
+    auto getHoverContent = [&](const Cursor& cursor) {
+        auto hover = doc.getHoverAt(cursor.m_offset);
+        REQUIRE(hover);
+        return rfl::get<lsp::MarkupContent>(hover->contents).value;
+    };
+
+    REQUIRE(server.setActiveInstance("top.tap8"));
+    CHECK(getHoverContent(typeParameter).find("Value: `byte`") != std::string::npos);
+    CHECK(getHoverContent(signal).find("Width: `8`") != std::string::npos);
+
+    REQUIRE(server.setActiveInstance("top.tap16"));
+    CHECK(getHoverContent(typeParameter).find("Value: `int`") != std::string::npos);
+    CHECK(getHoverContent(signal).find("Width: `32`") != std::string::npos);
+}
+
 TEST_CASE("HoverSystemTask") {
     ServerHarness server;
     GoldenTest golden;

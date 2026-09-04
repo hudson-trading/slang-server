@@ -8,6 +8,7 @@
 #pragma once
 
 #include "Config.h"
+#include "ast/ActiveDesignContext.h"
 #include "document/SymbolIndexer.h"
 #include "document/SymbolTreeVisitor.h"
 #include "document/SyntaxIndexer.h"
@@ -16,6 +17,7 @@
 #include <memory>
 #include <optional>
 #include <span>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -37,6 +39,8 @@ namespace server {
 using namespace slang;
 
 class DocumentHandle;
+class ServerCompilation;
+
 class ShallowAnalysis {
 public:
     /// @brief Constructs a DocumentAnalysis instance with syntax and symbol indexing
@@ -51,7 +55,8 @@ public:
     /// @param trees Additional syntax trees that this document depends on
     ShallowAnalysis(SourceManager& sourceManager, slang::BufferID buffer,
                     std::shared_ptr<slang::syntax::SyntaxTree> tree, slang::Bag options,
-                    const std::vector<std::shared_ptr<slang::syntax::SyntaxTree>>& allTrees = {});
+                    const std::vector<std::shared_ptr<slang::syntax::SyntaxTree>>& allTrees = {},
+                    const ServerCompilation* design = nullptr);
 
     /// @brief Retrieves document symbols for LSP outline view, called right after open
     /// @return Tree of LSP document symbols representing the document CST structure
@@ -115,6 +120,17 @@ public:
     /// @brief Gets a list of drivers for a given value symbol
     std::vector<const slang::analysis::ValueDriver*> getDrivers(
         const slang::ast::ValueSymbol& symbol);
+
+    /// @brief Return the corresponding symbol from the selected full-design instance, if any.
+    const slang::ast::Symbol* getDesignSymbol(const slang::ast::Symbol& shallowSymbol) const;
+
+    /// Return the full-design instance referenced by a module, named parameter, or named port
+    /// token at an instantiation site.
+    std::optional<std::string> getDesignInstancePathAtToken(
+        const slang::parsing::Token* token) const;
+
+    const InterfaceConnection* getActiveInterfaceConnection(
+        const slang::ast::InterfacePortSymbol& port) const;
 
     /// @brief Gets the source manager for this analysis
     SourceManager& getSourceManager() const { return m_sourceManager; }
@@ -190,6 +206,9 @@ private:
 
     /// Compilation context for symbol resolution
     std::unique_ptr<slang::ast::Compilation> m_compilation;
+
+    /// Information from the active design when a top level or filelist is set
+    std::optional<ActiveDesignContext> m_activeDesign;
 
     /// Analysis manager for running driver analysis (multi-driven, unused, etc)
     std::unique_ptr<slang::analysis::AnalysisManager> m_driverAnalysis = nullptr;

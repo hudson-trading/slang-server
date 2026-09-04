@@ -73,6 +73,16 @@ end
 
 ---@param bufnr integer
 ---@param handlers RespHandlers
+---@param params { query: string }
+M.searchHierarchy = function(bufnr, handlers, params)
+   lsp_execute(bufnr, {
+      command = "slang.searchHierarchy",
+      arguments = { params.query },
+   }, handlers)
+end
+
+---@param bufnr integer
+---@param handlers RespHandlers
 M.getScopesByModule = function(bufnr, handlers)
    lsp_execute(bufnr, {
       command = "slang.getScopesByModule",
@@ -87,6 +97,16 @@ M.getInstancesOfModule = function(bufnr, handlers, params)
    lsp_execute(bufnr, {
       command = "slang.getInstancesOfModule",
       arguments = { params.moduleName },
+   }, handlers)
+end
+
+---@param bufnr integer
+---@param handlers RespHandlers
+---@param params { hierPath: string }
+M.setActiveInstance = function(bufnr, handlers, params)
+   lsp_execute(bufnr, {
+      command = "slang.setActiveInstance",
+      arguments = { params.hierPath },
    }, handlers)
 end
 

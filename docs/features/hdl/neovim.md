@@ -38,6 +38,12 @@ This will open the hierarchy view and, if `SCOPE` is provided, expand the view t
 
 ![Hierarchy View](neovim/hierarchy.png)
 
+The hierarchy opens with a Cells view that groups elaborated instances by module. Press `<Space>` on a module to list its instances, then `<CR>` on an instance to make it active, jump to its source, and reveal it in the hierarchy. Pressing `<CR>` on an instance in the hierarchy also makes it active; `gd` opens its declaration without changing the selection. Press `?` in either view for the complete key map.
+
+If Neovim CodeLens display is enabled, module and interface declarations show the active path and instance count. Activating that CodeLens opens `vim.ui.select` when multiple instances are available. Generate-loop CodeLenses similarly select an active elaborated iteration.
+
+The active instance supplies the context for resolved parameter values, dependent types and widths, interface connections, hovers, and parameter-value inlay hints. An open hierarchy follows active-instance changes initiated by CodeLens or Go to Definition.
+
 ## Cone Tracing (experimental)
 
 ```

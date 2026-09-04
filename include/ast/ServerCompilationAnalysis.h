@@ -12,8 +12,11 @@
 #include "ReferenceIndexer.h"
 #include "document/SlangDoc.h"
 #include <memory>
+#include <string>
+#include <unordered_map>
 #include <vector>
 
+#include "slang/analysis/AnalysisManager.h"
 #include "slang/analysis/AnalysisOptions.h"
 #include "slang/util/Bag.h"
 
@@ -25,8 +28,9 @@ using namespace slang;
 /// instance indexer, etc.
 class ServerCompilationAnalysis {
 public:
-    ServerCompilationAnalysis(std::vector<std::shared_ptr<SlangDoc>>& documents, Bag& options,
-                              SourceManager& sourceManager);
+    ServerCompilationAnalysis(
+        const std::unordered_map<std::string, std::shared_ptr<SlangDoc>>& documents, Bag& options,
+        SourceManager& sourceManager);
 
     slang::ast::Compilation compilation;
 
@@ -36,6 +40,10 @@ public:
 
     /// Issue all semantic diagnostics from the compilation to the diagnostic engine
     void issueDiagnosticsTo(slang::DiagnosticEngine& diagEngine);
+
+    /// Get the full-design drivers for a value symbol.
+    std::vector<const slang::analysis::ValueDriver*> getDrivers(
+        const slang::ast::ValueSymbol& symbol);
 
     template<bool isDrivers>
     struct ConeSelector;
@@ -73,11 +81,15 @@ public:
     }
 
 private:
+    slang::analysis::AnalysisManager& getAnalysisManager();
+
     /// Retained buffer data to prevent deallocation while this compilation exists
     std::vector<std::shared_ptr<void>> m_retainedBuffers;
 
     /// Analysis options from the bag, used for driver analysis
     slang::analysis::AnalysisOptions m_analysisOptions;
+
+    std::unique_ptr<slang::analysis::AnalysisManager> m_driverAnalysis;
 
     /// Index of value symbol -> uses (e.g. processes or continuous assignments)
     std::optional<ReferenceIndexer> m_references = std::nullopt;

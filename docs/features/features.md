@@ -20,6 +20,8 @@ Hovers are provided on each symbol with the following info if applicable:
 - The syntax that the symbol is derived from
 - Macro usage, if symbol was defined from one.
 
+With an elaborated design, hovers use the [active instance](hdl/hdl.md#active-instances) of the enclosing module or interface. Parameter values, dependent types and widths, interface connections, and driver information therefore reflect the selected instance rather than the default elaboration.
+
 ![goto-refs](/assets/images/hovers.gif)
 
 Planned features:
@@ -63,13 +65,13 @@ Inlay hints are text that show up inline in the code to provide useful info. The
 **Wildcard Ports** - Show which signals are passed through
 ![goto-refs](/assets/images/port_wildcard_inlays.png)
 
-**Positional args in Macros, Functions, Paramter/Port lists** - Show the argument names
+**Positional args in Macros, Functions, Parameter/Port lists** - Show the argument names
 ![goto-refs](/assets/images/macro_inlays.png)
 
+**Active parameter values** - Show resolved parameter and localparam values for the [active instance](hdl/hdl.md#active-instances). These hints are enabled by default and can be controlled with `inlayHints.activeParameterValues`.
 
 Planned Inlays:
 
-- **Constant Values** - Show parameter values and resolved types
 - **Signals** - Show the value when a waveform is connected and an instance is selected.
 - **Wildcard Imports** - Show which symbols are used from the import
 
