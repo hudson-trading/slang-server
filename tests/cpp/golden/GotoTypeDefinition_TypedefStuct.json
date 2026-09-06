@@ -1,0 +1,27 @@
+[
+  {
+    "    typedef struct packed { logic [7:0] data; } payload_t;": {
+      "targetUri": "file://test.sv",
+      "targetRange": {
+        "start": {
+          "line": 2,
+          "character": 48
+        },
+        "end": {
+          "line": 2,
+          "character": 57
+        }
+      },
+      "targetSelectionRange": {
+        "start": {
+          "line": 2,
+          "character": 48
+        },
+        "end": {
+          "line": 2,
+          "character": 57
+        }
+      }
+    }
+  }
+]

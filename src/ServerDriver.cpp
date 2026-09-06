@@ -30,6 +30,7 @@
 #include "slang/ast/Compilation.h"
 #include "slang/ast/Symbol.h"
 #include "slang/ast/SystemSubroutine.h"
+#include "slang/ast/symbols/ClassSymbols.h"
 #include "slang/ast/symbols/CompilationUnitSymbols.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
 #include "slang/ast/symbols/ParameterSymbols.h"
@@ -968,6 +969,120 @@ std::optional<lsp::Hover> ServerDriver::getDocHover(const URI& uri, const lsp::P
     }
     const auto& info = *maybeInfo;
     return lsp::Hover{.contents = info.getHover(doc->getBuffer(), m_config.hovers.value())};
+}
+
+namespace {
+
+/// In an array of instances (modules) this recursively moves down the list and grabs the first
+/// valid instance. Because arrays are homogenous, we only need to look at the first element.
+const ast::InstanceSymbol* getFirstInstance(const ast::InstanceArraySymbol& array) {
+    const ast::Symbol* element = array.elements.empty() ? nullptr : array.elements[0];
+
+    while (element) {
+        const auto* instance = element->as_if<ast::InstanceSymbol>();
+        if (instance)
+            return instance;
+
+        const auto* nestedArray = element->as_if<ast::InstanceArraySymbol>();
+        if (!nestedArray || nestedArray->elements.empty())
+            return nullptr;
+
+        element = nestedArray->elements[0];
+    }
+
+    return nullptr;
+}
+
+/// Given a type it checks if the type is an array and if so it unwraps it.
+/// The loop is for recusively unwrapping nested arrays.
+/// If the type is not an array then it returns the type
+const ast::Type* unwrapArrayType(const ast::Type* type) {
+    while (type) {
+        switch (type->kind) {
+            case ast::SymbolKind::PackedArrayType:
+                type = &type->as<ast::PackedArrayType>().elementType;
+                break;
+            case ast::SymbolKind::FixedSizeUnpackedArrayType:
+                type = &type->as<ast::FixedSizeUnpackedArrayType>().elementType;
+                break;
+            case ast::SymbolKind::DynamicArrayType:
+                type = &type->as<ast::DynamicArrayType>().elementType;
+                break;
+            case ast::SymbolKind::DPIOpenArrayType:
+                type = &type->as<ast::DPIOpenArrayType>().elementType;
+                break;
+            case ast::SymbolKind::AssociativeArrayType:
+                type = &type->as<ast::AssociativeArrayType>().elementType;
+                break;
+            case ast::SymbolKind::QueueType:
+                type = &type->as<ast::QueueType>().elementType;
+                break;
+            default:
+                return type;
+        }
+    }
+    return nullptr;
+}
+
+} // namespace
+
+std::vector<lsp::LocationLink> ServerDriver::getDocTypeDefinition(const URI& uri,
+                                                                  const lsp::Position& position) {
+    const auto info = getDefinitionInfoAt(uri, position);
+    if (!info || !info->symbol())
+        return {};
+
+    const auto* symbol = info->symbol();
+
+    auto makeLink = [&](SourceLocation location, size_t length) {
+        const auto range = toRange(SourceRange(location, location + length), sm);
+        return std::vector<lsp::LocationLink>{lsp::LocationLink{
+            .targetUri = URI::fromFile(sm.getFullPath(location.buffer())),
+            .targetRange = range,
+            .targetSelectionRange = range,
+        }};
+    };
+
+    // A typedef names its own type. Preserve goto-definition behavior instead of following
+    // through its declared type (for example, `typedef some_t[$] other_t`).
+    if (ast::TypeAliasType::isKind(symbol->kind))
+        return makeLink(symbol->location, symbol->name.size());
+
+    // Instances have no declared data type. Their type definition is module / interface /
+    // program definition they instantiate.
+    if (const auto* instance = symbol->as_if<ast::InstanceSymbol>()) {
+        const auto& definition = instance->getDefinition();
+        return makeLink(definition.location, definition.name.size());
+    }
+    if (const auto* array = symbol->as_if<ast::InstanceArraySymbol>()) {
+        if (const auto* instance = getFirstInstance(*array)) {
+            const auto& definition = instance->getDefinition();
+            return makeLink(definition.location, definition.name.size());
+        }
+        return {};
+    }
+
+    const auto* declaredType = symbol->getDeclaredType();
+    if (!declaredType)
+        return {};
+
+    // Strip declaration dimensions to reach named element type.
+    const auto* typeDefinition = unwrapArrayType(&declaredType->getType());
+    if (!typeDefinition || !typeDefinition->location)
+        return {};
+
+    if (ast::TypeAliasType::isKind(typeDefinition->kind) ||
+        ast::ClassType::isKind(typeDefinition->kind)) {
+        if (typeDefinition->name.empty())
+            return {};
+        return makeLink(typeDefinition->location, typeDefinition->name.size());
+    }
+
+    // Anonymous enum types have no name; location points at `enum` keyword.
+    if (ast::EnumType::isKind(typeDefinition->kind))
+        return makeLink(typeDefinition->location, std::string_view("enum").size());
+
+    return {};
 }
 
 std::optional<std::vector<lsp::DocumentHighlight>> ServerDriver::getDocDocumentHighlight(

@@ -215,6 +215,7 @@ public:
     // Goto definition methods
     bool hasDefinition();
     std::vector<lsp::LocationLink> getDefinitions();
+    std::vector<lsp::LocationLink> getTypeDefinitions();
 
     // Get document highlights
     std::vector<lsp::DocumentHighlight> getHighlights();

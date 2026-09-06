@@ -197,6 +197,10 @@ public:
     rfl::Variant<lsp::Definition, std::vector<lsp::DefinitionLink>, std::monostate>
     getDocDefinition(const lsp::DefinitionParams&) override;
 
+    /// Goto Type Definition
+    rfl::Variant<lsp::Definition, std::vector<lsp::DefinitionLink>, std::monostate>
+    getDocTypeDefinition(const lsp::TypeDefinitionParams&) override;
+
     /// Completion (get list of ids and kinds)
     rfl::Variant<std::vector<lsp::CompletionItem>, lsp::CompletionList, std::monostate>
     getDocCompletion(const lsp::CompletionParams&) override;

@@ -473,6 +473,15 @@ std::vector<lsp::LocationLink> Cursor::getDefinitions() {
     return {};
 }
 
+std::vector<lsp::LocationLink> Cursor::getTypeDefinitions() {
+    lsp::TypeDefinitionParams params{.textDocument = {.uri = m_doc.m_uri},
+                                     .position = m_doc.getPosition(m_offset)};
+    auto res = m_doc.m_server.getDocTypeDefinition(params);
+    if (rfl::holds_alternative<std::vector<lsp::DefinitionLink>>(res))
+        return rfl::get<std::vector<lsp::DefinitionLink>>(res);
+    return {};
+}
+
 std::vector<lsp::DocumentHighlight> Cursor::getHighlights() {
     auto maybeHighlights = m_doc.m_server.getDocDocumentHighlight(
         lsp::DocumentHighlightParams{.textDocument = {getUri()}, .position = getPosition()});
