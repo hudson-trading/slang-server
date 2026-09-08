@@ -535,6 +535,15 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#code-lenses" class="md-nav__link">
+    <span class="md-ellipsis">
+      Code lenses
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#enhanced-features" class="md-nav__link">
     <span class="md-ellipsis">
       Enhanced features
@@ -1085,6 +1094,15 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#code-lenses" class="md-nav__link">
+    <span class="md-ellipsis">
+      Code lenses
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#enhanced-features" class="md-nav__link">
     <span class="md-ellipsis">
       Enhanced features
@@ -1135,6 +1153,40 @@
 <p><code>slang-server</code> is available in <a href="https://github.com/neovim/nvim-lspconfig">nvim-lspconfig</a> as <code>slang_server</code> (note the underscore) and in the <a href="https://github.com/mason-org/mason.nvim">mason.nvim</a> package registry as <code>slang-server</code>, so no additional configuration is required in most cases. The default configuration shipped with nvim-lspconfig can be found <a href="https://github.com/neovim/nvim-lspconfig/blob/master/lsp/slang_server.lua">here</a>.</p>
 <p>Install the binary via <code>:MasonInstall slang-server</code> (or otherwise place it on <code>PATH</code>), then enable the server with <code>vim.lsp.enable("slang_server")</code>, or follow your own Neovim configuration's convention for enabling servers.</p>
 <p>Restart and run <code>:LspInfo</code> to make sure the LSP was correctly installed.</p>
+<h4 id="code-lenses">Code lenses<a class="headerlink" href="#code-lenses" title="Permanent link">&para;</a></h4>
+<p>On Neovim 0.10 and 0.11, code lenses must be refreshed explicitly. It is also
+recommended to map <code>vim.lsp.codelens.run()</code> so that the lenses on the current
+line can be selected and executed. The following configuration keeps lenses
+current and maps <code>&lt;leader&gt;cl</code> to run them:</p>
+<div class="language-lua highlight"><pre><span></span><code><span class="nv">vim</span><span class="p">.</span><span class="py">api</span><span class="p">.</span><span class="nf">nvim_create_autocmd</span><span class="p">(</span><span class="s2">&quot;LspAttach&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nv">callback</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kr">function</span><span class="p">(</span><span class="nv">args</span><span class="p">)</span>
+<span class="w">    </span><span class="kd">local</span><span class="w"> </span><span class="nv">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">vim</span><span class="p">.</span><span class="py">lsp</span><span class="p">.</span><span class="nf">get_client_by_id</span><span class="p">(</span><span class="nv">args</span><span class="p">.</span><span class="py">data</span><span class="p">.</span><span class="py">client_id</span><span class="p">)</span>
+<span class="w">    </span><span class="kr">if</span><span class="w"> </span><span class="ow">not</span><span class="w"> </span><span class="nv">client</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="nv">client</span><span class="p">.</span><span class="py">name</span><span class="w"> </span><span class="o">~=</span><span class="w"> </span><span class="s2">&quot;slang_server&quot;</span>
+<span class="w">        </span><span class="ow">or</span><span class="w"> </span><span class="ow">not</span><span class="w"> </span><span class="nv">client</span><span class="p">:</span><span class="nf">supports_method</span><span class="p">(</span><span class="s2">&quot;textDocument/codeLens&quot;</span><span class="p">)</span><span class="w"> </span><span class="kr">then</span>
+<span class="w">      </span><span class="kr">return</span>
+<span class="w">    </span><span class="kr">end</span>
+
+<span class="w">    </span><span class="kd">local</span><span class="w"> </span><span class="nv">group</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">vim</span><span class="p">.</span><span class="py">api</span><span class="p">.</span><span class="nf">nvim_create_augroup</span><span class="p">(</span><span class="s2">&quot;slang-server-codelens&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nv">clear</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span><span class="w"> </span><span class="p">})</span>
+<span class="w">    </span><span class="nv">vim</span><span class="p">.</span><span class="py">api</span><span class="p">.</span><span class="nf">nvim_clear_autocmds</span><span class="p">({</span><span class="w"> </span><span class="nv">group</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">group</span><span class="p">,</span><span class="w"> </span><span class="nv">buffer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">args</span><span class="p">.</span><span class="py">buf</span><span class="w"> </span><span class="p">})</span>
+<span class="w">    </span><span class="nv">vim</span><span class="p">.</span><span class="py">api</span><span class="p">.</span><span class="nf">nvim_create_autocmd</span><span class="p">({</span><span class="w"> </span><span class="s2">&quot;BufEnter&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;CursorHold&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;InsertLeave&quot;</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nv">group</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">group</span><span class="p">,</span>
+<span class="w">      </span><span class="nv">buffer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">args</span><span class="p">.</span><span class="py">buf</span><span class="p">,</span>
+<span class="w">      </span><span class="nv">callback</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kr">function</span><span class="p">()</span>
+<span class="w">        </span><span class="nv">vim</span><span class="p">.</span><span class="py">lsp</span><span class="p">.</span><span class="py">codelens</span><span class="p">.</span><span class="nf">refresh</span><span class="p">({</span><span class="w"> </span><span class="nv">bufnr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">args</span><span class="p">.</span><span class="py">buf</span><span class="w"> </span><span class="p">})</span>
+<span class="w">      </span><span class="kr">end</span><span class="p">,</span>
+<span class="w">    </span><span class="p">})</span>
+
+<span class="w">    </span><span class="nv">vim</span><span class="p">.</span><span class="py">lsp</span><span class="p">.</span><span class="py">codelens</span><span class="p">.</span><span class="nf">refresh</span><span class="p">({</span><span class="w"> </span><span class="nv">bufnr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">args</span><span class="p">.</span><span class="py">buf</span><span class="w"> </span><span class="p">})</span>
+<span class="w">    </span><span class="nv">vim</span><span class="p">.</span><span class="py">keymap</span><span class="p">.</span><span class="nf">set</span><span class="p">(</span><span class="s2">&quot;n&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;&lt;leader&gt;cl&quot;</span><span class="p">,</span><span class="w"> </span><span class="nv">vim</span><span class="p">.</span><span class="py">lsp</span><span class="p">.</span><span class="py">codelens</span><span class="p">.</span><span class="py">run</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nv">buffer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">args</span><span class="p">.</span><span class="py">buf</span><span class="p">,</span>
+<span class="w">      </span><span class="nv">desc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Run code lens&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="p">})</span>
+<span class="w">  </span><span class="kr">end</span><span class="p">,</span>
+<span class="p">})</span>
+</code></pre></div>
+<p>Neovim 0.12 and newer can use <code>vim.lsp.codelens.enable()</code> instead of the
+refresh autocmds. <code>vim.lsp.codelens.run()</code> is still used to execute the lens on
+the current line.</p>
 <h4 id="enhanced-features">Enhanced features<a class="headerlink" href="#enhanced-features" title="Permanent link">&para;</a></h4>
 <p>Once the language server is installed, it is recommended to install the <a href="https://github.com/hudson-trading/slang-server.nvim">slang-server.nvim</a> plugin; this provides enhanced HDL specific features such as design hierarchy view and waveform integration.</p>
 <h3 id="other-editors">Other editors<a class="headerlink" href="#other-editors" title="Permanent link">&para;</a></h3>
