@@ -138,6 +138,19 @@ struct ScopeStep {
     std::vector<HierItem_t> children;
 };
 
+struct HierarchySearchItem {
+    std::string name;
+    std::string path;
+    SlangKind kind;
+    std::optional<std::string> description;
+    std::optional<std::string> containerName;
+};
+
+struct HierarchySearchResult {
+    size_t totalResults;
+    std::vector<HierarchySearchItem> matches;
+};
+
 struct InstanceSet {
     std::string declName;
     /// @deprecated Use slang.showModuleDefinition with declName.

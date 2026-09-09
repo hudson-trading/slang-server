@@ -7,8 +7,7 @@ hide:
 
 # Hardware Language Features - Neovim
 
-All features listed here require the Neovim plugin.  See the [installation guide](/start/installing.md) for how to get started.
-Once installed the `SlangServer` command will provide a number of subcommands outlined below.
+The Neovim [slang-server.nvim](https://github.com/hudson-trading/slang-server.nvim) plugin should be installed to use all features on this page. Once installed the `SlangServer` command will provide a number of subcommands outlined below.
 
 ## Setting a Compilation
 
@@ -18,7 +17,7 @@ Once installed the `SlangServer` command will provide a number of subcommands ou
 :SlangServer setBuildFile BUILDFILE
 ```
 
-This uses the file located at `BUILDFILE`` to compile a full hierarchy and is required for some of the commands below.
+This uses the file located at `BUILDFILE` to compile a full hierarchy and is required for some of the commands below.
 
 ### Setting a top level
 
@@ -34,9 +33,19 @@ This uses a file to run a compilation using the top-most module in the provided 
 :SlangServer hierarchy [SCOPE]
 ```
 
-This will open the hierarchy view and, if `SCOPE` is provided, expand the view to that scope.
+This opens the hierarchy view and, if `SCOPE` is provided, expands the view to that scope.
 
 ![Hierarchy View](neovim/hierarchy.png)
+
+Press `/` in either view to search the hierarchy. Press `?` for help, or see the [default mappings](https://github.com/hudson-trading/slang-server/blob/main/clients/neovim/lua/slang-server/_core/config.lua).
+
+### Search hierarchy
+
+```
+:SlangServer searchHierarchy
+```
+
+This opens an interactive search over the compiled design and reveals the selected object in the hierarchy. FzfLua, Telescope, and Snacks Picker are supported when installed, with a two-step `vim.ui.input` and `vim.ui.select` fallback.
 
 ## Cone Tracing (experimental)
 
@@ -72,7 +81,7 @@ If there is no currently active WCP session a new waveform viewer will be launch
 By default this is Surfer.
 If a WCP session already exists, the new waveform file will be loaded.
 Additionally, if a `buildPattern` config field is provided, the build file which corresponds to the current wave file will be used to produce a compilation.
-E.g. given a wave file of `/some/dir/foo.fst` and a `buildPattern` of `/some/other/dir/{}.f` and compilation will be made using `/some/other/dir/foo.f`.
+E.g. given a wave file of `/some/dir/foo.fst` and a `buildPattern` of `/some/other/dir/{}.f`, a compilation will be made using `/some/other/dir/foo.f`.
 
 
 #### Add Item
