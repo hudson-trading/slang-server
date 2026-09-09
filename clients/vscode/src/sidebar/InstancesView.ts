@@ -66,8 +66,8 @@ export class ModuleItem {
     item.tooltip = this.data.declName
     item.command = {
       title: 'Open Module',
-      command: 'vscode.open',
-      arguments: [vscode.Uri.parse(this.data.declLoc.uri), { selection: this.data.declLoc.range }],
+      command: 'slang.showModuleDefinition',
+      arguments: [{ moduleName: this.data.declName, takeFocus: false }],
     }
     return item
   }

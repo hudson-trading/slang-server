@@ -92,7 +92,7 @@ export abstract class HierItem implements HasChildren {
   path: string | undefined
 
   // Behind a macro
-  isVirtualLoc: boolean
+  fromExpansion: boolean
   inst: slang.Item
 
   parent: HierItem | undefined
@@ -102,8 +102,7 @@ export abstract class HierItem implements HasChildren {
   constructor(parent: HierItem | undefined, item: slang.Item) {
     this.parent = parent
     this.inst = item
-    // blank uri- file://
-    this.isVirtualLoc = item.instLoc.uri.length === 7
+    this.fromExpansion = item.fromExpansion ?? false
   }
   async getChildren(): Promise<HierItem[]> {
     if (this.children === undefined) {
@@ -430,7 +429,7 @@ export class ProjectComponent
   // Show the selected instance for the open file
   focusedBar: vscode.StatusBarItem
 
-  // Map from instance uri to instance for following along in the hierarchy view
+  // Map from module name to instance for following along in the hierarchy view
   moduleToInstance: Map<string, InstanceItem> = new Map()
 
   // Hierarchy Tree
@@ -572,7 +571,7 @@ export class ProjectComponent
     },
     async (
       instance: HierItem | string | undefined,
-      { revealHierarchy, revealFile, revealInstance, focus, showBeside }: RevealOptions = {
+      { revealHierarchy, revealFile, revealInstance, focus }: RevealOptions = {
         revealHierarchy: true,
         revealFile: true,
         revealInstance: true,
@@ -653,7 +652,7 @@ export class ProjectComponent
 
       this.focused = instance
       if (revealHierarchy) {
-        if (instance.isVirtualLoc && !this.includeMacroDefined) {
+        if (instance.fromExpansion && !this.includeMacroDefined) {
           await this.toggleHiddenFunc()
         }
         if (!this.symFilter.has(instance.inst.kind)) {
@@ -670,25 +669,9 @@ export class ProjectComponent
       }
 
       if (revealFile) {
-        const uri = vscode.Uri.parse(instance.inst.instLoc.uri)
-        // Check if URI has a valid path (not empty or just a directory)
-        if (uri.path && uri.path !== '/' && uri.path.length > 0) {
-          try {
-            this.isRevalingFile = true
-            await vscode.window.showTextDocument(uri, {
-              selection: instance.inst.instLoc.range,
-              preserveFocus: focus !== 'editor',
-              viewColumn: showBeside ? vscode.ViewColumn.Beside : undefined,
-            })
-            this.isRevalingFile = false
-          } catch (error) {
-            this.logger.warn(`Failed to open file at ${uri.toString()}: ${error}`)
-            this.isRevalingFile = false
-          }
-        } else {
-          // This will be fixed in a future release by asking slang server to do the open
-          vscode.window.showWarningMessage('Cannot open file, likely defined from a macro.')
-        }
+        this.isRevalingFile = true
+        await slang.showHierLocation(instance.getPath(), focus === 'editor')
+        this.isRevalingFile = false
       }
 
       if (revealInstance) {
@@ -704,7 +687,7 @@ export class ProjectComponent
 
       const parentModule = instance.getModule()
       if (parentModule) {
-        this.moduleToInstance.set(parentModule.inst.declLoc.uri, parentModule!)
+        this.moduleToInstance.set(parentModule.inst.declName, parentModule!)
         this.focusedBar.text = `$(chip) ${parentModule.getPath()}`
         this.focusedBar.show()
       }
@@ -970,9 +953,7 @@ export class ProjectComponent
     async (item: HierItem) => {
       if (item instanceof InstanceItem && item) {
         this.isRevalingFile = true
-        await vscode.window.showTextDocument(vscode.Uri.parse(item.inst.declLoc.uri), {
-          selection: item.inst.declLoc.range,
-        })
+        await slang.showModuleDefinition(item.inst.declName, true)
         this.isRevalingFile = false
       }
     }
@@ -1225,20 +1206,6 @@ export class ProjectComponent
         'updating instances view'
       )
 
-      // if we had selected this instance before, go back to it
-      const instance = this.moduleToInstance.get(e.document.uri.toString())
-      if (
-        instance !== undefined &&
-        !vscode.window.activeTextEditor!.document.uri.fsPath.endsWith(instance.inst.instLoc.uri)
-      ) {
-        await this.setInstance.func(instance, {
-          revealHierarchy: true,
-          revealFile: false,
-          revealInstance: false,
-          focus: 'hierarchy',
-        })
-      }
-
       // always open the modules view so we can select an instance
 
       // try this first to avoid querying slang-server
@@ -1252,6 +1219,15 @@ export class ProjectComponent
       if (modules.length === 0) {
         this.logger.info('No modules found in file')
         return
+      }
+      const instance = this.moduleToInstance.get(modules[0])
+      if (instance !== undefined) {
+        await this.setInstance.func(instance, {
+          revealHierarchy: true,
+          revealFile: false,
+          revealInstance: false,
+          focus: 'hierarchy',
+        })
       }
       this.instancesView.revealPath(modules[0])
     })
@@ -1588,7 +1564,7 @@ export class ProjectComponent
     if (!this.symFilter.has(element.inst.kind)) {
       return false
     }
-    if (!this.includeMacroDefined && element.isVirtualLoc) {
+    if (!this.includeMacroDefined && element.fromExpansion) {
       return false
     }
     return true
