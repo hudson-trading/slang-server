@@ -297,6 +297,25 @@ TEST_CASE("GetInstancesOfModule") {
     golden.record("cpu_instances", cpuInstances);
 }
 
+TEST_CASE("OpenModuleDefinitionOnlyWhenClosed") {
+    ServerHarness server("comp_repo");
+    server.setBuildFile("cpu_design.f");
+
+    server.openModuleDefinition("alu");
+
+    REQUIRE(server.client.m_showDocuments.size() == 1);
+    REQUIRE(server.client.m_showDocuments.front().takeFocus);
+    CHECK_FALSE(*server.client.m_showDocuments.front().takeFocus);
+    auto shownUri = server.client.m_showDocuments.front().uri;
+    server.client.m_showDocuments.clear();
+
+    auto module = server.openFile("alu.sv");
+    CHECK(shownUri == module.m_uri);
+
+    server.openModuleDefinition("alu");
+    CHECK(server.client.m_showDocuments.empty());
+}
+
 TEST_CASE("GetModulesInFile") {
     ServerHarness server("comp_repo");
     JsonGoldenTest golden;

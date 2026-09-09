@@ -115,10 +115,15 @@ public:
     // it will require another query
     std::vector<hier::InstanceSet> getScopesByModule(const std::monostate&);
 
-    // Returns the instances of a module
+    // Returns the instances of a module plus its declaration location
     std::vector<hier::QualifiedInstance> getInstancesOfModule(const std::string moduleName);
 
-    // Returns the modules defined in a file, used for the modules view
+    bool setActiveInstance(const std::string& hierPath);
+    bool activateInstance(const SlangLspClient::ActivateInstanceParams& params,
+                          const lsp::RequestContext& ctx = {});
+    std::optional<hier::QualifiedInstance> getActiveInstance(const std::string& moduleName);
+
+    // Returns the modules defined in a file.
     std::vector<std::string> getModulesInFile(const std::string path);
 
     // Returns the files that contain a specific module, used for terminal links
@@ -131,6 +136,9 @@ public:
     std::vector<hier::ScopeStep> getScopes(const std::string& hierPath,
                                            const lsp::RequestContext& ctx = {});
 
+    // Resolve the document location for a hierarchical path. Used by tests; the LSP command
+    // is `slang.showHierLocation`, which sends the location to the client via window/showDocument
+    // so the language client handles file://-vs-vscode-remote:// URI translation for us.
     std::optional<lsp::Location> getHierLocation(const std::string& hierPath);
 
     struct ShowHierLocationArgs {
@@ -139,11 +147,7 @@ public:
     };
     std::monostate showHierLocation(const ShowHierLocationArgs& args);
 
-    struct ShowModuleDefinitionArgs {
-        std::string moduleName;
-        bool takeFocus = false;
-    };
-    std::monostate showModuleDefinition(const ShowModuleDefinitionArgs& args);
+    std::monostate openModuleDefinition(const std::string& moduleName);
 
     struct ExpandMacroArgs {
         std::string src;
@@ -218,6 +222,9 @@ public:
     /// Completion (get list of ids and kinds)
     rfl::Variant<std::vector<lsp::CompletionItem>, lsp::CompletionList, std::monostate>
     getDocCompletion(const lsp::CompletionParams&) override;
+
+    // Used to show the selected instance and associated buttons when a design is set
+    std::optional<std::vector<lsp::CodeLens>> getDocCodeLens(const lsp::CodeLensParams&) override;
 
     std::optional<std::vector<lsp::InlayHint>> getDocInlayHint(
         const lsp::InlayHintParams&) override;

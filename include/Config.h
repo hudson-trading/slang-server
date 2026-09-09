@@ -104,6 +104,8 @@ struct Config {
         rfl::Description<"Hints for port types", bool> portTypes = false;
         rfl::Description<"Hints for inferred assignment pattern types", bool>
             assignmentPatternTypes = true;
+        rfl::Description<"Hints for active instance parameter and localparam values", bool>
+            activeParameterValues = true;
         rfl::Description<"Hints for names of ordered ports and params", bool> orderedInstanceNames =
             true;
         rfl::Description<"Hints for port names in wildcard (.*) ports", bool> wildcardNames = true;

@@ -83,8 +83,8 @@ std::string toCamelCase(std::string_view str);
 /// Convert a string to lower case
 std::string toLowerCase(std::string_view str);
 
-/// @brief Format a ConstantValue for display in hovers
-/// For string values, shows escaped invalid UTF-8 characters
+/// @brief Format a ConstantValue for display to users
+/// Uses compact notation for scalar bits and escapes invalid UTF-8 strings.
 std::string formatConstantValue(const slang::ConstantValue& value);
 
 enum class TypeStringMode {

@@ -148,6 +148,30 @@ describe("SlangServer", function()
       return response
    end
 
+   local function press_key_and_wait_for_activation(win, line)
+      local navigation = require("slang-server.navigation")
+      local original_set_active_instance = navigation.set_active_instance
+      local activated_path
+      navigation.set_active_instance = function(hier_path, on_success)
+         original_set_active_instance(hier_path, function()
+            activated_path = hier_path
+            if on_success then
+               on_success()
+            end
+         end)
+      end
+
+      local ok, err = pcall(function()
+         press_key(win, line, "<CR>")
+         assert(vim.wait(5000, function()
+            return activated_path ~= nil
+         end))
+      end)
+      navigation.set_active_instance = original_set_active_instance
+      assert(ok, err)
+      return activated_path
+   end
+
    local function focus_source()
       if vim.api.nvim_win_is_valid(source_win) then
          vim.api.nvim_set_current_win(source_win)
@@ -222,6 +246,7 @@ describe("SlangServer", function()
 
       assert.are.same({ ["g<cr>"] = spec }, mappings)
    end)
+
 
    it("Routes hierarchy navigation through server commands", function()
       local lsp = require("slang-server._lsp.client")
@@ -322,6 +347,69 @@ describe("SlangServer", function()
 
       assert.is_false(requested)
       assert.are.same({ "Cannot jump to location: invalid target window" }, messages)
+   end)
+
+   it("Generic quick pick dispatches its selected value", function()
+      local client_commands = require("slang-server._lsp.clientCommands")
+      local original_select = vim.ui.select
+      local original_execute = client_commands.executeServerCommand
+      local command
+      local selected
+
+      local ok, err = pcall(function()
+         client_commands.executeServerCommand = function(selected_command, value)
+            command = selected_command
+            selected = value
+         end
+         vim.ui.select = function(items, options, on_choice)
+            assert.are.same("Pick one", options.prompt)
+            assert.are.same("slang.quickPick", options.kind)
+            assert.are.same("second (current)", options.format_item(items[2]))
+            on_choice(items[2])
+         end
+         vim.lsp.commands["slang.quickPick"]({
+            title = "Pick an item",
+            command = "slang.quickPick",
+            arguments = {
+               {
+                  placeholder = "Pick one",
+                  items = {
+                     { label = "first", value = 1 },
+                     { label = "second", description = "(current)", value = 2 },
+                  },
+                  onSelectCommand = "test.callback",
+               },
+            },
+         }, { bufnr = 0 })
+      end)
+      vim.ui.select = original_select
+      client_commands.executeServerCommand = original_execute
+
+      assert(ok, err)
+      assert.are.same("test.callback", command)
+      assert.are.same(2, selected)
+   end)
+
+   it("Reports when a quick-pick command cannot be sent", function()
+      local client_commands = require("slang-server._lsp.clientCommands")
+      local original_get_client = vim.lsp.get_client_by_id
+
+      local messages = capture_notifications(function()
+         vim.lsp.get_client_by_id = function()
+            return {
+               request = function()
+                  return false
+               end,
+            }
+         end
+         client_commands.executeServerCommand("slang.activateInstance", {}, {
+            bufnr = 0,
+            client_id = 42,
+         })
+      end)
+
+      vim.lsp.get_client_by_id = original_get_client
+      assert.are.same({ "slang-server: failed to send workspace/executeCommand request" }, messages)
    end)
 
    it("Discards hierarchy reveal results from an older session", function()
@@ -455,6 +543,87 @@ describe("SlangServer", function()
       assert(ok, err)
    end)
 
+   it("Active instance notifications reveal an open hierarchy", function()
+      local client_commands = require("slang-server._lsp.clientCommands")
+      local client_state = require("slang-server._lsp.state")
+      local navigation = require("slang-server.navigation")
+      local hierarchy = require("slang-server.navigation.hierarchy")
+      local original_reveal = hierarchy.reveal
+      local original_state = navigation.state.open
+      local original_get_client = vim.lsp.get_client_by_id
+      local original_refresh = vim.lsp.codelens.refresh
+      local client_id = 12345
+      local original_client_state = client_state.clients[client_id]
+      local bufnr = vim.api.nvim_get_current_buf()
+      local refreshes = {}
+      local revealed
+
+      local ok, err = pcall(function()
+         client_state.clients[client_id] = nil
+         hierarchy.reveal = function(path, opts)
+            revealed = { path, opts }
+         end
+         vim.lsp.get_client_by_id = function(id)
+            assert.are.same(client_id, id)
+            return {
+               attached_buffers = { [bufnr] = true },
+               supports_method = function(_, method, method_bufnr)
+                  assert.are.same(vim.lsp.protocol.Methods.textDocument_codeLens, method)
+                  assert.are.same(bufnr, method_bufnr)
+                  return true
+               end,
+            }
+         end
+         vim.lsp.codelens.refresh = function(opts)
+            refreshes[#refreshes + 1] = opts.bufnr
+         end
+
+         navigation.state.open = false
+         client_commands.activeInstanceChanged(
+            nil,
+            { hierPath = "top.hidden", interactionSource = "codeLensSelect" },
+            { client_id = client_id }
+         )
+         assert.is_nil(revealed)
+
+         navigation.state.open = true
+         client_commands.activeInstanceChanged(
+            nil,
+            { hierPath = "top.visible", interactionSource = "codeLensSelect" },
+            { client_id = client_id }
+         )
+         assert.are.same({ "top.visible", { select = true } }, revealed)
+         assert.are.same({ active_path = "top.visible" }, client_state.clients[client_id])
+         assert.are.same({ bufnr, bufnr }, refreshes)
+      end)
+      hierarchy.reveal = original_reveal
+      navigation.state.open = original_state
+      vim.lsp.get_client_by_id = original_get_client
+      vim.lsp.codelens.refresh = original_refresh
+      client_state.clients[client_id] = original_client_state
+
+      assert(ok, err)
+   end)
+
+   it("Single-instance code lenses reveal an open hierarchy", function()
+      local client_commands = require("slang-server._lsp.clientCommands")
+      local original_reveal = client_commands.revealInHierarchy
+      local shown
+
+      local ok, err = pcall(function()
+         client_commands.revealInHierarchy = function(params)
+            shown = params
+         end
+         vim.lsp.commands["slang.showInHierarchy"]({
+            arguments = { { hierPath = "top.only" } },
+         })
+      end)
+      client_commands.revealInHierarchy = original_reveal
+
+      assert(ok, err)
+      assert.are.same({ hierPath = "top.only" }, shown)
+   end)
+
    it("Parses and resolves hierarchy path segments", function()
       local path = require("slang-server.navigation.path")
       assert.are.same(
@@ -552,7 +721,7 @@ describe("SlangServer", function()
       wait_on("Slang-server: Hierarchy")
 
       local messages = capture_notifications(function()
-         vim.cmd("SlangServer setTopLevel tests/foo.sv")
+         vim.cmd("SlangServer setTopLevel " .. vim.fn.fnameescape(vim.fn.fnamemodify("tests/foo.sv", ":p")))
       end)
       for _, msg in ipairs(messages) do
          assert.is_nil(string.find(msg, "no slang-server LSP client attached", 1, true))
@@ -571,8 +740,8 @@ describe("SlangServer", function()
       end)
 
       assert.are.same({
-         "slang-server: setTopLevel without a file must be run from a buffer with an attached slang-server LSP client.",
-         "slang-server: addToWaves must be run from a buffer with an attached slang-server LSP client.",
+         "slang-server: 'setTopLevel' requires a buffer with an attached slang-server LSP client.",
+         "slang-server: 'addToWaves' requires a buffer with an attached slang-server LSP client.",
       }, messages)
 
       for _, msg in ipairs(messages) do
@@ -640,6 +809,43 @@ describe("SlangServer", function()
       config.kinds.interfaceport = interfaceport
       set_top_level("tests/foo.sv")
       assert(ok, err)
+   end)
+
+   it("Cell selections activate instances", function()
+      execute_server_command("slang.setTopLevel", { vim.api.nvim_buf_get_name(source_buf) })
+      vim.cmd("SlangServer hierarchy")
+
+      local lines, cells_win = wait_on("Slang-server: Cells")
+      press_key(cells_win, find_line(lines, "sub (4)"), "<Space>")
+      lines, cells_win = wait_on("Slang-server: Cells")
+      local target = "foo.gen_loop[2].the_sub"
+      local activated = press_key_and_wait_for_activation(cells_win, find_line(lines, target))
+      assert.are.same(target, activated)
+
+      local active = execute_server_command("slang.getActiveInstance", { "sub" })
+      assert.are.same(target, active.instPath)
+
+      local _, hierarchy_win = wait_on("Slang-server: Hierarchy")
+      vim.api.nvim_set_current_win(hierarchy_win)
+      vim.api.nvim_buf_delete(0, { force = true })
+   end)
+
+   it("Hierarchy selections activate instances", function()
+      execute_server_command("slang.setTopLevel", { vim.api.nvim_buf_get_name(source_buf) })
+      local target = "foo.gen_loop[3].the_sub"
+      vim.cmd("SlangServer hierarchy " .. target)
+
+      local lines, hierarchy_win = wait_on("Slang-server: Hierarchy")
+      local activated = press_key_and_wait_for_activation(
+         hierarchy_win,
+         find_line(lines, "the_sub sub")
+      )
+      assert.are.same(target, activated)
+
+      local active = execute_server_command("slang.getActiveInstance", { "sub" })
+      assert.are.same(target, active.instPath)
+      vim.api.nvim_set_current_win(hierarchy_win)
+      vim.api.nvim_buf_delete(0, { force = true })
    end)
 
    it("Renders and expands interface ports", function()

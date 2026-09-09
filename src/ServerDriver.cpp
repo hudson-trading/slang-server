@@ -184,6 +184,7 @@ void ServerDriver::onDocDidSave(SlangDoc& doc) {
     else {
         diagClient->clear();
         comp->refresh();
+        invalidateAnalysesAndRefreshClient();
         publishCompilationDiagnostics(&doc.getURI());
         publishInactiveRegions(doc);
     }
@@ -399,6 +400,27 @@ void ServerDriver::onWorkspaceDidChangeWatchedFiles(
     for (auto& doc : updatedDocs) {
         analyzeDocument(*doc);
     }
+}
+
+void ServerDriver::invalidateAnalysesAndRefreshClient() {
+    for (auto& [_, doc] : docs) {
+        doc->invalidateAnalysis();
+    }
+    client.onWorkspaceCodeLensRefresh(std::monostate{});
+    client.onWorkspaceInlayHintRefresh(std::monostate{});
+}
+
+bool ServerDriver::setActiveInstance(std::string_view hierPath) {
+    if (!comp) {
+        return false;
+    }
+
+    if (!comp->setActiveInstance(std::string(hierPath))) {
+        return false;
+    }
+
+    invalidateAnalysesAndRefreshClient();
+    return true;
 }
 
 std::vector<std::shared_ptr<syntax::SyntaxTree>> ServerDriver::getDependentTrees(
@@ -715,24 +737,41 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
         return false;
     };
 
-    std::vector<std::pair<const ast::Symbol*, std::shared_ptr<ShallowAnalysis>>> symbols;
+    struct SymbolCandidate {
+        const ast::Symbol* symbol;
+        std::shared_ptr<ShallowAnalysis> analysis;
+        bool renderInterfaceConnection;
+    };
+    std::vector<SymbolCandidate> symbols;
     auto addSymbol = [&](const ast::Symbol* symbol,
-                         const std::shared_ptr<ShallowAnalysis>& symbolAnalysis) {
+                         const std::shared_ptr<ShallowAnalysis>& symbolAnalysis,
+                         bool renderInterfaceConnection = true) {
         if (!symbol)
             return;
-        auto duplicate = std::ranges::any_of(symbols, [&](const auto& existing) {
-            return (existing.first == symbol && existing.second == symbolAnalysis) ||
-                   (existing.second != symbolAnalysis && existing.first->kind == symbol->kind &&
-                    existing.first->location == symbol->location) ||
-                   symbolsEquivalent(existing.first, symbol);
+        auto duplicate = std::ranges::find_if(symbols, [&](const auto& existing) {
+            return (existing.symbol == symbol && existing.analysis == symbolAnalysis) ||
+                   (existing.analysis != symbolAnalysis && existing.symbol->kind == symbol->kind &&
+                    existing.symbol->location == symbol->location) ||
+                   symbolsEquivalent(existing.symbol, symbol);
         });
-        if (!duplicate)
-            symbols.emplace_back(symbol, symbolAnalysis);
+        if (duplicate != symbols.end()) {
+            duplicate->renderInterfaceConnection |= renderInterfaceConnection;
+        }
+        else {
+            symbols.push_back({symbol, symbolAnalysis, renderInterfaceConnection});
+        }
     };
 
     auto localSymbols = analysis->getSymbolsAtToken(declTok);
-    for (auto* symbol : localSymbols)
+    for (auto* symbol : localSymbols) {
         addSymbol(symbol, analysis);
+        if (auto* port = symbol->as_if<ast::InterfacePortSymbol>()) {
+            if (auto* connection = analysis->getActiveInterfaceConnection(*port)) {
+                for (auto* designSymbol : connection->sourcePath)
+                    addSymbol(designSymbol, analysis, false);
+            }
+        }
+    }
     if (std::ranges::any_of(localSymbols, [](const auto* symbol) {
             return symbol->kind == ast::SymbolKind::Genvar;
         })) {
@@ -866,9 +905,9 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
         return result;
     };
 
-    auto makeSymbolTarget = [&](const ast::Symbol* symbol,
-                                const std::shared_ptr<ShallowAnalysis>& symbolAnalysis)
-        -> std::optional<DefinitionInfo::SymbolTarget> {
+    auto makeSymbolTarget =
+        [&](const ast::Symbol* symbol, const std::shared_ptr<ShallowAnalysis>& symbolAnalysis,
+            bool renderInterfaceConnection = true) -> std::optional<DefinitionInfo::SymbolTarget> {
         if (!symbol)
             return {};
         auto syntaxTarget = makeSyntaxTarget(symbol);
@@ -883,9 +922,11 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
                     syntaxes.push_back(std::move(*internalSyntax));
             }
         }
+        auto* designSymbol = symbolAnalysis->getDesignSymbol(*symbol);
         return DefinitionInfo::SymbolTarget{.syntaxes = std::move(syntaxes),
-                                            .symbol = symbol,
+                                            .symbol = designSymbol ? designSymbol : symbol,
                                             .analysis = symbolAnalysis,
+                                            .renderInterfaceConnection = renderInterfaceConnection,
                                             .generatedSignalCount = getGeneratedSignalCount(
                                                 symbol)};
     };
@@ -915,17 +956,29 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
                 targets.emplace_back(std::move(*inner));
             }
         }
+        for (const auto& [symbol, symbolAnalysis, renderInterfaceConnection] : symbols) {
+            auto alreadyRepresented = std::ranges::any_of(localSymbols, [&](const auto* local) {
+                return local == symbol ||
+                       (local->kind == symbol->kind && local->getSyntax() == symbol->getSyntax());
+            });
+            if (!alreadyRepresented) {
+                if (auto target = makeSymbolTarget(symbol, symbolAnalysis,
+                                                   renderInterfaceConnection)) {
+                    targets.emplace_back(std::move(*target));
+                }
+            }
+        }
         if (!targets.empty())
             return DefinitionInfo{sm, std::move(targets)};
     }
 
     std::vector<DefinitionInfo::Target> targets;
     std::vector<const ast::Symbol*> foldedSymbols;
-    for (const auto& [symbol, symbolAnalysis] : symbols) {
+    for (const auto& [symbol, symbolAnalysis, renderInterfaceConnection] : symbols) {
         if (std::ranges::find(foldedSymbols, symbol) != foldedSymbols.end())
             continue;
 
-        auto target = makeSymbolTarget(symbol, symbolAnalysis);
+        auto target = makeSymbolTarget(symbol, symbolAnalysis, renderInterfaceConnection);
         if (!target)
             continue;
 
@@ -944,6 +997,20 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
     if (targets.empty())
         return {};
     return DefinitionInfo{sm, std::move(targets)};
+}
+
+std::optional<std::string> ServerDriver::getDesignInstancePathAt(const URI& uri,
+                                                                 const lsp::Position& position) {
+    auto doc = getDocument(uri);
+    if (!doc)
+        return {};
+
+    auto loc = toSourceLocation(doc->getBuffer(), position, sm);
+    if (!loc)
+        return {};
+
+    auto analysis = doc->getAnalysis();
+    return analysis->getDesignInstancePathAtToken(analysis->syntaxes.getWordTokenAt(*loc));
 }
 
 std::optional<lsp::Hover> ServerDriver::getDocHover(const URI& uri, const lsp::Position& position) {

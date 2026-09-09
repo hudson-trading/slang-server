@@ -10,12 +10,20 @@ This plugin provides features which extend the standard LSP interface, such as:
 
 * Browse the elaborated design in hierarchy and cell views.
 * Search the hierarchy with FzfLua, Telescope, Snacks Picker, or `vim.ui`.
+* Select active instances and iterations from code lenses or the
+  hierarchy views.
 * Open waveforms and add signals to them (experimental).
 
 More information on plugin features can be [found here](https://hudson-trading.github.io/slang-server/features/hdl/neovim/).
 
+Code-lens support is required to select active instances or generate-loop
+iterations in the source; see
+[installation guide](https://hudson-trading.github.io/slang-server/start/installing/#code-lenses)
+for an example configuration.
+
 ## Requirements
 
+* Neovim 0.10.0 or newer
 * `slang-server` configured as a Neovim language server
 * [Nerd Font](https://www.nerdfonts.com/) is recommended
 
@@ -42,11 +50,19 @@ return {
 }
 ```
 
-The plugin is lazily loaded by default on the first invocation of a `:SlangServer` command, so there's no need to rely on a plugin manager for lazy loading. To install without a plugin manager, simply clone and place the plugin directory in your Neovim runtimepath.
+The plugin defers command and mapping initialization until a Verilog or
+SystemVerilog ftplugin is loaded. Its lazy.nvim package specification therefore
+sets `lazy = false`; adding another plugin-manager lazy-loading trigger is neither
+required nor recommended. To install without a plugin manager, simply clone and
+place the plugin directory in your Neovim runtimepath.
 
 ## Configuration
 
 The default configuration can be found in [config.lua](./lua/slang-server/_core/config.lua). Override options can be defined in the global `vim.g.slang_server_config`, or passed to `opts = {...}` in the lazy.nvim plugin spec.
+
+Global key mappings for plugin commands are disabled by default. Set
+`keymaps.enable_defaults = true` to enable them all; individual mappings
+can still override `enabled` or `key`.
 
 `search.query_delay` debounces requests made through the picker. This delay is
 added to any input or query delay applied by the selected picker engine itself;

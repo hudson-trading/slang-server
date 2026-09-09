@@ -31,7 +31,9 @@ The 'chip' icon at the top right of a file will scan the current file for valid 
 ## Hierarchy View
 
 The Hierarchy View shows the elaborated tree, with declared types and resolved values to the right of the identifier.
-Clicking a symbol in the hierarchy view or modules view will open the instance in the file, as well as in the other view.
+Interface ports and their elaborated members are included alongside modules, generate scopes, parameters, ports, and data signals. Data signals are visible by default. Parameters can be toggled for modules, while package parameters remain visible whenever their package is shown.
+
+Clicking a symbol opens its source location and makes its enclosing module or interface the [active instance](hdl.md#active-instances). The Hierarchy and Modules views follow the new selection. Scopes with no visible children are shown as leaves rather than expandable nodes.
 
 <div class="grid" markdown>
 <div class="grid-item" markdown>
@@ -76,9 +78,11 @@ Clicking a symbol in the hierarchy view or modules view will open the instance i
 <div class="grid" markdown>
 <div class="grid-item" markdown>
 
-The modules view shows the instances indexed by module, sorted by the number of instances with higher level objects closer to the top.
+The Modules view groups elaborated instances by their module or interface definition.
 
-While a compilation is active, the modules view will open when switching text documents, allowing the user to select which instance of that module they'd like to focus on. In the future, inlay hints will show values for parameters and signals in the source code.
+Click an instance path to make it active and open its definition. Use the **Go to Instantiation** button on an instance path to open the instantiation site instead; the view also reveals the corresponding parent instance.
+
+The selected instance determines the resolved parameter values, dependent types and widths, interface connections, and other elaboration-specific information shown while editing that definition.
 
 </div>
 <div class="grid-item" markdown>
@@ -87,6 +91,14 @@ While a compilation is active, the modules view will open when switching text do
 
 </div>
 </div>
+
+## Active Instance CodeLens
+
+With a compilation active, a CodeLens above each instantiated module or interface declaration displays its active hierarchical path and total instance count. Click it to choose another instance when more than one exists. A neighboring **Go to Instantiation** CodeLens opens the selected instance's instantiation site.
+
+Generate loops also receive a CodeLens when the active module instance contains multiple elaborated iterations. Selecting an iteration updates the context used by source features.
+
+Instance selections stay synchronized across CodeLens actions, Go to Definition, the Hierarchy view, and the Modules view. Hovers and the `inlayHints.activeParameterValues` hints update to show values from the selected instance.
 
 ## Inactive Preprocessor Regions
 
