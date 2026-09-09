@@ -875,6 +875,30 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="HierarchyView">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#search-hierarchy" class="md-nav__link">
+    <span class="md-ellipsis">
+      Search hierarchy
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#select-active-instance" class="md-nav__link">
+    <span class="md-ellipsis">
+      Select active instance
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1157,6 +1181,30 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="HierarchyView">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#search-hierarchy" class="md-nav__link">
+    <span class="md-ellipsis">
+      Search hierarchy
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#select-active-instance" class="md-nav__link">
+    <span class="md-ellipsis">
+      Select active instance
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1247,13 +1295,12 @@
 
 
 <h1 id="hardware-language-features-neovim">Hardware Language Features - Neovim<a class="headerlink" href="#hardware-language-features-neovim" title="Permanent link">&para;</a></h1>
-<p>All features listed here require the Neovim plugin.  See the <a href="../../../start/installing/">installation guide</a> for how to get started.
-Once installed the <code>SlangServer</code> command will provide a number of subcommands outlined below.</p>
+<p>The Neovim <a href="https://github.com/hudson-trading/slang-server.nvim">slang-server.nvim</a> plugin should be installed to use all features on this page. Once installed the <code>SlangServer</code> command will provide a number of subcommands outlined below.</p>
 <h2 id="setting-a-compilation">Setting a Compilation<a class="headerlink" href="#setting-a-compilation" title="Permanent link">&para;</a></h2>
 <h3 id="setting-a-build-file">Setting a build file<a class="headerlink" href="#setting-a-build-file" title="Permanent link">&para;</a></h3>
 <div class="language-text highlight"><pre><span></span><code>:SlangServer setBuildFile BUILDFILE
 </code></pre></div>
-<p>This uses the file located at `BUILDFILE`` to compile a full hierarchy and is required for some of the commands below.</p>
+<p>This uses the file located at <code>BUILDFILE</code> to compile a full hierarchy and is required for some of the commands below.</p>
 <h3 id="setting-a-top-level">Setting a top level<a class="headerlink" href="#setting-a-top-level" title="Permanent link">&para;</a></h3>
 <div class="language-text highlight"><pre><span></span><code>:SlangServer setTopLevel [TOPFILE]
 </code></pre></div>
@@ -1261,8 +1308,19 @@ Once installed the <code>SlangServer</code> command will provide a number of sub
 <h2 id="hierarchyview">HierarchyView<a class="headerlink" href="#hierarchyview" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><pre><span></span><code>:SlangServer hierarchy [SCOPE]
 </code></pre></div>
-<p>This will open the hierarchy view and, if <code>SCOPE</code> is provided, expand the view to that scope.</p>
+<p>This opens the hierarchy view and, if <code>SCOPE</code> is provided, expands the view to that scope. Without <code>SCOPE</code>, it reveals the known active path when available.</p>
 <p><img alt="Hierarchy View" src="hierarchy.png" /></p>
+<p>The hierarchy opens with a Cells view that groups elaborated instances by module. Press <code>&lt;Space&gt;</code> on a module to list its instances, then <code>&lt;CR&gt;</code> on an instance to make it active, jump to its source, and reveal it in the hierarchy. Pressing <code>&lt;CR&gt;</code> on an instance in the hierarchy also makes it active; <code>gd</code> opens its declaration without changing the selection. Press <code>/</code> in either view to search the hierarchy. Press <code>?</code> for help, or see the <a href="https://github.com/hudson-trading/slang-server/blob/main/clients/neovim/lua/slang-server/_core/config.lua">default mappings</a>.</p>
+<p>If Neovim code-lens display is enabled, module and interface declarations show the active path and instance count. Activating that code lens opens <code>vim.ui.select</code> when multiple instances are available. Generate-loop code lenses similarly select an active elaborated iteration.</p>
+<p>The active instance supplies the context for resolved parameter values, dependent types and widths, interface connections, hovers, and parameter-value inlay hints. An open hierarchy follows active-instance changes initiated by a code lens or Go to Definition.</p>
+<h3 id="search-hierarchy">Search hierarchy<a class="headerlink" href="#search-hierarchy" title="Permanent link">&para;</a></h3>
+<div class="language-text highlight"><pre><span></span><code>:SlangServer searchHierarchy
+</code></pre></div>
+<p>This opens an interactive search over the compiled design and reveals the selected object in the hierarchy. FzfLua, Telescope, and Snacks Picker are supported when installed, with a two-step <code>vim.ui.input</code> and <code>vim.ui.select</code> fallback.</p>
+<h3 id="select-active-instance">Select active instance<a class="headerlink" href="#select-active-instance" title="Permanent link">&para;</a></h3>
+<div class="language-text highlight"><pre><span></span><code>:SlangServer selectActive
+</code></pre></div>
+<p>This runs an active-instance or active-generate-iteration code lens on the current source line. Code lenses must be enabled as described in the <a href="../../../start/installing/#code-lenses">installation guide</a>.</p>
 <h2 id="cone-tracing-experimental">Cone Tracing (experimental)<a class="headerlink" href="#cone-tracing-experimental" title="Permanent link">&para;</a></h2>
 <p><div class="language-text highlight"><pre><span></span><code>:lua vim.lsp.buf.incoming_calls()
 </code></pre></div>
@@ -1285,7 +1343,7 @@ If there is no currently active WCP session a new waveform viewer will be launch
 By default this is Surfer.
 If a WCP session already exists, the new waveform file will be loaded.
 Additionally, if a <code>buildPattern</code> config field is provided, the build file which corresponds to the current wave file will be used to produce a compilation.
-E.g. given a wave file of <code>/some/dir/foo.fst</code> and a <code>buildPattern</code> of <code>/some/other/dir/{}.f</code> and compilation will be made using <code>/some/other/dir/foo.f</code>.</p>
+E.g. given a wave file of <code>/some/dir/foo.fst</code> and a <code>buildPattern</code> of <code>/some/other/dir/{}.f</code>, a compilation will be made using <code>/some/other/dir/foo.f</code>.</p>
 <h4 id="add-item">Add Item<a class="headerlink" href="#add-item" title="Permanent link">&para;</a></h4>
 <div class="language-text highlight"><pre><span></span><code>:SlangServer addToWaves [RECURSIVE]
 </code></pre></div>

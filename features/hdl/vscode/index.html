@@ -864,6 +864,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#active-instance-codelens" class="md-nav__link">
+    <span class="md-ellipsis">
+      Active Instance CodeLens
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#inactive-preprocessor-regions" class="md-nav__link">
     <span class="md-ellipsis">
       Inactive Preprocessor Regions
@@ -1154,6 +1163,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#active-instance-codelens" class="md-nav__link">
+    <span class="md-ellipsis">
+      Active Instance CodeLens
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#inactive-preprocessor-regions" class="md-nav__link">
     <span class="md-ellipsis">
       Inactive Preprocessor Regions
@@ -1231,7 +1249,8 @@
 </div>
 <h2 id="hierarchy-view">Hierarchy View<a class="headerlink" href="#hierarchy-view" title="Permanent link">&para;</a></h2>
 <p>The Hierarchy View shows the elaborated tree, with declared types and resolved values to the right of the identifier.
-Clicking a symbol in the hierarchy view or modules view will open the instance in the file, as well as in the other view.</p>
+Interface ports and their elaborated members are included alongside modules, generate scopes, parameters, ports, and data signals. Data signals are visible by default. Parameters can be toggled for modules, while package parameters remain visible whenever their package is shown.</p>
+<p>Clicking a symbol opens its source location and makes its enclosing module or interface the <a href="../hdl/#active-instances">active instance</a>. The Hierarchy and Modules views follow the new selection. Scopes with no visible children are shown as leaves rather than expandable nodes.</p>
 <div class="grid">
 <div class="grid-item">
 <p><strong>Hierarchy Buttons (left to right):</strong></p>
@@ -1269,13 +1288,18 @@ Clicking a symbol in the hierarchy view or modules view will open the instance i
 <h2 id="modules-view">Modules View<a class="headerlink" href="#modules-view" title="Permanent link">&para;</a></h2>
 <div class="grid">
 <div class="grid-item">
-<p>The modules view shows the instances indexed by module, sorted by the number of instances with higher level objects closer to the top.</p>
-<p>While a compilation is active, the modules view will open when switching text documents, allowing the user to select which instance of that module they'd like to focus on. In the future, inlay hints will show values for parameters and signals in the source code.</p>
+<p>The Modules view groups elaborated instances by their module or interface definition.</p>
+<p>Click an instance path to make it active and open its definition. Use the <strong>Go to Instantiation</strong> button on an instance path to open the instantiation site instead; the view also reveals the corresponding parent instance.</p>
+<p>The selected instance determines the resolved parameter values, dependent types and widths, interface connections, and other elaboration-specific information shown while editing that definition.</p>
 </div>
 <div class="grid-item">
 <p><img alt="ModulesView" src="ModulesView.png" /></p>
 </div>
 </div>
+<h2 id="active-instance-codelens">Active Instance CodeLens<a class="headerlink" href="#active-instance-codelens" title="Permanent link">&para;</a></h2>
+<p>With a compilation active, a CodeLens above each instantiated module or interface declaration displays its active hierarchical path and total instance count. Click it to choose another instance when more than one exists. A neighboring <strong>Go to Instantiation</strong> CodeLens opens the selected instance's instantiation site.</p>
+<p>Generate loops also receive a CodeLens when the active module instance contains multiple elaborated iterations. Selecting an iteration updates the context used by source features.</p>
+<p>Instance selections stay synchronized across CodeLens actions, Go to Definition, the Hierarchy view, and the Modules view. Hovers and the <code>inlayHints.activeParameterValues</code> hints update to show values from the selected instance.</p>
 <h2 id="inactive-preprocessor-regions">Inactive Preprocessor Regions<a class="headerlink" href="#inactive-preprocessor-regions" title="Permanent link">&para;</a></h2>
 <p>Code inside untaken preprocessor branches (e.g. <code>`ifdef</code> / <code>`ifndef</code>) is grayed out to visually distinguish it from active code.</p>
 <p>The appearance is controlled by <code>slang.inactiveRegions.style</code>:</p>

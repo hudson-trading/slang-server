@@ -747,6 +747,19 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Hardware Language Features
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -758,6 +771,36 @@
   
 
       </a>
+      
+        
+
+  
+
+<nav class="md-nav md-nav--secondary" aria-label="Page contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Page contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#active-instances" class="md-nav__link">
+    <span class="md-ellipsis">
+      Active Instances
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -969,6 +1012,23 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Page contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#active-instances" class="md-nav__link">
+    <span class="md-ellipsis">
+      Active Instances
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -993,6 +1053,17 @@
 <div class="grid-item">
 <p>When a design is set, a full hierarchy will be elaborated in conjunction with the shallow compilations per file, which will still be used to get quick language features on all tokens.</p>
 <p>The compilation is refreshed on save, updating the diagnostics and related info.</p>
+<h2 id="active-instances">Active Instances<a class="headerlink" href="#active-instances" title="Permanent link">&para;</a></h2>
+<p>A module or interface definition can be elaborated many times with different parameters, types, generate branches, and interface connections. Slang Server keeps one <strong>active instance</strong> for each definition so source-level features have a concrete elaborated context.</p>
+<p>The active instance controls:</p>
+<ul>
+<li>Resolved parameter and localparam values in hovers and inlay hints.</li>
+<li>Dependent signal types and widths.</li>
+<li>Interface parameter values, connections, and forwarded interface paths.</li>
+<li>The selected iteration of generate loops.</li>
+</ul>
+<p>Selecting an instance also updates the active instances along its enclosing hierarchy. Go to Definition from an instantiation, port, or parameter reference selects the referenced instance before opening its declaration. Selections that still exist are preserved when the design is recompiled; if one disappears, the server chooses a valid default.</p>
+<p>The editor integrations provide controls for inspecting and changing these selections. See the editor-specific pages below.</p>
 <p>See the <a href="../vscode/">Vscode Docs</a></p>
 <p>See the <a href="../neovim/">Neovim Docs</a></p>
 </div>
