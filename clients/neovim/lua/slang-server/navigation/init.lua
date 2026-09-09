@@ -1,27 +1,93 @@
 local hl = require("slang-server._core.highlights")
 local ui = require("slang-server._core.ui")
-local util = require("slang-server.util")
 local client = require("slang-server._lsp.client")
 local capabilities = require("slang-server._lsp.capabilities")
 local handlers = require("slang-server.handlers")
-local hier = require("slang-server.navigation/hierarchy")
-local cells = require("slang-server.navigation/cells")
+local hier = require("slang-server.navigation.hierarchy")
+local cells = require("slang-server.navigation.cells")
 
 local M = {}
 
 ---@type slang-server.navigation.State
 M.state = { open = false }
 
--- M.state.sv_buf returns the most recently focused SV buffer info
--- M.state.sv_winnr returns the winnr of the most recently focused visible SV buffer
+---Keep a navigation window dedicated to its buffer, redirecting attempted buffer
+---changes to the source window instead.
+---@param state { split: NuiSplit?, buffer_guard: integer? }
+function M.protect_window(state)
+   local split = assert(state.split)
+   local winid = split.winid
+   local bufnr = split.bufnr
+
+   state.buffer_guard = vim.api.nvim_create_autocmd("BufEnter", {
+      callback = function(args)
+         if not M.state.open or not vim.api.nvim_win_is_valid(winid) then
+            return
+         end
+         if vim.api.nvim_get_current_win() ~= winid or args.buf == bufnr then
+            return
+         end
+
+         local source_winid = M.state.source_winid
+         if source_winid and vim.api.nvim_win_is_valid(source_winid) then
+            vim.api.nvim_win_set_buf(source_winid, args.buf)
+         else
+            vim.notify("Cannot open buffer: invalid source window", vim.log.levels.ERROR)
+         end
+
+         vim.api.nvim_win_set_buf(winid, bufnr)
+      end,
+   })
+end
+
+---@param state { buffer_guard: integer? }
+function M.unprotect_window(state)
+   if state.buffer_guard then
+      pcall(vim.api.nvim_del_autocmd, state.buffer_guard)
+      state.buffer_guard = nil
+   end
+end
+
+---Return whether a component's navigation split is still active for an async request.
+---@param state { generation: integer, tree: NuiTree?, split: NuiSplit? }
+---@param generation integer
+---@return boolean
+function M.session_active(state, generation)
+   return M.state.open
+      and state.generation == generation
+      and state.tree ~= nil
+      and state.split ~= nil
+      and vim.api.nvim_win_is_valid(state.split.winid)
+end
+
+---Return the most relevant source buffer that has an attached slang-server client.
+---@return vim.fn.getbufinfo.ret.item?
+local function source_buf()
+   local bufnr = capabilities.get_source_context()
+   if not capabilities.get_client(bufnr) then
+      return nil
+   end
+   return vim.fn.getbufinfo(bufnr)[1]
+end
+
+-- M.state.sv_buf returns the most relevant attached SV buffer info.
+-- M.state.sv_win returns a visible window containing that buffer.
 setmetatable(M.state, {
    ---@param _k string
    ---@return integer
    __index = function(self, _k)
       if _k == "sv_buf" then
-         return util.last_buf({ buflisted = true, filetype = { "verilog", "systemverilog" } })
+         return source_buf()
       elseif _k == "sv_win" then
-         return util.last_win({ buflisted = true, filetype = { "verilog", "systemverilog" } })
+         local source = source_buf()
+         if not source then
+            return nil
+         end
+         local winid = vim.fn.bufwinid(source.bufnr)
+         if winid == -1 then
+            return nil
+         end
+         return vim.fn.getwininfo(winid)[1]
       end
    end,
 })
@@ -36,6 +102,15 @@ function M.map_keys(split, tree, mappings)
          ---@cast node slang-server.navigation.Node
          spec.impl(node)
       end, spec.opts)
+   end
+end
+
+---@param mappings table<string, slang-server.ui.Mapping>
+---@param key slang-server.config.Key?
+---@param spec slang-server.ui.Mapping
+function M.add_mapping(mappings, key, spec)
+   if key then
+      mappings[key] = spec
    end
 end
 
@@ -120,8 +195,10 @@ function M.show_hier_location(hier_path)
 end
 
 ---@param top slang-server.navigation.Path The top level at which to initialise the hierarchy
-function M.show(top)
+---@param focus_path boolean? Move the hierarchy cursor to the resolved path
+function M.show(top, focus_path)
    if M.state.open then
+      hier.reveal(top, { focus = focus_path })
       if hier.state.split and vim.api.nvim_win_is_valid(hier.state.split.winid) then
          vim.api.nvim_set_current_win(hier.state.split.winid)
       end
@@ -129,8 +206,9 @@ function M.show(top)
    end
 
    M.state.open = true
+   M.state.source_winid = vim.api.nvim_get_current_win()
 
-   hier.show(top)
+   hier.show(top, focus_path)
    cells.show()
 
    vim.api.nvim_set_current_win(hier.state.split.winid)
