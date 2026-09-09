@@ -132,6 +132,56 @@ endmodule
     CHECK(*typeParam.value == "int");
 }
 
+TEST_CASE("InterfaceModportPortsIncludeDirections") {
+    ServerHarness server;
+
+    auto hdl = server.openFile("interface_port.sv", R"(
+interface bus;
+    logic [7:0] request;
+    logic ready;
+    modport initiator(output request, input ready);
+endinterface
+
+module top(bus.initiator link, bus.initiator links[1:0]);
+endmodule
+)");
+
+    server.setTopLevel(std::string{hdl.m_uri.getPath()});
+    auto children = server.getScope("top");
+    auto getScope = [](const std::vector<hier::HierItem_t>& items,
+                       std::string_view name) -> const hier::Scope& {
+        auto item = std::ranges::find_if(items, [&](const hier::HierItem_t& candidate) {
+            return rfl::holds_alternative<hier::Scope>(candidate) &&
+                   rfl::get<hier::Scope>(candidate).instName == name;
+        });
+        REQUIRE(item != items.end());
+        return rfl::get<hier::Scope>(*item);
+    };
+    auto getType = [&](const hier::Scope& scope, std::string_view name) -> const std::string& {
+        const auto& portChildren = scope.children;
+        auto child = std::ranges::find_if(portChildren, [&](const hier::HierItem_t& item) {
+            return rfl::holds_alternative<hier::Var>(item) &&
+                   rfl::get<hier::Var>(item).instName == name;
+        });
+        REQUIRE(child != portChildren.end());
+        return rfl::get<hier::Var>(*child).type;
+    };
+
+    const auto& interfacePort = getScope(children, "link");
+    CHECK(getType(interfacePort, "request") == "output logic[7:0]");
+    CHECK(getType(interfacePort, "ready") == "input logic");
+
+    const auto& interfacePortArray = getScope(children, "links");
+    CHECK(interfacePortArray.kind == hier::SlangKind::InterfacePortArray);
+    REQUIRE(interfacePortArray.children.size() == 2);
+    for (const auto& element : interfacePortArray.children) {
+        REQUIRE(rfl::holds_alternative<hier::Scope>(element));
+        const auto& elementScope = rfl::get<hier::Scope>(element);
+        CHECK(getType(elementScope, "request") == "output logic[7:0]");
+        CHECK(getType(elementScope, "ready") == "input logic");
+    }
+}
+
 TEST_CASE("GetScopesByModule") {
     ServerHarness server("comp_repo");
     JsonGoldenTest golden;

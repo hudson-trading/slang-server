@@ -174,9 +174,11 @@ function mapChildren(parent: HierItem, items: slang.Item[]): HierItem[] {
         res.push(new VarItem(parent, item as slang.Var))
         break
       case slang.SlangKind.ScopeArray:
+      case slang.SlangKind.InterfacePortArray:
         res.push(new ScopeArrayItem(parent, item as slang.Scope))
         break
       case slang.SlangKind.Scope:
+      case slang.SlangKind.InterfacePort:
         res.push(new ScopeItem(parent, item as slang.Scope))
         break
       default:
@@ -206,7 +208,12 @@ class ScopeItem extends HierItem {
 
   async getTreeItem(): Promise<TreeItem> {
     let item = new TreeItem(this.inst.instName)
-    item.iconPath = new vscode.ThemeIcon('symbol-namespace')
+    item.iconPath =
+      this.inst.kind === slang.SlangKind.InterfacePort ||
+      this.inst.kind === slang.SlangKind.InterfacePortArray
+        ? new vscode.ThemeIcon('symbol-interface')
+        : new vscode.ThemeIcon('symbol-namespace')
+    item.description = this.inst.type ?? ''
     return item
   }
 }
@@ -229,7 +236,9 @@ export class InstanceItem extends HierItem {
   async getTreeItem(): Promise<vscode.TreeItem> {
     let item = await super.getTreeItem()
     item.contextValue = 'Module'
-    item.iconPath = new vscode.ThemeIcon('chip')
+    item.iconPath = new vscode.ThemeIcon(
+      this.inst.declKind === slang.SlangInstKind.Interface ? 'symbol-class' : 'chip'
+    )
     item.description = this.inst.declName
     return item
   }
@@ -335,11 +344,23 @@ function splitScope(path: string): string[] {
 class VarItem extends HierItem {
   inst: slang.Var
   static PARAM_TYPES: slang.SlangKind[] = [slang.SlangKind.Param]
-  static DATA_TYPES: slang.SlangKind[] = [slang.SlangKind.Logic, slang.SlangKind.Port]
+  static DATA_TYPES: slang.SlangKind[] = [
+    slang.SlangKind.Logic,
+    slang.SlangKind.Port,
+    slang.SlangKind.InterfacePort,
+    slang.SlangKind.InterfacePortArray,
+  ]
 
   constructor(parent: HierItem | undefined, instance: slang.Var) {
     super(parent, instance)
     this.inst = instance
+  }
+
+  private isInterfacePortChild(): boolean {
+    return (
+      this.parent?.inst.kind === slang.SlangKind.InterfacePort ||
+      this.parent?.inst.kind === slang.SlangKind.InterfacePortArray
+    )
   }
 
   async getTreeItem(): Promise<TreeItem> {
@@ -354,7 +375,9 @@ class VarItem extends HierItem {
         item.iconPath = new vscode.ThemeIcon('symbol-interface')
         break
       case slang.SlangKind.Logic:
-        item.iconPath = new vscode.ThemeIcon('symbol-variable')
+        item.iconPath = new vscode.ThemeIcon(
+          this.isInterfacePortChild() ? 'symbol-interface' : 'symbol-variable'
+        )
         break
     }
     // if has value, show value

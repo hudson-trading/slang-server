@@ -25,7 +25,7 @@ interface bus;
 
     modport endpoint(output data, import task run(input logic value));
                             ^^^^ Ref ->
-    | **ModportPort** `data` in `bus.endpoint`
+    | **Output ModportPort** `data` in `bus.endpoint`
     | Type: `logic[3:0]`
     | Width: `4`
     | ---

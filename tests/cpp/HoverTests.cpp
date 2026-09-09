@@ -595,8 +595,14 @@ interface bus;
     modport initiator(output data);
 endinterface
 
+module consumer(bus.initiator link, bus.initiator links[1:0]);
+    initial $display("%h %h", link.data, links[0].data);
+endmodule
+
 module top;
     bus b();
+    bus b_array[1:0]();
+    consumer c(b.initiator, b_array);
 endmodule
 )");
 
@@ -615,12 +621,22 @@ endmodule
     auto hover = doc.getHoverAt(cursor.m_offset);
     REQUIRE(hover);
     auto content = rfl::get<lsp::MarkupContent>(hover->contents).value;
+    CHECK(countSubstring(content, "**Output ModportPort** `data`") == 1);
     CHECK(content.find("logic [7:0] data") != std::string::npos);
     CHECK(content.find("output data") != std::string::npos);
-    CHECK(countSubstring(content, "**ModportPort** `data`") == 1);
     CHECK(countSubstring(content, "Type: `logic[7:0]`") == 1);
     CHECK(countSubstring(content, "Width: `8`") == 1);
     CHECK(countSubstring(content, "Driven by continuous assignment") == 1);
+
+    auto useHover = doc.getHoverAt(doc.after("link.").m_offset);
+    REQUIRE(useHover);
+    auto useContent = rfl::get<lsp::MarkupContent>(useHover->contents).value;
+    CHECK(countSubstring(useContent, "**Output ModportPort** `data`") == 1);
+
+    auto arrayUseHover = doc.getHoverAt(doc.after("links[0].").m_offset);
+    REQUIRE(arrayUseHover);
+    auto arrayUseContent = rfl::get<lsp::MarkupContent>(arrayUseHover->contents).value;
+    CHECK(countSubstring(arrayUseContent, "**Output ModportPort** `data`") == 1);
 }
 
 TEST_CASE("HoverAndGotoExplicitModportPrototypeRetainsDeclaration") {
