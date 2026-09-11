@@ -5,10 +5,22 @@ on:
     paths:
       - 'docs/**'
       - '**/mkdocs*.yml'
+      - '**/mkdocs*.yaml'
+      - 'scripts/ci/publish-docs.sh'
+      - 'tests/ci/test_publish_docs.py'
   workflow_dispatch:
+    inputs:
+      pr_number:
+        description: PR number to publish the selected ref under
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: docs-preview-${{ github.event.pull_request.number || inputs.pr_number }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -30,20 +42,17 @@ jobs:
       - name: Build docs
         run: uv run mkdocs build
       - name: Deploy to gh-pages preview directory
-        # This step is much more complex than a simple push
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./site
-          publish_branch: gh-pages
-          destination_dir: previews/pr-${{ github.event.number }}
+        env:
+          PREVIEW_DIR: previews/pr-${{ github.event.pull_request.number || inputs.pr_number }}
+        run: bash scripts/ci/publish-docs.sh site "$PREVIEW_DIR"
 
       - name: Comment preview URL
-        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v8
         with:
           script: |
             const previewUrl = `https://hudson-trading.github.io/slang-server/previews/pr-${{ github.event.number }}/`;
-            github.rest.issues.createComment({
+            await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
