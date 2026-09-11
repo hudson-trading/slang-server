@@ -7,7 +7,16 @@ on:
     paths:
       - 'docs/**'
       - '**/mkdocs*.yml'
+      - '**/mkdocs*.yaml'
+      - 'scripts/ci/publish-docs.sh'
   workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: docs-main-deploy
+  cancel-in-progress: true
 
 jobs:
   deploy:
@@ -28,10 +37,5 @@ jobs:
 
       - name: Build docs
         run: uv run mkdocs build
-      - name: Deploy to gh-pages preview directory
-        # This step is much more complex than a simple push
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./site
-          publish_branch: gh-pages
+      - name: Deploy to gh-pages
+        run: bash scripts/ci/publish-docs.sh site
