@@ -17,6 +17,25 @@ export function isUpdateAvailable(latest: string, installed: string): boolean {
   return semver.lt(installed, latest)
 }
 
+export function chooseInstalledBinary(entries: string[], binaryName: string): string | undefined {
+  const candidates = entries.filter((entry) => entry.split(/[\\/]/).at(-1) === binaryName)
+  return candidates.sort((left, right) => {
+    const leftVersion = semver.parse(left.split(/[\\/]/)[0])
+    const rightVersion = semver.parse(right.split(/[\\/]/)[0])
+
+    if (leftVersion && rightVersion) {
+      return semver.rcompare(leftVersion, rightVersion)
+    }
+    if (leftVersion) {
+      return -1
+    }
+    if (rightVersion) {
+      return 1
+    }
+    return left.localeCompare(right)
+  })[0]
+}
+
 type GithubAsset = {
   name: string
   browser_download_url: string

@@ -1,5 +1,14 @@
 import tape from 'tape'
-import { isUpdateAvailable } from '../../src/lib/install'
+import { chooseInstalledBinary, isUpdateAvailable } from '../../src/lib/install'
+
+tape('chooseInstalledBinary: selects the newest managed release', (assert) => {
+  const binary = chooseInstalledBinary(
+    ['v0.2.1/slang-server', 'v0.3.0/slang-server', 'notes.txt'],
+    'slang-server'
+  )
+  assert.equal(binary, 'v0.3.0/slang-server')
+  assert.end()
+})
 
 tape('isUpdateAvailable: returns true when update available', (assert) => {
   const needsUpdate = isUpdateAvailable('v0.3.0', '0.2.1')
