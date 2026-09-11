@@ -108,7 +108,9 @@ export abstract class ExtensionComponent extends ExtensionNode {
     if (incompatibleExtensions !== undefined) {
       for (let id of incompatibleExtensions) {
         if (vscode.extensions.getExtension(id) !== undefined) {
-          vscode.window.showErrorMessage(`Please uninstall incompatible extension: ${id}`)
+          const message = `Please uninstall incompatible extension: ${id}`
+          this.logger.error(message)
+          vscode.window.showErrorMessage(message)
         }
       }
     }
