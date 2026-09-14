@@ -220,6 +220,27 @@ endmodule
     }));
 }
 
+TEST_CASE("CodeAction_IncludeForMacro_WhenDefinedLater") {
+    ServerHarness server;
+
+    auto defs = server.openFile("defs.svh", R"(
+`define MY_FLAG 1
+)");
+    defs.save();
+
+    auto use = server.openFile("use.sv", R"(
+module top;
+    logic x = `MY_FLAG;
+endmodule
+`define MY_FLAG 2
+)");
+
+    auto actions = getCodeActionsAt(server, use, use.before("`MY_FLAG").m_offset);
+    CHECK(std::ranges::any_of(actions, [](const lsp::CodeAction& a) {
+        return a.title.find("`include") != std::string::npos;
+    }));
+}
+
 TEST_CASE("CodeAction_IncludeForMacro_NotWhenAlreadyIncluded") {
     ServerHarness server;
 

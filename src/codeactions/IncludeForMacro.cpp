@@ -58,9 +58,9 @@ void addIncludeForMacroAction(std::vector<rfl::Variant<lsp::Command, lsp::CodeAc
         return;
     auto macroName = std::string(rawText.substr(1));
 
-    // Only when the macro is genuinely unresolved here.
-    if (ctx.analysis.macros.contains(macroName))
-        return;
+    // Only when the macro didn't resolve at this usage. macroUsageDefinitions
+    // holds every ref that actually expanded, so a `define that appears later
+    // in the file (or after an `undef) is correctly still treated as unresolved.
     if (ctx.analysis.macroUsageDefinitions.contains(usage))
         return;
 
