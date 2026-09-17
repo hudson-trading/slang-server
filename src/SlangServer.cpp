@@ -112,11 +112,11 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
 
     registerDesignCommand<std::string, std::vector<server::ConeEntry>>(
         "slang.getDriversWithLocation", [](ServerCompilation& comp, const std::string& hierPath) {
-            return comp.getConeLocations<true>(hierPath);
+            return comp.getDriverCone(hierPath).getLocations();
         });
     registerDesignCommand<std::string, std::vector<server::ConeEntry>>(
         "slang.getLoadsWithLocation", [](ServerCompilation& comp, const std::string& hierPath) {
-            return comp.getConeLocations<false>(hierPath);
+            return comp.getLoadCone(hierPath).getLocations();
         });
 
     // Hierarchy View (sidebar)
@@ -668,7 +668,7 @@ std::optional<std::vector<lsp::CallHierarchyIncomingCall>> SlangServer::
     }
     // Drivers are presented as "incoming calls" in the call hierarchy view.
     std::vector<lsp::CallHierarchyIncomingCall> result;
-    for (const auto& entry : m_driver->comp->getConeLocations<true>(params.item.name)) {
+    for (const auto& entry : m_driver->comp->getDriverCone(params.item.name).getLocations()) {
         result.push_back({
             .from =
                 {
@@ -704,7 +704,7 @@ std::vector<std::string> SlangServer::getDrivers(const std::string& path) {
         ERROR("No compilation available, cannot trace cones");
         return {};
     }
-    return m_driver->comp->getConePaths<true>(path);
+    return m_driver->comp->getDriverCone(path).getPaths();
 }
 
 std::vector<std::string> SlangServer::getLoads(const std::string& path) {
@@ -712,7 +712,7 @@ std::vector<std::string> SlangServer::getLoads(const std::string& path) {
         ERROR("No compilation available, cannot trace cones");
         return {};
     }
-    return m_driver->comp->getConePaths<false>(path);
+    return m_driver->comp->getLoadCone(path).getPaths();
 }
 
 void SlangServer::loadConfig(const Config& config, bool forceIndexing) {
