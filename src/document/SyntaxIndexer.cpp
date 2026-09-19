@@ -140,7 +140,7 @@ void SyntaxIndexer::processTrivia(std::span<const slang::parsing::Trivia> trivia
             continue;
         }
 
-        // Check for conditional branch triva, which will contain disabled tokens
+        // Check for conditional branch trivia, which will contain disabled tokens
         auto* syntax = trivia.syntax();
         if (!syntax)
             continue;
@@ -149,24 +149,26 @@ void SyntaxIndexer::processTrivia(std::span<const slang::parsing::Trivia> trivia
         if (syntax->getFirstToken().location().buffer() != m_buffer)
             continue;
 
-        auto addDisabledRange = [&](const syntax::TokenList& tokens) {
+        auto addDisabledRange = [&](SourceLocation start, const syntax::TokenList& tokens) {
             if (tokens.empty())
                 return;
 
-            disabledRegions.push_back({tokens.front().location(), tokens.back().range().end()});
+            // The final placeholder anchors trailing trivia, even in comment-only branches.
+            auto end = tokens.back().range().end();
+            if (start < end)
+                disabledRegions.emplace_back(start, end);
         };
 
         // Conditional Branch Directives (ie: `ifdef)
         if (syntax::ConditionalBranchDirectiveSyntax::isKind(syntax->kind)) {
             const auto& branch = syntax->as<syntax::ConditionalBranchDirectiveSyntax>();
-            addDisabledRange(branch.disabledTokens);
+            addDisabledRange(branch.expr->getLastToken().range().end(), branch.disabledTokens);
         }
 
         // Unconditional Branch Directives (ie: `else)
-        // `endif should no longer contain any disabled tokens after the slang change
         else if (syntax::UnconditionalBranchDirectiveSyntax::isKind(syntax->kind)) {
             const auto& branch = syntax->as<syntax::UnconditionalBranchDirectiveSyntax>();
-            addDisabledRange(branch.disabledTokens);
+            addDisabledRange(branch.directive.range().end(), branch.disabledTokens);
         }
     }
 }
