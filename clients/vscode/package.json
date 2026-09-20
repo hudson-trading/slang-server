@@ -139,7 +139,7 @@
         "extensions": [
           ".ucf"
         ],
-        "configuration": "./languages/ucf/constraints.configuration.json"
+        "configuration": "./languages/ucf/ucfconstraints.configuration.json"
       },
       {
         "id": "sdc",
@@ -172,7 +172,7 @@
         "extensions": [
           ".xdc"
         ],
-        "configuration": "./languages/xdc/sdc.configuration.json"
+        "configuration": "./languages/sdc/sdc.configuration.json"
       },
       {
         "id": "dotf",
