@@ -157,6 +157,9 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   add_compile_options(-Wmissing-include-dirs)
 endif()
 
+add_compile_options(
+  "$<$<COMPILE_LANG_AND_ID:CXX,Clang,AppleClang>:-Werror=reorder-init-list>")
+
 # Configure static linking of C++ standard library if requested Note: macOS uses
 # system libc++ which can't be statically linked and is generally compatible
 # across versions
@@ -295,6 +298,7 @@ add_library(
   src/ast/ConeResult.cpp
   src/ast/ServerCompilation.cpp
   src/ast/ServerCompilationAnalysis.cpp
+  src/ast/ShallowCompilation.cpp
   src/ast/WcpClient.cpp
   src/document/DefinitionInfo.cpp
   src/document/ShallowAnalysis.cpp
@@ -304,6 +308,7 @@ add_library(
   src/document/SymbolTreeVisitor.cpp
   src/document/SyntaxIndexer.cpp
   src/codeactions/AddDefine.cpp
+  src/codeactions/AddInclude.cpp
   src/codeactions/CodeActionDispatch.cpp
   src/codeactions/ExpandMacro.cpp
   src/completions/AssignmentPatternCompletions.cpp

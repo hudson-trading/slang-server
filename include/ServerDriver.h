@@ -106,6 +106,39 @@ public:
     std::vector<std::shared_ptr<syntax::SyntaxTree>> getDependentTrees(
         std::shared_ptr<syntax::SyntaxTree> tree);
 
+    /// Infer include paths for this syntax tree only, then refresh its include relationships.
+    std::shared_ptr<syntax::SyntaxTree> parseShallowTree(SourceBuffer buffer, Bag& documentOptions);
+
+    /// Identifies a file's selected enclosing source and occurrence within that source.
+    struct IncludeContextSelection {
+        /// File whose analysis should use this context.
+        URI uri;
+        /// Root source containing the include, possibly through other headers.
+        URI source;
+        /// Zero-based occurrence of this file in the root source's include list.
+        size_t occurrence = 0;
+    };
+
+    /// A parsed include occurrence and the source that owns its compilation.
+    struct IncludeContext {
+        /// Root document providing the compilation and preprocessor context.
+        std::shared_ptr<SlangDoc> source;
+        /// Buffer for this particular include occurrence.
+        BufferID buffer;
+        /// Immediate include directive, used for navigation.
+        lsp::Location location;
+        /// Stable ordinal among this file's occurrences in the root source.
+        size_t occurrence;
+    };
+
+    /// Find active include occurrences, with the selected context first.
+    /// selectedOnly stops after finding a usable context for document analysis.
+    std::vector<IncludeContext> getIncludeContexts(const std::filesystem::path& path,
+                                                   bool selectedOnly = false);
+
+    /// Select a validated include occurrence and refresh open documents and annotations.
+    bool setIncludeContext(const IncludeContextSelection& selection);
+
     std::vector<std::string> getModulesInFile(const std::string& path);
 
     /// @brief Gets definition information for a symbol at an LSP position, used for
@@ -205,6 +238,9 @@ private:
 
     /// Every source file covered by the build, including secondary single-unit buffers.
     flat_hash_set<URI> m_buildSourceUris;
+
+    /// Explicit include selections by canonical header path, preserved across driver reloads.
+    std::unordered_map<std::filesystem::path, IncludeContextSelection> m_includeSelections;
 
     void copyOpenDocumentsFrom(const ServerDriver* oldDriver);
 

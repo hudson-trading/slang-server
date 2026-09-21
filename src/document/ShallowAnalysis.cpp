@@ -8,7 +8,6 @@
 
 #include "document/ShallowAnalysis.h"
 
-#include "ast/ServerCompilation.h"
 #include "document/InlayHintCollector.h"
 #include "lsp/LspTypes.h"
 #include "util/Converters.h"
@@ -19,7 +18,6 @@
 #include <memory>
 #include <string_view>
 
-#include "slang/analysis/AnalysisManager.h"
 #include "slang/ast/ASTContext.h"
 #include "slang/ast/Compilation.h"
 #include "slang/ast/symbols/BlockSymbols.h"
@@ -32,8 +30,6 @@
 #include "slang/ast/symbols/ValueSymbol.h"
 #include "slang/ast/types/AllTypes.h"
 #include "slang/ast/types/Type.h"
-#include "slang/diagnostics/AnalysisDiags.h"
-#include "slang/driver/Driver.h"
 #include "slang/parsing/Token.h"
 #include "slang/parsing/TokenKind.h"
 #include "slang/syntax/AllSyntax.h"
@@ -63,97 +59,65 @@ static bool symbolsMatch(const ast::Symbol* a, const ast::Symbol* b) {
     }
     return false;
 }
-ShallowAnalysis::ShallowAnalysis(SourceManager& sourceManager, slang::BufferID buffer,
-                                 std::shared_ptr<syntax::SyntaxTree> tree, slang::Bag options,
-                                 const std::vector<std::shared_ptr<syntax::SyntaxTree>>& allTrees,
-                                 const ServerCompilation* design) :
-    syntaxes(*tree), m_sourceManager(sourceManager), m_buffer(buffer), m_tree(tree),
-    m_allTrees(allTrees), m_analysisOptions(options.getOrDefault<analysis::AnalysisOptions>()),
-    m_symbolTreeVisitor(m_sourceManager), m_symbolIndexer(buffer) {
+ShallowAnalysis::ShallowAnalysis(BufferID buffer, std::shared_ptr<ShallowCompilation> compilation) :
+    syntaxes(*compilation->getSyntaxTree(), buffer),
+    m_sourceManager(compilation->getSourceManager()), m_buffer(buffer),
+    m_shallowCompilation(std::move(compilation)), m_symbolTreeVisitor(m_sourceManager),
+    m_symbolIndexer(buffer) {
+    if (syntaxes.collected.empty())
+        ERROR("No syntaxes found in document {}", m_sourceManager.getFullPath(m_buffer).string());
 
-    if (!m_tree) {
-        ERROR("DocumentAnalysis initialized with null syntax tree");
-        return;
-    }
-
-    // Syntaxes are already indexed in the constructor
-
-    auto path = m_sourceManager.getFullPath(m_buffer).string();
-
-    if (syntaxes.collected.size() == 0) {
-        ERROR("No syntaxes found in document {}", path);
-    }
-
-    // Index macros — last active definition for each name
-    for (auto& macro : m_tree->getDefinedMacros()) {
+    const auto& tree = m_shallowCompilation->getSyntaxTree();
+    for (auto& macro : tree->getDefinedMacros())
         macros[macro->name.valueText()] = macro;
-    }
-
-    // Index macro references (usages and undefs) with their active definitions
-    for (auto& ref : m_tree->getPreprocessorMetadata().macroRefs) {
+    for (auto& ref : tree->getPreprocessorMetadata().macroRefs)
         macroUsageDefinitions[ref.syntax] = ref.definition;
+
+    for (auto loc = m_sourceManager.getIncludedFrom(buffer); loc;
+         loc = m_sourceManager.getIncludedFrom(loc.buffer())) {
+        m_symbolIndexer.enclosingBuffers.push_back(loc.buffer());
     }
-
-    // Set up options for shallow compilation
-    auto cOptions = options.getOrDefault<ast::CompilationOptions>();
-    cOptions.flags |= ast::CompilationFlags::AllowTopLevelIfacePorts;
-    cOptions.flags |= ast::CompilationFlags::CheckUninstantiated;
-    cOptions.flags |= ast::CompilationFlags::AllowInvalidTop;
-    // Check the edited module and two levels of instantiated children.
-    cOptions.maxInstanceDepth = 3;
-
-    // Add definitions from this tree (even if they aren't valid tops)
-    cOptions.topModules.clear();
-    m_compilation = std::make_unique<ast::Compilation>(cOptions);
-    for (auto& depTree : m_allTrees) {
-        m_compilation->addSyntaxTree(depTree);
+    getCompilation()->getRoot().visit(m_symbolIndexer);
+    SmallVector<const ast::DefinitionSymbol*> unindexedDefinitions;
+    for (auto* symbol : getCompilation()->getDefinitions()) {
+        auto* definition = symbol->as_if<ast::DefinitionSymbol>();
+        if (!definition ||
+            m_sourceManager.getFullyExpandedLoc(definition->location).buffer() != m_buffer ||
+            m_symbolIndexer.getSymbol(definition->getSyntax()))
+            continue;
+        unindexedDefinitions.push_back(definition);
     }
-    if (design) {
-        std::vector<std::string_view> definitionNames;
-        for (auto* symbol : m_compilation->getDefinitions()) {
-            if (auto* definition = symbol->as_if<ast::DefinitionSymbol>())
-                definitionNames.push_back(definition->name);
-        }
-        m_activeDesign = design->createActiveDesignContext(definitionNames);
-        m_activeDesign->applyOverrides(*m_compilation);
+    // Module declarations can be reached through instances in sibling includes and arrays.
+    if (!unindexedDefinitions.empty()) {
+        auto visitor = ast::makeVisitor([&](auto& visitor, const auto& symbol) {
+            using T = std::decay_t<decltype(symbol)>;
+            if constexpr (std::is_same_v<T, ast::InstanceSymbol>) {
+                const auto& body = symbol.getCanonicalBody() ? *symbol.getCanonicalBody()
+                                                             : symbol.body;
+                if (std::ranges::find(unindexedDefinitions, &symbol.getDefinition()) !=
+                    unindexedDefinitions.end())
+                    body.visit(m_symbolIndexer);
+                body.visit(visitor);
+            }
+            else if constexpr (std::is_base_of_v<ast::Scope, T>) {
+                visitor.visitDefault(symbol);
+            }
+        });
+        getCompilation()->getRoot().visit(visitor);
     }
-
-    // Elaborate and index
-    // - token -> symbol defs
-    // - syntax -> scopes
-    m_compilation->getRoot().visit(m_symbolIndexer);
-}
-
-const Diagnostics& ShallowAnalysis::getSemanticDiagnostics() {
-    if (!m_editedDefinitionsElaborated) {
-        auto& root = m_compilation->getRoot();
-        for (auto* symbol : m_compilation->getDefinitions()) {
-            auto* definition = symbol->as_if<ast::DefinitionSymbol>();
-            if (!definition || definition->syntaxTree != m_tree.get())
-                continue;
-
-            auto& instance = ast::InstanceSymbol::createDefault(*m_compilation, *definition);
-            instance.setParent(root);
-            m_compilation->forceElaborate(instance.body);
-        }
-        m_editedDefinitionsElaborated = true;
+    // A declaration beyond the shallow hierarchy still needs a scope for local navigation.
+    for (auto* definition : unindexedDefinitions) {
+        if (m_symbolIndexer.getSymbol(definition->getSyntax()))
+            continue;
+        auto& instance = ast::InstanceSymbol::createDefault(*getCompilation(), *definition);
+        instance.setParent(getCompilation()->getRoot());
+        instance.visit(m_symbolIndexer);
     }
-
-    return m_compilation->getSemanticDiagnostics();
-}
-
-const InterfaceConnection* ShallowAnalysis::getActiveInterfaceConnection(
-    const ast::InterfacePortSymbol& port) const {
-    return m_activeDesign ? m_activeDesign->getInterfaceConnection(port) : nullptr;
-}
-
-const ast::Symbol* ShallowAnalysis::getDesignSymbol(const ast::Symbol& shallowSymbol) const {
-    return m_activeDesign ? m_activeDesign->getDesignSymbol(shallowSymbol) : nullptr;
 }
 
 std::optional<std::string> ShallowAnalysis::getDesignInstancePathAtToken(
     const parsing::Token* token) const {
-    if (!m_activeDesign || !token)
+    if (!m_shallowCompilation->hasActiveDesign() || !token)
         return {};
 
     auto* syntax = syntaxes.getTokenParent(token);
@@ -210,10 +174,7 @@ std::optional<std::string> ShallowAnalysis::getDesignInstancePathAtToken(
 }
 
 std::vector<lsp::DocumentSymbol> ShallowAnalysis::getDocSymbols() {
-    if (!m_tree) {
-        return {};
-    }
-    return m_symbolTreeVisitor.getSymbols(m_tree, true);
+    return m_symbolTreeVisitor.getSymbols(m_shallowCompilation->getSyntaxTree(), true, m_buffer);
 }
 
 const parsing::Token* ShallowAnalysis::getTokenAt(SourceLocation loc) const {
@@ -284,7 +245,7 @@ const ast::Symbol* ShallowAnalysis::handleInterfacePortHeader(const parsing::Tok
                                                               const ast::Scope* scope) const {
 
     auto& header = syntax->parent->as<syntax::InterfacePortHeaderSyntax>();
-    auto iface = m_compilation->tryGetDefinition(header.nameOrKeyword.valueText(), *scope);
+    auto iface = getCompilation()->tryGetDefinition(header.nameOrKeyword.valueText(), *scope);
 
     if (node == &header.nameOrKeyword) {
         return iface.definition;
@@ -295,7 +256,7 @@ const ast::Symbol* ShallowAnalysis::handleInterfacePortHeader(const parsing::Tok
     }
 
     auto& idef = iface.definition->as<ast::DefinitionSymbol>();
-    auto& inst = ast::InstanceSymbol::createDefault(*m_compilation, idef);
+    auto& inst = ast::InstanceSymbol::createDefault(*getCompilation(), idef);
 
     // TODO: avoid creating a default instance each time
     return inst.body.lookupName(header.modport->member.valueText());
@@ -708,7 +669,7 @@ slang::SmallVector<const ast::Symbol*, 2> ShallowAnalysis::getSymbolsAtToken(
     }
     else if (syntax->kind == syntax::SyntaxKind::PackageExportDeclaration ||
              syntax->kind == syntax::SyntaxKind::PackageImportItem) {
-        auto pkg = m_compilation->getPackage(syntax->getFirstToken().valueText());
+        auto pkg = getCompilation()->getPackage(syntax->getFirstToken().valueText());
         if (!pkg) {
             return symbols;
         }
@@ -788,7 +749,7 @@ slang::SmallVector<const ast::Symbol*, 2> ShallowAnalysis::getSymbolsAtToken(
 
     if (scopes.empty()) {
         INFO("No scope found for syntax {}, using root scope", syntax->toString());
-        scopes.push_back(&m_compilation->getRoot().as<ast::Scope>());
+        scopes.push_back(&getCompilation()->getRoot().as<ast::Scope>());
     }
 
     auto resolveInScope = [&](const ast::Scope* scope) -> const ast::Symbol* {
@@ -801,11 +762,11 @@ slang::SmallVector<const ast::Symbol*, 2> ShallowAnalysis::getSymbolsAtToken(
             }
             if (syntax->kind == syntax::SyntaxKind::DotMemberClause)
                 return handleInterfacePortHeader(declTok, syntax, scope);
-            if (auto def = m_compilation->tryGetDefinition(declTok->valueText(), *scope);
+            if (auto def = getCompilation()->tryGetDefinition(declTok->valueText(), *scope);
                 def.definition) {
                 return def.definition;
             }
-            return m_compilation->getPackage(declTok->valueText());
+            return getCompilation()->getPackage(declTok->valueText());
         }
 
         auto scopedName = nameSyntax->as_if<slang::syntax::ScopedNameSyntax>();
@@ -928,12 +889,12 @@ slang::SmallVector<const ast::Symbol*, 2> ShallowAnalysis::getSymbolsAtToken(
             return handleInterfacePortHeader(declTok, syntax, scope);
         }
         // Try getting a definition as a last resort.
-        auto def = m_compilation->tryGetDefinition(declTok->valueText(), *scope);
+        auto def = getCompilation()->tryGetDefinition(declTok->valueText(), *scope);
         if (def.definition) {
             return def.definition;
         }
 
-        return m_compilation->getPackage(declTok->valueText());
+        return getCompilation()->getPackage(declTok->valueText());
     };
 
     for (auto* scope : scopes)
@@ -963,7 +924,7 @@ const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declT
 }
 
 const ast::Symbol* ShallowAnalysis::getDefinition(std::string_view name) const {
-    auto def = m_compilation->tryGetDefinition(name, m_compilation->getRoot());
+    auto def = getCompilation()->tryGetDefinition(name, getCompilation()->getRoot());
     return def.definition;
 }
 
@@ -1046,9 +1007,8 @@ void ShallowAnalysis::addLocalReferences(std::vector<lsp::Location>& references,
 
 std::vector<lsp::DocumentLink> ShallowAnalysis::getDocLinks() const {
     std::vector<lsp::DocumentLink> links;
-    for (auto& inc : m_tree->getIncludeDirectives()) {
-        // check buffer is in ours
-        if (inc.syntax->fileName.location().buffer() != m_buffer) {
+    for (auto& inc : m_shallowCompilation->getSyntaxTree()->getIncludeDirectives()) {
+        if (!inc.buffer || inc.syntax->fileName.location().buffer() != m_buffer) {
             continue;
         }
         links.push_back(lsp::DocumentLink{
@@ -1057,15 +1017,6 @@ std::vector<lsp::DocumentLink> ShallowAnalysis::getDocLinks() const {
         });
     }
     return links;
-}
-
-bool ShallowAnalysis::hasValidBuffers() {
-    for (auto& tree : m_allTrees) {
-        if (!server::hasValidBuffers(m_sourceManager, tree)) {
-            return false;
-        }
-    }
-    return true;
 }
 
 markup::Paragraph ShallowAnalysis::getDebugHover(const SourceLocation& loc) const {
@@ -1120,64 +1071,6 @@ markup::Paragraph ShallowAnalysis::getDebugHover(const SourceLocation& loc) cons
     }
 
     return para;
-}
-
-Diagnostics ShallowAnalysis::getAnalysisDiags() {
-    getAnalysisManager();
-
-    if (!m_cachedAnalysisDiags) {
-        return {};
-    }
-
-    return *m_cachedAnalysisDiags;
-}
-
-const slang::analysis::AnalysisManager* ShallowAnalysis::getAnalysisManager() {
-    if (m_driverAnalysis) {
-        return m_driverAnalysis.get();
-    }
-
-    (void)getSemanticDiagnostics();
-
-    if (!m_compilation || m_compilation->getRoot().topInstances.empty()) {
-        m_cachedAnalysisDiags = Diagnostics{};
-        return nullptr;
-    }
-
-    auto manager = std::make_unique<slang::analysis::AnalysisManager>(m_analysisOptions);
-
-    m_compilation->freeze();
-    manager->analyze(*m_compilation);
-    m_compilation->unfreeze();
-
-    // filter out unused def/decl diags, since shallow analysis will likely not have all references.
-    m_cachedAnalysisDiags = manager->getDiagnostics().filter(
-        {diag::UnusedDefinition, diag::UnusedPackageParameter, diag::UnusedPackageSubroutine,
-         diag::UnusedPackageTypedef, diag::UnusedPackageVar});
-
-    m_driverAnalysis = std::move(manager);
-
-    return m_driverAnalysis.get();
-}
-
-std::vector<const slang::analysis::ValueDriver*> ShallowAnalysis::getDrivers(
-    const slang::ast::ValueSymbol& symbol) {
-    if (m_activeDesign) {
-        auto* designSymbol = getDesignSymbol(symbol);
-        if (auto* designValue = designSymbol ? designSymbol->as_if<ast::ValueSymbol>() : nullptr)
-            return m_activeDesign->getAnalysis().getDrivers(*designValue);
-    }
-
-    auto* manager = getAnalysisManager();
-    if (!manager) {
-        return {};
-    }
-
-    if (!m_analysisQueries) {
-        m_analysisQueries = std::make_unique<slang::analysis::AnalysisQueries>(*m_compilation,
-                                                                               *manager);
-    }
-    return m_analysisQueries->getDrivers(symbol);
 }
 
 } // namespace server

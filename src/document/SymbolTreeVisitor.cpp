@@ -30,7 +30,8 @@ SymbolTreeVisitor::SymbolTreeVisitor(const slang::SourceManager& sourceManager) 
 }
 
 std::vector<lsp::DocumentSymbol> SymbolTreeVisitor::getSymbols(
-    std::shared_ptr<slang::syntax::SyntaxTree> tree, const bool macros) {
+    std::shared_ptr<slang::syntax::SyntaxTree> tree, const bool macros, slang::BufferID buffer) {
+    m_buffer = buffer ? buffer : tree->getSourceBufferIds()[0];
     if (m_symbols.empty()) {
         visit(tree->root());
 
@@ -58,8 +59,7 @@ std::vector<lsp::DocumentSymbol> SymbolTreeVisitor::getSymbols(
                                                    std::optional<std::string> overrideName,
                                                    bool allowMacroLocation) {
 
-    // Don't show syntax-derived symbols from includes or macro expansions.
-    if (m_sourceManager.isIncludedFileLoc(token.range().start()) ||
+    if (m_sourceManager.getFullyOriginalLoc(token.location()).buffer() != m_buffer ||
         (!allowMacroLocation && m_sourceManager.isMacroLoc(token.range().start()))) {
         return false;
     }
@@ -171,6 +171,9 @@ void SymbolTreeVisitor::handleModule(const auto& node) {
         if (ok) {
             handleRecursive(node, symbol);
         }
+        else {
+            visitDefault(node);
+        }
     }
 }
 
@@ -188,6 +191,9 @@ void SymbolTreeVisitor::handle(const ClassDeclarationSyntax& node) {
     bool ok = extractRange(node.name, symbol);
     if (ok) {
         handleRecursive(node, symbol);
+    }
+    else {
+        visitDefault(node);
     }
 }
 
@@ -280,6 +286,10 @@ void SymbolTreeVisitor::handle(const CaseStatementSyntax& node) {
 }
 
 void SymbolTreeVisitor::handle(const FunctionDeclarationSyntax& node) {
+    if (node.getFirstToken().location().buffer() != m_buffer) {
+        visitDefault(node);
+        return;
+    }
     if (node.prototype) {
         // Target the whole NameSyntax node, as it could be a hierarchical
         // identifier of many Tokens

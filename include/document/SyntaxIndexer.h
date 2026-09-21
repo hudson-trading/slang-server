@@ -58,7 +58,8 @@ public:
     /// @brief Constructor that takes a syntax tree and extracts buffer ID from sources
     /// @param tree The syntax tree to analyze
     /// Also macro usage's parent pointers at the syntax's parents that they're trivia for
-    SyntaxIndexer(const slang::syntax::SyntaxTree& tree);
+    /// An explicit buffer selects one included file within a shared syntax tree.
+    SyntaxIndexer(const slang::syntax::SyntaxTree& tree, slang::BufferID buffer = {});
 
     /// Get the word token (identifier, system identifier, directive, macro usage, etc) at the given
     /// location, or nullptr if none

@@ -35,9 +35,9 @@ std::string SyntaxIndexer::MacroExpansionTokens::getText() const {
     return result;
 }
 
-SyntaxIndexer::SyntaxIndexer(const slang::syntax::SyntaxTree& tree) {
+SyntaxIndexer::SyntaxIndexer(const slang::syntax::SyntaxTree& tree, slang::BufferID buffer) {
     SLANG_ASSERT(tree.getSourceBufferIds().size() >= 1);
-    m_buffer = tree.getSourceBufferIds()[0];
+    m_buffer = buffer ? buffer : tree.getSourceBufferIds()[0];
     m_sourceManager = &tree.sourceManager();
     visit(tree.root());
     flushMacroExpansion();
@@ -56,8 +56,9 @@ void SyntaxIndexer::visit(const slang::syntax::SyntaxNode& node) {
         case syntax::SyntaxKind::HierarchyInstantiation:
         case syntax::SyntaxKind::ClassName:
         case syntax::SyntaxKind::AssignmentPatternExpression:
-            collectedHints.emplace(static_cast<uint32_t>(node.getFirstToken().location().offset()),
-                                   &node);
+            if (node.getFirstToken().location().buffer() == m_buffer)
+                collectedHints.emplace(
+                    static_cast<uint32_t>(node.getFirstToken().location().offset()), &node);
             break;
         case syntax::SyntaxKind::ParameterDeclaration:
             if (node.getFirstToken().location().buffer() == m_buffer) {
@@ -75,13 +76,15 @@ void SyntaxIndexer::visit(const slang::syntax::SyntaxNode& node) {
             visit(*child);
         else {
             auto token = const_cast<slang::syntax::SyntaxNode&>(node).childTokenPtr(i);
-            if (!token)
+            if (!token || !*token)
                 continue;
             processTrivia(token->trivia(), node);
 
             // Track macro expansion tokens
             if (m_currentMacroUsage) {
-                if (token->location().buffer() != m_buffer) {
+                if (m_sourceManager->isMacroLoc(token->location()) &&
+                    m_currentMacroUsage->sourceRange().contains(
+                        m_sourceManager->getFullyExpandedLoc(token->location()))) {
                     m_currentExpansionTokens.push_back(token);
                     continue;
                 }
@@ -101,7 +104,7 @@ void SyntaxIndexer::visit(const slang::syntax::SyntaxNode& node) {
 }
 
 void SyntaxIndexer::flushMacroExpansion() {
-    if (m_currentMacroUsage && !m_currentExpansionTokens.empty()) {
+    if (m_currentMacroUsage) {
         macroExpansions[m_currentMacroUsage].tokens = std::move(m_currentExpansionTokens);
         m_currentExpansionTokens = {};
     }

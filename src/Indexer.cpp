@@ -14,6 +14,7 @@
 #include <cctype>
 #include <filesystem>
 #include <fmt/format.h>
+#include <limits>
 #include <string_view>
 #include <unordered_map>
 
@@ -33,6 +34,50 @@
 #include "slang/util/Util.h"
 
 namespace fs = std::filesystem;
+
+namespace {
+
+std::optional<fs::path> nearestInclude(std::string_view spelling, const fs::path& source,
+                                       std::span<const fs::path* const> candidates) {
+    auto includePath = fs::path(spelling).lexically_normal();
+    if (includePath.empty() || includePath.is_absolute() ||
+        std::ranges::any_of(includePath, [](const auto& part) { return part == ".."; }))
+        return std::nullopt;
+
+    std::optional<fs::path> nearest;
+    fs::path nearestIdentity;
+    size_t nearestDistance = std::numeric_limits<size_t>::max();
+    for (const auto* candidate : candidates) {
+        auto remaining = candidate->lexically_normal();
+        auto suffix = includePath;
+        while (!suffix.empty() && suffix.filename() == remaining.filename()) {
+            suffix = suffix.parent_path();
+            remaining = remaining.parent_path();
+        }
+        if (!suffix.empty())
+            continue;
+
+        std::error_code ec;
+        if (!fs::is_regular_file(*candidate, ec))
+            continue;
+        auto path = fs::weakly_canonical(*candidate, ec);
+        if (ec)
+            continue;
+        auto relative = path.parent_path().lexically_relative(source.parent_path());
+        if (relative.empty())
+            continue;
+        auto distance = size_t(
+            std::ranges::count_if(relative, [](const auto& part) { return part != "."; }));
+        if (distance < nearestDistance || (distance == nearestDistance && path < nearestIdentity)) {
+            nearest = *candidate;
+            nearestIdentity = std::move(path);
+            nearestDistance = distance;
+        }
+    }
+    return nearest;
+}
+
+} // namespace
 
 void Indexer::extractFromRoot(const slang::syntax::CompilationUnitSyntax& root,
                               const slang::parsing::ParserMetadata& meta, IndexedPath& dest) {
@@ -55,6 +100,41 @@ void Indexer::extractFromRoot(const slang::syntax::CompilationUnitSyntax& root,
         if (seenDeps.insert(name).second)
             dest.referencedSymbols.push_back(std::string{name});
     });
+}
+
+void Indexer::extractHeaderSymbols(const slang::syntax::CompilationUnitSyntax& root,
+                                   slang::BufferID buffer, const fs::path& path,
+                                   IndexedPath& dest) {
+    using namespace slang::syntax;
+    bool hasTopLevelClass = std::ranges::any_of(root.members, [&](const auto* member) {
+        auto* decl = member->template as_if<ClassDeclarationSyntax>();
+        return decl && decl->name.location().buffer() == buffer;
+    });
+    auto ext = path.extension();
+    if (!hasTopLevelClass && ext != ".svh" && ext != ".vh")
+        return;
+
+    auto add = [&](slang::parsing::Token token) {
+        if (token.location().buffer() != buffer || token.valueText().empty())
+            return;
+        std::string name(token.valueText());
+        if (std::ranges::find(dest.headerSymbols, name) == dest.headerSymbols.end())
+            dest.headerSymbols.push_back(std::move(name));
+    };
+    for (auto* member : root.members) {
+        if (auto* decl = member->as_if<ClassDeclarationSyntax>())
+            add(decl->name);
+        else if (auto* decl = member->as_if<TypedefDeclarationSyntax>())
+            add(decl->name);
+        else if (auto* decl = member->as_if<FunctionDeclarationSyntax>()) {
+            if (auto* name = decl->prototype->name->as_if<IdentifierNameSyntax>())
+                add(name->identifier);
+        }
+        else if (auto* decl = member->as_if<DataDeclarationSyntax>()) {
+            for (auto* declarator : decl->declarators)
+                add(declarator->name);
+        }
+    }
 }
 
 template<typename MacroRange>
@@ -109,6 +189,11 @@ std::vector<Indexer::IndexedPath> Indexer::indexPaths(const std::vector<fs::path
 
             auto& root = parser.parseCompilationUnit();
             const auto& meta = parser.getMetadata();
+            for (const auto& include : preprocessor.getMetadata().includeDirectives) {
+                if (!include.isSystem)
+                    dest.includes.emplace_back(include.path);
+            }
+            extractHeaderSymbols(root, root.getFirstToken().location().buffer(), paths[i], dest);
 
             // Extract macros only if no global symbols were found (header files)
             if (!meta.nodeMeta.empty()) {
@@ -143,52 +228,8 @@ const fs::path* Indexer::internUri(const fs::path& path) {
 void Indexer::updateDocument(const fs::path& path, const slang::syntax::SyntaxTree& tree) {
     IndexWriteGuard guard(*this);
 
-    // Intern the URI once for all operations
-    const fs::path* uriPtr = internUri(path);
-
-    // Remove old entries if this file was previously indexed
-    auto it = indexedFiles.find(uriPtr);
-    if (it != indexedFiles.end()) {
-        const IndexedPath& oldPath = it->second;
-
-        for (const auto& oldItem : oldPath.symbols) {
-            auto mapIt = symbolToFiles_.find(oldItem.name);
-            if (mapIt != symbolToFiles_.end()) {
-                auto& vec = mapIt->second;
-                vec.erase(std::remove_if(vec.begin(), vec.end(),
-                                         [&](const GlobalSymbolLoc& loc) {
-                                             return loc.uri == uriPtr && loc.kind == oldItem.kind;
-                                         }),
-                          vec.end());
-                if (vec.empty())
-                    symbolToFiles_.erase(mapIt);
-            }
-        }
-
-        for (const auto& oldMacro : oldPath.macros) {
-            auto mapIt = macroToFiles_.find(oldMacro);
-            if (mapIt != macroToFiles_.end()) {
-                auto& vec = mapIt->second;
-                vec.erase(std::remove(vec.begin(), vec.end(), uriPtr), vec.end());
-                if (vec.empty())
-                    macroToFiles_.erase(mapIt);
-            }
-        }
-
-        for (const auto& oldRef : oldPath.referencedSymbols) {
-            auto mapIt = symbolReferences_.find(oldRef);
-            if (mapIt != symbolReferences_.end()) {
-                auto& vec = mapIt->second;
-                vec.erase(std::remove(vec.begin(), vec.end(), uriPtr), vec.end());
-                if (vec.empty())
-                    symbolReferences_.erase(mapIt);
-            }
-        }
-    }
-
     // Extract new data
     IndexedPath newPath;
-    newPath.path = uriPtr;
     extractFromRoot(tree.root().as<slang::syntax::CompilationUnitSyntax>(), tree.getMetadata(),
                     newPath);
 
@@ -197,23 +238,60 @@ void Indexer::updateDocument(const fs::path& path, const slang::syntax::SyntaxTr
         extractMacros(tree.getDefinedMacros(), newPath);
     }
 
-    // Add all new entries to the global index
-    for (const auto& newItem : newPath.symbols)
-        symbolToFiles_[newItem.name].push_back(
-            GlobalSymbolLoc{.uri = uriPtr, .kind = newItem.kind});
+    for (const auto& include : tree.getIncludeDirectives()) {
+        if (!include.isSystem && tree.sourceManager()
+                                         .getFullyExpandedLoc(include.syntax->sourceRange().start())
+                                         .buffer() == tree.getSourceBufferIds()[0])
+            newPath.includes.emplace_back(include.path);
+    }
+    extractHeaderSymbols(tree.root().as<slang::syntax::CompilationUnitSyntax>(),
+                         tree.getSourceBufferIds()[0], path, newPath);
 
-    for (const auto& newMacro : newPath.macros)
-        macroToFiles_[newMacro].push_back(uriPtr);
+    indexPath(path, newPath);
+}
 
-    for (const auto& newRef : newPath.referencedSymbols)
-        symbolReferences_[newRef].push_back(uriPtr);
+void Indexer::replaceIncludes(const fs::path& parent, std::vector<fs::path> targets) {
+    resolvedIncluders_.clear();
+    if (auto old = includedFiles_.find(parent); old != includedFiles_.end()) {
+        for (const auto& target : old->second) {
+            auto it = includers_.find(target);
+            if (it == includers_.end())
+                continue;
+            std::erase(it->second, parent);
+            if (it->second.empty())
+                includers_.erase(it);
+        }
+        includedFiles_.erase(old);
+    }
+    std::ranges::sort(targets);
+    targets.erase(std::unique(targets.begin(), targets.end()), targets.end());
+    for (const auto& target : targets)
+        includers_[target].push_back(parent);
+    includedFiles_[parent] = std::move(targets);
+}
 
-    // Store the new indexed path
-    indexedFiles[uriPtr] = std::move(newPath);
+void Indexer::updateIncludes(const slang::syntax::SyntaxTree& tree) {
+    IndexWriteGuard guard(*this);
+    const auto& sm = tree.sourceManager();
+    std::unordered_map<fs::path, std::vector<fs::path>> includes;
+    for (auto buffer : tree.getSourceBufferIds()) {
+        const auto& path = sm.getFullPath(buffer);
+        if (!path.empty())
+            includes.try_emplace(path);
+    }
+    for (const auto& include : tree.getIncludeDirectives()) {
+        if (!include.buffer)
+            continue;
+        auto location = sm.getFullyExpandedLoc(include.syntax->sourceRange().start());
+        includes[sm.getFullPath(location.buffer())].push_back(sm.getFullPath(include.buffer.id));
+    }
+    for (auto& [path, targets] : includes)
+        replaceIncludes(path, std::move(targets));
 }
 
 void Indexer::indexPath(const fs::path& path, IndexedPath& indexedFile) {
     const fs::path* uriPtr = internUri(path);
+    removePathFromIndex(uriPtr);
     indexedFile.path = uriPtr;
 
     for (const auto& item : indexedFile.symbols)
@@ -224,6 +302,16 @@ void Indexer::indexPath(const fs::path& path, IndexedPath& indexedFile) {
 
     for (const auto& ref : indexedFile.referencedSymbols)
         symbolReferences_[ref].push_back(uriPtr);
+
+    for (const auto& name : indexedFile.headerSymbols)
+        headerSymbolToFiles_[name].push_back(uriPtr);
+
+    slang::SmallSet<std::string, 4> includeNames;
+    for (const auto& spelling : indexedFile.includes) {
+        auto name = fs::path(spelling).filename().string();
+        if (includeNames.insert(name).second)
+            includeReferences_[name].push_back(uriPtr);
+    }
 
     // Store the indexed path for efficient removal later
     indexedFiles[uriPtr] = std::move(indexedFile);
@@ -238,12 +326,42 @@ void Indexer::addDocuments(const std::vector<fs::path>& paths) {
 }
 
 void Indexer::removePathFromIndex(const fs::path* pathPtr) {
+    resolvedIncluders_.clear();
+    if (!includedFiles_.empty()) {
+        std::error_code ec;
+        auto canonical = fs::weakly_canonical(*pathPtr, ec);
+        if (!ec && includedFiles_.contains(canonical)) {
+            replaceIncludes(canonical, {});
+            includedFiles_.erase(canonical);
+        }
+    }
+
     // Look up the stored IndexedPath for targeted removal of symbols
     auto it = indexedFiles.find(pathPtr);
     if (it == indexedFiles.end())
         return;
 
     const IndexedPath& entry = it->second;
+
+    for (const auto& spelling : entry.includes) {
+        auto references = includeReferences_.find(fs::path(spelling).filename().string());
+        if (references == includeReferences_.end())
+            continue;
+        auto& paths = references->second;
+        paths.erase(std::remove(paths.begin(), paths.end(), pathPtr), paths.end());
+        if (paths.empty())
+            includeReferences_.erase(references);
+    }
+
+    for (const auto& name : entry.headerSymbols) {
+        auto headerIt = headerSymbolToFiles_.find(name);
+        if (headerIt == headerSymbolToFiles_.end())
+            continue;
+        auto& paths = headerIt->second;
+        paths.erase(std::remove(paths.begin(), paths.end(), pathPtr), paths.end());
+        if (paths.empty())
+            headerSymbolToFiles_.erase(headerIt);
+    }
 
     // Remove symbols
     for (const auto& item : entry.symbols) {
@@ -306,6 +424,106 @@ std::vector<fs::path> Indexer::getFilesForSymbol(std::string_view name) const {
             result.push_back(*entry.uri);
     }
 
+    return result;
+}
+
+bool Indexer::hasPotentialIncluders(const fs::path& canonicalPath) const {
+    IndexReadGuard guard(*this);
+    return includeReferences_.contains(canonicalPath.filename().string()) ||
+           includers_.contains(canonicalPath);
+}
+
+std::vector<fs::path> Indexer::getFilesIncluding(const fs::path& path) {
+    std::error_code ec;
+    auto canonicalPath = fs::weakly_canonical(path, ec);
+    if (ec)
+        return {};
+    IndexWriteGuard guard(*this);
+    if (auto cached = resolvedIncluders_.find(canonicalPath); cached != resolvedIncluders_.end())
+        return cached->second;
+
+    std::vector<fs::path> result;
+    if (auto parsed = includers_.find(canonicalPath); parsed != includers_.end())
+        result = parsed->second;
+    auto name = canonicalPath.filename().string();
+    if (auto references = includeReferences_.find(name); references != includeReferences_.end()) {
+        for (const auto* source : references->second) {
+            auto parent = fs::weakly_canonical(*source, ec);
+            if (ec || includedFiles_.contains(parent))
+                continue;
+            for (const auto& spelling : indexedFiles.at(source).includes) {
+                if (fs::path(spelling).filename() != name)
+                    continue;
+                auto target = parent.parent_path() / spelling;
+                if (!fs::is_regular_file(target, ec)) {
+                    auto candidates = includeToFiles_.find(name);
+                    if (candidates == includeToFiles_.end())
+                        continue;
+                    auto nearest = nearestInclude(spelling, parent, candidates->second);
+                    if (!nearest)
+                        continue;
+                    target = *nearest;
+                }
+                target = fs::weakly_canonical(target, ec);
+                if (!ec && target == canonicalPath) {
+                    result.push_back(std::move(parent));
+                    break;
+                }
+            }
+        }
+    }
+    std::ranges::sort(result);
+    result.erase(std::unique(result.begin(), result.end()), result.end());
+    resolvedIncluders_.emplace(canonicalPath, result);
+    return result;
+}
+
+std::optional<fs::path> Indexer::getNearestFileForInclude(std::string_view path,
+                                                          const fs::path& source) const {
+    IndexReadGuard guard(*this);
+    auto it = includeToFiles_.find(fs::path(path).filename().string());
+    if (it == includeToFiles_.end())
+        return std::nullopt;
+    return nearestInclude(path, source, it->second);
+}
+
+std::vector<fs::path> Indexer::getHeadersForSymbol(std::string_view name) const {
+    IndexReadGuard guard(*this);
+    std::vector<fs::path> result;
+    if (auto it = headerSymbolToFiles_.find(std::string(name)); it != headerSymbolToFiles_.end()) {
+        for (const auto* path : it->second)
+            result.push_back(*path);
+    }
+    std::ranges::sort(result);
+    return result;
+}
+
+std::vector<fs::path> Indexer::getFilesForInclude(std::string_view path) const {
+    auto includePath = fs::path(path).lexically_normal();
+    if (includePath.empty() || includePath.is_absolute())
+        return {};
+    for (const auto& part : includePath) {
+        if (part == "..")
+            return {};
+    }
+
+    IndexReadGuard guard(*this);
+    auto it = includeToFiles_.find(includePath.filename().string());
+    if (it == includeToFiles_.end())
+        return {};
+
+    std::vector<fs::path> result;
+    for (const auto* candidate : it->second) {
+        auto remaining = candidate->lexically_normal();
+        auto suffix = includePath;
+        while (!suffix.empty() && suffix.filename() == remaining.filename()) {
+            suffix = suffix.parent_path();
+            remaining = remaining.parent_path();
+        }
+        if (suffix.empty())
+            result.push_back(*candidate);
+    }
+    std::ranges::sort(result);
     return result;
 }
 
@@ -384,10 +602,7 @@ void Indexer::onWorkspaceDidChangeWatchedFiles(const lsp::DidChangeWatchedFilesP
             }
             case lsp::FileChangeType::Changed: {
                 // Re-index the file: remove old entries, add new ones
-                auto it = uniqueUris_.find(path);
-                if (it != uniqueUris_.end()) {
-                    removePathFromIndex(&(*it));
-                }
+                removePathFromIndex(internUri(path));
 
                 // Re-add with new content
                 if (fs::exists(path))
@@ -396,10 +611,7 @@ void Indexer::onWorkspaceDidChangeWatchedFiles(const lsp::DidChangeWatchedFilesP
             }
             case lsp::FileChangeType::Deleted: {
                 // Remove all entries for this file
-                auto it = uniqueUris_.find(path);
-                if (it != uniqueUris_.end()) {
-                    removePathFromIndex(&(*it));
-                }
+                removePathFromIndex(internUri(path));
                 break;
             }
         }
@@ -510,9 +722,25 @@ void Indexer::startIndexing(const std::vector<std::string>& globs,
 void Indexer::indexAndReport(std::vector<fs::path> pathsToIndex) {
     INFO("Indexing {} files", pathsToIndex.size());
 
+    IndexWriteGuard guard(*this);
+    ScopedTimer t_index("Workspace indexing");
+    includeReferences_.clear();
+    includers_.clear();
+    includedFiles_.clear();
+    resolvedIncluders_.clear();
     {
-        ScopedTimer t_index("Slang Indexing");
-        addDocuments(pathsToIndex);
+        ScopedTimer t_parse("Slang parsing and metadata indexing");
+        auto indexedPaths = indexPaths(pathsToIndex);
+        for (size_t i = 0; i < indexedPaths.size(); ++i)
+            indexPath(pathsToIndex[i], indexedPaths[i]);
+    }
+
+    includeToFiles_.clear();
+    for (const auto& path : pathsToIndex) {
+        const auto* interned = internUri(fs::absolute(path).lexically_normal());
+        auto& paths = includeToFiles_[interned->filename().string()];
+        if (std::ranges::find(paths, interned) == paths.end())
+            paths.push_back(interned);
     }
 
     // Estimate memory usage

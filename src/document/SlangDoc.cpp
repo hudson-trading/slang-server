@@ -42,6 +42,7 @@ SlangDoc::SlangDoc(ServerDriver& driver, URI uri, SourceBuffer buffer) :
 }
 
 std::optional<SourceLocation> SlangDoc::getLocation(const lsp::Position& position) {
+    getSyntaxTree();
     return toSourceLocation(m_buffer.id, position, m_sourceManager);
 }
 
@@ -59,13 +60,17 @@ std::shared_ptr<SlangDoc> SlangDoc::fromTree(ServerDriver& driver,
 
 std::shared_ptr<SlangDoc> SlangDoc::fromText(ServerDriver& driver, const URI& uri,
                                              std::string_view text) {
-    std::string_view path = uri.getPath();
+    auto path = std::filesystem::weakly_canonical(uri.getPath()).string();
     SourceBuffer buffer;
 
     // Check if this path was previously cached (e.g., from an include)
     // If so, we need to replace the old buffer with the editor's version
     if (driver.sm.isCached(path)) {
         auto existingBuffer = driver.sm.readSource(path, nullptr).value();
+        if (existingBuffer.data.size() == text.size() + 1 &&
+            existingBuffer.data.substr(0, text.size()) == text) {
+            return std::make_shared<SlangDoc>(driver, uri, existingBuffer);
+        }
         SmallVector<char> newBuffer;
         newBuffer.insert(newBuffer.end(), text.begin(), text.end());
         if (newBuffer.empty() || newBuffer.back() != '\0')
@@ -91,18 +96,58 @@ const std::string_view SlangDoc::getText() const {
     return m_sourceManager.getSourceText(m_buffer.id);
 }
 
+bool SlangDoc::isMacroOnly() {
+    auto buffer = m_sourceManager.readSource(m_uri.getPath(), nullptr).value();
+    if (m_macroOnlyBuffer != buffer.id) {
+        auto options = m_driver.options;
+        auto ppOptions = options.getOrDefault<parsing::PreprocessorOptions>();
+        ppOptions.maxIncludeDepth = 0;
+        options.set(ppOptions);
+        auto tree = syntax::SyntaxTree::fromBuffer(buffer, m_sourceManager, options);
+        m_macroOnly = tree->root().as<syntax::CompilationUnitSyntax>().members.empty() &&
+                      tree->getIncludeDirectives().empty() && tree->diagnostics().empty() &&
+                      std::ranges::any_of(tree->getDefinedMacros(), [&](const auto* macro) {
+                          return macro->name.location().buffer() == buffer.id;
+                      });
+        m_macroOnlyBuffer = buffer.id;
+    }
+    return m_macroOnly;
+}
+
 std::shared_ptr<syntax::SyntaxTree> SlangDoc::getSyntaxTree() {
+    const auto& path = m_sourceManager.getFullPath(m_buffer.id);
+    if (auto contexts = m_driver.getIncludeContexts(path, true); !contexts.empty()) {
+        const auto& context = contexts.front();
+        auto compilation = context.source->getAnalysis()->getShallowCompilation();
+        auto tree = compilation->getSyntaxTree();
+        if (m_includeCompilation != compilation || m_tree != tree ||
+            m_buffer.id != context.buffer) {
+            m_analysis.reset();
+            m_tree = tree;
+            m_buffer = SourceBuffer{.data = m_sourceManager.getSourceText(context.buffer),
+                                    .library = m_sourceManager.getLibraryFor(context.buffer),
+                                    .id = context.buffer};
+            m_options = tree->options();
+            m_includeCompilation = std::move(compilation);
+        }
+        return m_tree;
+    }
+    if (m_includeCompilation) {
+        m_includeCompilation.reset();
+        m_tree.reset();
+        m_analysis.reset();
+    }
     if (!m_tree) {
         // Will read the cached file data if it exists
         if (!m_sourceManager.isLatestData(m_buffer.id)) {
             m_buffer = m_sourceManager.readSource(m_uri.getPath(), nullptr).value();
         }
-        m_tree = syntax::SyntaxTree::fromBuffer(m_buffer, m_sourceManager, m_options);
+        m_tree = m_driver.parseShallowTree(m_buffer, m_options);
     }
     else if (!hasValidBuffers(m_sourceManager, m_tree)) {
         // Tree has invalid buffers, need to reparse
         m_buffer = m_sourceManager.readSource(m_uri.getPath(), nullptr).value();
-        m_tree = syntax::SyntaxTree::fromBuffer(m_buffer, m_sourceManager, m_options);
+        m_tree = m_driver.parseShallowTree(m_buffer, m_options);
     }
     return m_tree;
 }
@@ -110,10 +155,13 @@ std::shared_ptr<syntax::SyntaxTree> SlangDoc::getSyntaxTree() {
 std::shared_ptr<ShallowAnalysis> SlangDoc::refreshAnalysis(const lsp::RequestContext& ctx) {
     ctx.throwIfCancelled("before analysis");
     auto tree = getSyntaxTree();
-    auto trees = m_driver.getDependentTrees(tree);
-    trees.insert(trees.begin(), tree);
-    auto analysis = std::make_shared<ShallowAnalysis>(m_sourceManager, m_buffer.id, tree, m_options,
-                                                      trees, m_driver.comp.get());
+    auto compilation = m_includeCompilation;
+    if (!compilation) {
+        auto dependencies = m_driver.getDependentTrees(tree);
+        compilation = std::make_shared<ShallowCompilation>(m_sourceManager, tree, m_options,
+                                                           dependencies, m_driver.comp.get());
+    }
+    auto analysis = std::make_shared<ShallowAnalysis>(m_buffer.id, std::move(compilation));
     auto topNames = analysis->getCompilation()->getRoot().topInstances |
                     std::views::transform([](const auto& top) { return top->name; });
     ctx.info("Analyzed {} with tops: {}", getWsRelativePath(), fmt::join(topNames, ", "));
@@ -122,6 +170,7 @@ std::shared_ptr<ShallowAnalysis> SlangDoc::refreshAnalysis(const lsp::RequestCon
 }
 
 std::shared_ptr<ShallowAnalysis> SlangDoc::getAnalysis(const lsp::RequestContext& ctx) {
+    getSyntaxTree();
     if (!m_analysis || !m_analysis->hasValidBuffers())
         return refreshAnalysis(ctx);
     return m_analysis;
@@ -249,6 +298,7 @@ void SlangDoc::onChange(const std::vector<lsp::TextDocumentContentChangeEvent>& 
     // Invalidate pointers to old buffer
     m_tree.reset();
     m_analysis.reset();
+    m_includeCompilation.reset();
 }
 bool SlangDoc::reloadBuffer() {
     auto result = m_sourceManager.reloadBuffer(m_buffer.id);
@@ -259,11 +309,15 @@ bool SlangDoc::reloadBuffer() {
     m_buffer = *result;
     m_tree.reset();
     m_analysis.reset();
+    m_includeCompilation.reset();
     return true;
 }
 
 void SlangDoc::issueParseDiagnostics(DiagnosticEngine& diagEngine) {
     for (auto& diag : getSyntaxTree()->diagnostics()) {
+        if (m_includeCompilation &&
+            m_sourceManager.getFullyOriginalLoc(diag.location).buffer() != m_buffer.id)
+            continue;
         diagEngine.issue(diag);
     }
 }
@@ -274,6 +328,9 @@ void SlangDoc::issueDiagnosticsTo(DiagnosticEngine& diagEngine, const lsp::Reque
 
     // Parse diags (just this tree, others will be handled by their SlangDoc objects
     for (auto& diag : getSyntaxTree()->diagnostics()) {
+        if (m_includeCompilation &&
+            m_sourceManager.getFullyOriginalLoc(diag.location).buffer() != m_buffer.id)
+            continue;
         diagEngine.issue(diag);
     }
 

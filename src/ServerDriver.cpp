@@ -63,7 +63,7 @@ ServerDriver::ServerDriver(Indexer& indexer, SlangLspClient& client, const Confi
                            bool requireValidConfig) :
     sm(driver.sourceManager), diagEngine(driver.diagEngine), client(client),
     diagClient(std::make_shared<ServerDiagClient>(sm, client)),
-    completions(*this, indexer, sm, options), codeActions(*this, sm), m_indexer(indexer),
+    completions(*this, indexer, sm, options), codeActions(*this, sm, indexer), m_indexer(indexer),
     m_config(config), m_workspacePathPrefix(workspaceFolder.value_or("")) {
     if (!m_workspacePathPrefix.empty() && m_workspacePathPrefix.back() != '/' &&
         m_workspacePathPrefix.back() != '\\') {
@@ -128,6 +128,23 @@ bool ServerDriver::parseAndLoadSources(const std::vector<std::string>& buildfile
         }
     }
 
+    for (const auto& directory : m_config.incdirs.value()) {
+        auto path = std::filesystem::path(directory);
+        if (path.is_relative() && !m_workspacePathPrefix.empty())
+            path = std::filesystem::path(m_workspacePathPrefix) / path;
+        if (auto ec = sm.addUserDirectories(path.string())) {
+            ok = false;
+            auto message = fmt::format("Cannot use include directory {}: {}", path.string(),
+                                       ec.message());
+            if (requireValidConfig) {
+                WARN("Config reload failed: {}", message);
+            }
+            else {
+                client.showError(message);
+            }
+        }
+    }
+
     if (!ok && requireValidConfig) {
         WARN("Config reload failed: {}", driver.textDiagClient->getString());
         return false;
@@ -166,6 +183,7 @@ bool ServerDriver::parseAndLoadSources(const std::vector<std::string>& buildfile
     // Create documents from syntax trees
     INFO("Creating ServerDriver with {} trees", driver.syntaxTrees.size());
     for (auto& tree : driver.syntaxTrees) {
+        m_indexer.updateIncludes(*tree);
         for (auto buffer : tree->getSourceBufferIds()) {
             auto path = sm.getFullPath(buffer);
             if (!path.empty())
@@ -199,7 +217,17 @@ void ServerDriver::analyzeDocument(SlangDoc& doc, const lsp::RequestContext& ctx
 }
 
 void ServerDriver::onDocDidSave(SlangDoc& doc) {
-    m_indexer.updateDocument(doc.getURI().getPath(), *doc.getSyntaxTree());
+    auto tree = doc.getSyntaxTree();
+    if (sm.getFullPath(tree->getSourceBufferIds()[0]) != sm.getFullPath(doc.getBuffer())) {
+        auto indexOptions = options;
+        auto ppOptions = indexOptions.getOrDefault<parsing::PreprocessorOptions>();
+        ppOptions.maxIncludeDepth = 0;
+        indexOptions.set(ppOptions);
+        tree = syntax::SyntaxTree::fromBuffer(
+            SourceBuffer{.data = doc.getText(), .id = doc.getBuffer()}, sm, indexOptions);
+    }
+    m_indexer.updateDocument(doc.getURI().getPath(), *tree);
+    m_indexer.updateIncludes(*doc.getSyntaxTree());
 
     if (!comp) {
         analyzeDocument(doc);
@@ -213,7 +241,7 @@ void ServerDriver::onDocDidSave(SlangDoc& doc) {
                 ERROR("Open Doc {} not found", uri.getPath());
                 continue;
             }
-            if (it->second->hasAnalysis())
+            if (it->second->hasAnalysis() && it->second->getSyntaxTree() != doc.getSyntaxTree())
                 continue;
 
             analyzeDocument(*it->second);
@@ -244,6 +272,7 @@ void ServerDriver::copyOpenDocumentsFrom(const ServerDriver* oldDriver) {
     if (!oldDriver)
         return;
 
+    m_includeSelections = oldDriver->m_includeSelections;
     completions.resolveEdits = oldDriver->completions.resolveEdits;
     oldDriver->diagClient->clearAndPush();
     for (const auto& uri : oldDriver->m_openDocs) {
@@ -481,12 +510,179 @@ bool ServerDriver::setActiveInstance(std::string_view hierPath) {
     return true;
 }
 
+std::vector<ServerDriver::IncludeContext> ServerDriver::getIncludeContexts(
+    const std::filesystem::path& path, bool selectedOnly) {
+    const auto canonical = std::filesystem::weakly_canonical(path);
+    if (!m_indexer.hasPotentialIncluders(canonical))
+        return {};
+    std::error_code ec;
+    if ((!sm.isCached(canonical) && !std::filesystem::is_regular_file(canonical, ec)) ||
+        getDocument(URI::fromFile(canonical))->isMacroOnly())
+        return {};
+    std::vector<std::filesystem::path> pending{canonical};
+    std::unordered_set<std::filesystem::path> visited;
+    std::vector<std::filesystem::path> sources;
+    std::optional<IncludeContextSelection> preferred;
+    for (size_t i = 0; i < pending.size(); ++i) {
+        const auto current = pending[i];
+        if (!visited.insert(current).second)
+            continue;
+        if (!preferred) {
+            if (auto it = m_includeSelections.find(current); it != m_includeSelections.end()) {
+                preferred = it->second;
+                if (current != canonical)
+                    preferred->occurrence = 0;
+            }
+        }
+        auto parents = m_indexer.getFilesIncluding(current);
+        std::ranges::sort(parents);
+        if (parents.empty() && current != canonical)
+            sources.push_back(current);
+        pending.insert(pending.end(), parents.begin(), parents.end());
+    }
+    std::ranges::sort(sources);
+    if (sources.empty())
+        return {};
+    if (preferred) {
+        auto it = std::ranges::find(sources, std::filesystem::path(preferred->source.getPath()));
+        if (it != sources.end())
+            std::rotate(sources.begin(), it, it + 1);
+    }
+
+    std::vector<IncludeContext> contexts;
+    for (const auto& source : sources) {
+        std::error_code ec;
+        if (!sm.isCached(source) && !std::filesystem::is_regular_file(source, ec))
+            continue;
+        auto doc = getDocument(URI::fromFile(source));
+        if (!doc)
+            continue;
+        auto tree = doc->getSyntaxTree();
+        size_t occurrence = 0;
+        for (const auto& include : tree->getIncludeDirectives()) {
+            if (!include.buffer || sm.getFullPath(include.buffer.id) != canonical)
+                continue;
+            contexts.push_back({.source = doc,
+                                .buffer = include.buffer.id,
+                                .location = toLocation(include.syntax->sourceRange(), sm),
+                                .occurrence = occurrence++});
+        }
+        if (selectedOnly && !contexts.empty())
+            break;
+    }
+    if (preferred) {
+        auto it = std::ranges::find_if(contexts, [&](const auto& context) {
+            return context.source->getURI() == preferred->source &&
+                   context.occurrence == preferred->occurrence;
+        });
+        if (it != contexts.end())
+            std::rotate(contexts.begin(), it, it + 1);
+    }
+    if (selectedOnly && contexts.size() > 1)
+        contexts.erase(contexts.begin() + 1, contexts.end());
+    return contexts;
+}
+
+bool ServerDriver::setIncludeContext(const IncludeContextSelection& selection) {
+    auto canonical = std::filesystem::weakly_canonical(selection.uri.getPath());
+    auto source = URI::fromFile(std::filesystem::weakly_canonical(selection.source.getPath()));
+    auto contexts = getIncludeContexts(canonical);
+    if (std::ranges::none_of(contexts, [&](const auto& context) {
+            return context.source->getURI() == source && context.occurrence == selection.occurrence;
+        }))
+        return false;
+    m_includeSelections.insert_or_assign(
+        canonical, IncludeContextSelection{.uri = URI::fromFile(canonical),
+                                           .source = source,
+                                           .occurrence = selection.occurrence});
+    invalidateAnalysesAndRefreshClient();
+    for (const auto& uri : m_openDocs)
+        analyzeDocument(*getDocument(uri));
+    return true;
+}
+
+std::shared_ptr<syntax::SyntaxTree> ServerDriver::parseShallowTree(SourceBuffer buffer,
+                                                                   Bag& documentOptions) {
+    documentOptions = options;
+    auto tree = syntax::SyntaxTree::fromBuffer(buffer, sm, documentOptions);
+    if (!m_buildSourceUris.contains(URI::fromFile(sm.getFullPath(buffer.id)))) {
+        const auto configured = options.getOrDefault<parsing::PreprocessorOptions>();
+        auto findTarget = [&](const parsing::IncludeMetadata& include) {
+            auto location = sm.getFullyExpandedLoc(include.syntax->sourceRange().start());
+            auto normal = sm.readHeader(include.path, location, sm.getLibraryFor(location.buffer()),
+                                        false, configured.additionalIncludePaths);
+            auto target = normal ? std::optional(sm.getFullPath(normal->id))
+                                 : m_indexer.getNearestFileForInclude(
+                                       include.path, sm.getFullPath(location.buffer()));
+            return std::pair{std::move(target), bool(normal)};
+        };
+        std::vector<std::filesystem::path> inferred;
+        while (true) {
+            auto ppOptions = configured;
+            auto& paths = ppOptions.additionalIncludePaths;
+            auto proposed = inferred;
+            for (const auto& include : tree->getIncludeDirectives()) {
+                if (include.isSystem)
+                    continue;
+                auto [target, normal] = findTarget(include);
+                if (!target)
+                    continue;
+                auto suffix = std::filesystem::path(include.path).lexically_normal();
+                if (suffix.is_absolute() ||
+                    std::ranges::any_of(suffix, [](const auto& part) { return part == ".."; }))
+                    continue;
+                auto directory = *target;
+                while (!suffix.empty() && directory.filename() == suffix.filename()) {
+                    directory = directory.parent_path();
+                    suffix = suffix.parent_path();
+                }
+                if (!suffix.empty())
+                    continue;
+                // Additional paths precede global -I paths, so keep known resolutions first.
+                auto& destinations = normal ? paths : proposed;
+                if (std::ranges::find(destinations, directory) == destinations.end())
+                    destinations.push_back(std::move(directory));
+            }
+            if (proposed == inferred)
+                break;
+            for (const auto& directory : proposed) {
+                if (std::ranges::find(paths, directory) == paths.end())
+                    paths.push_back(directory);
+            }
+            auto proposedOptions = options;
+            proposedOptions.set(std::move(ppOptions));
+            auto candidate = syntax::SyntaxTree::fromBuffer(buffer, sm, proposedOptions);
+            bool compatible = true;
+            for (const auto& include : candidate->getIncludeDirectives()) {
+                if (include.isSystem || !include.buffer)
+                    continue;
+                auto expected = findTarget(include).first;
+                if (!expected || std::filesystem::weakly_canonical(*expected) !=
+                                     sm.getFullPath(include.buffer.id)) {
+                    compatible = false;
+                    break;
+                }
+            }
+            // One tree has one search order; conflicting choices need explicit configuration.
+            if (!compatible)
+                break;
+            inferred = std::move(proposed);
+            documentOptions = std::move(proposedOptions);
+            tree = std::move(candidate);
+        }
+    }
+    m_indexer.updateIncludes(*tree);
+    return tree;
+}
+
 std::vector<std::shared_ptr<syntax::SyntaxTree>> ServerDriver::getDependentTrees(
     std::shared_ptr<syntax::SyntaxTree> tree) {
     std::vector<std::shared_ptr<syntax::SyntaxTree>> result;
     std::queue<std::shared_ptr<syntax::SyntaxTree>> treesToProcess;
     flat_hash_set<std::string_view> knownNames;
     flat_hash_set<std::string> processedFiles;
+    for (auto buffer : tree->getSourceBufferIds())
+        processedFiles.insert(sm.getFullPath(buffer).string());
 
     treesToProcess.push(tree);
 
@@ -509,9 +705,10 @@ std::vector<std::shared_ptr<syntax::SyntaxTree>> ServerDriver::getDependentTrees
             if (!symbolLoc)
                 return;
 
-            std::string filePath = symbolLoc->uri->string();
+            std::string filePath = std::filesystem::weakly_canonical(*symbolLoc->uri).string();
 
-            // Check if we've already processed this file to avoid cycles
+            // An included file may declare this name only under different preprocessor flags.
+            // Reloading it would discard that context and can re-enter this compilation's analysis.
             if (processedFiles.find(filePath) != processedFiles.end())
                 return;
 
@@ -520,6 +717,8 @@ std::vector<std::shared_ptr<syntax::SyntaxTree>> ServerDriver::getDependentTrees
             auto newdoc = getDocument(URI::fromFile(filePath));
             if (newdoc) {
                 auto dependencyTree = newdoc->getSyntaxTree();
+                for (auto buffer : dependencyTree->getSourceBufferIds())
+                    processedFiles.insert(sm.getFullPath(buffer).string());
                 result.push_back(dependencyTree);
 
                 // Recurse into packages and interfaces, since they may contain types from other
@@ -1392,12 +1591,12 @@ std::optional<std::vector<lsp::Location>> ServerDriver::getDocReferences(
             if (!referenceDoc || !referenceDoc->hasAnalysis())
                 continue;
 
+            auto referenceAnalysis = referenceDoc->getAnalysis(ctx);
             auto referenceLoc = toSourceLocation(referenceDoc->getBuffer(),
                                                  references[i].range.start, sm);
             if (!referenceLoc)
                 continue;
 
-            auto referenceAnalysis = referenceDoc->getAnalysis(ctx);
             auto* referenceToken = referenceAnalysis->syntaxes.getWordTokenAt(*referenceLoc);
             if (!referenceToken)
                 continue;
