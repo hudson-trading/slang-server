@@ -189,7 +189,8 @@ public:
         auto* symbol = context.analysis->getSymbolAtToken(receiverToken);
         if (!symbol) {
             WARN("No symbol found for token {}, checking index.", receiverToken->valueText());
-            auto symbolLoc = getIndexer(dispatch).getFirstSymbolLoc(receiverToken->valueText());
+            auto symbolLoc = getIndexer(dispatch).getNearestSymbolLoc(receiverToken->valueText(),
+                                                                      doc->getURI().getPath());
             if (!symbolLoc) {
                 WARN("No symbol found in index for {}", receiverToken->valueText());
                 return;

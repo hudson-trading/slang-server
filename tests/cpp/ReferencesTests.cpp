@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "utils/ServerHarness.h"
+#include <catch2/generators/catch_generators.hpp>
 
 using namespace slang;
 
@@ -134,6 +135,164 @@ TEST_CASE("FindReferences - No Symbol") {
     });
 
     CHECK(!refs.has_value()); // Should return nullopt
+}
+
+TEST_CASE("Nearest declarations govern definitions references and rename") {
+    const std::string kind = GENERATE("module", "interface", "package");
+    const bool tied = GENERATE(false, true);
+    CAPTURE(kind, tied);
+    ServerHarness server;
+    const auto declaration = kind + " nearest_unit; end" + kind + "\n";
+    const std::string use = kind == "package" ? "module top; import nearest_unit::*; endmodule\n"
+                                              : "module top; nearest_unit child(); endmodule\n";
+    auto first = server.openFile("nearest/a/decl.sv", declaration);
+    first.save();
+    auto second = server.openFile("nearest/b/decl.sv", declaration);
+    second.save();
+    auto distant = server.openFile("nearest/c/deep/decl.sv", declaration);
+    distant.save();
+    auto firstUse = server.openFile("nearest/a/use.sv", use);
+    firstUse.save();
+    auto secondUse = server.openFile("nearest/b/use.sv", use);
+    secondUse.save();
+
+    auto firstCursor = firstUse.before("nearest_unit");
+    auto secondCursor = secondUse.before("nearest_unit");
+    for (const auto& [cursor, expected] :
+         {std::pair{firstCursor, first.m_uri}, std::pair{secondCursor, second.m_uri}}) {
+        auto definitions = Cursor(cursor).getDefinitions();
+        REQUIRE(definitions.size() == 1);
+        CHECK(definitions.front().targetUri == expected);
+    }
+
+    std::optional<DocumentHandle> tiedUse;
+    std::vector<Cursor> queries{firstCursor, first.before("nearest_unit"), secondCursor,
+                                second.before("nearest_unit")};
+    if (tied) {
+        tiedUse.emplace(server.openFile("nearest/use.sv", use));
+        tiedUse->save();
+        auto cursor = tiedUse->before("nearest_unit");
+        auto definitions = cursor.getDefinitions();
+        REQUIRE(definitions.size() == 2);
+        std::set<std::string> paths;
+        for (const auto& definition : definitions)
+            paths.insert(definition.targetUri.str());
+        CHECK(paths == std::set<std::string>{first.m_uri.str(), second.m_uri.str()});
+        queries.push_back(cursor);
+    }
+
+    firstUse.close();
+    secondUse.close();
+    for (const auto& cursor : queries) {
+        CAPTURE(cursor.getUri().str());
+        const bool firstSide = cursor.getUri() == first.m_uri || cursor.getUri() == firstUse.m_uri;
+        std::set<std::string> declarations{firstSide ? first.m_uri.str() : second.m_uri.str()};
+        std::set<std::string> usages{firstSide ? firstUse.m_uri.str() : secondUse.m_uri.str()};
+        if (tied) {
+            declarations = {first.m_uri.str(), second.m_uri.str()};
+            usages = {firstUse.m_uri.str(), secondUse.m_uri.str(), tiedUse->m_uri.str()};
+        }
+        for (bool includeDeclaration : {false, true}) {
+            auto references = server.getDocReferences({
+                .context = {.includeDeclaration = includeDeclaration},
+                .textDocument = {.uri = cursor.getUri()},
+                .position = cursor.getPosition(),
+            });
+            REQUIRE(references);
+            auto expected = usages;
+            if (includeDeclaration)
+                expected.insert(declarations.begin(), declarations.end());
+            std::set<std::string> paths;
+            for (const auto& reference : *references)
+                paths.insert(reference.uri.str());
+            CHECK(references->size() == expected.size());
+            CHECK(paths == expected);
+        }
+        auto edits = server.getDocRename({.textDocument = {.uri = cursor.getUri()},
+                                          .position = cursor.getPosition(),
+                                          .newName = "renamed_unit"});
+        REQUIRE(edits);
+        REQUIRE(edits->changes);
+        auto expected = usages;
+        expected.insert(declarations.begin(), declarations.end());
+        std::set<std::string> paths;
+        for (const auto& [uri, changes] : *edits->changes) {
+            paths.insert(uri);
+            REQUIRE(changes.size() == 1);
+            CHECK(changes.front().newText == "renamed_unit");
+        }
+        CHECK(paths == expected);
+    }
+}
+
+TEST_CASE("Nearest package members exclude references to other package copies") {
+    const bool wildcard = GENERATE(false, true);
+    CAPTURE(wildcard);
+    ServerHarness server;
+    const std::string declaration = "package nearest_pkg; parameter int WIDTH = 8; endpackage\n";
+    const std::string use =
+        wildcard ? "module top; import nearest_pkg::*; logic [WIDTH-1:0] value; endmodule\n"
+                 : "module top; logic [nearest_pkg::WIDTH-1:0] value; endmodule\n";
+    auto first = server.openFile("members/a/decl.sv", declaration);
+    first.save();
+    auto second = server.openFile("members/b/decl.sv", declaration);
+    second.save();
+    auto firstUse = server.openFile("members/a/use.sv", use);
+    firstUse.save();
+    auto secondUse = server.openFile("members/b/use.sv", use);
+    secondUse.save();
+    for (auto cursor : {first.before("WIDTH"), firstUse.before("WIDTH"), second.before("WIDTH"),
+                        secondUse.before("WIDTH")}) {
+        const bool firstSide = cursor.getUri() == first.m_uri || cursor.getUri() == firstUse.m_uri;
+        const auto& declarationUri = firstSide ? first.m_uri : second.m_uri;
+        const auto& useUri = firstSide ? firstUse.m_uri : secondUse.m_uri;
+        auto definitions = cursor.getDefinitions();
+        REQUIRE(definitions.size() == 1);
+        CHECK(definitions.front().targetUri == declarationUri);
+        auto references = server.getDocReferences({.context = {.includeDeclaration = true},
+                                                   .textDocument = {.uri = cursor.getUri()},
+                                                   .position = cursor.getPosition()});
+        REQUIRE(references);
+        REQUIRE(references->size() == 2);
+        std::set<std::string> paths;
+        for (const auto& reference : *references)
+            paths.insert(reference.uri.str());
+        CHECK(paths == std::set<std::string>{declarationUri.str(), useUri.str()});
+        auto edits = server.getDocRename({.textDocument = {.uri = cursor.getUri()},
+                                          .position = cursor.getPosition(),
+                                          .newName = "NEW_WIDTH"});
+        REQUIRE(edits);
+        REQUIRE(edits->changes);
+        CHECK(edits->changes->size() == 2);
+        CHECK(edits->changes->contains(declarationUri.str()));
+        CHECK(edits->changes->contains(useUri.str()));
+    }
+}
+
+TEST_CASE("Nearest declarations use the included reference file") {
+    ServerHarness server("nearest_symbols");
+    auto source = server.openFile("a/top.sv",
+                                  "module top;\n`include \"../b/uses.svh\"\nendmodule\n");
+    source.save();
+    auto header = server.openFile("b/uses.svh");
+    for (const auto* name : {"shared_mod", "shared_pkg"}) {
+        auto cursor = header.before(name);
+        auto definitions = cursor.getDefinitions();
+        REQUIRE(definitions.size() == 1);
+        auto expected = URI::fromFile(fs::current_path() / "b" / (std::string(name) + ".sv"));
+        CHECK(definitions.front().targetUri == expected);
+        auto references = server.getDocReferences({.context = {.includeDeclaration = true},
+                                                   .textDocument = {.uri = header.m_uri},
+                                                   .position = cursor.getPosition()});
+        REQUIRE(references);
+        auto excluded = URI::fromFile(fs::current_path() / "a" / (std::string(name) + ".sv"));
+        CHECK(
+            std::ranges::any_of(*references, [&](const auto& ref) { return ref.uri == expected; }));
+        CHECK(std::ranges::any_of(*references,
+                                  [&](const auto& ref) { return ref.uri == header.m_uri; }));
+        CHECK(std::ranges::none_of(*references,
+                                   [&](const auto& ref) { return ref.uri == excluded; }));
+    }
 }
 
 TEST_CASE("FindReferences - Module Name") {
