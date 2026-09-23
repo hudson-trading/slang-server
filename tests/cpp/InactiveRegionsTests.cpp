@@ -165,7 +165,45 @@ TEST_CASE("InactiveRegions_MacroInDisabledBranch") {
 
     // The macro usage `WIDTH should not split the disabled region
     REQUIRE(disabled.size() == 1);
-    CHECK(sm.getSourceText(disabled[0]) == "logic [`WIDTH-1:0] a;");
+    CHECK(sm.getSourceText(disabled[0]) == "\n    logic [`WIDTH-1:0] a;\n");
+}
+
+TEST_CASE("InactiveRegions_CommentsAndWhitespace") {
+    using namespace slang;
+
+    const std::string_view bodies[] = {
+        "\n    logic a; // trailing comment\n    // disabled comment\n",
+        "\n    // leading comment\n    logic a;\n",
+        "\n    // comment only\n",
+        "\n    /* comment only */\n",
+        " logic a; ",
+        " \t\n\n",
+        "",
+    };
+
+    for (std::string_view prefix :
+         {"`ifdef FOO", "`ifndef FOO\n`else", "`ifndef FOO\n`elsif BAR", "`ifdef (FOO || BAR)"}) {
+        for (auto body : bodies) {
+            CAPTURE(prefix, body);
+            SourceManager sm;
+            auto tree = syntax::SyntaxTree::fromText(
+                "// preceding comment\n" + std::string(prefix) + std::string(body) + "`endif\n",
+                sm);
+            server::SyntaxIndexer indexer(*tree);
+
+            if (body.empty()) {
+                CHECK(indexer.disabledRegions.empty());
+            }
+            else {
+                REQUIRE(indexer.disabledRegions.size() == 1);
+                CHECK(sm.getSourceText(indexer.disabledRegions[0]) == body);
+            }
+
+            CHECK(std::ranges::none_of(indexer.collected, [](const auto* token) {
+                return token->kind == parsing::TokenKind::Placeholder;
+            }));
+        }
+    }
 }
 
 TEST_CASE("InactiveRegions_NestedDirectivesMerged") {
