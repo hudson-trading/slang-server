@@ -292,6 +292,7 @@ add_library(
   ${CMAKE_CURRENT_BINARY_DIR}/VersionInfo.cpp
   src/SystemTaskDocs.cpp
   src/ast/ActiveDesignContext.cpp
+  src/ast/ConeResult.cpp
   src/ast/ServerCompilation.cpp
   src/ast/ServerCompilationAnalysis.cpp
   src/ast/WcpClient.cpp

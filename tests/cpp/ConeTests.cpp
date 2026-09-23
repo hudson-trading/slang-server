@@ -159,3 +159,19 @@ TEST_CASE("Cone locations deduplicate generated multi-bit drivers") {
     server.checkConeCommand("slang.getDriversWithLocation", "test.bit_driven",
                             {{"test.bit_driver", &declaration}});
 }
+
+TEST_CASE("Undriven signals have empty driver cones") {
+    ServerHarness server;
+    auto doc = server.openFile("undriven_cone.sv", R"(
+module top;
+    logic undriven;
+    logic unused;
+    logic result;
+    assign result = undriven;
+endmodule
+)");
+    server.setTopLevel(std::string(doc.m_uri.getPath()));
+
+    server.checkConeCommand("slang.getDriversWithLocation", "top.undriven", {});
+    server.checkConeCommand("slang.getDriversWithLocation", "top.unused", {});
+}
