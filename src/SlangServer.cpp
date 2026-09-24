@@ -307,10 +307,16 @@ void SlangServer::onInitialized(const lsp::InitializedParams&) {
                                            lsp::RelativePattern{.baseUri = m_workspaceFolder->uri,
                                                                 .pattern = "**/*.{sv,svh,v,vh}"},
                                        .kind = lsp::WatchKind::Change},
-                // Config files
+                // Config files. These are the only two workspace-relative files
+                // loadConfig() reads, so watching all of .slang/**/*.json just
+                // means unrelated files under .slang/ force a config reload.
                 lsp::FileSystemWatcher{.globPattern =
                                            lsp::RelativePattern{.baseUri = m_workspaceFolder->uri,
-                                                                .pattern = ".slang/**/*.json"},
+                                                                .pattern = ".slang/server.json"},
+                                       .kind = lsp::WatchKind::Change},
+                lsp::FileSystemWatcher{.globPattern =
+                                           lsp::RelativePattern{.baseUri = m_workspaceFolder->uri,
+                                                                .pattern = ".slang/local/server.json"},
                                        .kind = lsp::WatchKind::Change},
                 // Build/flag files
                 lsp::FileSystemWatcher{.globPattern =
@@ -934,12 +940,23 @@ void SlangServer::onDocDidClose(const lsp::DidCloseTextDocumentParams& params) {
     m_driver->closeDocument(params.textDocument.uri);
 }
 
+namespace {
+
+/// The workspace-relative config files loadConfig() reads. Any other json under
+/// .slang/ is not ours and must not trigger a reload.
+bool isConfigPath(std::string_view path) {
+    return path.ends_with("/.slang/server.json") ||
+           path.ends_with("/.slang/local/server.json");
+}
+
+} // namespace
+
 void SlangServer::onWorkspaceDidChangeWatchedFiles(const lsp::DidChangeWatchedFilesParams& params) {
     // Check if any config or active build files changed
     bool needsReload = false;
     for (const auto& change : params.changes) {
         auto path = change.uri.getPath();
-        if (path.ends_with(".json")) {
+        if (isConfigPath(path)) {
             needsReload = true;
             break;
         }
