@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "completions/CompletionContext.h"
+#include "completions/CompletionDispatch.h"
 #include "completions/InstanceCompletions.h"
 #include "completions/SystemTaskCompletions.h"
 #include "lsp/LspTypes.h"
@@ -50,6 +51,56 @@ lsp::InitializeParams makeCompletionResolveParams(std::vector<std::string> prope
 }
 
 } // namespace
+
+TEST_CASE("Unmatched completion triggers do not fall back to lexical suggestions") {
+    ServerHarness server("repo1");
+
+    for (const auto& trigger : completions::completionTriggerCharacters()) {
+        CAPTURE(trigger);
+        for (const auto& source : {
+                 "module top; // " + trigger + "\nendmodule",
+                 "module top; /* " + trigger + " */ endmodule",
+                 "module top; string text = \"" + trigger + "\"; endmodule",
+             }) {
+            CAPTURE(source);
+            auto doc = server.openFile("unmatched_trigger.sv", source);
+            auto cursor = doc.after(trigger);
+            CHECK(cursor.getCompletions(trigger).empty());
+            CHECK_FALSE(cursor.getCompletions().empty());
+            doc.close();
+        }
+    }
+}
+
+TEST_CASE("Expression delimiters require an explicit scope completion request") {
+    ServerHarness server("repo1");
+    auto doc = server.openFile("expression_trigger.sv", R"(
+    module top;
+        int source_value;
+        int values[4];
+        function void consume(int arg);
+        endfunction
+        initial begin
+            consume(0);
+            source_value = values[0];
+            source_value = values[3:0];
+        end
+    endmodule
+    )");
+    for (const auto& [text, trigger] : {
+             std::pair{"initial begin\n            consume(", "("},
+             std::pair{"source_value = values[", "["},
+             std::pair{"values[3:", ":"},
+         }) {
+        CAPTURE(text);
+        auto cursor = doc.after(text);
+        CHECK(cursor.getCompletions(trigger).empty());
+        auto items = cursor.getCompletions();
+        CHECK(std::ranges::any_of(items, [](const CompletionHandle& item) {
+            return item.m_item.label == "source_value";
+        }));
+    }
+}
 
 TEST_CASE("MacroCompletion") {
     ServerHarness server("repo1");
@@ -690,7 +741,7 @@ TEST_CASE("MultidimensionalInstanceArrayCompletion") {
     endmodule
     )");
 
-    auto items = doc.after("int result = array_data[").getCompletions("[");
+    auto items = doc.after("int result = array_data[").getCompletions();
     auto instance = std::ranges::find(items, "instances", [](const CompletionHandle& item) {
         return item.m_item.label;
     });
