@@ -157,6 +157,9 @@ public:
     void getCompletions(std::vector<lsp::CompletionItem>& results, CompletionDispatch& dispatch,
                         const std::shared_ptr<SlangDoc>& doc,
                         const CompletionContext& context) const final {
+        if (context.lspContext.triggerKind == lsp::CompletionTriggerKind::TriggerCharacter)
+            return;
+
         INFO("General completions with context: {}", toString(context.kind));
         InstanceCompletionQuery::addCompletions(results, getIndexer(dispatch), context);
         if (context.scope) {
