@@ -320,6 +320,8 @@ export abstract class ExtensionComponent extends ExtensionNode {
         if (node instanceof CommandNode) {
           let cmd = { command: node.configPath, ...node.obj }
           commands.push(cmd)
+        } else if (node instanceof ServerCommandNode) {
+          commands.push({ command: node.command, title: node.title })
         }
       })
 
@@ -394,6 +396,16 @@ interface TreeItemButtonSpec extends ContextCommandSpec {
 //   // Override the view when clause for external view buttons
 //   viewOverride?: string
 // }
+
+/** Palette metadata for a command registered automatically by the language client. */
+export class ServerCommandNode extends ExtensionNode {
+  constructor(
+    readonly command: string,
+    readonly title: string
+  ) {
+    super()
+  }
+}
 
 export class CommandNode<
   Spec extends ContextCommandSpec = CommandConfigSpec,

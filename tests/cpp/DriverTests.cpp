@@ -450,6 +450,7 @@ TEST_CASE("Editing and saving includers updates shared header context") {
     auto second = server.openFile("second_pkg.sv");
     auto header = server.openFile("shared.svh");
     auto path = fs::current_path() / "shared.svh";
+    auto directories = server.m_indexer.getIncludeDirectories();
     CHECK(header.doc->getCompilation() != second.doc->getCompilation());
 
     first.replaceAll("package first_pkg; endpackage\n");
@@ -478,6 +479,7 @@ TEST_CASE("Editing and saving includers updates shared header context") {
     REQUIRE(lenses->size() == 1);
     REQUIRE(lenses->front().command);
     CHECK(lenses->front().command->title == "Included by third_pkg.sv:2");
+    CHECK(server.m_indexer.getIncludeDirectories() == directories);
 }
 
 TEST_CASE("Deleted and renamed includers do not prevent opening their headers") {
@@ -524,6 +526,7 @@ TEST_CASE("Deleted and renamed includers do not prevent opening their headers") 
     else {
         CHECK(header.doc->getSyntaxTree()->getSourceBufferIds()[0] == header.doc->getBuffer());
     }
+    CHECK(server.m_indexer.getIncludeDirectories().empty());
 }
 
 TEST_CASE("External includer edits refresh unopened cached context") {
@@ -554,6 +557,7 @@ TEST_CASE("External includer edits refresh unopened cached context") {
     CHECK(second.doc->getCompilation() == parent->getCompilation());
     CHECK(server.m_indexer.getFilesIncluding(secondPath) == std::vector<fs::path>{source});
     CHECK(second.getDiagnostics().empty());
+    CHECK(server.m_indexer.getIncludeDirectories().empty());
 }
 
 TEST_CASE("Editing an included header rebuilds the shared package analysis") {
@@ -588,6 +592,7 @@ TEST_CASE("Editing an included header rebuilds the shared package analysis") {
 
 TEST_CASE("Normal indexing resolves headers without inferring workspace include directories") {
     ServerHarness server("include_index");
+    CHECK(server.m_indexer.getIncludeDirectories().empty());
     CHECK(server.getConfig().incdirs.value().empty());
     CHECK_FALSE(server.sourceManager().readHeader("entry.svh", {}, nullptr, false, {}));
     auto doc = server.openFile("pkg.sv");

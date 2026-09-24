@@ -28,6 +28,7 @@
 #include <memory>
 #include <optional>
 #include <ranges>
+#include <rfl/DefaultIfMissing.hpp>
 #include <rfl/Variant.hpp>
 #include <rfl/from_generic.hpp>
 #include <string>
@@ -41,6 +42,7 @@
 #include "slang/text/SourceLocation.h"
 #include "slang/text/SourceManager.h"
 #include "slang/util/OS.h"
+#include "slang/util/ScopeGuard.h"
 #include "slang/util/TimeTrace.h"
 #include "slang/util/VersionInfo.h"
 
@@ -159,6 +161,8 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
 
     // Config modification
     registerCommand<std::string, std::monostate, &SlangServer::addDefine>("slang.addDefine");
+    registerCommand<std::nullopt_t, bool>("slang.autoConfigure",
+                                          [this](std::monostate) { return autoConfigure({}); });
 
     if (params.workspaceFolders.has_value() && !params.workspaceFolders->empty()) {
         auto folders = params.workspaceFolders.value();
@@ -376,6 +380,7 @@ std::monostate SlangServer::setTopLevel(const std::string& path) {
     }
 
     INFO("Setting top level to {}", topPath.string());
+    m_buildfile = std::nullopt;
     m_topFile = topPath.string();
 
     m_driver = ServerDriver::createFromTop(m_indexer, m_client, m_config, URI::fromFile(topPath),
@@ -389,6 +394,7 @@ std::monostate SlangServer::setBuildFile(const std::string& path) {
         setExplore();
         return std::monostate{};
     }
+    m_topFile = std::nullopt;
     m_buildfile = path;
 
     const auto workspacePath = m_workspaceFolder ? std::optional<std::string_view>(
@@ -899,6 +905,296 @@ std::monostate SlangServer::addDefine(const std::string& macroName) {
     return {};
 }
 
+bool SlangServer::autoConfigure(const std::monostate&) {
+    if (!m_workspaceFolder) {
+        m_client.showError("Cannot auto-configure: no workspace folder");
+        return false;
+    }
+
+    const auto root = fs::path(m_workspaceFolder->uri.getPath());
+    const auto configPath = root / ".slang/server.json";
+    try {
+        rfl::Generic::Object obj;
+        std::vector<std::string> incdirs;
+        if (fs::exists(configPath)) {
+            auto file = std::ifstream(configPath);
+            if (!file)
+                throw std::runtime_error("cannot read " + configPath.string());
+            auto text = std::string(std::istreambuf_iterator<char>(file), {});
+            auto json = rfl::json::read<rfl::Generic>(text, YYJSON_READ_ALLOW_COMMENTS |
+                                                                YYJSON_READ_ALLOW_TRAILING_COMMAS);
+            if (!json || !json->to_object())
+                throw std::runtime_error("invalid JSON object in " + configPath.string());
+            obj = *json->to_object();
+            if (obj.count("incdirs")) {
+                auto parsed = rfl::from_generic<std::vector<std::string>>(obj["incdirs"]);
+                if (!parsed)
+                    throw std::runtime_error("incdirs must be a list of strings in " +
+                                             configPath.string());
+                incdirs = *parsed;
+            }
+        }
+
+        std::vector<Config::IndexConfig> workspaceIndex;
+        if (obj.count("index")) {
+            auto parsed =
+                rfl::from_generic<std::vector<Config::IndexConfig>, rfl::DefaultIfMissing>(
+                    obj["index"]);
+            if (!parsed)
+                throw std::runtime_error("invalid index configuration in " + configPath.string());
+            workspaceIndex = *parsed;
+        }
+        const bool legacyIndex = !m_config.indexGlobs.value().empty() ||
+                                 !m_config.excludeDirs.value().empty();
+        bool exclusionsChanged = false;
+        if (!legacyIndex) {
+            for (auto& entry : workspaceIndex) {
+                if (auto& exclusions = entry.excludeDirs.value(); exclusions) {
+                    exclusionsChanged |= std::erase_if(*exclusions, [](const auto& path) {
+                                             return (path.starts_with("./") ||
+                                                     fs::path(path).is_absolute()) &&
+                                                    path.find_first_of("*?") != std::string::npos;
+                                         }) != 0;
+                }
+            }
+        }
+        m_indexer.setNumThreads(m_config.indexingThreads.value());
+        if (legacyIndex)
+            m_indexer.startIndexing(m_config.getIndexGlobs(), m_config.excludeDirs.value(), true);
+        else
+            m_indexer.startIndexing(m_config.index.value(), root.string(), true);
+
+        auto ignored = m_indexer.getGitIgnoreMatches(root, workspaceIndex);
+        auto within = [](const fs::path& path, const fs::path& directory) {
+            auto relative = path.lexically_normal().lexically_relative(
+                directory.lexically_normal());
+            return !relative.empty() && !relative.is_absolute() && *relative.begin() != "..";
+        };
+        const auto workspaceEntries = workspaceIndex.size();
+        if (!legacyIndex && Indexer::usesDefaultWorkspaceIndex(m_config.index.value(), root))
+            workspaceIndex.push_back({.dirs = std::vector<std::string>{"."}});
+        auto indexesDirectory = [&](const Config::IndexConfig& entry, const fs::path& directory) {
+            return std::ranges::any_of(entry.dirs.value(), [&](const auto& indexRoot) {
+                auto path = root / indexRoot;
+                return within(directory, path) || within(path, directory);
+            });
+        };
+        struct InferredExclusion {
+            fs::path directory;
+            std::string path;
+            std::string rule;
+            bool useName;
+        };
+        std::vector<InferredExclusion> inferredExclusions;
+        std::vector<fs::path> excludedDirectories;
+        bool refreshExclusions = false;
+        for (const auto& match : ignored) {
+            if (!match.files.empty())
+                INFO("Auto-configure: {} indexed files match Git ignore rule {} (example: {})",
+                     match.files.size(), match.rule, match.files.front().generic_string());
+            if (legacyIndex)
+                continue;
+            for (const auto& directory : match.directories) {
+                const auto absolute = (root / directory).lexically_normal();
+                const auto name = directory.filename().string();
+                const bool useName = std::ranges::find(match.names, name) != match.names.end();
+                const auto path = useName ? name : "./" + directory.generic_string();
+                bool inherited = false;
+                for (size_t i = workspaceEntries; i < m_config.index.value().size(); ++i)
+                    inherited |= indexesDirectory(m_config.index.value()[i], absolute);
+                if (inherited)
+                    continue;
+                bool coveredExclusion = false;
+                for (const auto& entry : workspaceIndex) {
+                    if (!indexesDirectory(entry, absolute))
+                        continue;
+                    const auto& exclusions = entry.excludeDirs.value();
+                    refreshExclusions |= !exclusions ||
+                                         std::ranges::find(*exclusions, path) == exclusions->end();
+                    coveredExclusion = true;
+                }
+                if (coveredExclusion) {
+                    excludedDirectories.push_back(absolute);
+                    inferredExclusions.push_back({absolute, path, match.rule, useName});
+                }
+            }
+        }
+        // Ignored generated sources must not widen the suggested roots. Persist exclusions only
+        // after those roots are known, so unrelated folders from the initial crawl are omitted.
+        if (refreshExclusions)
+            m_indexer.excludeDirectories(excludedDirectories);
+        size_t ignoredFiles = 0;
+        std::vector<std::string> ignoredExamples;
+        for (const auto& match : ignored) {
+            for (const auto& file : match.files) {
+                if (std::ranges::any_of(excludedDirectories, [&](const auto& directory) {
+                        return within(root / file, directory);
+                    }))
+                    continue;
+                ++ignoredFiles;
+                if (ignoredExamples.size() < 5)
+                    ignoredExamples.push_back(file.generic_string());
+            }
+        }
+        if (ignoredFiles) {
+            m_client.showWarning(fmt::format(
+                "Auto-configure found {} indexed {} matched by Git ignore rules that could not "
+                "be excluded as whole directories, including {}. See the server log for matching "
+                "rules.",
+                ignoredFiles, ignoredFiles == 1 ? "file" : "files",
+                fmt::join(ignoredExamples, ", ")));
+        }
+        auto isWorkspaceRoot = [&](const std::string& directory) {
+            return (root / directory).lexically_normal().lexically_relative(root) == ".";
+        };
+        bool inferIndex = !legacyIndex &&
+                          std::ranges::any_of(workspaceIndex, [&](const auto& entry) {
+                              return std::ranges::any_of(entry.dirs.value(), isWorkspaceRoot);
+                          });
+        for (const auto* field : {"indexGlobs", "excludeDirs"}) {
+            if (obj.count(field)) {
+                auto entries = obj[field].to_array();
+                inferIndex &= entries && entries->empty();
+            }
+        }
+        std::vector<std::string> indexDirectories;
+        if (inferIndex) {
+            for (const auto& directory : m_indexer.getSuggestedIndexDirectories(root))
+                indexDirectories.push_back(directory.generic_string());
+        }
+        if (!indexDirectories.empty()) {
+            for (auto& entry : workspaceIndex) {
+                std::vector<std::string> directories;
+                for (const auto& directory : entry.dirs.value()) {
+                    if (isWorkspaceRoot(directory))
+                        directories.insert(directories.end(), indexDirectories.begin(),
+                                           indexDirectories.end());
+                    else
+                        directories.push_back(directory);
+                }
+                entry.dirs.value() = std::move(directories);
+            }
+        }
+        for (const auto& inferred : inferredExclusions) {
+            bool changed = false;
+            for (auto& entry : workspaceIndex) {
+                if (!indexesDirectory(entry, inferred.directory))
+                    continue;
+                auto& exclusions = entry.excludeDirs.value();
+                if (!exclusions)
+                    exclusions.emplace();
+                if (inferred.useName) {
+                    changed |= std::erase_if(*exclusions, [&](const auto& existing) {
+                                   return existing != inferred.path &&
+                                          (existing.starts_with("./") ||
+                                           fs::path(existing).is_absolute()) &&
+                                          existing.find_first_of("*?") == std::string::npos &&
+                                          within(root / existing, inferred.directory);
+                               }) != 0;
+                }
+                if (std::ranges::find(*exclusions, inferred.path) == exclusions->end()) {
+                    exclusions->push_back(inferred.path);
+                    changed = true;
+                }
+            }
+            exclusionsChanged |= changed;
+            if (changed)
+                INFO("Auto-configure: excluding {} from index ({})", inferred.path, inferred.rule);
+        }
+
+        std::unordered_set<fs::path> configured;
+        for (const auto& path : m_config.incdirs.value())
+            configured.insert(fs::weakly_canonical(root / path));
+        for (const auto& path : incdirs)
+            configured.insert(fs::weakly_canonical(root / path));
+
+        const std::vector<fs::path> configuredDirectories(configured.begin(), configured.end());
+        const auto conflicts = m_indexer.getConflictingIncludeDirectories(configuredDirectories);
+        std::vector<std::string> skipped;
+        size_t added = 0;
+        for (const auto& path : m_indexer.getIncludeDirectories()) {
+            if (configured.contains(path))
+                continue;
+            if (std::ranges::find(conflicts, path) != conflicts.end()) {
+                skipped.push_back(path.lexically_relative(root).generic_string());
+                continue;
+            }
+            auto relative = path.lexically_relative(root);
+            incdirs.push_back((relative.empty() ? path : relative).generic_string());
+            configured.insert(path);
+            added++;
+        }
+        if (!skipped.empty()) {
+            m_client.showWarning(fmt::format(
+                "Auto-configure skipped include directories with conflicting headers: {}. "
+                "Set their order in incdirs manually if needed.",
+                fmt::join(skipped, ", ")));
+        }
+        if (added == 0 && indexDirectories.empty() && !exclusionsChanged) {
+            m_client.showInfo("Auto-configure: no configuration changes found");
+            return true;
+        }
+
+        if (added)
+            obj["incdirs"] = rfl::to_generic(incdirs);
+        if (!indexDirectories.empty() || exclusionsChanged) {
+            auto entries = obj.count("index") ? *obj["index"].to_array() : rfl::Generic::Array{};
+            for (size_t i = 0; i < workspaceIndex.size(); ++i) {
+                auto entry = i < workspaceEntries ? *entries[i].to_object()
+                                                  : *rfl::to_generic(workspaceIndex[i]).to_object();
+                if (!indexDirectories.empty())
+                    entry["dirs"] = rfl::to_generic(workspaceIndex[i].dirs.value());
+                if (exclusionsChanged && workspaceIndex[i].excludeDirs.value())
+                    entry["excludeDirs"] = rfl::to_generic(*workspaceIndex[i].excludeDirs.value());
+                if (i < workspaceEntries)
+                    entries[i] = entry;
+                else
+                    entries.push_back(entry);
+            }
+            obj["index"] = entries;
+        }
+        fs::create_directories(configPath.parent_path());
+        const auto outputPath = fs::exists(configPath) ? fs::canonical(configPath) : configPath;
+        const auto temporaryPath = outputPath.string() +
+                                   fmt::format(".auto-configure-{}.tmp", slang::OS::getpid());
+        slang::ScopeGuard cleanup([&] {
+            std::error_code ec;
+            fs::remove(temporaryPath, ec);
+        });
+        {
+            auto file = std::ofstream(temporaryPath);
+            file << rfl::json::write(rfl::Generic(obj), YYJSON_WRITE_PRETTY_TWO_SPACES) << '\n';
+            file.close();
+            if (!file)
+                throw std::runtime_error("cannot write " + configPath.string());
+        }
+        fs::rename(temporaryPath, outputPath);
+
+        auto savedBuild = m_buildfile;
+        auto savedTop = m_topFile;
+        loadConfig();
+        if (savedBuild)
+            setBuildFile(*savedBuild);
+        if (savedTop)
+            setTopLevel(*savedTop);
+        std::vector<std::string> changes;
+        if (added)
+            changes.push_back(fmt::format("added {} include directories", added));
+        if (exclusionsChanged)
+            changes.push_back("updated index exclusions");
+        if (!indexDirectories.empty())
+            changes.push_back(
+                fmt::format("set index directories to {}", fmt::join(indexDirectories, ", ")));
+        m_client.showInfo(fmt::format("Auto-configure {} in {}", fmt::join(changes, " and "),
+                                      configPath.string()));
+        return true;
+    }
+    catch (const std::exception& error) {
+        m_client.showError(fmt::format("Cannot auto-configure: {}", error.what()));
+        return false;
+    }
+}
+
 rfl::Variant<lsp::Definition, std::vector<lsp::DefinitionLink>, std::monostate> SlangServer::
     getDocDefinition(const lsp::DefinitionParams& params) {
     if (auto instance = m_driver->getDesignInstancePathAt(params.textDocument.uri,
@@ -1023,8 +1319,12 @@ void SlangServer::onWorkspaceDidChangeWatchedFiles(const lsp::DidChangeWatchedFi
 
     if (needsReload) {
         INFO("Config or build file changed, reloading");
-        if (loadConfig(/* requireValidConfig */ true))
+        auto savedTop = m_topFile;
+        if (loadConfig(/* requireValidConfig */ true)) {
+            if (savedTop)
+                setTopLevel(*savedTop);
             return;
+        }
         m_configReloadPending = true;
         WARN("Keeping the current configuration; retrying on the next file change");
         return;
