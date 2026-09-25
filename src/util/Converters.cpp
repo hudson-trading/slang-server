@@ -7,9 +7,12 @@
 //------------------------------------------------------------------------------
 #include "util/Converters.h"
 
+#include "util/Formatting.h"
+#include <algorithm>
 #include <cstdint>
 #include <fmt/format.h>
 
+#include "slang/text/CharInfo.h"
 #include "slang/text/SourceLocation.h"
 
 namespace server {
@@ -54,15 +57,24 @@ std::optional<SourceLocation> toSourceLocation(BufferID buffer, const lsp::Posit
 }
 
 size_t utf16ColumnToByte(std::string_view line, uint32_t character) {
-    size_t i = 0;
-    uint32_t units = 0;
-    while (i < line.size() && line[i] != '\n' && units < character) {
-        unsigned char c = static_cast<unsigned char>(line[i]);
-        size_t len = c < 0x80 ? 1 : (c >> 5) == 0x6 ? 2 : (c >> 4) == 0xE ? 3 : 4;
-        units += len == 4 ? 2 : 1; // astral chars are a surrogate pair in UTF-16
-        i += len;
+    constexpr size_t supplementaryUtf8Length = 4;
+    constexpr size_t surrogatePairUtf16Length = 2;
+    size_t byteOffset = 0;
+    size_t utf16Column = 0;
+    while (byteOffset < line.size() && utf16Column < character) {
+        char c = line[byteOffset];
+        if (isNewline(c) || c == '\0')
+            break;
+        if (isASCII(c)) {
+            byteOffset++;
+            utf16Column++;
+            continue;
+        }
+        auto byteLength = std::max(size_t(1), validUtf8SequenceLength(line.substr(byteOffset)));
+        utf16Column += byteLength == supplementaryUtf8Length ? surrogatePairUtf16Length : 1;
+        byteOffset += byteLength;
     }
-    return i;
+    return byteOffset;
 }
 
 lsp::Range toRange(const SourceRange& range, const SourceManager& sourceManager) {

@@ -33,8 +33,8 @@ std::optional<SourceLocation> toSourceLocation(BufferID buffer, const lsp::Posit
 
 lsp::Range toRange(const SourceRange& range, const SourceManager& sourceManager);
 
-// Byte offset into `line` of the given UTF-16 code unit column, clamped to the
-// first newline or end of string. `line` starts at the column-0 character.
+/// Byte offset of a UTF-16 column in a UTF-8 line, clamped before CR, LF, or NUL.
+/// Invalid UTF-8 bytes count as one code unit each; columns inside surrogate pairs round up.
 size_t utf16ColumnToByte(std::string_view line, uint32_t character);
 
 lsp::Location toOriginalLocation(const SourceRange& range, const SourceManager& sourceManager);

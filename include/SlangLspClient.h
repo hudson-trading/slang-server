@@ -62,8 +62,9 @@ public:
         /// [`textDocument.completion.completionItem.resolveSupport`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#completionClientCapabilities)
         bool completionEditResolveSupported = false;
 
-        /// client offered "utf-8" in `general.positionEncodings`; slang columns are
-        /// byte offsets, so this lets us skip utf-16 conversion on the wire
+        /// client offered "utf-8" in `general.positionEncodings`, which matches slang's byte
+        /// columns. Otherwise only didChange ranges are converted from utf-16; other positions
+        /// stay byte-based, which only differs on lines with non-ASCII comments.
         bool utf8Positions = false;
 
         Capabilities() = default;
