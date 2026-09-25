@@ -6,6 +6,8 @@ Integrations are typically working with a slang compilation (elaborated design),
 
 In general it's preferred for the `slang-server` to initiate the handshake, since a user will likely always start with their editor, and move to more advanced tools when necessary.
 
+To see which LSP commands are available to clients, search for `registerCommand<` in [`src/SlangServer.cpp`](https://github.com/hudson-trading/slang-server/blob/main/src/SlangServer.cpp).
+
 
 ## Vscode-only Integrations
 
