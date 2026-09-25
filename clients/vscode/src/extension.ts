@@ -405,6 +405,8 @@ File input is sent to stdin, and formatted output is read from stdout.',
     async () => {
       if (this.client !== undefined) {
         this.client.outputChannel.show()
+      } else {
+        this.logger.show()
       }
     }
   )

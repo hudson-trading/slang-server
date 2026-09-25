@@ -2,6 +2,7 @@ import * as fs from 'fs'
 import * as fsPromises from 'fs/promises'
 import * as path from 'path'
 import * as process from 'process'
+import { inspect } from 'util'
 import * as vscode from 'vscode'
 import which from 'which'
 import { ConfigObject, ExtensionComponent } from './libconfig'
@@ -216,7 +217,7 @@ export class PathConfigObject extends ConfigObject<string> {
           title: `Installing ${toolName}...`,
           cancellable: false,
         },
-        async () => installFromGithub(storagePath, config, this.platformDefaults)
+        async () => installFromGithub(storagePath, config, this.platformDefaults, log)
       )
 
       vscode.window.showInformationMessage(`Installed ${toolName} at ${binaryPath}`)
@@ -226,8 +227,19 @@ export class PathConfigObject extends ConfigObject<string> {
       return binaryPath
     } catch (err: any) {
       const message = `Failed to install ${toolName}: ${err?.message ?? err}`
-      log.error(message)
-      await vscode.window.showErrorMessage(message)
+      log.error(`${message}\n${inspect(err)}`)
+      const action = await vscode.window.showErrorMessage(
+        `${message}. See the slang output log for details.`,
+        'Show Logs',
+        'Open Releases'
+      )
+      if (action === 'Show Logs') {
+        log.show()
+      } else if (action === 'Open Releases') {
+        await vscode.env.openExternal(
+          vscode.Uri.parse(`https://github.com/${config.githubRepo}/releases`)
+        )
+      }
       return undefined
     }
   }
@@ -281,10 +293,8 @@ export class PathConfigObject extends ConfigObject<string> {
     }
 
     const toolName = this.platformDefaults[getPlatform()]
-    const storagePath = context.globalStorageUri.fsPath
-
     try {
-      const release = await latestRelease(config)
+      const release = await latestRelease(config, logger)
       const needsUpdate =
         installedVersion === null || isUpdateAvailable(release.tag_name, installedVersion)
 
@@ -313,24 +323,16 @@ export class PathConfigObject extends ConfigObject<string> {
         return false
       }
 
-      const newBinaryPath = await vscode.window.withProgress(
-        {
-          location: vscode.ProgressLocation.Notification,
-          title: `Updating ${toolName}...`,
-          cancellable: false,
-        },
-        async () => {
-          return installFromGithub(storagePath, config, this.platformDefaults)
-        }
-      )
-
-      this.cachedValue = newBinaryPath
+      const newBinaryPath = await this.installManaged(context, logger)
+      if (newBinaryPath === undefined) {
+        return false
+      }
       logger.info(`Updated ${toolName} to ${release.tag_name} at ${newBinaryPath}`)
 
       return true
     } catch (err: any) {
       // Silently ignore update check failures (e.g., offline)
-      logger.warn(`Background update check failed: ${err?.message ?? err}`)
+      logger.warn(`Background update check failed: ${inspect(err)}`)
       return false
     }
   }
