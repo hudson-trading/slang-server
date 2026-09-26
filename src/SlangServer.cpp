@@ -834,8 +834,36 @@ std::monostate SlangServer::addDefine(const std::string& macroName) {
     return {};
 }
 
+std::optional<lsp::Location> SlangServer::getIncludedFileAt(const lsp::DefinitionParams& params) {
+    auto doc = m_driver->getDocument(params.textDocument.uri);
+    if (!doc)
+        return std::nullopt;
+
+    for (const auto& link : doc->getDocLinks()) {
+        // Matching the whole line, not just the file name: the cursor is as likely to sit
+        // on the directive itself.
+        const bool onThisLine = link.range.start.line <= params.position.line &&
+                                params.position.line <= link.range.end.line;
+        if (onThisLine && link.target)
+            return lsp::Location{.uri = *link.target, .range = {}};
+    }
+
+    return std::nullopt;
+}
+
 rfl::Variant<lsp::Definition, std::vector<lsp::DefinitionLink>, std::monostate> SlangServer::
     getDocDefinition(const lsp::DefinitionParams& params) {
+    // First, nothing else can be found on an `include line.
+    if (auto file = getIncludedFileAt(params)) {
+        if (m_client.capabilities.definitionLinksSupported)
+            return std::vector<lsp::DefinitionLink>{
+                lsp::DefinitionLink{.targetUri = file->uri,
+                                    .targetRange = file->range,
+                                    .targetSelectionRange = file->range}};
+
+        return lsp::Definition(std::vector<lsp::Location>{*file});
+    }
+
     if (auto instance = m_driver->getDesignInstancePathAt(params.textDocument.uri,
                                                           params.position)) {
         activateInstance({

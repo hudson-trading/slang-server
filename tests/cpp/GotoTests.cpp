@@ -427,3 +427,31 @@ TEST_CASE("FindReferencesAllTokens_crossfile_module.sv") {
     ReferencesScanner scanner(server);
     scanner.scanDocument(hdl);
 }
+
+TEST_CASE("GotoDefinition_IncludeDirective") {
+    ServerHarness server;
+
+    server.openFile("payload.svh", R"(class payload;
+endclass
+)");
+
+    auto doc = server.openFile("pkg.sv", R"(package pkg;
+    `include "payload.svh"
+endpackage
+)");
+
+    // Anywhere on the directive line
+    for (const auto& anchor : {std::string("    `inc"), std::string("`include \"pay")}) {
+        auto cursor = doc.after(anchor);
+        auto result = server.getDocDefinition(lsp::DefinitionParams{
+            .textDocument = {.uri = doc.m_uri}, .position = cursor.getPosition()});
+
+        REQUIRE(rfl::holds_alternative<lsp::Definition>(result));
+        const auto& definition = rfl::get<lsp::Definition>(result);
+        REQUIRE(rfl::holds_alternative<std::vector<lsp::Location>>(definition));
+
+        const auto& locations = rfl::get<std::vector<lsp::Location>>(definition);
+        REQUIRE(locations.size() == 1);
+        CHECK(locations[0].uri.getPath().ends_with("payload.svh"));
+    }
+}

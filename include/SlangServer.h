@@ -215,6 +215,9 @@ public:
     std::optional<std::vector<rfl::Variant<lsp::Command, lsp::CodeAction>>> getDocCodeAction(
         const lsp::CodeActionParams&) override;
 
+    /// The file named by an `include directive at the cursor position
+    std::optional<lsp::Location> getIncludedFileAt(const lsp::DefinitionParams&);
+
     /// Goto Definition
     rfl::Variant<lsp::Definition, std::vector<lsp::DefinitionLink>, std::monostate>
     getDocDefinition(const lsp::DefinitionParams&) override;
