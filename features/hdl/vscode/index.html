@@ -892,9 +892,9 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#slang-select-instance-command" class="md-nav__link">
+  <a href="#find-in-hierarchy" class="md-nav__link">
     <span class="md-ellipsis">
-      slang: Select Instance Command
+      Find in Hierarchy
     </span>
   </a>
   
@@ -1191,9 +1191,9 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#slang-select-instance-command" class="md-nav__link">
+  <a href="#find-in-hierarchy" class="md-nav__link">
     <span class="md-ellipsis">
-      slang: Select Instance Command
+      Find in Hierarchy
     </span>
   </a>
   
@@ -1256,7 +1256,7 @@ Interface ports and their elaborated members are included alongside modules, gen
 <p><strong>Hierarchy Buttons (left to right):</strong></p>
 <ul>
 <li>Clear top level</li>
-<li>Select Instance</li>
+<li>Find in Hierarchy</li>
 <li>Open selected build file</li>
 <li>Select build file (from glob)</li>
 <li>Toggle data signals</li>
@@ -1309,11 +1309,13 @@ Interface ports and their elaborated members are included alongside modules, gen
 <li><code>"none"</code> — Disables inactive region highlighting.</li>
 </ul>
 <h2 id="setting-an-instance">Setting an Instance<a class="headerlink" href="#setting-an-instance" title="Permanent link">&para;</a></h2>
-<h3 id="slang-select-instance-command"><code>slang: Select Instance</code> Command<a class="headerlink" href="#slang-select-instance-command" title="Permanent link">&para;</a></h3>
+<h3 id="find-in-hierarchy">Find in Hierarchy<a class="headerlink" href="#find-in-hierarchy" title="Permanent link">&para;</a></h3>
 <div class="grid">
 <div class="grid-item">
-<p>This command pulls up a fuzzy finder where you can enter the hierarchical path of a scope/instance.</p>
-<p>It's also available via the magnifying glass icon in the Hierachy view, or by pressing <code>cmd+f</code> while the sidebar is in focus.</p>
+<p>With a build file or top level selected, run <strong>Find in Hierarchy</strong> from the Command Palette, click the search icon in the Hierarchy view, or press <code>Cmd+F</code> (<code>Ctrl+F</code> on Windows/Linux) while the sidebar is focused. <strong>slang: Select Instance</strong> opens the same search when invoked without a path.</p>
+<p>Search covers the compiled design, including instances, generate scopes, signals, parameters, and interface ports and their members. Enter a name such as <code>ready</code> or a path fragment such as <code>top.worker.ready</code>; you do not need to expand the tree first.</p>
+<p>Matching is case-insensitive and accepts fuzzy path matches, with exact names and prefixes ranked first. Results show their hierarchical path and available type or value information. Up to 100 matches are displayed; refine the query if the picker reports more results.</p>
+<p>Selecting a result opens its source, reveals it in the hierarchy, and updates the active instance for its enclosing module or interface.</p>
 </div>
 <div class="grid-item">
 <p><img alt="SelectInstance" src="SelectInstance.png" /></p>

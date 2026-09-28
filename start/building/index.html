@@ -488,6 +488,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#nix-development-shell" class="md-nav__link">
+    <span class="md-ellipsis">
+      Nix Development Shell
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1017,6 +1026,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#nix-development-shell" class="md-nav__link">
+    <span class="md-ellipsis">
+      Nix Development Shell
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1059,6 +1077,14 @@ cmake<span class="w"> </span>-B<span class="w"> </span>build<span class="w"> </s
 cmake<span class="w"> </span>--build<span class="w"> </span>build<span class="w"> </span>-j<span class="w"> </span>--target<span class="w"> </span>slang_server
 </code></pre></div>
 <p>The binary will be at <code>build/bin/slang-server</code>.</p>
+<h3 id="nix-development-shell">Nix Development Shell<a class="headerlink" href="#nix-development-shell" title="Permanent link">&para;</a></h3>
+<p>If you use Nix with flakes enabled, the repository provides a development shell for x86-64 Linux, ARM64 Linux, and Apple Silicon macOS. It includes the compiler, CMake, Ninja, Python, <code>uv</code>, and build and test dependencies.</p>
+<p>After cloning the repository and initializing its submodules, run from the repository root:</p>
+<div class="language-bash highlight"><pre><span></span><code>nix<span class="w"> </span>develop
+cmake<span class="w"> </span>-B<span class="w"> </span>build<span class="w"> </span>-DCMAKE_BUILD_TYPE<span class="o">=</span>Release
+cmake<span class="w"> </span>--build<span class="w"> </span>build<span class="w"> </span>-j8<span class="w"> </span>--target<span class="w"> </span>slang_server
+</code></pre></div>
+<p>The shell supplies the tools; the CMake commands build <code>build/bin/slang-server</code>. Use a separate build directory if an existing one was configured with a different compiler.</p>
 
 
 
