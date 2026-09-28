@@ -124,6 +124,42 @@ endmodule
     CHECK(std::string_view{text.data(), expected.size()} == expected);
 }
 
+TEST_CASE("onChange uses the negotiated position encoding for successive edits") {
+    lsp::InitializeParams params{};
+    bool utf8Positions = false;
+    SECTION("Default UTF-16") {
+    }
+    SECTION("Explicit UTF-16") {
+        params.capabilities.general = lsp::GeneralClientCapabilities{
+            .positionEncodings = std::vector<lsp::PositionEncodingKind>{"utf-16"}};
+    }
+    SECTION("UTF-8 offered after UTF-16") {
+        params.capabilities.general = lsp::GeneralClientCapabilities{
+            .positionEncodings = std::vector<lsp::PositionEncodingKind>{"utf-16", "utf-8"}};
+        utf8Positions = true;
+    }
+
+    ClientHarness client;
+    server::SlangServer server(client);
+    auto result = server.getInitialize(params);
+    CHECK(result.capabilities.positionEncoding.value_or("utf-16") ==
+          (utf8Positions ? "utf-8" : "utf-16"));
+    CHECK(client.capabilities.utf8Positions == utf8Positions);
+
+    ServerHarness harness(params);
+    std::string prefix = "// \xC3\xA4\xE2\x82\xAC\xF0\x90\x8D\x88";
+    auto hdl = harness.openFile("test.sv", prefix + "x\r\nmodule m; endmodule\n");
+    lsp::uint column = utf8Positions ? static_cast<lsp::uint>(prefix.size()) : 7;
+    lsp::uint nextColumn = column + (utf8Positions ? 2 : 1);
+    harness.onDocDidChange(lsp::DidChangeTextDocumentParams{
+        .textDocument = lsp::VersionedTextDocumentIdentifier{.uri = hdl.doc->getURI()},
+        .contentChanges = {lsp::TextDocumentContentChangePartial{
+                               .range = {{0, column}, {0, column + 1}}, .text = "\xC3\xA4"},
+                           lsp::TextDocumentContentChangePartial{
+                               .range = {{0, nextColumn}, {0, nextColumn}}, .text = "y"}}});
+    CHECK(hdl.doc->textMatches(prefix + "\xC3\xA4y\r\nmodule m; endmodule\n"));
+}
+
 TEST_CASE("Cancelled didChange applies edits without rebuilding analysis") {
     ServerHarness server;
     auto hdl = server.openFile("test.sv", R"(module test;
