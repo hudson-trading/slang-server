@@ -4,6 +4,8 @@ import * as path from 'path'
 import * as fs from 'fs'
 import * as tmp from 'tmp-promise'
 import { Readable } from 'stream'
+import { spawn } from 'child_process'
+import { once } from 'events'
 
 import { createFakeAssets } from './harness'
 import { chooseReleaseAsset, installFromGithub, GithubInstallerConfig } from '../../src/lib/install'
@@ -133,9 +135,51 @@ tape('install: linux', async (assert) => {
 
       const fetchStub = stubFetch(assetsDir, 'linux')
       try {
-        const binPath = await installFromGithub(installDir, testConfig('linux'), binaryNames)
+        const messages: string[] = []
+        const binPath = await installFromGithub(installDir, testConfig('linux'), binaryNames, {
+          info: (message) => messages.push(message),
+        })
         assert.true(fs.existsSync(binPath), 'binary exists')
         assert.ok(binPath.endsWith('slang-server'), 'correct binary name')
+        const log = messages.join('\n')
+        assert.ok(log.includes('v1.0.0'), 'logs the selected release')
+        assert.ok(log.includes(mockRelease('linux').assets[0].browser_download_url), 'logs the URL')
+        assert.ok(log.includes(binPath), 'logs the installation path')
+      } finally {
+        fetchStub.restore()
+      }
+    },
+    { unsafeCleanup: true }
+  )
+
+  assert.end()
+})
+
+tape('install: failed downloads report HTTP status and release context', async (assert) => {
+  await tmp.withDir(
+    async (dir) => {
+      const messages: string[] = []
+      const fetchStub = sinon.stub(global, 'fetch')
+      fetchStub.onFirstCall().resolves(new Response(JSON.stringify(mockRelease('linux'))))
+      fetchStub
+        .onSecondCall()
+        .resolves(new Response(null, { status: 502, statusText: 'Bad Gateway' }))
+      try {
+        await installFromGithub(dir.path, testConfig('linux'), binaryNames, {
+          info: (message) => messages.push(message),
+        })
+        assert.fail('must reject a failed download')
+      } catch (error) {
+        assert.ok(error instanceof Error)
+        assert.match(String(error), /HTTP 502 Bad Gateway/, 'includes the HTTP failure')
+        const log = messages.join('\n')
+        assert.ok(log.includes('v1.0.0'), 'identifies the release being installed')
+        assert.ok(
+          log.includes(mockRelease('linux').assets[0].browser_download_url),
+          'identifies the failed URL'
+        )
+        assert.ok(log.includes('HTTP 502 Bad Gateway'), 'logs the HTTP failure')
+        assert.notOk(log.includes('Extracting'), 'shows that failure happened before extraction')
       } finally {
         fetchStub.restore()
       }
@@ -197,3 +241,85 @@ tape('install: mac', async (assert) => {
 
   assert.end()
 })
+
+tape('install: replaces a running Linux binary without overwriting it', async (assert) => {
+  if (process.platform !== 'linux') {
+    assert.skip('ETXTBSY is specific to Linux executable replacement')
+    assert.end()
+    return
+  }
+
+  await tmp.withDir(
+    async (dir) => {
+      const assetsDir = path.join(dir.path, 'assets')
+      await createFakeAssets(assetsDir, 'linux')
+
+      const binaryPath = path.join(dir.path, 'install', 'v1.0.0', 'slang-server')
+      await fs.promises.mkdir(path.dirname(binaryPath), { recursive: true })
+      // A native executable stays busy while running; a shell script does not.
+      await fs.promises.copyFile(process.execPath, binaryPath)
+      await fs.promises.chmod(binaryPath, 0o755)
+      const original = await fs.promises.stat(binaryPath)
+      const child = spawn(binaryPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' })
+      const exited = once(child, 'exit')
+      const fetchStub = stubFetch(assetsDir, 'linux')
+      try {
+        await once(child, 'spawn')
+        const installed = await installFromGithub(dir.path, testConfig('linux'), binaryNames)
+        assert.equal(installed, binaryPath, 'keeps the managed installation path')
+        assert.notEqual((await fs.promises.stat(installed)).ino, original.ino, 'replaces the inode')
+        assert.equal(await fs.promises.readFile(installed, 'utf8'), '#!/bin/sh\necho slang\n')
+        assert.equal(child.exitCode, null, 'the original process is still running')
+        assert.equal(child.signalCode, null, 'the original process was not stopped')
+      } finally {
+        fetchStub.restore()
+        child.kill()
+        await exited
+      }
+    },
+    { unsafeCleanup: true }
+  )
+
+  assert.end()
+})
+
+tape(
+  'install: a release without the binary preserves the existing installation',
+  async (assert) => {
+    await tmp.withDir(
+      async (dir) => {
+        const assetsDir = path.join(dir.path, 'assets')
+        await createFakeAssets(assetsDir, 'linux')
+        const fetchStub = stubFetch(assetsDir, 'linux')
+        try {
+          const binaryPath = await installFromGithub(dir.path, testConfig('linux'), binaryNames)
+          const original = await fs.promises.readFile(binaryPath)
+
+          // A valid archive that does not contain the configured binary.
+          await createFakeAssets(assetsDir, 'windows')
+          await fs.promises.copyFile(
+            path.join(assetsDir, 'slang-server-windows-x64.zip'),
+            path.join(assetsDir, testConfig('linux').assetNames.linux)
+          )
+          try {
+            await installFromGithub(dir.path, testConfig('linux'), binaryNames)
+            assert.fail('must reject an archive without the binary')
+          } catch {
+            assert.pass('rejects an archive without the binary')
+          }
+          assert.deepEqual(await fs.promises.readFile(binaryPath), original, 'keeps the old binary')
+          assert.deepEqual(
+            await fs.promises.readdir(path.join(dir.path, 'download')),
+            [],
+            'cleans up'
+          )
+        } finally {
+          fetchStub.restore()
+        }
+      },
+      { unsafeCleanup: true }
+    )
+
+    assert.end()
+  }
+)
