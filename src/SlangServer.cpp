@@ -317,10 +317,10 @@ void SlangServer::onInitialized(const lsp::InitializedParams&) {
                                            lsp::RelativePattern{.baseUri = m_workspaceFolder->uri,
                                                                 .pattern = ".slang/server.json"},
                                        .kind = lsp::WatchKind::Change},
-                lsp::FileSystemWatcher{.globPattern =
-                                           lsp::RelativePattern{.baseUri = m_workspaceFolder->uri,
-                                                                .pattern = ".slang/local/server.json"},
-                                       .kind = lsp::WatchKind::Change},
+                lsp::FileSystemWatcher{
+                    .globPattern = lsp::RelativePattern{.baseUri = m_workspaceFolder->uri,
+                                                        .pattern = ".slang/local/server.json"},
+                    .kind = lsp::WatchKind::Change},
                 // Build/flag files
                 lsp::FileSystemWatcher{.globPattern =
                                            lsp::RelativePattern{.baseUri = m_workspaceFolder->uri,
@@ -948,8 +948,7 @@ namespace {
 /// The workspace-relative config files loadConfig() reads. Any other json under
 /// .slang/ is not ours and must not trigger a reload.
 bool isConfigPath(std::string_view path) {
-    return path.ends_with("/.slang/server.json") ||
-           path.ends_with("/.slang/local/server.json");
+    return path.ends_with("/.slang/server.json") || path.ends_with("/.slang/local/server.json");
 }
 
 } // namespace
