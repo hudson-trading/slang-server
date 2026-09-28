@@ -143,6 +143,11 @@ public:
     /// @brief Gets the AST symbol that a declared token refers to, if any
     const slang::ast::Symbol* getSymbolAtToken(const slang::parsing::Token* node) const;
 
+    /// True when loc sits in an instance's connection list, where a '.' names a
+    /// port or parameter of the instantiated module rather than a member of the
+    /// preceding expression. Sets parameters when loc is inside '#(...)'.
+    bool isInstanceConnectionName(slang::SourceLocation loc, bool& parameters) const;
+
     /// @brief Gets all AST symbols that a token refers to. A source token can denote multiple
     /// elaborated symbols, or both sides of an implicit connection.
     slang::SmallVector<const slang::ast::Symbol*, 2> getSymbolsAtToken(

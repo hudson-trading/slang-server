@@ -102,6 +102,45 @@ TEST_CASE("Expression delimiters require an explicit scope completion request") 
     }
 }
 
+TEST_CASE("Named port and parameter completion inside an instance") {
+    ServerHarness server("repo1");
+
+    auto doc = server.openFile("named_ports.sv", R"(
+    module child #(
+        parameter int WIDTH = 8
+    ) (
+        input  logic             clk,
+        input  logic             rst_n,
+        output logic [WIDTH-1:0] data
+    );
+    endmodule
+
+    module top;
+        logic clk, rst_n;
+        logic [7:0] d;
+        child u_child (
+            .clk(clk),
+            .
+        );
+    endmodule
+    )");
+
+    auto labels = [](const std::vector<CompletionHandle>& items) {
+        std::vector<std::string> out;
+        for (const auto& item : items)
+            out.push_back(item.m_item.label);
+        return out;
+    };
+
+    auto cursor = doc.after(".clk(clk),\n            .");
+    auto items = labels(cursor.getCompletions("."));
+
+    // The remaining ports are offered, and the one already connected is not.
+    CHECK(std::ranges::find(items, "rst_n") != items.end());
+    CHECK(std::ranges::find(items, "data") != items.end());
+    CHECK(std::ranges::find(items, "clk") == items.end());
+}
+
 TEST_CASE("MacroCompletion") {
     ServerHarness server("repo1");
 

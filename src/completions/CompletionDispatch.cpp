@@ -12,6 +12,7 @@
 #include "completions/InstanceCompletions.h"
 #include "completions/MacroCompletions.h"
 #include "completions/MemberCompletions.h"
+#include "completions/NamedPortCompletions.h"
 #include "completions/SystemTaskCompletions.h"
 #include "document/ShallowAnalysis.h"
 #include "lsp/SnippetString.h"
@@ -170,6 +171,14 @@ std::unique_ptr<CompletionQuery> CompletionQuery::fromLocation(
             analysis->syntaxes.getTokenBefore(site.tokenBefore->location()), followedByCall);
     }
     if (site.tokenBefore && site.tokenBefore->kind == TokenKind::Dot) {
+        // A '.' inside an instance's connection list names a port or parameter
+        // of the instantiated module, not a member of whatever precedes it.
+        bool inParameters = false;
+        if (analysis->isInstanceConnectionName(cursor, inParameters)) {
+            return completions::NamedPortCompletionQuery::create(std::move(site.replacementRange),
+                                                                 cursor, inParameters,
+                                                                 followedByCall);
+        }
         return completions::MemberCompletionQuery::createMemberAccess(
             std::move(site.replacementRange),
             analysis->syntaxes.getTokenBefore(site.tokenBefore->location()), followedByCall);
