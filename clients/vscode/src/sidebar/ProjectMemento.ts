@@ -1,7 +1,3 @@
-// Persists the active build/top-level selection across VS Code sessions.
-// Stored per-workspace in .slang/local/, which is machine/session state and
-// should not be committed - client-agnostic on purpose so a future non-vscode
-// client could read the same file.
 import { promises as fs } from 'fs'
 import * as path from 'path'
 import * as vscode from 'vscode'
@@ -29,7 +25,6 @@ export async function loadCompilationSourceMemento(): Promise<
     const contents = await fs.readFile(mementoPath, 'utf-8')
     return JSON.parse(contents) as PersistedCompilationSource
   } catch {
-    // Missing or corrupt memento is fine - just means no prior selection.
     return undefined
   }
 }
@@ -49,7 +44,6 @@ export async function saveCompilationSourceMemento(
     await fs.mkdir(path.dirname(mementoPath), { recursive: true })
     await fs.writeFile(mementoPath, JSON.stringify(source, null, 2))
   } catch (e) {
-    // Best-effort: losing the persisted selection isn't worth surfacing an error for.
     void e
   }
 }

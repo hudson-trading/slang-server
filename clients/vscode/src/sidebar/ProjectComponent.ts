@@ -409,7 +409,6 @@ export class ProjectComponent
     return this._compilationSource
   }
 
-  // Every write goes through here so the selection survives a window reload.
   private set compilationSource(value: CompilationSource) {
     this._compilationSource = value
     void saveCompilationSourceMemento(
@@ -421,7 +420,6 @@ export class ProjectComponent
     )
   }
 
-  // Restore the selection persisted from a previous session, if any.
   private async restoreCompilationSourceMemento(): Promise<void> {
     const persisted = await loadCompilationSourceMemento()
     if (persisted === undefined) {
