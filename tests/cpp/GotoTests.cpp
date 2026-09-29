@@ -440,8 +440,9 @@ endclass
 endpackage
 )");
 
-    // Anywhere on the directive line
-    for (const auto& anchor : {std::string("    `inc"), std::string("`include \"pay")}) {
+    // On the directive, on the gap after it, and on the file name
+    for (const auto& anchor :
+         {std::string("    `inc"), std::string("`include"), std::string("`include \"pay")}) {
         auto cursor = doc.after(anchor);
         auto result = server.getDocDefinition(lsp::DefinitionParams{
             .textDocument = {.uri = doc.m_uri}, .position = cursor.getPosition()});

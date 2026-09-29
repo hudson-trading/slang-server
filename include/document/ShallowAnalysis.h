@@ -68,6 +68,12 @@ public:
     /// @return Vector of LSP document links to included files
     std::vector<lsp::DocumentLink> getDocLinks() const;
 
+    /// @brief Gets the buffer included by an `include directive
+    /// @param syntax An `include directive from this document's syntax tree
+    /// @return The included buffer, or nullopt if the file was not found
+    std::optional<slang::BufferID> getIncludedBuffer(
+        const slang::syntax::IncludeDirectiveSyntax& syntax) const;
+
     /// @brief Gets hover information for a symbol at an LSP position
     /// @param position The LSP position to query
     /// @return Optional hover information, or nullopt if none available
