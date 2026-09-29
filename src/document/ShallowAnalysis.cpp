@@ -1278,6 +1278,20 @@ std::vector<lsp::DocumentLink> ShallowAnalysis::getDocLinks() const {
     return links;
 }
 
+std::optional<BufferID> ShallowAnalysis::getIncludedBuffer(
+    const syntax::IncludeDirectiveSyntax& syntax) const {
+    for (auto& inc : m_shallowCompilation->getSyntaxTree()->getIncludeDirectives()) {
+        if (inc.syntax != &syntax) {
+            continue;
+        }
+        if (!inc.buffer) {
+            return std::nullopt;
+        }
+        return inc.buffer.id;
+    }
+    return std::nullopt;
+}
+
 #ifdef SLANG_SERVER_DEBUG
 markup::Paragraph ShallowAnalysis::getDebugHover(const SourceLocation& loc) const {
     markup::Paragraph para;
