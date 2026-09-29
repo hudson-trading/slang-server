@@ -135,7 +135,6 @@ TEST_CASE("Named port and parameter completion inside an instance") {
     auto cursor = doc.after(".clk(clk),\n            .");
     auto items = labels(cursor.getCompletions("."));
 
-    // The remaining ports are offered, and the one already connected is not.
     CHECK(std::ranges::find(items, "rst_n") != items.end());
     CHECK(std::ranges::find(items, "data") != items.end());
     CHECK(std::ranges::find(items, "clk") == items.end());
