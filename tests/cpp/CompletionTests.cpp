@@ -2064,3 +2064,32 @@ TEST_CASE("LocalparamKeywordInheritance") {
     CHECK(insertText.find("lp1") == std::string::npos);
     CHECK(insertText.find("lp2") == std::string::npos);
 }
+
+TEST_CASE("Sibling instances do not share connected port names") {
+    ServerHarness server("repo1");
+
+    auto doc = server.openFile("sibling_ports.sv", R"(
+    module child (
+        input  logic clk,
+        input  logic rst_n
+    );
+    endmodule
+
+    module top;
+        logic clk, rst_n;
+        child u_first (
+            .clk(clk)
+        ), u_second (
+            .
+        );
+    endmodule
+    )");
+
+    auto cursor = doc.after("), u_second (\n            .");
+    std::vector<std::string> labels;
+    for (const auto& item : cursor.getCompletions("."))
+        labels.push_back(item.m_item.label);
+
+    CHECK(std::ranges::find(labels, "clk") != labels.end());
+    CHECK(std::ranges::find(labels, "rst_n") != labels.end());
+}

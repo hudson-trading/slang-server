@@ -171,8 +171,6 @@ std::unique_ptr<CompletionQuery> CompletionQuery::fromLocation(
             analysis->syntaxes.getTokenBefore(site.tokenBefore->location()), followedByCall);
     }
     if (site.tokenBefore && site.tokenBefore->kind == TokenKind::Dot) {
-        // A '.' inside an instance's connection list names a port or parameter
-        // of the instantiated module, not a member of whatever precedes it.
         bool inParameters = false;
         if (analysis->isInstanceConnectionName(cursor, inParameters)) {
             return completions::NamedPortCompletionQuery::create(std::move(site.replacementRange),

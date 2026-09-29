@@ -15,64 +15,14 @@
 
 #include "slang/ast/Compilation.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
+#include "slang/ast/symbols/PortSymbols.h"
+#include "slang/ast/types/Type.h"
 #include "slang/syntax/AllSyntax.h"
 
 namespace server::completions {
 using namespace slang;
 
 namespace {
-
-/// Walk outwards from the cursor to the instance whose connection list it sits in.
-const syntax::HierarchyInstantiationSyntax* findInstantiation(const CompletionContext& context,
-                                                              SourceLocation cursor,
-                                                              bool& inParameters) {
-    auto* node = context.analysis->syntaxes.getSyntaxAt(cursor);
-    if (!node) {
-        auto* previous = context.analysis->syntaxes.getTokenBefore(cursor);
-        node = context.analysis->syntaxes.getTokenParent(previous);
-        if (!node)
-            return nullptr;
-    }
-
-    bool sawParameterList = false;
-    for (; node; node = node->parent) {
-        if (syntax::ParameterValueAssignmentSyntax::isKind(node->kind))
-            sawParameterList = true;
-        if (auto* hierarchy = node->as_if<syntax::HierarchyInstantiationSyntax>()) {
-            inParameters = sawParameterList;
-            return hierarchy;
-        }
-    }
-    return nullptr;
-}
-
-/// Names already connected in this instance, so they are not offered twice. The
-/// partially typed connection under the cursor is skipped.
-void collectConnected(const syntax::HierarchyInstantiationSyntax& syntax, SourceLocation cursor,
-                      bool parameters, std::unordered_set<std::string_view>& taken) {
-    auto record = [&](const parsing::Token& name, SourceRange range) {
-        if (name.isMissing() || (range.start() <= cursor && cursor <= range.end()))
-            return;
-        taken.emplace(name.valueText());
-    };
-
-    if (parameters) {
-        if (!syntax.parameters)
-            return;
-        for (auto* param : syntax.parameters->parameters) {
-            if (auto* named = param->as_if<syntax::NamedParamAssignmentSyntax>())
-                record(named->name, named->sourceRange());
-        }
-        return;
-    }
-
-    for (auto* instance : syntax.instances) {
-        for (auto* connection : instance->connections) {
-            if (auto* named = connection->as_if<syntax::NamedPortConnectionSyntax>())
-                record(named->name, named->sourceRange());
-        }
-    }
-}
 
 class NamedPortCompletionQueryImpl final : public NamedPortCompletionQuery {
 public:
@@ -86,8 +36,8 @@ public:
     void getCompletions(std::vector<lsp::CompletionItem>& results, CompletionDispatch&,
                         const std::shared_ptr<SlangDoc>&,
                         const CompletionContext& context) const final {
-        bool inParameters = false;
-        auto* syntax = findInstantiation(context, cursor, inParameters);
+        const syntax::HierarchicalInstanceSyntax* instanceSyntax = nullptr;
+        auto* syntax = findInstantiation(context, instanceSyntax);
         if (!syntax)
             return;
 
@@ -98,15 +48,15 @@ public:
         auto& def = module->as<ast::DefinitionSymbol>();
 
         std::unordered_set<std::string_view> taken;
-        collectConnected(*syntax, cursor, parameters, taken);
+        collectConnected(*syntax, instanceSyntax, taken);
 
         auto emit = [&](std::string_view name, lsp::CompletionItemKind itemKind,
-                        std::string_view detail) {
+                        std::string detail) {
             if (name.empty() || taken.contains(name))
                 return;
             lsp::CompletionItem item{.label = std::string(name), .kind = itemKind};
             if (!detail.empty())
-                item.detail = std::string(detail);
+                item.detail = std::move(detail);
             if (!followedByCall) {
                 SnippetString snippet;
                 snippet.appendText(name).appendText("(").appendTabstop().appendText(")");
@@ -118,35 +68,103 @@ public:
         };
 
         if (parameters) {
-            for (auto& param : def.parameters)
-                emit(param.name, lsp::CompletionItemKind::TypeParameter, "parameter");
+            for (auto& param : def.parameters) {
+                if (param.isLocalParam)
+                    continue;
+                emit(param.name, lsp::CompletionItemKind::TypeParameter,
+                     param.isTypeParam ? "type" : std::string());
+            }
             return;
         }
 
-        // An instance that does not elaborate still has a definition to read
-        // ports from, which is the usual state while the connection list is
-        // being typed.
-        const ast::InstanceSymbol* inst = nullptr;
-        for (auto* instanceSyntax : syntax->instances) {
-            if (!instanceSyntax->decl)
-                continue;
-            auto* sym = context.analysis->getSymbolAtToken(&instanceSyntax->decl->name);
-            if (sym && sym->kind == ast::SymbolKind::Instance) {
-                inst = &sym->as<ast::InstanceSymbol>();
-                break;
-            }
-        }
-
+        auto* inst = findInstanceSymbol(context, *syntax, instanceSyntax);
         if (!inst)
             return;
 
         for (auto* port : inst->body.getPortList()) {
-            if (port)
-                emit(port->name, lsp::CompletionItemKind::Property, "port");
+            if (!port)
+                continue;
+            if (auto* value = port->as_if<ast::PortSymbol>())
+                emit(value->name, lsp::CompletionItemKind::Property, value->getType().toString());
+            else if (auto* iface = port->as_if<ast::InterfacePortSymbol>())
+                emit(iface->name, lsp::CompletionItemKind::Property,
+                     iface->interfaceDef ? std::string(iface->interfaceDef->name) : std::string());
+            else
+                emit(port->name, lsp::CompletionItemKind::Property, std::string());
         }
     }
 
 private:
+    const syntax::HierarchyInstantiationSyntax* findInstantiation(
+        const CompletionContext& context,
+        const syntax::HierarchicalInstanceSyntax*& instanceSyntax) const {
+        auto* node = context.analysis->syntaxes.getSyntaxAt(cursor);
+        if (!node) {
+            auto* previous = context.analysis->syntaxes.getTokenBefore(cursor);
+            node = context.analysis->syntaxes.getTokenParent(previous);
+            if (!node)
+                return nullptr;
+        }
+
+        for (; node; node = node->parent) {
+            if (auto* instance = node->as_if<syntax::HierarchicalInstanceSyntax>())
+                instanceSyntax = instance;
+            if (auto* hierarchy = node->as_if<syntax::HierarchyInstantiationSyntax>())
+                return hierarchy;
+        }
+        return nullptr;
+    }
+
+    void collectConnected(const syntax::HierarchyInstantiationSyntax& syntax,
+                          const syntax::HierarchicalInstanceSyntax* instanceSyntax,
+                          std::unordered_set<std::string_view>& taken) const {
+        auto record = [&](const parsing::Token& name, SourceRange range) {
+            if (name.isMissing() || (range.start() <= cursor && cursor <= range.end()))
+                return;
+            taken.emplace(name.valueText());
+        };
+
+        if (parameters) {
+            if (!syntax.parameters)
+                return;
+            for (auto* param : syntax.parameters->parameters) {
+                if (auto* named = param->as_if<syntax::NamedParamAssignmentSyntax>())
+                    record(named->name, named->sourceRange());
+            }
+            return;
+        }
+
+        if (!instanceSyntax)
+            return;
+
+        for (auto* connection : instanceSyntax->connections) {
+            if (auto* named = connection->as_if<syntax::NamedPortConnectionSyntax>())
+                record(named->name, named->sourceRange());
+        }
+    }
+
+    const ast::InstanceSymbol* findInstanceSymbol(
+        const CompletionContext& context, const syntax::HierarchyInstantiationSyntax& syntax,
+        const syntax::HierarchicalInstanceSyntax* instanceSyntax) const {
+        auto resolve = [&](const syntax::HierarchicalInstanceSyntax* candidate) {
+            if (!candidate || !candidate->decl)
+                return static_cast<const ast::InstanceSymbol*>(nullptr);
+            auto* sym = context.analysis->getSymbolAtToken(&candidate->decl->name);
+            if (sym && sym->kind == ast::SymbolKind::Instance)
+                return &sym->as<ast::InstanceSymbol>();
+            return static_cast<const ast::InstanceSymbol*>(nullptr);
+        };
+
+        if (auto* own = resolve(instanceSyntax))
+            return own;
+
+        for (auto* candidate : syntax.instances) {
+            if (auto* any = resolve(candidate))
+                return any;
+        }
+        return nullptr;
+    }
+
     SourceLocation cursor;
     bool parameters;
 };

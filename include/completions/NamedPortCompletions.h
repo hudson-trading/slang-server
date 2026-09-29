@@ -12,8 +12,6 @@
 
 namespace server::completions {
 
-/// Query for the port names offered after a '.' inside an instance's connection
-/// list, and for the parameter names offered inside its '#(...)' list.
 class NamedPortCompletionQuery : public CompletionQuery {
 public:
     static std::unique_ptr<CompletionQuery> create(lsp::Range replacementRange,
