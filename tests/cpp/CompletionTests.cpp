@@ -140,6 +140,83 @@ TEST_CASE("Named port and parameter completion inside an instance") {
     CHECK(std::ranges::find(items, "clk") == items.end());
 }
 
+TEST_CASE("Ports visible in scope complete as implicit connections") {
+    ServerHarness server("repo1");
+
+    auto doc = server.openFile("implicit_ports.sv", R"(
+    module child #(
+        parameter int WIDTH = 8
+    ) (
+        input  logic             clk,
+        input  logic             rst_n,
+        output logic [WIDTH-1:0] data
+    );
+    endmodule
+
+    module top;
+        logic clk, rst_n;
+        logic [7:0] d;
+        child u_child (
+            .clk(clk),
+            .
+        );
+    endmodule
+    )");
+
+    auto find = [](const std::vector<CompletionHandle>& items,
+                   std::string_view label) -> const CompletionHandle* {
+        for (const auto& item : items)
+            if (item.m_item.label == label)
+                return &item;
+        return nullptr;
+    };
+
+    auto cursor = doc.after(".clk(clk),\n            .");
+    auto items = cursor.getCompletions(".");
+
+    auto* inScope = find(items, "rst_n");
+    REQUIRE(inScope != nullptr);
+    CHECK(inScope->m_item.insertText == "rst_n");
+    CHECK(inScope->m_item.insertTextFormat == lsp::InsertTextFormat::PlainText);
+
+    auto* notInScope = find(items, "data");
+    REQUIRE(notInScope != nullptr);
+    CHECK(notInScope->m_item.insertText == "data($1)");
+    CHECK(notInScope->m_item.insertTextFormat == lsp::InsertTextFormat::Snippet);
+}
+
+TEST_CASE("Parameter completion carries the elaborated type") {
+    ServerHarness server("repo1");
+
+    auto doc = server.openFile("param_detail.sv", R"(
+    module child #(
+        parameter int WIDTH = 8
+    ) (
+        input logic clk
+    );
+    endmodule
+
+    module top;
+        logic clk;
+        child #(
+            .
+        ) u_child (.clk(clk));
+    endmodule
+    )");
+
+    auto cursor = doc.after("child #(\n            .");
+    auto items = cursor.getCompletions(".");
+
+    const CompletionHandle* width = nullptr;
+    for (const auto& item : items)
+        if (item.m_item.label == "WIDTH")
+            width = &item;
+
+    REQUIRE(width != nullptr);
+    REQUIRE(width->m_item.detail.has_value());
+    CHECK(*width->m_item.detail == "int");
+}
+
 TEST_CASE("MacroCompletion") {
     ServerHarness server("repo1");
 

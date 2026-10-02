@@ -14,7 +14,9 @@
 #include <unordered_set>
 
 #include "slang/ast/Compilation.h"
+#include "slang/ast/Scope.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
+#include "slang/ast/symbols/ParameterSymbols.h"
 #include "slang/ast/symbols/PortSymbols.h"
 #include "slang/ast/types/Type.h"
 #include "slang/syntax/AllSyntax.h"
@@ -50,14 +52,23 @@ public:
         std::unordered_set<std::string_view> taken;
         collectConnected(*syntax, instanceSyntax, taken);
 
-        auto emit = [&](std::string_view name, lsp::CompletionItemKind itemKind,
-                        std::string detail) {
+        auto visibleInScope = [&](std::string_view name) {
+            return context.scope && context.scope->lookupName(name) != nullptr;
+        };
+
+        auto emit = [&](std::string_view name, lsp::CompletionItemKind itemKind, std::string detail,
+                        bool allowImplicit = false) {
             if (name.empty() || taken.contains(name))
                 return;
             lsp::CompletionItem item{.label = std::string(name), .kind = itemKind};
             if (!detail.empty())
                 item.detail = std::move(detail);
-            if (!followedByCall) {
+            const bool implicit = allowImplicit && visibleInScope(name);
+            if (implicit) {
+                item.insertText = std::string(name);
+                item.insertTextFormat = lsp::InsertTextFormat::PlainText;
+            }
+            else if (!followedByCall) {
                 SnippetString snippet;
                 snippet.appendText(name).appendText("(").appendTabstop().appendText(")");
                 item.insertText = snippet.getValue();
@@ -67,7 +78,22 @@ public:
             results.push_back(std::move(item));
         };
 
+        auto* inst = findInstanceSymbol(context, *syntax, instanceSyntax);
+
         if (parameters) {
+            if (inst) {
+                for (auto* param : inst->body.getParameters()) {
+                    if (!param || param->isLocalParam())
+                        continue;
+                    auto& sym = param->symbol;
+                    if (auto* value = sym.as_if<ast::ParameterSymbol>())
+                        emit(value->name, lsp::CompletionItemKind::TypeParameter,
+                             value->getType().toString());
+                    else if (auto* typeParam = sym.as_if<ast::TypeParameterSymbol>())
+                        emit(typeParam->name, lsp::CompletionItemKind::TypeParameter, "type");
+                }
+                return;
+            }
             for (auto& param : def.parameters) {
                 if (param.isLocalParam)
                     continue;
@@ -77,7 +103,6 @@ public:
             return;
         }
 
-        auto* inst = findInstanceSymbol(context, *syntax, instanceSyntax);
         if (!inst)
             return;
 
@@ -85,12 +110,14 @@ public:
             if (!port)
                 continue;
             if (auto* value = port->as_if<ast::PortSymbol>())
-                emit(value->name, lsp::CompletionItemKind::Property, value->getType().toString());
+                emit(value->name, lsp::CompletionItemKind::Property, value->getType().toString(),
+                     true);
             else if (auto* iface = port->as_if<ast::InterfacePortSymbol>())
                 emit(iface->name, lsp::CompletionItemKind::Property,
-                     iface->interfaceDef ? std::string(iface->interfaceDef->name) : std::string());
+                     iface->interfaceDef ? std::string(iface->interfaceDef->name) : std::string(),
+                     true);
             else
-                emit(port->name, lsp::CompletionItemKind::Property, std::string());
+                emit(port->name, lsp::CompletionItemKind::Property, std::string(), true);
         }
     }
 
