@@ -26,7 +26,6 @@ module unused_mod
     // Instance array - regular instance array with 4 instances
     alu #(
         .WIDTH(32)
-//       ^^^^^ MissingCompletion[WIDTH] Context[Expression] Trigger[.] Items[0]
     ) alu_inst_array [3:0] (
         .a(alu_a),
 //       ^ MissingCompletion[a] Context[Expression] Trigger[.] Items[0]
@@ -45,7 +44,6 @@ module unused_mod
     // Instance array of length 1
     alu #(
         .WIDTH(32)
-//       ^^^^^ MissingCompletion[WIDTH] Context[Expression] Trigger[.] Items[0]
     ) single_alu_inst [0:0] (
         .a(single_alu_a),
 //       ^ MissingCompletion[a] Context[Expression] Trigger[.] Items[0]
@@ -71,20 +69,13 @@ module unused_mod
 
             alu #(
                 .WIDTH(32)
-//               ^^^^^ MissingCompletion[WIDTH] Context[Expression] Trigger[.] Items[0]
             ) gen_alu_inst (
                 .a(gen_alu_a),
-//               ^ MissingCompletion[a] Context[Expression] Trigger[.] Items[0]
                 .b(gen_alu_b),
-//               ^ MissingCompletion[b] Context[Expression] Trigger[.] Items[0]
                 .op(gen_alu_op),
-//               ^^ MissingCompletion[op] Context[Expression] Trigger[.] Items[0]
                 .result(gen_alu_result),
-//               ^^^^^^ MissingCompletion[result] Context[Expression] Trigger[.] Items[0]
                 .zero(gen_alu_zero),
-//               ^^^^ MissingCompletion[zero] Context[Expression] Trigger[.] Items[0]
                 .overflow(gen_alu_overflow)
-//               ^^^^^^^^ MissingCompletion[overflow] Context[Expression] Trigger[.] Items[0]
             );
         end
     endgenerate
