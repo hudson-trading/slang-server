@@ -140,7 +140,8 @@ void InlayHintCollector::handle(const HierarchyInstantiationSyntax& syntax) {
         std::vector<lsp::InlayHint> namedPortHints;
         size_t maxLabelLen = 0;
         size_t portIndex = 0;
-        size_t lastPortLine = -1;
+        size_t firstNamedPortLine = -1;
+        bool allNamedPortsOnOneLine = true;
         for (auto portSyntax : hierInstSyntax.connections) {
             switch (portSyntax->kind) {
                 case SyntaxKind::OrderedPortConnection: {
@@ -199,11 +200,12 @@ void InlayHintCollector::handle(const HierarchyInstantiationSyntax& syntax) {
                         .paddingRight = true,
                     });
 
-                    // Don't show ports if types if theyr'e all on the same line
-                    if (pos.line == lastPortLine) {
-                        return;
+                    if (firstNamedPortLine == size_t(-1)) {
+                        firstNamedPortLine = pos.line;
                     }
-                    lastPortLine = pos.line;
+                    else if (pos.line != firstNamedPortLine) {
+                        allNamedPortsOnOneLine = false;
+                    }
                 } break;
                 case SyntaxKind::WildcardPortConnection: {
                     if (!m_wildcardNames) {
@@ -269,6 +271,11 @@ void InlayHintCollector::handle(const HierarchyInstantiationSyntax& syntax) {
                     WARN("Inlay Hints: Unknown port symbol kind: {}", toString(portSyntax->kind));
                     break;
             }
+        }
+
+        // Don't show port types when every named port is on the same line.
+        if (namedPortHints.size() > 1 && allNamedPortsOnOneLine) {
+            continue;
         }
 
         // align named port hints

@@ -108,6 +108,37 @@ endmodule
     scanner.scanDocument(hdl);
 }
 
+TEST_CASE("InlayHintsMixedNamedPortsDoNotAbortLaterInstances") {
+    ServerHarness server("");
+    auto hdl = server.openFile("inlay_mixed_named_ports.sv", R"(
+module child(input logic clk, input logic rst, input logic [7:0] a, output logic [7:0] b);
+endmodule
+module top;
+    logic clk, rst;
+    logic [7:0] a, b, c, d;
+    child u0(.clk(clk), .rst(rst),
+             .a(a),
+             .b(b)),
+          u1(.clk(clk),
+             .rst(rst),
+             .a(c),
+             .b(d));
+endmodule
+)");
+
+    auto doc = hdl.doc;
+    REQUIRE(doc);
+    auto start = hdl.getLocation(0);
+    auto end = hdl.getLocation(doc->getText().size() - 1);
+    REQUIRE(start);
+    REQUIRE(end);
+    Config::InlayHints config{.portTypes = true};
+    auto hints = doc->getAnalysis()->getInlayHints(
+        server::toRange(slang::SourceRange{*start, *end}, doc->getSourceManager()), config);
+
+    CHECK(hints.size() == 8);
+}
+
 TEST_CASE("InlayHintsWildcard") {
     /// Test inlay hints for wildcard port connections
     ServerHarness server("");
