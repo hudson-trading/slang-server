@@ -666,12 +666,14 @@ std::vector<Indexer::GitIgnoreMatch> Indexer::getGitIgnoreMatches(
         }
     }
     for (const auto& entry : indexConfigs) {
-        for (const auto& exclusion :
+        for (const auto& configuredExclusion :
              entry.excludeDirs.value().value_or(std::vector<std::string>{})) {
-            if ((!exclusion.starts_with("./") && !fs::path(exclusion).is_absolute()) ||
-                exclusion.find_first_of("*?") != std::string::npos)
+            const auto exclusion = Config::expandPathVariables(configuredExclusion);
+            if (!exclusion ||
+                (!exclusion->starts_with("./") && !fs::path(*exclusion).is_absolute()) ||
+                exclusion->find_first_of("*?") != std::string::npos)
                 continue;
-            auto relative = (root / exclusion).lexically_normal().lexically_relative(root);
+            auto relative = (root / *exclusion).lexically_normal().lexically_relative(root);
             if (!relative.empty() && relative != "." && !relative.is_absolute() &&
                 *relative.begin() != "..") {
                 directories.insert((relative / "").generic_string());
@@ -1097,8 +1099,17 @@ bool Indexer::usesDefaultWorkspaceIndex(std::span<const Config::IndexConfig> ind
     for (const auto& entry : indexConfigs) {
         if (entry.dirs.value().empty())
             return false;
+        if (entry.excludeDirs.value()) {
+            for (const auto& exclusion : *entry.excludeDirs.value()) {
+                if (!Config::expandPathVariables(exclusion))
+                    return false;
+            }
+        }
         for (const auto& directory : entry.dirs.value()) {
-            auto path = (root / directory).lexically_normal();
+            auto expanded = Config::expandPathVariables(directory);
+            if (!expanded)
+                return false;
+            auto path = (root / *expanded).lexically_normal();
             if (within(path, root) || within(root, path))
                 return false;
             if (!canonicalRoot.empty()) {
@@ -1123,9 +1134,16 @@ void Indexer::startIndexing(const std::vector<Config::IndexConfig>& indexConfigs
     for (const auto& cfg : indexConfigs) {
         std::vector<std::string> excludedNames;
         std::vector<std::string> excludedPaths;
-        for (const auto& exclusion : cfg.excludeDirs.value().value_or(std::vector<std::string>{})) {
-            if (fs::path(exclusion).is_absolute() || exclusion.starts_with("./")) {
-                auto path = fs::path(exclusion);
+        bool validExclusions = true;
+        for (const auto& configuredExclusion :
+             cfg.excludeDirs.value().value_or(std::vector<std::string>{})) {
+            const auto exclusion = Config::expandPathVariables(configuredExclusion);
+            if (!exclusion) {
+                validExclusions = false;
+                break;
+            }
+            if (fs::path(*exclusion).is_absolute() || exclusion->starts_with("./")) {
+                auto path = fs::path(*exclusion);
                 if (!path.is_absolute()) {
                     if (!workspaceFolder)
                         continue;
@@ -1135,15 +1153,20 @@ void Indexer::startIndexing(const std::vector<Config::IndexConfig>& indexConfigs
                     (fs::absolute(path).lexically_normal() / "").generic_string());
             }
             else
-                excludedNames.push_back(exclusion);
+                excludedNames.push_back(*exclusion);
         }
-        for (const auto& dir : cfg.dirs.value()) {
+        if (!validExclusions)
+            continue;
+        for (const auto& configuredDir : cfg.dirs.value()) {
+            const auto dir = Config::expandPathVariables(configuredDir);
+            if (!dir)
+                continue;
             fs::path fullDirPath;
-            if (fs::path(dir).is_absolute()) {
-                fullDirPath = fs::path(dir);
+            if (fs::path(*dir).is_absolute()) {
+                fullDirPath = fs::path(*dir);
             }
             else if (workspaceFolder.has_value()) {
-                fullDirPath = fs::path(*workspaceFolder) / fs::path(dir);
+                fullDirPath = fs::path(*workspaceFolder) / fs::path(*dir);
             }
             else {
                 continue;

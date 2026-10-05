@@ -160,6 +160,9 @@ def type_from_schema(s: dict) -> str:
             props.append(f'\n  "{key}"?: {prop_type}')
         return "{" + "".join(props) + "\n}"
 
+    if s.get("type") == "object" and isinstance(s.get("additionalProperties"), dict):
+        return f"Record<string, {type_from_schema(s['additionalProperties'])}>"
+
     return "unknown"
 
 

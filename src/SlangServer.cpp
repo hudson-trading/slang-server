@@ -763,10 +763,54 @@ std::vector<std::string> SlangServer::getLoads(const std::string& path) {
 }
 
 bool SlangServer::loadConfig(const Config& config, bool forceIndexing, bool requireValidConfig) {
+    bool validPaths = true;
+    auto validatePaths = [&](const std::vector<std::string>& paths, std::string_view field) {
+        for (const auto& path : paths) {
+            if (auto expanded = Config::expandPathVariables(path); !expanded) {
+                validPaths = false;
+                auto message =
+                    fmt::format("Invalid {} path '{}': {}. See [Environment setup]("
+                                "https://hudson-trading.github.io/slang-server/start/config/"
+                                "#environment-variables) for editor configuration instructions.",
+                                field, path, expanded.error().what());
+                if (requireValidConfig) {
+                    WARN("{}", message);
+                }
+                else {
+                    m_client.showError(message);
+                }
+            }
+        }
+    };
+    if (config.build.value())
+        validatePaths({*config.build.value()}, "build");
+    validatePaths(config.incdirs.value(), "incdirs");
+    for (size_t i = 0; i < config.index.value().size(); ++i) {
+        const auto& entry = config.index.value()[i];
+        validatePaths(entry.dirs.value(), fmt::format("index[{}].dirs", i));
+        if (entry.excludeDirs.value())
+            validatePaths(*entry.excludeDirs.value(), fmt::format("index[{}].excludeDirs", i));
+    }
+    if (!validPaths && requireValidConfig)
+        return false;
+
     const auto workspacePath = m_workspaceFolder ? std::optional<std::string_view>(
                                                        m_workspaceFolder->uri.getPath())
                                                  : std::nullopt;
-    auto buildfile = requireValidConfig && m_buildfile ? m_buildfile : config.build.value();
+    std::optional<std::string> buildfile;
+    if (requireValidConfig && m_buildfile) {
+        buildfile = m_buildfile;
+    }
+    else if (config.build.value()) {
+        if (auto expanded = Config::expandPathVariables(*config.build.value())) {
+            auto path = fs::path(*expanded);
+            if (!path.empty() && path.is_relative() && m_workspaceFolder)
+                path = fs::path(m_workspaceFolder->uri.getPath()) / path;
+            buildfile = path.string();
+            if (!requireValidConfig)
+                m_client.showInfo("Using build file: " + *buildfile);
+        }
+    }
     std::unique_ptr<ServerDriver> newDriver;
     if (buildfile) {
         newDriver = ServerDriver::createFromFileLists(m_indexer, m_client, config, {*buildfile},
@@ -975,7 +1019,10 @@ bool SlangServer::autoConfigure(const std::monostate&) {
             workspaceIndex.push_back({.dirs = std::vector<std::string>{"."}});
         auto indexesDirectory = [&](const Config::IndexConfig& entry, const fs::path& directory) {
             return std::ranges::any_of(entry.dirs.value(), [&](const auto& indexRoot) {
-                auto path = root / indexRoot;
+                auto expanded = Config::expandPathVariables(indexRoot);
+                if (!expanded)
+                    return false;
+                auto path = root / *expanded;
                 return within(directory, path) || within(path, directory);
             });
         };
@@ -1045,7 +1092,9 @@ bool SlangServer::autoConfigure(const std::monostate&) {
                 fmt::join(ignoredExamples, ", ")));
         }
         auto isWorkspaceRoot = [&](const std::string& directory) {
-            return (root / directory).lexically_normal().lexically_relative(root) == ".";
+            auto expanded = Config::expandPathVariables(directory);
+            return expanded &&
+                   (root / *expanded).lexically_normal().lexically_relative(root) == ".";
         };
         bool inferIndex = !legacyIndex &&
                           std::ranges::any_of(workspaceIndex, [&](const auto& entry) {
@@ -1066,9 +1115,13 @@ bool SlangServer::autoConfigure(const std::monostate&) {
             for (auto& entry : workspaceIndex) {
                 std::vector<std::string> directories;
                 for (const auto& directory : entry.dirs.value()) {
-                    if (isWorkspaceRoot(directory))
-                        directories.insert(directories.end(), indexDirectories.begin(),
-                                           indexDirectories.end());
+                    if (isWorkspaceRoot(directory)) {
+                        auto prefix = directory.find('$') == std::string::npos
+                                          ? fs::path()
+                                          : fs::path(directory);
+                        for (const auto& suggested : indexDirectories)
+                            directories.push_back((prefix / suggested).generic_string());
+                    }
                     else
                         directories.push_back(directory);
                 }
@@ -1103,10 +1156,14 @@ bool SlangServer::autoConfigure(const std::monostate&) {
         }
 
         std::unordered_set<fs::path> configured;
-        for (const auto& path : m_config.incdirs.value())
-            configured.insert(fs::weakly_canonical(root / path));
-        for (const auto& path : incdirs)
-            configured.insert(fs::weakly_canonical(root / path));
+        for (const auto& path : m_config.incdirs.value()) {
+            if (auto expanded = Config::expandPathVariables(path))
+                configured.insert(fs::weakly_canonical(root / *expanded));
+        }
+        for (const auto& path : incdirs) {
+            if (auto expanded = Config::expandPathVariables(path))
+                configured.insert(fs::weakly_canonical(root / *expanded));
+        }
 
         const std::vector<fs::path> configuredDirectories(configured.begin(), configured.end());
         const auto conflicts = m_indexer.getConflictingIncludeDirectories(configuredDirectories);
