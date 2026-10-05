@@ -967,10 +967,16 @@ void SlangServer::onWorkspaceDidChangeWatchedFiles(const lsp::DidChangeWatchedFi
             needsReload = true;
             break;
         }
-        if (path.ends_with(".f") &&
-            m_driver->driver.getCommandFileMetadata().contains(std::filesystem::path(path))) {
-            needsReload = true;
-            break;
+        if (path.ends_with(".f")) {
+            // Match Slang's canonical metadata keys without requiring the file to still exist.
+            std::error_code ec;
+            auto commandFile = fs::weakly_canonical(path, ec);
+            if (ec)
+                commandFile = path;
+            if (m_driver->driver.getCommandFileMetadata().contains(commandFile)) {
+                needsReload = true;
+                break;
+            }
         }
     }
 
