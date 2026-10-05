@@ -46,17 +46,20 @@ struct Indexer {
     /// External-only roots supplement the default workspace scan. An explicit workspace scope
     /// or an empty dirs entry disables that default.
     static bool usesDefaultWorkspaceIndex(std::span<const Config::IndexConfig> indexConfigs,
-                                          const std::filesystem::path& workspace);
+                                          const std::filesystem::path& workspace,
+                                          const std::map<std::string, std::string>& env = {});
 
     /// Index the workspace; only auto-configure requests directory suggestions.
     void startIndexing(const std::vector<Config::IndexConfig>& indexConfigs,
                        std::optional<std::string_view> workspaceFolder,
-                       bool inferIncludeDirectories = false);
+                       bool inferIncludeDirectories = false,
+                       const std::map<std::string, std::string>& env = {});
 
     // Legacy glob-based indexing, slower
     void startIndexing(const std::vector<std::string>& globs,
                        const std::vector<std::string>& excludeDirs,
-                       bool inferIncludeDirectories = false);
+                       bool inferIncludeDirectories = false,
+                       const std::map<std::string, std::string>& env = {});
 
     // For workspace changes
     void addDocuments(const std::vector<std::filesystem::path>& paths);
@@ -109,7 +112,8 @@ struct Indexer {
     /// Return no matches if Git is unavailable or the workspace is not in a repository.
     std::vector<GitIgnoreMatch> getGitIgnoreMatches(
         const std::filesystem::path& workspace,
-        std::span<const Config::IndexConfig> indexConfigs = {}) const;
+        std::span<const Config::IndexConfig> indexConfigs = {},
+        const std::map<std::string, std::string>& env = {}) const;
 
     /// Apply newly configured absolute directory exclusions to cached index data and suggestions.
     void excludeDirectories(std::span<const std::filesystem::path> directories);

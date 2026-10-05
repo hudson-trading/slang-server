@@ -86,6 +86,7 @@ ServerDriver::ServerDriver(Indexer& indexer, SlangLspClient& client, const Confi
 
 bool ServerDriver::parseAndLoadSources(const std::vector<std::string>& buildfiles,
                                        bool requireValidConfig) {
+    driver.setEnvironmentOverrides(m_config.env.value());
     driver.addStandardArgs();
     diagEngine.removeClient(driver.textDiagClient);
     if (requireValidConfig) {
@@ -129,7 +130,12 @@ bool ServerDriver::parseAndLoadSources(const std::vector<std::string>& buildfile
     }
 
     for (const auto& directory : m_config.incdirs.value()) {
-        auto path = std::filesystem::path(directory);
+        auto expanded = Config::expandPathVariables(directory, m_config.env.value());
+        if (!expanded) {
+            ok = false;
+            continue;
+        }
+        auto path = std::filesystem::path(*expanded);
         if (path.is_relative() && !m_workspacePathPrefix.empty())
             path = std::filesystem::path(m_workspacePathPrefix) / path;
         if (auto ec = sm.addUserDirectories(path.string())) {

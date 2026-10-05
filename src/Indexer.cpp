@@ -626,7 +626,8 @@ std::vector<fs::path> Indexer::getSuggestedIndexDirectories(const fs::path& work
 }
 
 std::vector<Indexer::GitIgnoreMatch> Indexer::getGitIgnoreMatches(
-    const fs::path& workspace, std::span<const Config::IndexConfig> indexConfigs) const {
+    const fs::path& workspace, std::span<const Config::IndexConfig> indexConfigs,
+    const std::map<std::string, std::string>& env) const {
     const auto root = fs::absolute(workspace).lexically_normal();
     std::vector<std::string> files;
     std::set<std::string> directories;
@@ -666,12 +667,14 @@ std::vector<Indexer::GitIgnoreMatch> Indexer::getGitIgnoreMatches(
         }
     }
     for (const auto& entry : indexConfigs) {
-        for (const auto& exclusion :
+        for (const auto& configuredExclusion :
              entry.excludeDirs.value().value_or(std::vector<std::string>{})) {
-            if ((!exclusion.starts_with("./") && !fs::path(exclusion).is_absolute()) ||
-                exclusion.find_first_of("*?") != std::string::npos)
+            const auto exclusion = Config::expandPathVariables(configuredExclusion, env);
+            if (!exclusion ||
+                (!exclusion->starts_with("./") && !fs::path(*exclusion).is_absolute()) ||
+                exclusion->find_first_of("*?") != std::string::npos)
                 continue;
-            auto relative = (root / exclusion).lexically_normal().lexically_relative(root);
+            auto relative = (root / *exclusion).lexically_normal().lexically_relative(root);
             if (!relative.empty() && relative != "." && !relative.is_absolute() &&
                 *relative.begin() != "..") {
                 directories.insert((relative / "").generic_string());
@@ -1084,7 +1087,8 @@ void Indexer::collectFilesFromDirectory(const fs::path& dir,
 }
 
 bool Indexer::usesDefaultWorkspaceIndex(std::span<const Config::IndexConfig> indexConfigs,
-                                        const fs::path& workspace) {
+                                        const fs::path& workspace,
+                                        const std::map<std::string, std::string>& env) {
     if (indexConfigs.empty())
         return true;
     auto within = [](const fs::path& path, const fs::path& directory) {
@@ -1097,8 +1101,17 @@ bool Indexer::usesDefaultWorkspaceIndex(std::span<const Config::IndexConfig> ind
     for (const auto& entry : indexConfigs) {
         if (entry.dirs.value().empty())
             return false;
+        if (entry.excludeDirs.value()) {
+            for (const auto& exclusion : *entry.excludeDirs.value()) {
+                if (!Config::expandPathVariables(exclusion, env))
+                    return false;
+            }
+        }
         for (const auto& directory : entry.dirs.value()) {
-            auto path = (root / directory).lexically_normal();
+            auto expanded = Config::expandPathVariables(directory, env);
+            if (!expanded)
+                return false;
+            auto path = (root / *expanded).lexically_normal();
             if (within(path, root) || within(root, path))
                 return false;
             if (!canonicalRoot.empty()) {
@@ -1113,19 +1126,27 @@ bool Indexer::usesDefaultWorkspaceIndex(std::span<const Config::IndexConfig> ind
 
 void Indexer::startIndexing(const std::vector<Config::IndexConfig>& indexConfigs,
                             std::optional<std::string_view> workspaceFolder,
-                            bool inferIncludeDirectories) {
+                            bool inferIncludeDirectories,
+                            const std::map<std::string, std::string>& env) {
     std::vector<fs::path> pathsToIndex;
     DirectoryEntryCounts directoryEntries;
     auto* counts = inferIncludeDirectories ? &directoryEntries : nullptr;
 
-    if (workspaceFolder && usesDefaultWorkspaceIndex(indexConfigs, fs::path(*workspaceFolder)))
+    if (workspaceFolder && usesDefaultWorkspaceIndex(indexConfigs, fs::path(*workspaceFolder), env))
         collectFilesFromDirectory(fs::path(*workspaceFolder), {}, pathsToIndex, counts);
     for (const auto& cfg : indexConfigs) {
         std::vector<std::string> excludedNames;
         std::vector<std::string> excludedPaths;
-        for (const auto& exclusion : cfg.excludeDirs.value().value_or(std::vector<std::string>{})) {
-            if (fs::path(exclusion).is_absolute() || exclusion.starts_with("./")) {
-                auto path = fs::path(exclusion);
+        bool validExclusions = true;
+        for (const auto& configuredExclusion :
+             cfg.excludeDirs.value().value_or(std::vector<std::string>{})) {
+            const auto exclusion = Config::expandPathVariables(configuredExclusion, env);
+            if (!exclusion) {
+                validExclusions = false;
+                break;
+            }
+            if (fs::path(*exclusion).is_absolute() || exclusion->starts_with("./")) {
+                auto path = fs::path(*exclusion);
                 if (!path.is_absolute()) {
                     if (!workspaceFolder)
                         continue;
@@ -1135,15 +1156,20 @@ void Indexer::startIndexing(const std::vector<Config::IndexConfig>& indexConfigs
                     (fs::absolute(path).lexically_normal() / "").generic_string());
             }
             else
-                excludedNames.push_back(exclusion);
+                excludedNames.push_back(*exclusion);
         }
-        for (const auto& dir : cfg.dirs.value()) {
+        if (!validExclusions)
+            continue;
+        for (const auto& configuredDir : cfg.dirs.value()) {
+            const auto dir = Config::expandPathVariables(configuredDir, env);
+            if (!dir)
+                continue;
             fs::path fullDirPath;
-            if (fs::path(dir).is_absolute()) {
-                fullDirPath = fs::path(dir);
+            if (fs::path(*dir).is_absolute()) {
+                fullDirPath = fs::path(*dir);
             }
             else if (workspaceFolder.has_value()) {
-                fullDirPath = fs::path(*workspaceFolder) / fs::path(dir);
+                fullDirPath = fs::path(*workspaceFolder) / fs::path(*dir);
             }
             else {
                 continue;
@@ -1158,7 +1184,8 @@ void Indexer::startIndexing(const std::vector<Config::IndexConfig>& indexConfigs
 
 void Indexer::startIndexing(const std::vector<std::string>& globs,
                             const std::vector<std::string>& excludeDirs,
-                            bool inferIncludeDirectories) {
+                            bool inferIncludeDirectories,
+                            const std::map<std::string, std::string>& env) {
     std::vector<fs::path> pathsToIndex;
     for (const auto& pattern : globs) {
         ScopedTimer t_glob("Globbing " + pattern);
@@ -1166,7 +1193,7 @@ void Indexer::startIndexing(const std::vector<std::string>& globs,
 
         slang::SmallVector<fs::path> out;
         std::error_code ec;
-        svGlob({}, pattern, slang::GlobMode::Files, out, true, ec);
+        svGlob({}, pattern, slang::GlobMode::Files, out, true, ec, env);
 
         if (ec) {
             ERROR("Error globbing pattern {}: {}", pattern, ec.message());
