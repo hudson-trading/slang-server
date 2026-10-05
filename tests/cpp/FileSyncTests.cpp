@@ -9,6 +9,7 @@
 #include <filesystem>
 #include <fstream>
 #include <rfl/Variant.hpp>
+#include <sstream>
 
 #include "slang/diagnostics/AnalysisDiags.h"
 
@@ -209,6 +210,7 @@ TEST_CASE("GotoDefinition_TwoLayerIncludeModification") {
 TEST_CASE("SavingDependencyRefreshesOpenShallowDiagnostics") {
     auto tempDir = std::filesystem::temp_directory_path() / "slang_test_shallow_save";
     std::filesystem::create_directories(tempDir);
+    tempDir = std::filesystem::canonical(tempDir); // Normalize Windows short temp paths.
 
     {
         std::ofstream(tempDir / "width.svh") << "`define WIDTH 8\n";
@@ -325,6 +327,7 @@ TEST_CASE("ExternalFileChange_DiagnosticsUpdate") {
     /// Test that diagnostics are updated after an external file change
     auto tempDir = std::filesystem::temp_directory_path() / "slang_test_diag";
     std::filesystem::create_directories(tempDir);
+    tempDir = std::filesystem::canonical(tempDir); // Normalize Windows short temp paths.
 
     // Create a file with an error
     auto tempFile = tempDir / "diag_test.sv";
@@ -457,6 +460,7 @@ TEST_CASE("ExternalFileChange_MultipleFilesUpdatedAtomically") {
     /// files are modified together (e.g., adding a port to a child and parent).
     auto tempDir = std::filesystem::temp_directory_path() / "slang_test_atomic";
     std::filesystem::create_directories(tempDir);
+    tempDir = std::filesystem::canonical(tempDir); // Normalize Windows short temp paths.
 
     // Create child module
     auto childFile = tempDir / "child.sv";
@@ -766,7 +770,7 @@ TEST_CASE("WatchedFiles_MultipleChangesProcessed") {
 TEST_CASE("WatchedFiles_EditorChangesRemainInSync") {
     const bool utf8Positions = GENERATE(false, true);
     CAPTURE(utf8Positions);
-    auto tempDir = std::filesystem::temp_directory_path() / "slang_test_watched_editor";
+    auto tempDir = std::filesystem::temp_directory_path() / "slang_test_watched_editor with spaces";
     std::filesystem::create_directories(tempDir);
     auto file = tempDir / "top.sv";
     const std::string original = "module top;\n    logic data;\nendmodule\n";
@@ -784,8 +788,10 @@ TEST_CASE("WatchedFiles_EditorChangesRemainInSync") {
     auto doc = server.openFile("top.sv");
     if (GENERATE(false, true)) {
         auto buildFile = tempDir / "files.f";
-        std::ofstream(buildFile) << file.string() << '\n';
+        // Path insertion quotes and escapes spaces and Windows separators for the command file.
+        std::ofstream(buildFile) << file << '\n';
         server.setBuildFile(buildFile.string());
+        REQUIRE(server.m_driver->comp);
         doc.doc = server.getDoc(doc.m_uri);
     }
     std::ofstream(file) << replacement;
@@ -896,12 +902,19 @@ TEST_CASE("WatchedFiles_ReloadsClosedDependenciesBeforeAnalysis") {
 }
 
 TEST_CASE("WatchedFiles_RetainsConfigWhenCommandFileDisappears") {
-    auto tempDir = std::filesystem::temp_directory_path() / "slang_test_watched_config";
+    auto tempDir = std::filesystem::temp_directory_path() / "slang_test_watched_config with spaces";
     std::filesystem::create_directories(tempDir / ".slang");
-    auto flagsFile = tempDir / "flags.f";
+    auto flagsDir = tempDir / GENERATE("", ".");
+    CAPTURE(flagsDir);
+    auto flagsFile = flagsDir / "flags.f";
     auto configFile = tempDir / ".slang" / "server.json";
     std::ofstream(flagsFile) << "-DWIDTH=8\n";
-    std::ofstream(configFile) << rfl::json::write(Config{.flags = "-f " + flagsFile.string()});
+    auto writeConfig = [&] {
+        std::ostringstream flags;
+        flags << "-f " << flagsFile;
+        std::ofstream(configFile) << rfl::json::write(Config{.flags = flags.str()});
+    };
+    writeConfig();
     std::ofstream(tempDir / "top.sv") << "module top; endmodule\n";
 
     ServerHarness server(lsp::InitializeParams{
@@ -911,20 +924,23 @@ TEST_CASE("WatchedFiles_RetainsConfigWhenCommandFileDisappears") {
     auto withBuildFile = GENERATE(false, true);
     if (withBuildFile) {
         auto buildFile = tempDir / "build.f";
-        std::ofstream(buildFile) << (tempDir / "top.sv").string() << '\n';
+        std::ofstream(buildFile) << (tempDir / "top.sv") << '\n';
         server.setBuildFile(buildFile.string());
+        REQUIRE(server.m_driver->comp);
     }
     auto* originalDriver = server.m_driver.get();
     auto originalDoc = server.getDoc(doc.m_uri);
     auto flags = server.getConfig().flags.value();
-    SECTION("Changed notification while an existing command file is being replaced") {
+    SECTION("An existing command file temporarily disappears") {
+        auto changeType = GENERATE(lsp::FileChangeType::Changed, lsp::FileChangeType::Deleted);
+        CAPTURE(changeType);
         std::filesystem::remove(flagsFile);
         server.onWorkspaceDidChangeWatchedFiles(
-            {.changes = {{.uri = URI::fromFile(flagsFile), .type = lsp::FileChangeType::Changed}}});
+            {.changes = {{.uri = URI::fromFile(flagsFile), .type = changeType}}});
     }
     SECTION("Config references a command file that has not appeared yet") {
-        flagsFile = tempDir / "new_flags.f";
-        std::ofstream(configFile) << rfl::json::write(Config{.flags = "-f " + flagsFile.string()});
+        flagsFile = flagsDir / "new_flags.f";
+        writeConfig();
         server.onWorkspaceDidChangeWatchedFiles(
             {.changes = {
                  {.uri = URI::fromFile(configFile), .type = lsp::FileChangeType::Changed}}});
@@ -934,7 +950,7 @@ TEST_CASE("WatchedFiles_RetainsConfigWhenCommandFileDisappears") {
         server.onWorkspaceDidChangeWatchedFiles(
             {.changes = {
                  {.uri = URI::fromFile(configFile), .type = lsp::FileChangeType::Changed}}});
-        std::ofstream(configFile) << rfl::json::write(Config{.flags = "-f " + flagsFile.string()});
+        writeConfig();
     }
 
     CHECK(server.m_driver.get() == originalDriver);
@@ -957,7 +973,9 @@ TEST_CASE("WatchedFiles_RetainsConfigWhenCommandFileDisappears") {
 TEST_CASE("WatchedFiles_ResolvesConfigFlagsFromWorkspace") {
     auto tempDir = std::filesystem::temp_directory_path() / "slang_test_watched_relative_flags";
     std::filesystem::create_directories(tempDir / ".slang");
-    auto flagsFile = tempDir / "flags.f";
+    auto flagsPath = GENERATE("flags.f", "./flags.f");
+    CAPTURE(flagsPath);
+    auto flagsFile = tempDir / flagsPath;
     std::ofstream(flagsFile) << "-DWIDTH=8\n";
     std::ofstream(tempDir / ".slang" / "server.json") << R"({"flags": "-f flags.f"})";
     auto originalDirectory = std::filesystem::current_path();
