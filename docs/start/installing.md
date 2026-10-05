@@ -4,6 +4,9 @@
 
 Install the extension [here](https://marketplace.visualstudio.com/items?itemName=Hudson-River-Trading.vscode-slang). Then, it will prompt you to allow the extension to autoinstall the server binary from the [releases](https://github.com/hudson-trading/slang-server/releases) page. Alternatively, you can [build slang-server](https://hudson-trading.github.io/slang-server/start/building/) and set `slang.path` to that binary.
 
+For tool paths such as `UVM_HOME`, set [`env` in `server.json`](config.md#environment-variables)
+to override the server's environment, including in remote sessions.
+
 ### Vscode Forks (Cursor, Antigravity, VSCodium, etc.)
 
 Install from your editor, or download from the [OpenVSX Marketplace](https://open-vsx.org/extension/Hudson-River-Trading/vscode-slang)
@@ -15,6 +18,9 @@ Install from your editor, or download from the [OpenVSX Marketplace](https://ope
 Install the binary via `:MasonInstall slang-server` (or otherwise place it on `PATH`), then enable the server with `vim.lsp.enable("slang_server")`, or follow your own Neovim configuration's convention for enabling servers.
 
 Restart and run `:LspInfo` to make sure the LSP was correctly installed.
+
+For tool paths such as `UVM_HOME`, set [`env` in `server.json` and use the
+`server_cmd` helper](config.md#neovim).
 
 #### Code lenses
 

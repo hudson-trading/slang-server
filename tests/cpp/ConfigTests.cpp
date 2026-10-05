@@ -6,13 +6,38 @@
 #include "utils/ServerHarness.h"
 #include <catch2/generators/catch_generators.hpp>
 #include <cstdio>
+#include <cstdlib>
 #include <fstream>
 #include <rfl/from_generic.hpp>
 
+#include "slang/parsing/Preprocessor.h"
 #include "slang/util/OS.h"
 #include "slang/util/ScopeGuard.h"
 
 namespace {
+
+struct ConfigEnvironment {
+    const char* name = "SLANG_SERVER_CONFIG_TEST_PATH";
+    std::optional<std::string> previous;
+
+    ConfigEnvironment() {
+        if (const auto* value = std::getenv(name))
+            previous = value;
+    }
+
+    ~ConfigEnvironment() { set(previous ? previous->c_str() : nullptr); }
+
+    void set(const char* value) {
+#ifdef _WIN32
+        _putenv_s(name, value ? value : "");
+#else
+        if (value)
+            setenv(name, value, true);
+        else
+            unsetenv(name);
+#endif
+    }
+};
 
 struct ConfigWorkspace {
     inline static unsigned nextId = 0;
@@ -53,6 +78,387 @@ struct ConfigWorkspace {
 
 } // namespace
 
+TEST_CASE("Config path environment variables expand once and reject unresolved references") {
+    ConfigEnvironment environment;
+    const std::string reference = GENERATE("$SLANG_SERVER_CONFIG_TEST_PATH",
+                                           "${SLANG_SERVER_CONFIG_TEST_PATH}",
+                                           "$(SLANG_SERVER_CONFIG_TEST_PATH)");
+    environment.set("library with spaces/${SLANG_SERVER_CONFIG_TEST_PATH}");
+    CHECK(Config::expandPathVariables(reference + "/src").value() ==
+          "library with spaces/${SLANG_SERVER_CONFIG_TEST_PATH}/src");
+    CHECK(Config::expandPathVariables({}).value().empty());
+    CHECK(Config::expandPathVariables("literal$").value() == "literal$");
+    CHECK(Config::expandPathVariables("${unclosed").value() == "${unclosed");
+
+    environment.set(nullptr);
+    auto missing = Config::expandPathVariables(reference + "/src");
+    REQUIRE_FALSE(missing);
+    CHECK(missing.error().what() == "environment variable " + reference + " is unset or empty");
+    environment.set("");
+    CHECK_FALSE(Config::expandPathVariables(reference + "/src"));
+}
+
+TEST_CASE("Unset config environment variables notify the client and skip unresolved paths") {
+    ConfigEnvironment environment;
+    environment.set(GENERATE(static_cast<const char*>(nullptr), ""));
+    const bool invalidExclusion = GENERATE(false, true);
+    ConfigWorkspace workspace;
+    workspace.write("outside.sv", "module outside; endmodule\n");
+    const std::string unresolved = "${SLANG_SERVER_CONFIG_TEST_PATH}/src";
+    Config::IndexConfig entry{.dirs = std::vector<std::string>{unresolved}};
+    if (invalidExclusion) {
+        entry.dirs = std::vector<std::string>{"."};
+        entry.excludeDirs = std::vector<std::string>{unresolved};
+    }
+    rfl::Generic::Object config;
+    config["index"] = rfl::to_generic(std::vector<Config::IndexConfig>{entry});
+    config["incdirs"] = rfl::to_generic(std::vector<std::string>{unresolved});
+    workspace.write(".slang/server.json", rfl::json::write(rfl::Generic(config)));
+
+    auto server = workspace.server();
+    const std::string detail =
+        " path '${SLANG_SERVER_CONFIG_TEST_PATH}/src': environment variable "
+        "${SLANG_SERVER_CONFIG_TEST_PATH} is unset or empty. See [Environment setup]("
+        "https://hudson-trading.github.io/slang-server/start/config/#environment-variables) "
+        "for editor configuration instructions.";
+    server.expectError("Invalid incdirs" + detail);
+    server.expectError(
+        std::string(invalidExclusion ? "Invalid index[0].excludeDirs" : "Invalid index[0].dirs") +
+        detail);
+    CHECK(server.m_indexer.getFilesForSymbol("outside").empty());
+    CHECK(server.getConfig().incdirs.value() == std::vector<std::string>{unresolved});
+    auto doc = server.openFile("outside.sv");
+    CHECK(doc.getDiagnostics().empty());
+}
+
+TEST_CASE("Config environment variables resolve index roots exclusions and include directories") {
+    ConfigEnvironment environment;
+    ConfigWorkspace workspace;
+    ConfigWorkspace external(" library with spaces");
+    const bool externalLibrary = GENERATE(false, true);
+    auto& library = externalLibrary ? external : workspace;
+    const fs::path prefix = externalLibrary ? "" : "library with spaces";
+    const auto variableValue = externalLibrary ? external.root.generic_string() : prefix.string();
+    environment.set(variableValue.c_str());
+    library.write(prefix / "src/library_pkg.sv",
+                  "package library_pkg; typedef int value_t; endpackage\n");
+    library.write(prefix / "src/excluded/excluded_pkg.sv", "package excluded_pkg; endpackage\n");
+    library.write(prefix / "include/header.svh", "`define LIBRARY_VALUE '0\n");
+    workspace.write("outside.sv", "module outside; endmodule\n");
+    const std::string indexRoot = "${SLANG_SERVER_CONFIG_TEST_PATH}/src";
+    const std::string exclusion = (externalLibrary ? "" : "./") + indexRoot + "/excluded";
+    const std::string includeRoot = "$(SLANG_SERVER_CONFIG_TEST_PATH)/include";
+    rfl::Generic::Object config;
+    config["index"] = rfl::to_generic(
+        std::vector<Config::IndexConfig>{{.dirs = std::vector<std::string>{indexRoot},
+                                          .excludeDirs = std::vector<std::string>{exclusion}}});
+    config["incdirs"] = rfl::to_generic(std::vector<std::string>{includeRoot});
+    workspace.write(".slang/server.json", rfl::json::write(rfl::Generic(config)));
+
+    auto server = workspace.server();
+    CHECK(server.m_indexer.getFilesForSymbol("library_pkg").size() == 1);
+    CHECK(server.m_indexer.getFilesForSymbol("excluded_pkg").empty());
+    CHECK(server.m_indexer.getFilesForSymbol("outside").empty() == !externalLibrary);
+    auto doc = server.openFile("source.sv", "`include \"header.svh\"\n"
+                                            "import library_pkg::*;\n"
+                                            "module source(output value_t value);\n"
+                                            "assign value = `LIBRARY_VALUE; endmodule\n");
+    INFO(rfl::json::write(doc.getDiagnostics()));
+    CHECK(doc.getDiagnostics().empty());
+    REQUIRE(doc.doc->getSyntaxTree()->getIncludeDirectives().size() == 1);
+    CHECK(server.sourceManager().getFullPath(
+              doc.doc->getSyntaxTree()->getIncludeDirectives().front().buffer.id) ==
+          library.root / prefix / "include/header.svh");
+    CHECK(server.getConfig().index.value().front().dirs.value() ==
+          std::vector<std::string>{indexRoot});
+    CHECK(server.getConfig().incdirs.value() == std::vector<std::string>{includeRoot});
+}
+
+TEST_CASE("Config build paths expand environment variables without changing saved configuration") {
+    ConfigEnvironment environment;
+    ConfigWorkspace workspace(" with spaces");
+    const std::string reference = GENERATE("$SLANG_SERVER_CONFIG_TEST_PATH",
+                                           "${SLANG_SERVER_CONFIG_TEST_PATH}",
+                                           "$(SLANG_SERVER_CONFIG_TEST_PATH)");
+    const bool absolute = GENERATE(false, true);
+    const auto value = absolute ? (workspace.root / "build files").generic_string() : "build files";
+    environment.set(value.c_str());
+    workspace.write("build files/design.f", "../source.sv\n");
+    workspace.write("source.sv", "module source; endmodule\n");
+    rfl::Generic::Object config;
+    config["build"] = reference + "/design.f";
+    config["buildRelativePaths"] = true;
+    workspace.write(".slang/server.json", rfl::json::write(rfl::Generic(config)));
+    const auto saved = workspace.read(".slang/server.json");
+
+    auto server = workspace.server();
+    REQUIRE(server.m_driver->comp);
+    REQUIRE(server.m_driver->driver.syntaxTrees.size() == 1);
+    CHECK(server.getConfig().build.value() == reference + "/design.f");
+    CHECK(workspace.read(".slang/server.json") == saved);
+    CHECK(server.openFile("source.sv").getDiagnostics().empty());
+}
+
+TEST_CASE("Unset config build variables notify the client and leave exploration available") {
+    ConfigEnvironment environment;
+    environment.set(GENERATE(static_cast<const char*>(nullptr), ""));
+    ConfigWorkspace workspace;
+    workspace.write(".slang/server.json",
+                    R"({"build":"${SLANG_SERVER_CONFIG_TEST_PATH}/design.f"})");
+    auto server = workspace.server();
+    server.expectError("Invalid build path '${SLANG_SERVER_CONFIG_TEST_PATH}/design.f': "
+                       "environment variable ${SLANG_SERVER_CONFIG_TEST_PATH} is unset or empty");
+    CHECK_FALSE(server.m_driver->comp);
+    CHECK(server.getConfig().build.value() == "${SLANG_SERVER_CONFIG_TEST_PATH}/design.f");
+    CHECK(server.openFile("source.sv", "module source; endmodule\n").getDiagnostics().empty());
+}
+
+TEST_CASE("Config reload retains working state when environment variables are missing") {
+    ConfigEnvironment environment;
+    environment.set(nullptr);
+    ConfigWorkspace workspace;
+    workspace.write("source.sv", "module source; endmodule\n");
+    workspace.write("design.f", "source.sv\n");
+    workspace.write(".slang/server.json", R"({"build":"design.f","flags":"-DWIDTH=8"})");
+    auto server = workspace.server();
+    auto doc = server.openFile("source.sv", "module source; endmodule\n// unsaved edit\n");
+    REQUIRE(doc.getDiagnostics().empty());
+    auto* originalDriver = server.m_driver.get();
+    auto originalDoc = server.getDoc(doc.m_uri);
+    rfl::Generic::Object invalid;
+    invalid["build"] = "design.f";
+    invalid["flags"] = "-DWIDTH=16";
+    const std::string unresolved = "${SLANG_SERVER_CONFIG_TEST_PATH}";
+    fs::path changed = ".slang/server.json";
+    SECTION("Build path") {
+        invalid["build"] = unresolved + "/design.f";
+    }
+    SECTION("Include directory") {
+        invalid["incdirs"] = rfl::to_generic(std::vector<std::string>{unresolved});
+    }
+    SECTION("Index directory") {
+        invalid["index"] = rfl::to_generic(
+            std::vector<Config::IndexConfig>{{.dirs = std::vector<std::string>{unresolved}}});
+    }
+    SECTION("Index exclusion") {
+        invalid["index"] = rfl::to_generic(std::vector<Config::IndexConfig>{
+            {.dirs = std::vector<std::string>{"."},
+             .excludeDirs = std::vector<std::string>{unresolved}}});
+    }
+    SECTION("Config flags") {
+        invalid["flags"] = "-DWIDTH=" + unresolved;
+    }
+    SECTION("Build file contents") {
+        changed = "design.f";
+        workspace.write(changed, unresolved + "/source.sv\n");
+    }
+    workspace.write(".slang/server.json", rfl::json::write(rfl::Generic(invalid)));
+    server.onWorkspaceDidChangeWatchedFiles(
+        {.changes = {{.uri = URI::fromFile(workspace.root / changed),
+                      .type = lsp::FileChangeType::Changed}}});
+    CHECK(server.m_driver.get() == originalDriver);
+    CHECK(server.getDoc(doc.m_uri) == originalDoc);
+    CHECK(server.getConfig().build.value() == "design.f");
+    CHECK(server.getConfig().flags.value() == "-DWIDTH=8");
+    CHECK(server.getDoc(doc.m_uri)->getText() == doc.m_text + '\0');
+
+    workspace.write(".slang/server.json", R"({"build":"design.f","flags":"-DWIDTH=16"})");
+    workspace.write("design.f", "source.sv\n");
+    server.onWorkspaceDidChangeWatchedFiles(
+        {.changes = {{.uri = URI::fromFile(workspace.root / "source.sv"),
+                      .type = lsp::FileChangeType::Changed}}});
+    CHECK(server.m_driver.get() != originalDriver);
+    CHECK(server.getConfig().flags.value() == "-DWIDTH=16");
+    CHECK(server.m_driver->comp);
+    CHECK(server.m_driver->isDocumentOpen(doc.m_uri));
+    CHECK(server.getDoc(doc.m_uri)->getText() == doc.m_text + '\0');
+    CHECK(server.m_driver->options.getOrDefault<parsing::PreprocessorOptions>().predefines ==
+          std::vector<std::string>{"WIDTH=16"});
+}
+
+TEST_CASE("Unset flag and file-list variables notify the client before applying arguments") {
+    ConfigEnvironment environment;
+    environment.set(GENERATE(static_cast<const char*>(nullptr), ""));
+    ConfigWorkspace workspace;
+    std::string flags;
+    std::string build;
+    std::string errorPrefix;
+    std::string finalError;
+    const std::string invalid = "${SLANG_SERVER_CONFIG_TEST_PATH}\n"
+                                "\"$SLANG_SERVER_CONFIG_TEST_PATH/source.sv\"\n"
+                                "$(SLANG_SERVER_CONFIG_TEST_PATH)/source.sv\nsource.sv\n";
+    workspace.write("source.sv", "module source; endmodule\n");
+    SECTION("Config flags") {
+        flags = invalid;
+        finalError = "Failed to parse config flags";
+    }
+    SECTION("Nested file lists") {
+        const std::string option = GENERATE("-f", "-F", "-C");
+        const bool configuredBuild = GENERATE(false, true);
+        workspace.write("outer.f", option + " \"" +
+                                       (workspace.root / "nested/inner.f").generic_string() +
+                                       "\"\n");
+        workspace.write("nested/inner.f", invalid);
+        errorPrefix = (workspace.root / "nested/inner.f").make_preferred().string() + ":1:1: ";
+        if (configuredBuild) {
+            build = "outer.f";
+            finalError = "Failed to process build file: " + (workspace.root / "outer.f").string();
+        }
+        else {
+            flags = "-f \"" + (workspace.root / "outer.f").generic_string() + "\"";
+            finalError = "Failed to parse config flags";
+        }
+    }
+    rfl::Generic::Object config;
+    config["flags"] = flags;
+    if (!build.empty())
+        config["build"] = build;
+    workspace.write(".slang/server.json", rfl::json::write(rfl::Generic(config)));
+    auto server = workspace.server();
+    server.expectError(errorPrefix + "environment variable ${SLANG_SERVER_CONFIG_TEST_PATH} "
+                                     "is unset or empty");
+    server.expectError(finalError);
+    CHECK(server.m_driver->driver.syntaxTrees.empty());
+}
+
+TEST_CASE("Flag environment validation respects quotes comments and one-time expansion") {
+    ConfigEnvironment environment;
+    ConfigWorkspace workspace;
+    const bool fileList = GENERATE(false, true);
+    std::string text;
+    std::vector<std::string> expected;
+    SECTION("Comments and literal dollars do not require variables") {
+        environment.set(nullptr);
+        text = R"(# $SLANG_SERVER_CONFIG_TEST_PATH
+// ${SLANG_SERVER_CONFIG_TEST_PATH}
+/* $(SLANG_SERVER_CONFIG_TEST_PATH) */
++define+SINGLE='$SLANG_SERVER_CONFIG_TEST_PATH'
++define+ESCAPED=\$SLANG_SERVER_CONFIG_TEST_PATH
+)";
+        expected = {"SINGLE=$SLANG_SERVER_CONFIG_TEST_PATH",
+                    "ESCAPED=$SLANG_SERVER_CONFIG_TEST_PATH"};
+    }
+    SECTION("Expanded values are not expanded again") {
+        environment.set("${SLANG_SERVER_CONFIG_TEST_PATH}");
+        text = "+define+VALUE=\"${SLANG_SERVER_CONFIG_TEST_PATH}\"";
+        expected = {"VALUE=${SLANG_SERVER_CONFIG_TEST_PATH}"};
+    }
+    rfl::Generic::Object config;
+    if (fileList) {
+        workspace.write("design.f", text);
+        config["build"] = "design.f";
+    }
+    else {
+        config["flags"] = text;
+    }
+    workspace.write(".slang/server.json", rfl::json::write(rfl::Generic(config)));
+    auto server = workspace.server();
+    CHECK(server.m_driver->options.getOrDefault<parsing::PreprocessorOptions>().predefines ==
+          expected);
+}
+
+TEST_CASE("Flag and nested file-list variables preserve quoted paths containing spaces") {
+    ConfigEnvironment environment;
+    ConfigWorkspace workspace;
+    environment.set("sources with spaces");
+    workspace.write("sources with spaces/source.sv", "module source; endmodule\n");
+    workspace.write("nested.f", "\"${SLANG_SERVER_CONFIG_TEST_PATH}/source.sv\"\n");
+    workspace.write("outer.f", "-f nested.f\n");
+    workspace.write(".slang/server.json", R"({"build":"outer.f", "buildRelativePaths":true,
+        "flags":"+define+VALUE=\"$(SLANG_SERVER_CONFIG_TEST_PATH)\""})");
+    auto server = workspace.server();
+    REQUIRE(server.m_driver->comp);
+    REQUIRE(server.m_driver->driver.syntaxTrees.size() == 1);
+    CHECK(server.openFile("sources with spaces/source.sv").getDiagnostics().empty());
+    CHECK(server.m_driver->options.getOrDefault<parsing::PreprocessorOptions>().predefines ==
+          std::vector<std::string>{"VALUE=sources with spaces"});
+}
+
+TEST_CASE("Auto-configure preserves environment variables when saving discovered paths") {
+    ConfigEnvironment environment;
+    ConfigWorkspace workspace(" with spaces");
+    environment.set(workspace.root.string().c_str());
+    workspace.git({"init", "-q"});
+    workspace.write(".gitignore", "hw/generated/\n");
+    workspace.write("hw/generated/generated.sv", "module generated; endmodule\n");
+    workspace.write("hw/excluded/excluded.sv", "module excluded; endmodule\n");
+    workspace.write("hw/include/header.svh", "typedef int header_t;\n");
+    workspace.write("hw/extra/extra.svh", "typedef int extra_t;\n");
+    workspace.write("hw/rtl/source.sv", "`include \"header.svh\"\n`include \"extra.svh\"\n"
+                                        "module source(output header_t a, output extra_t b);\n"
+                                        "assign a = '0; assign b = '0; endmodule\n");
+    workspace.write(".slang/server.json", R"({
+        "index": [{"dirs": ["${SLANG_SERVER_CONFIG_TEST_PATH}/hw"],
+                   "excludeDirs": ["${SLANG_SERVER_CONFIG_TEST_PATH}/hw/excluded"]}],
+        "incdirs": ["${SLANG_SERVER_CONFIG_TEST_PATH}/hw/include"]
+    })");
+    auto server = workspace.server();
+    auto result = server.executeCommand({.command = "slang.autoConfigure"});
+    REQUIRE(result);
+    CHECK(result->to_bool().value());
+    CHECK(server.getConfig().index.value().front().dirs.value() ==
+          std::vector<std::string>{"${SLANG_SERVER_CONFIG_TEST_PATH}/hw"});
+    CHECK(server.getConfig().index.value().front().excludeDirs.value() ==
+          std::vector<std::string>{"${SLANG_SERVER_CONFIG_TEST_PATH}/hw/excluded", "generated"});
+    CHECK(server.getConfig().incdirs.value() ==
+          std::vector<std::string>{"${SLANG_SERVER_CONFIG_TEST_PATH}/hw/include", "hw/extra"});
+    CHECK(server.m_indexer.getFilesForSymbol("generated").empty());
+    CHECK(server.m_indexer.getFilesForSymbol("excluded").empty());
+    const auto saved = workspace.read(".slang/server.json");
+    result = server.executeCommand({.command = "slang.autoConfigure"});
+    REQUIRE(result);
+    CHECK(result->to_bool().value());
+    CHECK(workspace.read(".slang/server.json") == saved);
+}
+
+TEST_CASE("Auto-configure narrows environment workspace roots and preserves their spelling") {
+    ConfigEnvironment environment;
+    ConfigWorkspace workspace(" with spaces");
+    const std::string reference = GENERATE("$SLANG_SERVER_CONFIG_TEST_PATH",
+                                           "${SLANG_SERVER_CONFIG_TEST_PATH}",
+                                           "$(SLANG_SERVER_CONFIG_TEST_PATH)");
+    const bool absolute = GENERATE(false, true);
+    const auto value = absolute ? workspace.root.generic_string() : ".";
+    environment.set(value.c_str());
+    CAPTURE(reference, absolute);
+
+    std::vector<std::string> sourceDirectories;
+    std::vector<std::string> expected;
+    SECTION("A common source subtree") {
+        sourceDirectories = {"hw/rtl", "hw/include"};
+        expected = {reference + "/hw"};
+    }
+    SECTION("Disconnected source subtrees") {
+        sourceDirectories = {"a/b", "c/d"};
+        expected = {reference + "/a/b", reference + "/c/d"};
+    }
+    SECTION("A source at the workspace root prevents narrowing") {
+        sourceDirectories = {".", "hw"};
+        expected = {reference};
+    }
+    workspace.write(fs::path(sourceDirectories[0]) / "top.sv", "module top; endmodule\n");
+    workspace.write(fs::path(sourceDirectories[1]) / "types.svh", "typedef int value_t;\n");
+    workspace.write("tools/generate.py", "# Not a source file\n");
+    rfl::Generic::Object config;
+    config["index"] = rfl::to_generic(
+        std::vector<Config::IndexConfig>{{.dirs = std::vector<std::string>{reference}}});
+    workspace.write(".slang/server.json", rfl::json::write(rfl::Generic(config)));
+
+    auto server = workspace.server();
+    REQUIRE(server.autoConfigure({}));
+    REQUIRE(server.getConfig().index.value().size() == 1);
+    CHECK(server.getConfig().index.value().front().dirs.value() == expected);
+    CHECK(server.m_indexer.getFilesForInclude("top.sv") ==
+          std::vector<fs::path>{
+              (workspace.root / sourceDirectories[0] / "top.sv").lexically_normal()});
+    CHECK(server.m_indexer.getFilesForInclude("types.svh") ==
+          std::vector<fs::path>{workspace.root / sourceDirectories[1] / "types.svh"});
+    const auto saved = workspace.read(".slang/server.json");
+    CHECK(saved.find(reference) != std::string::npos);
+    CHECK(server.autoConfigure({}));
+    CHECK(workspace.read(".slang/server.json") == saved);
+}
+
 TEST_CASE("Config incdirs append across workspace user and local files") {
     ConfigWorkspace workspace;
     workspace.write("workspace.json", R"({"incdirs":["shared"], "flags":"-DSHARED"})");
@@ -65,6 +471,33 @@ TEST_CASE("Config incdirs append across workspace user and local files") {
     const auto& config = *result;
     CHECK(config.incdirs.value() == std::vector<std::string>{"shared", "personal", "local"});
     CHECK(config.flags.value() == "-DSHARED -DLOCAL");
+}
+
+TEST_CASE("Config environment overrides merge by name and remain literal") {
+    ConfigEnvironment environment;
+    environment.set("inherited");
+    ConfigWorkspace workspace;
+    workspace.write("workspace.json", R"({"env":{"SHARED":"workspace","WORKSPACE":"kept",
+        "SLANG_SERVER_CONFIG_TEST_PATH":"configured"}})");
+    workspace.write("user.json", R"({"env":{"SHARED":"user","USER":"kept"}})");
+    const bool localOverride = GENERATE(false, true);
+    workspace.write("local.json",
+                    localOverride
+                        ? R"({"env":{"SHARED":"local","LITERAL":"${UNEXPANDED}","EMPTY":""}})"
+                        : R"({"env":{}})");
+    auto result = Config::fromFiles((workspace.root / "workspace.json").string(),
+                                    (workspace.root / "user.json").string(),
+                                    (workspace.root / "local.json").string());
+    REQUIRE(result);
+    const auto& config = *result;
+    CHECK(config.env.value().at("SHARED") == (localOverride ? "local" : "user"));
+    CHECK(config.env.value().at("WORKSPACE") == "kept");
+    CHECK(config.env.value().at("USER") == "kept");
+    CHECK(std::string(std::getenv(environment.name)) == "inherited");
+    if (localOverride) {
+        CHECK(config.env.value().at("LITERAL") == "${UNEXPANDED}");
+        CHECK(config.env.value().at("EMPTY").empty());
+    }
 }
 
 TEST_CASE("Config incdirs resolve against the workspace and follow flag directories") {
