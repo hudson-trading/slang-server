@@ -26,8 +26,6 @@
 ///   of workspace/user flags won, rather than replacing them.
 ///
 /// The "Add define" code action writes `-D` flags to `.slang/local/server.json`.
-class SlangLspClient;
-
 struct Config {
     /// generate json schema from this by running with --config-schema
     // all fields must be optional
@@ -146,9 +144,9 @@ struct Config {
     /// @param localConf      .slang/local/server.json (untracked, personal)
     /// Non-flag fields are merged (arrays appended, scalars overwritten by later files).
     /// For flags: workspace overrides user (last non-local wins), local always appends.
-    static Config fromFiles(const std::optional<std::string>& workspaceConf,
-                            const std::optional<std::string>& userConf,
-                            const std::optional<std::string>& localConf, SlangLspClient& client);
+    static rfl::Result<Config> fromFiles(const std::optional<std::string>& workspaceConf,
+                                         const std::optional<std::string>& userConf,
+                                         const std::optional<std::string>& localConf);
 
     /// Per-file flags with correct precedence. Skipped during serialization.
     rfl::Skip<std::vector<FlagSource>> flagsByFile;
