@@ -4,6 +4,7 @@
 #include "lsp/LspTypes.h"
 #include "utils/GoldenTest.h"
 #include "utils/ServerHarness.h"
+#include <catch2/generators/catch_generators.hpp>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -252,7 +253,7 @@ endmodule
 }
 
 TEST_CASE("ExternalFileChange_ReReadBuffer") {
-    /// Test that external file changes are detected and the buffer is re-read from disk
+    /// Closed documents follow disk changes; open documents follow editor notifications.
     auto tempDir = std::filesystem::temp_directory_path() / "slang_test_external";
     std::filesystem::create_directories(tempDir);
 
@@ -292,6 +293,7 @@ endmodule
     REQUIRE(doc != nullptr);
     CHECK(doc->getText().find("original") != std::string::npos);
     CHECK(doc->getText().find("modified") == std::string::npos);
+    server.onDocDidClose({.textDocument = {.uri = uri}});
 
     // Modify the file on disk (external change)
     {
@@ -363,6 +365,7 @@ endmodule
         return false;
     };
     CHECK(hasUndefinedError(initialDiags));
+    server.onDocDidClose({.textDocument = {.uri = uri}});
 
     // Fix the error on disk
     {
@@ -422,6 +425,7 @@ endmodule
     auto initialSymbols = doc->getSymbols();
     CHECK(initialSymbols.size() == 1);
     CHECK(initialSymbols[0].name == "one_module");
+    server.onDocDidClose({.textDocument = {.uri = uri}});
 
     // Add another module on disk
     {
@@ -512,6 +516,8 @@ endmodule
     CHECK(server.client.getDiagnostics(childUri).size() == 1); // Unused port
     REQUIRE(childDoc != nullptr);
     REQUIRE(parentDoc != nullptr);
+    server.onDocDidClose({.textDocument = {.uri = childUri}});
+    server.onDocDidClose({.textDocument = {.uri = parentUri}});
 
     // Now externally modify BOTH files to add a new port
     // Child gets a new 'reset' port
@@ -754,5 +760,220 @@ TEST_CASE("WatchedFiles_MultipleChangesProcessed") {
     CHECK(indexer.getFilesForSymbol("Module2Renamed").size() == 1);
     CHECK(indexer.getFilesForSymbol("Module3").size() == 1);
 
+    std::filesystem::remove_all(tempDir);
+}
+
+TEST_CASE("WatchedFiles_EditorChangesRemainInSync") {
+    const bool utf8Positions = GENERATE(false, true);
+    CAPTURE(utf8Positions);
+    auto tempDir = std::filesystem::temp_directory_path() / "slang_test_watched_editor";
+    std::filesystem::create_directories(tempDir);
+    auto file = tempDir / "top.sv";
+    const std::string original = "module top;\n    logic data;\nendmodule\n";
+    const std::string replacement = "module top; endmodule\n";
+    std::ofstream(file) << original;
+
+    ServerHarness server(lsp::InitializeParams{
+        .capabilities = {.general =
+                             lsp::GeneralClientCapabilities{
+                                 .positionEncodings =
+                                     std::vector<lsp::PositionEncodingKind>{
+                                         utf8Positions ? "utf-8" : "utf-16"}}},
+        .workspaceFolders = {
+            {lsp::WorkspaceFolder{.uri = URI::fromFile(tempDir), .name = "test"}}}});
+    auto doc = server.openFile("top.sv");
+    if (GENERATE(false, true)) {
+        auto buildFile = tempDir / "files.f";
+        std::ofstream(buildFile) << file.string() << '\n';
+        server.setBuildFile(buildFile.string());
+        doc.doc = server.getDoc(doc.m_uri);
+    }
+    std::ofstream(file) << replacement;
+
+    SECTION("Watcher arrives before the editor change") {
+        server.onWorkspaceDidChangeWatchedFiles(
+            {.changes = {{.uri = doc.m_uri, .type = lsp::FileChangeType::Changed}}});
+    }
+    SECTION("Delete and create events keep the editor document open") {
+        server.onWorkspaceDidChangeWatchedFiles(
+            {.changes = {{.uri = doc.m_uri, .type = lsp::FileChangeType::Deleted},
+                         {.uri = doc.m_uri, .type = lsp::FileChangeType::Created}}});
+    }
+
+    server.onDocDidChange(
+        {.textDocument = {.version = 2, .uri = doc.m_uri},
+         .contentChanges = {lsp::TextDocumentContentChangePartial{
+             .range = {.start = {.line = 0, .character = 0}, .end = {.line = 3, .character = 0}},
+             .text = replacement}}});
+    CHECK(doc.doc->getText() == replacement + '\0');
+    CHECK(server.m_driver->isDocumentOpen(doc.m_uri));
+
+    const std::string unsaved = "module top; logic unsaved; endmodule\n";
+    server.onDocDidChange(
+        {.textDocument = {.version = 3, .uri = doc.m_uri},
+         .contentChanges = {lsp::TextDocumentContentChangeWholeDocument{.text = unsaved}}});
+    server.onWorkspaceDidChangeWatchedFiles(
+        {.changes = {{.uri = doc.m_uri, .type = lsp::FileChangeType::Changed}}});
+    CHECK(doc.doc->getText() == unsaved + '\0');
+
+    std::filesystem::remove_all(tempDir);
+}
+
+TEST_CASE("IncrementalChangesRejectInvalidRanges") {
+    ServerHarness server(lsp::InitializeParams{
+        .capabilities = {
+            .general = lsp::GeneralClientCapabilities{
+                .positionEncodings = std::vector<lsp::PositionEncodingKind>{"utf-8"}}}});
+    const std::string original = "module top;\nendmodule\n";
+    auto doc = server.openFile("top.sv", original);
+    auto analysis = doc.doc->getAnalysis();
+    std::vector<lsp::TextDocumentContentChangeEvent> changes;
+    if (GENERATE(false, true)) {
+        changes.push_back(
+            lsp::TextDocumentContentChangeWholeDocument{.text = "module top; endmodule\n"});
+    }
+
+    lsp::Range range;
+    SECTION("Character past the end of the buffer") {
+        range = {.start = {.line = 0, .character = 100}, .end = {.line = 0, .character = 100}};
+    }
+    SECTION("Reversed range") {
+        range = {.start = {.line = 0, .character = 5}, .end = {.line = 0, .character = 2}};
+    }
+    SECTION("Line past the end of the buffer") {
+        range = {.start = {.line = 5, .character = 0}, .end = {.line = 5, .character = 0}};
+    }
+    changes.push_back(lsp::TextDocumentContentChangePartial{.range = range, .text = "x"});
+
+    CHECK_THROWS_AS(doc.doc->onChange(changes), std::runtime_error);
+    CHECK(doc.doc->getText() == original + '\0');
+    CHECK(doc.doc->getAnalysis() == analysis);
+}
+
+TEST_CASE("WatchedFiles_ReloadsClosedDependenciesBeforeAnalysis") {
+    auto tempDir = std::filesystem::temp_directory_path() / "slang_test_watched_dependencies";
+    std::filesystem::create_directories(tempDir);
+    std::ofstream(tempDir / "width.svh") << "`define WIDTH 8\n";
+    std::ofstream(tempDir / "child.sv") << "module child(input logic [7:0] data); endmodule\n";
+    // openFile normalizes to LF, making an accidental disk reload visible on every platform.
+    std::ofstream(tempDir / "parent.sv", std::ios::binary)
+        << "`include \"width.svh\"\r\n"
+           "module parent;\r\n"
+           "    logic [`WIDTH-1:0] data = '0;\r\n"
+           "    child child_inst(.data(data));\r\n"
+           "endmodule\r\n";
+
+    ServerHarness server(lsp::InitializeParams{
+        .workspaceFolders = {
+            {lsp::WorkspaceFolder{.uri = URI::fromFile(tempDir), .name = "test"}}}});
+    auto parentPath = GENERATE("parent.sv", "./parent.sv");
+    CAPTURE(parentPath);
+    auto parent = server.openFile(parentPath);
+    auto originalText = std::string(parent.doc->getText());
+    auto originalAnalysis = parent.doc->getAnalysis();
+    auto headerUri = URI::fromFile(tempDir / "width.svh");
+    auto childUri = URI::fromFile(tempDir / "child.sv");
+    CHECK_FALSE(server.m_driver->docs.contains(headerUri));
+    CHECK(server.m_driver->docs.contains(childUri));
+    CHECK_FALSE(server.m_driver->isDocumentOpen(childUri));
+    REQUIRE(parent.getDiagnostics().empty());
+
+    std::ofstream(tempDir / "width.svh") << "`define WIDTH 16\n";
+    std::ofstream(tempDir / "child.sv") << "module child(input logic [15:0] data); endmodule\n";
+    server.client.diagnosticPublications.clear();
+    server.onWorkspaceDidChangeWatchedFiles(
+        {.changes = {{.uri = childUri, .type = lsp::FileChangeType::Changed},
+                     {.uri = headerUri, .type = lsp::FileChangeType::Changed},
+                     {.uri = parent.m_uri, .type = lsp::FileChangeType::Changed}}});
+
+    CHECK(parent.doc->getText() == originalText);
+    CHECK(parent.doc->getAnalysis() != originalAnalysis);
+    CHECK(parent.getDiagnostics().empty());
+    CHECK(server.getDoc(childUri)->getText().find("[15:0]") != std::string_view::npos);
+    CHECK(std::ranges::count(server.client.diagnosticPublications, parent.m_uri) == 1);
+
+    std::filesystem::remove_all(tempDir);
+}
+
+TEST_CASE("WatchedFiles_RetainsConfigWhenCommandFileDisappears") {
+    auto tempDir = std::filesystem::temp_directory_path() / "slang_test_watched_config";
+    std::filesystem::create_directories(tempDir / ".slang");
+    auto flagsFile = tempDir / "flags.f";
+    auto configFile = tempDir / ".slang" / "server.json";
+    std::ofstream(flagsFile) << "-DWIDTH=8\n";
+    std::ofstream(configFile) << rfl::json::write(Config{.flags = "-f " + flagsFile.string()});
+    std::ofstream(tempDir / "top.sv") << "module top; endmodule\n";
+
+    ServerHarness server(lsp::InitializeParams{
+        .workspaceFolders = {
+            {lsp::WorkspaceFolder{.uri = URI::fromFile(tempDir), .name = "test"}}}});
+    auto doc = server.openFile("top.sv", "module top; localparam int width = `WIDTH; endmodule\n");
+    auto withBuildFile = GENERATE(false, true);
+    if (withBuildFile) {
+        auto buildFile = tempDir / "build.f";
+        std::ofstream(buildFile) << (tempDir / "top.sv").string() << '\n';
+        server.setBuildFile(buildFile.string());
+    }
+    auto* originalDriver = server.m_driver.get();
+    auto originalDoc = server.getDoc(doc.m_uri);
+    auto flags = server.getConfig().flags.value();
+    SECTION("Changed notification while an existing command file is being replaced") {
+        std::filesystem::remove(flagsFile);
+        server.onWorkspaceDidChangeWatchedFiles(
+            {.changes = {{.uri = URI::fromFile(flagsFile), .type = lsp::FileChangeType::Changed}}});
+    }
+    SECTION("Config references a command file that has not appeared yet") {
+        flagsFile = tempDir / "new_flags.f";
+        std::ofstream(configFile) << rfl::json::write(Config{.flags = "-f " + flagsFile.string()});
+        server.onWorkspaceDidChangeWatchedFiles(
+            {.changes = {
+                 {.uri = URI::fromFile(configFile), .type = lsp::FileChangeType::Changed}}});
+    }
+    SECTION("Config is only partially written") {
+        std::ofstream(configFile) << R"({"flags":)";
+        server.onWorkspaceDidChangeWatchedFiles(
+            {.changes = {
+                 {.uri = URI::fromFile(configFile), .type = lsp::FileChangeType::Changed}}});
+        std::ofstream(configFile) << rfl::json::write(Config{.flags = "-f " + flagsFile.string()});
+    }
+
+    CHECK(server.m_driver.get() == originalDriver);
+    CHECK(server.getConfig().flags.value() == flags);
+    CHECK(server.getDoc(doc.m_uri) == originalDoc);
+
+    std::ofstream(flagsFile) << "-DWIDTH=16\n";
+    server.onWorkspaceDidChangeWatchedFiles(
+        {.changes = {{.uri = URI::fromFile(flagsFile), .type = lsp::FileChangeType::Created}}});
+
+    CHECK(server.m_driver.get() != originalDriver);
+    CHECK(std::ranges::find(server.m_driver->driver.options.defines, "WIDTH=16") !=
+          server.m_driver->driver.options.defines.end());
+    CHECK(server.m_driver->isDocumentOpen(doc.m_uri));
+    CHECK(bool(server.m_driver->comp) == withBuildFile);
+    CHECK(server.getDoc(doc.m_uri)->getText() == doc.m_text + '\0');
+    std::filesystem::remove_all(tempDir);
+}
+
+TEST_CASE("WatchedFiles_ResolvesConfigFlagsFromWorkspace") {
+    auto tempDir = std::filesystem::temp_directory_path() / "slang_test_watched_relative_flags";
+    std::filesystem::create_directories(tempDir / ".slang");
+    auto flagsFile = tempDir / "flags.f";
+    std::ofstream(flagsFile) << "-DWIDTH=8\n";
+    std::ofstream(tempDir / ".slang" / "server.json") << R"({"flags": "-f flags.f"})";
+    auto originalDirectory = std::filesystem::current_path();
+
+    ServerHarness server(lsp::InitializeParams{
+        .workspaceFolders = {
+            {lsp::WorkspaceFolder{.uri = URI::fromFile(tempDir), .name = "test"}}}});
+    CHECK(std::filesystem::current_path() == originalDirectory);
+    CHECK(std::ranges::find(server.m_driver->driver.options.defines, "WIDTH=8") !=
+          server.m_driver->driver.options.defines.end());
+
+    std::ofstream(flagsFile) << "-DWIDTH=16\n";
+    server.onWorkspaceDidChangeWatchedFiles(
+        {.changes = {{.uri = URI::fromFile(flagsFile), .type = lsp::FileChangeType::Changed}}});
+    CHECK(std::ranges::find(server.m_driver->driver.options.defines, "WIDTH=16") !=
+          server.m_driver->driver.options.defines.end());
+    CHECK(std::filesystem::current_path() == originalDirectory);
     std::filesystem::remove_all(tempDir);
 }

@@ -73,6 +73,9 @@ protected:
     /// The layered config from server.json files
     Config m_config;
 
+    /// Retry a failed automatic reload on the next watched-file notification.
+    bool m_configReloadPending = false;
+
     /// Indexes the workspace for top symbols and macros
     Indexer m_indexer;
 
@@ -88,10 +91,13 @@ public:
     /// ~/.slang/server.json
     /// ./slang/server.json
     /// ./slang/local/server.json
-    void loadConfig();
+    /// Automatic reloads require valid files and retain the current driver on failure.
+    bool loadConfig(bool requireValidConfig = false);
 
     /// Load the configuration from a given config object, reindex if needed or forced
-    void loadConfig(const Config& config, bool forceIndexing = false);
+    /// Returns false when an automatic reload cannot construct a valid replacement.
+    bool loadConfig(const Config& config, bool forceIndexing = false,
+                    bool requireValidConfig = false);
 
     const Config& getConfig() const { return m_config; }
 

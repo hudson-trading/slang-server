@@ -306,20 +306,17 @@ void SlangServer::onInitialized(const lsp::InitializedParams&) {
         auto options = lsp::DidChangeWatchedFilesRegistrationOptions{
             .watchers{
                 // SystemVerilog/Verilog source files
-                lsp::FileSystemWatcher{.globPattern =
-                                           lsp::RelativePattern{.baseUri = m_workspaceFolder->uri,
-                                                                .pattern = "**/*.{sv,svh,v,vh}"},
-                                       .kind = lsp::WatchKind::Change},
+                lsp::FileSystemWatcher{
+                    .globPattern = lsp::RelativePattern{.baseUri = m_workspaceFolder->uri,
+                                                        .pattern = "**/*.{sv,svh,v,vh}"}},
                 // Config files
-                lsp::FileSystemWatcher{.globPattern =
-                                           lsp::RelativePattern{.baseUri = m_workspaceFolder->uri,
-                                                                .pattern = ".slang/**/*.json"},
-                                       .kind = lsp::WatchKind::Change},
+                lsp::FileSystemWatcher{
+                    .globPattern = lsp::RelativePattern{.baseUri = m_workspaceFolder->uri,
+                                                        .pattern = ".slang/**/*.json"}},
                 // Build/flag files
-                lsp::FileSystemWatcher{.globPattern =
-                                           lsp::RelativePattern{.baseUri = m_workspaceFolder->uri,
-                                                                .pattern = "**/*.f"},
-                                       .kind = lsp::WatchKind::Change},
+                lsp::FileSystemWatcher{
+                    .globPattern = lsp::RelativePattern{.baseUri = m_workspaceFolder->uri,
+                                                        .pattern = "**/*.f"}},
             },
         };
 
@@ -718,17 +715,31 @@ std::vector<std::string> SlangServer::getLoads(const std::string& path) {
     return m_driver->comp->getLoadCone(path).getPaths();
 }
 
-void SlangServer::loadConfig(const Config& config, bool forceIndexing) {
-    auto old_config = m_config;
-    m_config = Config(config);
-
-    if (m_config.build.value().has_value()) {
-        m_client.showInfo("Using build file: " + *m_config.build.value());
-        setBuildFile(*m_config.build.value());
+bool SlangServer::loadConfig(const Config& config, bool forceIndexing, bool requireValidConfig) {
+    const auto workspacePath = m_workspaceFolder ? std::optional<std::string_view>(
+                                                       m_workspaceFolder->uri.getPath())
+                                                 : std::nullopt;
+    auto buildfile = requireValidConfig && m_buildfile ? m_buildfile : config.build.value();
+    std::unique_ptr<ServerDriver> newDriver;
+    if (buildfile) {
+        newDriver = ServerDriver::createFromFileLists(m_indexer, m_client, config, {*buildfile},
+                                                      workspacePath, m_driver.get(),
+                                                      requireValidConfig);
     }
     else {
-        setExplore();
+        newDriver = ServerDriver::createForExplore(m_indexer, m_client, config, workspacePath,
+                                                   m_driver.get(), requireValidConfig);
     }
+    if (!newDriver)
+        return false;
+
+    auto old_config = m_config;
+    m_config = config;
+    m_driver = std::move(newDriver);
+    m_buildfile = std::move(buildfile);
+    m_topFile.reset();
+    m_configReloadPending = false;
+    m_driver->diagClient->pushDiags();
 
     if (!m_config.indexGlobs.get().empty() || !m_config.excludeDirs.get().empty()) {
         // Deprecated config globs
@@ -763,9 +774,10 @@ void SlangServer::loadConfig(const Config& config, bool forceIndexing) {
 
     // Send config to editor client if it needs to parse general configs
     m_client.setConfig(m_config);
+    return true;
 }
 
-void SlangServer::loadConfig() {
+bool SlangServer::loadConfig(bool requireValidConfig) {
     std::optional<std::string> workspaceConf, userConf, localConf;
 
     if (m_workspaceFolder) {
@@ -781,7 +793,16 @@ void SlangServer::loadConfig() {
     if (home && !std::getenv("SLANG_SERVER_TESTS"))
         userConf = (fs::path(home) / ".slang" / "server.json").string();
 
-    loadConfig(Config::fromFiles(workspaceConf, userConf, localConf, m_client), true);
+    auto config = Config::fromFiles(workspaceConf, userConf, localConf);
+    if (!config) {
+        if (requireValidConfig) {
+            WARN("Config reload failed: {}", config.error().what());
+            return false;
+        }
+        m_client.showError(config.error().what());
+        return m_driver ? false : loadConfig(Config{}, true);
+    }
+    return loadConfig(*config, true, requireValidConfig);
 }
 
 std::monostate SlangServer::addDefine(const std::string& macroName) {
@@ -939,7 +960,7 @@ void SlangServer::onDocDidClose(const lsp::DidCloseTextDocumentParams& params) {
 
 void SlangServer::onWorkspaceDidChangeWatchedFiles(const lsp::DidChangeWatchedFilesParams& params) {
     // Check if any config or active build files changed
-    bool needsReload = false;
+    bool needsReload = m_configReloadPending;
     for (const auto& change : params.changes) {
         auto path = change.uri.getPath();
         if (path.ends_with(".json")) {
@@ -955,16 +976,16 @@ void SlangServer::onWorkspaceDidChangeWatchedFiles(const lsp::DidChangeWatchedFi
 
     if (needsReload) {
         INFO("Config or build file changed, reloading");
-        auto savedBuildfile = m_buildfile;
-        loadConfig();
-        if (savedBuildfile)
-            setBuildFile(*savedBuildfile);
+        if (loadConfig(/* requireValidConfig */ true))
+            return;
+        m_configReloadPending = true;
+        WARN("Keeping the current configuration; retrying on the next file change");
         return;
     }
 
     // Handle external source file changes (from git, formatters, etc)
-    m_driver->onWorkspaceDidChangeWatchedFiles(params);
     m_indexer.onWorkspaceDidChangeWatchedFiles(params);
+    m_driver->onWorkspaceDidChangeWatchedFiles(params);
 }
 
 static bool fuzzyMatch(std::string_view query, std::string_view candidate) {

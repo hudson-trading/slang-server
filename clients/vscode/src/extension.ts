@@ -176,10 +176,12 @@ File input is sent to stdin, and formatted output is read from stdout.',
 
   client: LanguageClient | undefined
   private isRestarting: boolean = false
+  private readonly serverOutputChannel: vscode.OutputChannel
 
   path: PathConfigObject = new PathConfigObject(
     {
-      description: 'Path to slang-server (not slang)',
+      description:
+        'Path to slang-server (not slang). Run "slang: Restart Language Server" to apply changes.',
     },
     {
       windows: 'slang-server.exe',
@@ -202,12 +204,13 @@ File input is sent to stdin, and formatted output is read from stdout.',
   args: ConfigObject<string[]> = new ConfigObject({
     default: [],
     description:
-      'Arguments to pass to the slang-server. These are different from slang flags; for those open `.slang/server.json`',
+      'Arguments to pass to the slang-server. These are different from slang flags; for those open `.slang/server.json`. Run "slang: Restart Language Server" to apply changes.',
   })
 
   debugArgs: ConfigObject<string[]> = new ConfigObject({
     default: [],
-    description: 'Arguments to pass to slang-server when debugging',
+    description:
+      'Arguments to pass to slang-server when debugging. Run "slang: Restart Language Server" to apply changes.',
   })
 
   /// The final config from slang-server json files
@@ -228,9 +231,11 @@ File input is sent to stdin, and formatted output is read from stdout.',
 
     const clientOptions: LanguageClientOptions = {
       documentSelector: anyVerilogSelector,
+      outputChannel: this.serverOutputChannel,
     }
 
     this.client = new LanguageClient('slang-server', serverOptions, clientOptions)
+    this.client.info(`Starting language server: ${slangServerPath}`)
     const clientInfo = {
       name: this.context.extension.packageJSON.name as string,
       version: this.context.extension.packageJSON.version as string,
@@ -386,6 +391,8 @@ File input is sent to stdin, and formatted output is read from stdout.',
     },
     async () => {
       this.isRestarting = true
+      this.logger.info('Restarting language server by explicit request')
+      this.client?.info('Restarting language server by explicit request')
       try {
         await this.stopServer()
         await this.setupLanguageClient()
@@ -403,16 +410,14 @@ File input is sent to stdin, and formatted output is read from stdout.',
       title: 'Show Output',
     },
     async () => {
-      if (this.client !== undefined) {
-        this.client.outputChannel.show()
-      } else {
-        this.logger.show()
-      }
+      this.serverOutputChannel.show()
     }
   )
 
   async stopServer() {
     if (this.client !== undefined) {
+      this.logger.info('Stopping language server')
+      this.client.info('Stopping language server')
       try {
         await this.client.stop()
       } catch (e) {
@@ -427,20 +432,11 @@ File input is sent to stdin, and formatted output is read from stdout.',
   constructor(context: vscode.ExtensionContext, obj: ViewContainerSpec) {
     super(obj)
     this.context = context
+    this.serverOutputChannel = vscode.window.createOutputChannel('slang-server')
+    context.subscriptions.push(this.serverOutputChannel)
   }
 
   async activate(context: vscode.ExtensionContext) {
-    context.subscriptions.push(
-      this.onConfigUpdated(async () => {
-        this.isRestarting = true
-        try {
-          await this.stopServer()
-          await this.setupLanguageClient()
-        } finally {
-          this.isRestarting = false
-        }
-      })
-    )
     await this.setupLanguageClient()
 
     if (context.storageUri !== undefined) {
@@ -453,9 +449,11 @@ File input is sent to stdin, and formatted output is read from stdout.',
     // Configure Format on save
     /////////////////////////////////////////////
 
-    this.onConfigUpdated(() => {
-      void this.checkFormatDirs()
-    })
+    context.subscriptions.push(
+      this.onConfigUpdated(() => {
+        void this.checkFormatDirs()
+      })
+    )
     await this.checkFormatDirs()
 
     this.logger.info(`${context.extension.id} activation finished.`)

@@ -363,13 +363,13 @@
           "type": "string"
         },
         "slang.path": {
-          "description": "Path to slang-server (not slang)",
+          "description": "Path to slang-server (not slang). Run \"slang: Restart Language Server\" to apply changes.",
           "default": "",
           "type": "string"
         },
         "slang.args": {
           "default": [],
-          "description": "Arguments to pass to the slang-server. These are different from slang flags; for those open `.slang/server.json`",
+          "description": "Arguments to pass to the slang-server. These are different from slang flags; for those open `.slang/server.json`. Run \"slang: Restart Language Server\" to apply changes.",
           "type": "array",
           "items": {
             "type": "string"
@@ -377,7 +377,7 @@
         },
         "slang.debugArgs": {
           "default": [],
-          "description": "Arguments to pass to slang-server when debugging",
+          "description": "Arguments to pass to slang-server when debugging. Run \"slang: Restart Language Server\" to apply changes.",
           "type": "array",
           "items": {
             "type": "string"

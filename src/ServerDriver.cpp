@@ -59,7 +59,8 @@ bool ServerDriver::s_debugHoversEnabled =
 
 ServerDriver::ServerDriver(Indexer& indexer, SlangLspClient& client, const Config& config,
                            std::vector<std::string> buildfiles,
-                           std::optional<std::string_view> workspaceFolder) :
+                           std::optional<std::string_view> workspaceFolder,
+                           bool requireValidConfig) :
     sm(driver.sourceManager), diagEngine(driver.diagEngine), client(client),
     diagClient(std::make_shared<ServerDiagClient>(sm, client)),
     completions(*this, indexer, sm, options), codeActions(*this, sm), m_indexer(indexer),
@@ -68,13 +69,32 @@ ServerDriver::ServerDriver(Indexer& indexer, SlangLspClient& client, const Confi
         m_workspacePathPrefix.back() != '\\') {
         m_workspacePathPrefix.push_back(std::filesystem::path::preferred_separator);
     }
-    parseAndLoadSources(buildfiles);
+
+    // Slang resolves -f arguments and source paths against the process working directory.
+    auto previousDirectory = std::filesystem::current_path();
+    auto restoreDirectory = ScopeGuard([&] {
+        std::error_code ec;
+        std::filesystem::current_path(previousDirectory, ec);
+        if (ec)
+            WARN("Failed to restore working directory {}: {}", previousDirectory.string(),
+                 ec.message());
+    });
+    if (workspaceFolder)
+        std::filesystem::current_path(*workspaceFolder);
+    m_configLoaded = parseAndLoadSources(buildfiles, requireValidConfig);
 }
 
-void ServerDriver::parseAndLoadSources(const std::vector<std::string>& buildfiles) {
+bool ServerDriver::parseAndLoadSources(const std::vector<std::string>& buildfiles,
+                                       bool requireValidConfig) {
     driver.addStandardArgs();
     diagEngine.removeClient(driver.textDiagClient);
-    diagEngine.addClient(diagClient);
+    if (requireValidConfig) {
+        driver.textDiagClient = std::make_shared<TextDiagnosticClient>();
+        diagEngine.addClient(driver.textDiagClient);
+    }
+    else {
+        diagEngine.addClient(diagClient);
+    }
 
     slang::CommandLine::ParseOptions parseOpts;
     parseOpts.expandEnvVars = true;
@@ -92,18 +112,25 @@ void ServerDriver::parseAndLoadSources(const std::vector<std::string>& buildfile
 
     driver.options.errorLimit = 0;
     ok &= driver.processOptions(false);
-    if (!ok) {
+    if (!ok && !requireValidConfig) {
         client.showError("Failed to parse config flags");
     }
 
     for (auto& buildfile : buildfiles) {
-        ok = driver.processCommandFiles(buildfile, m_config.buildRelativePaths.value(), false);
-        if (ok) {
+        auto loaded = driver.processCommandFiles(buildfile, m_config.buildRelativePaths.value(),
+                                                 false);
+        ok &= loaded;
+        if (loaded) {
             INFO("Processed build file: {}", buildfile);
         }
-        else {
+        else if (!requireValidConfig) {
             client.showError(fmt::format("Failed to process build file: {}", buildfile));
         }
+    }
+
+    if (!ok && requireValidConfig) {
+        WARN("Config reload failed: {}", driver.textDiagClient->getString());
+        return false;
     }
 
     // Build macro name -> source file map from the driver's per-file define lists
@@ -123,7 +150,17 @@ void ServerDriver::parseAndLoadSources(const std::vector<std::string>& buildfile
 
     options = driver.createOptionBag();
     options.set(driver.getAnalysisOptions());
-    ok = driver.parseAllSources();
+    ok &= driver.parseAllSources();
+    if (requireValidConfig) {
+        if (!ok) {
+            WARN("Source reload failed: {}", driver.textDiagClient->getString());
+            return false;
+        }
+        if (!driver.textDiagClient->getString().empty())
+            WARN("Config reload diagnostics: {}", driver.textDiagClient->getString());
+        diagEngine.removeClient(driver.textDiagClient);
+        diagEngine.addClient(diagClient);
+    }
     diagEngine.setMappingsFromPragmas();
 
     // Create documents from syntax trees
@@ -139,6 +176,7 @@ void ServerDriver::parseAndLoadSources(const std::vector<std::string>& buildfile
         auto doc = SlangDoc::fromTree(*this, std::move(tree));
         docs[uri] = doc;
     }
+    return ok;
 }
 
 void ServerDriver::analyzeDocument(SlangDoc& doc, const lsp::RequestContext& ctx) {
@@ -224,9 +262,13 @@ void ServerDriver::copyOpenDocumentsFrom(const ServerDriver* oldDriver) {
 
 std::unique_ptr<ServerDriver> ServerDriver::createForExplore(
     Indexer& indexer, SlangLspClient& client, const Config& config,
-    std::optional<std::string_view> workspaceFolder, const ServerDriver* oldDriver) {
+    std::optional<std::string_view> workspaceFolder, const ServerDriver* oldDriver,
+    bool requireValidConfig) {
     auto newDriver = std::make_unique<ServerDriver>(indexer, client, config,
-                                                    std::vector<std::string>{}, workspaceFolder);
+                                                    std::vector<std::string>{}, workspaceFolder,
+                                                    requireValidConfig);
+    if (requireValidConfig && !newDriver->m_configLoaded)
+        return nullptr;
     newDriver->copyOpenDocumentsFrom(oldDriver);
     return newDriver;
 }
@@ -234,9 +276,11 @@ std::unique_ptr<ServerDriver> ServerDriver::createForExplore(
 std::unique_ptr<ServerDriver> ServerDriver::createFromFileLists(
     Indexer& indexer, SlangLspClient& client, const Config& config,
     std::vector<std::string> buildfiles, std::optional<std::string_view> workspaceFolder,
-    const ServerDriver* oldDriver) {
+    const ServerDriver* oldDriver, bool requireValidConfig) {
     auto newDriver = std::make_unique<ServerDriver>(indexer, client, config, std::move(buildfiles),
-                                                    workspaceFolder);
+                                                    workspaceFolder, requireValidConfig);
+    if (requireValidConfig && !newDriver->m_configLoaded)
+        return nullptr;
 
     std::vector<std::shared_ptr<SlangDoc>> buildDocuments;
     buildDocuments.reserve(newDriver->docs.size());
@@ -367,19 +411,30 @@ void ServerDriver::onWorkspaceDidChangeWatchedFiles(
     std::vector<std::shared_ptr<SlangDoc>> updatedDocs;
 
     for (const auto& change : params.changes) {
+        // didChange ranges refer to the editor's previous text. A disk reload here
+        // would apply the next incremental edit to the wrong version of the buffer.
+        if (isDocumentOpen(change.uri))
+            continue;
+
         switch (change.type) {
+            case lsp::FileChangeType::Created:
             case lsp::FileChangeType::Changed: {
-                // Only reload if this is an open document
-                if (m_openDocs.find(change.uri) == m_openDocs.end()) {
+                auto it = docs.find(change.uri);
+                if (it == docs.end()) {
+                    // Included headers can be cached without having a SlangDoc.
+                    if (sm.isCached(change.uri.getPath())) {
+                        auto buffer = sm.readSource(change.uri.getPath(), nullptr);
+                        if (buffer) {
+                            auto result = sm.reloadBuffer(buffer->id);
+                            if (!result)
+                                WARN("Failed to reload {}: {}", change.uri.getPath(),
+                                     result.error().message());
+                        }
+                    }
                     continue;
                 }
 
-                auto doc = getDocument(change.uri);
-                if (!doc) {
-                    WARN("Document {} not found for reload", change.uri.getPath());
-                    continue;
-                }
-
+                auto doc = it->second;
                 if (!doc->reloadBuffer()) {
                     continue;
                 }
@@ -391,14 +446,17 @@ void ServerDriver::onWorkspaceDidChangeWatchedFiles(
             case lsp::FileChangeType::Deleted:
                 closeDocument(change.uri);
                 break;
-            case lsp::FileChangeType::Created:
-                break;
         }
     }
 
-    // Update all open docs after all buffers have been reloaded
+    // Analyze only after every changed disk buffer has been reloaded.
     for (auto& doc : updatedDocs) {
         analyzeDocument(*doc);
+    }
+    for (const auto& uri : m_openDocs) {
+        auto it = docs.find(uri);
+        if (it != docs.end() && !it->second->hasAnalysis())
+            analyzeDocument(*it->second);
     }
 }
 
