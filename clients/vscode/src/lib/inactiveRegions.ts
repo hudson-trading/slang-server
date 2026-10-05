@@ -54,12 +54,10 @@ export class InactiveRegionsFeature extends ExtensionComponent implements vscode
     const style = this.style.getValue()
     if (style === 'background') {
       this.decorationType = vscode.window.createTextEditorDecorationType({
-        isWholeLine: true,
         backgroundColor: this.backgroundColor.getValue(),
       })
     } else if (style === 'opacity') {
       this.decorationType = vscode.window.createTextEditorDecorationType({
-        isWholeLine: true,
         opacity: this.opacity.getValue().toString(),
       })
     }
