@@ -46,7 +46,7 @@ SLANG_ENUM(CompletionContextKind, CCK)
 
 #define CQK(x)                                                                          \
     x(Lexical) x(MemberAccess) x(ScopedAccess) x(StructAssign) x(StructMember) x(Macro) \
-        x(SystemSubroutine) x(InstantiationSuffix)
+        x(SystemSubroutine) x(InstantiationSuffix) x(NamedPort)
 SLANG_ENUM(CompletionQueryKind, CQK)
 #undef CQK
 

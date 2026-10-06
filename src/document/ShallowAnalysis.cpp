@@ -472,6 +472,27 @@ const ast::Scope* ShallowAnalysis::getAssignmentPatternKeyScope(SourceLocation l
     return getAssignmentPatternScopeAt(loc, false);
 }
 
+bool ShallowAnalysis::isInstanceConnectionName(SourceLocation loc, bool& parameters) const {
+    auto* node = syntaxes.getSyntaxAt(loc);
+    if (!node) {
+        auto* previous = syntaxes.getTokenBefore(loc);
+        node = syntaxes.getTokenParent(previous);
+        if (!node)
+            return false;
+    }
+
+    bool sawParameterList = false;
+    for (; node; node = node->parent) {
+        if (syntax::ParameterValueAssignmentSyntax::isKind(node->kind))
+            sawParameterList = true;
+        if (syntax::HierarchyInstantiationSyntax::isKind(node->kind)) {
+            parameters = sawParameterList;
+            return true;
+        }
+    }
+    return false;
+}
+
 const ast::Scope* ShallowAnalysis::getAssignmentPatternCompletionScope(SourceLocation loc) const {
     return getAssignmentPatternScopeAt(loc, true);
 }

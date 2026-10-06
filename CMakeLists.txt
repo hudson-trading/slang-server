@@ -313,6 +313,7 @@ add_library(
   src/completions/KeywordCompletions.cpp
   src/completions/MacroCompletions.cpp
   src/completions/MemberCompletions.cpp
+  src/completions/NamedPortCompletions.cpp
   src/completions/SystemTaskCompletions.cpp
   src/lsp/URI.cpp
   src/util/Converters.cpp
