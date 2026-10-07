@@ -136,7 +136,12 @@ endmodule
     auto hints = doc->getAnalysis()->getInlayHints(
         server::toRange(slang::SourceRange{*start, *end}, doc->getSourceManager()), config);
 
-    CHECK(hints.size() == 8);
+    CHECK(hints.size() == 6);
+    CHECK(std::ranges::all_of(hints, [&](const auto& candidate) {
+        return std::ranges::count_if(hints, [&](const auto& hint) {
+                   return hint.position.line == candidate.position.line;
+               }) == 1;
+    }));
 }
 
 TEST_CASE("InlayHintsWildcard") {
