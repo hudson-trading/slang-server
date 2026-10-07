@@ -58,6 +58,27 @@ endmodule
     scanner.scanDocument(hdl);
 }
 
+TEST_CASE("InlayHintsMacroUndefRedefine") {
+    /// Test macro argument hints use the definition active at the usage, so they survive a later
+    /// `undef and follow redefinitions with different argument names
+    ServerHarness server("");
+    auto hdl = server.openFile("inlay_macro_undef_redefine.sv", R"(
+module test;
+    `define ADD(a, b) ((a) + (b))
+    wire [3:0] x = `ADD(4'd1, 4'd2);
+    `undef ADD
+
+    `define PAIR(lhs, rhs) {lhs, rhs}
+    wire [1:0] y = `PAIR(1'b0, 1'b1);
+    `define PAIR(first, second) {second, first}
+    wire [1:0] z = `PAIR(1'b0, 1'b1);
+endmodule
+)");
+
+    InlayHintScanner scanner;
+    scanner.scanDocument(hdl);
+}
+
 TEST_CASE("InlayHintsModuleOrdered") {
     /// Test inlay hints for module instantiation with ordered ports
     ServerHarness server("");
