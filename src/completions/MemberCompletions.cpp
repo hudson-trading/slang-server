@@ -248,9 +248,15 @@ public:
             if (member.name.empty() || member.name == previousLabel)
                 continue;
             previousLabel = member.name;
-            results.push_back(getHierarchicalCompletion(*symbol, member, doc->getURI().str(),
-                                                        followedByCall,
-                                                        resolvesCompletionEdits(dispatch)));
+            auto item = getHierarchicalCompletion(*symbol, member, doc->getURI().str(),
+                                                  followedByCall,
+                                                  resolvesCompletionEdits(dispatch));
+            // Virtual instances are not scope members, so their paths cannot be looked up later.
+            if (type && type->kind == ast::SymbolKind::VirtualInterfaceType) {
+                resolve(member, item, true);
+                item.data.reset();
+            }
+            results.push_back(std::move(item));
         }
 
         auto* targetType = targetScope->asSymbol().as_if<ast::Type>();

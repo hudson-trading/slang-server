@@ -925,8 +925,14 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
     const parsing::Token* declTok = analysis->syntaxes.getWordTokenAt(loc.value());
     if (!declTok) {
         auto* token = analysis->syntaxes.getTokenAt(*loc);
-        if (token && token->kind == parsing::TokenKind::NewKeyword)
-            declTok = token;
+        if (token) {
+            auto* parent = analysis->syntaxes.getTokenParent(token);
+            if (token->kind == parsing::TokenKind::NewKeyword ||
+                (parent && parent->kind == syntax::SyntaxKind::VirtualInterfaceType &&
+                 (token->kind == parsing::TokenKind::VirtualKeyword ||
+                  token->kind == parsing::TokenKind::InterfaceKeyword)))
+                declTok = token;
+        }
     }
     if (!declTok) {
         return {};
