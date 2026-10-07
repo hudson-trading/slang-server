@@ -33,6 +33,7 @@ import {
 import { glob } from 'glob'
 import { SlangClientInfoFeature } from './lib/clientInfo'
 import { InactiveRegionsFeature } from './lib/inactiveRegions'
+import { DebugScanFeature, debugScanCommand } from './lib/debugScan'
 
 export var ext: SlangExtension
 
@@ -175,6 +176,67 @@ File input is sent to stdin, and formatted output is read from stdout.',
   )
 
   client: LanguageClient | undefined
+  private readonly debugScanFeature = new DebugScanFeature((available) => {
+    void vscode.commands.executeCommand('setContext', 'slang.debugScanAvailable', available)
+  })
+
+  debugScanDocument: CommandNode = new CommandNode(
+    {
+      title: 'Debug: Scan Current Document',
+      paletteWhen: 'slang.debugScanAvailable',
+      enablement:
+        'slang.debugScanAvailable && editorLangId =~ /^(verilog|systemverilog)(header)?$/',
+    },
+    async () => {
+      const document = vscode.window.activeTextEditor?.document
+      const client = this.client
+      if (!document || !AnyVerilogLanguages.includes(document.languageId)) {
+        await vscode.window.showInformationMessage(
+          'Open a Verilog or SystemVerilog document to scan'
+        )
+        return
+      }
+      if (!client || !this.debugScanFeature.available) {
+        await vscode.window.showErrorMessage(
+          'The connected slang-server does not support debug scans'
+        )
+        return
+      }
+      try {
+        const result = await vscode.window.withProgress(
+          {
+            location: vscode.ProgressLocation.Notification,
+            title: 'Scanning hovers, definitions, and completions',
+            cancellable: true,
+          },
+          (_progress, token) =>
+            client.sendRequest<{ diagnostics: vscodelc.Diagnostic[] }>(
+              vscodelc.ExecuteCommandRequest.type.method,
+              { command: debugScanCommand, arguments: [{ uri: document.uri.toString() }] },
+              token
+            )
+        )
+        if (result.diagnostics.length > 0) {
+          await vscode.commands.executeCommand('workbench.actions.view.problems')
+        }
+        vscode.window.setStatusBarMessage(
+          `slang: Scan found ${result.diagnostics.length} issues`,
+          5000
+        )
+        return result
+      } catch (error) {
+        if (
+          error instanceof vscodelc.ResponseError &&
+          error.code === vscodelc.LSPErrorCodes.RequestCancelled
+        ) {
+          return
+        }
+        await vscode.window.showErrorMessage(`Document scan failed: ${String(error)}`)
+        return undefined
+      }
+    }
+  )
+
   private isRestarting: boolean = false
   private readonly serverOutputChannel: vscode.OutputChannel
 
@@ -217,6 +279,7 @@ File input is sent to stdin, and formatted output is read from stdout.',
   slangConfig: slang.Config = {}
 
   async setupLanguageClient(): Promise<void> {
+    this.debugScanFeature.clear()
     const slangServerPath = await this.path.resolveToolPath(this.context, this.logger)
     if (!slangServerPath) {
       return
@@ -242,6 +305,7 @@ File input is sent to stdin, and formatted output is read from stdout.',
     }
 
     this.client.registerFeature(new SlangClientInfoFeature(clientInfo))
+    this.client.registerFeature(this.debugScanFeature)
     this.context.subscriptions.push(
       this.client.onNotification(
         'slang/activeInstanceChanged',
@@ -415,6 +479,7 @@ File input is sent to stdin, and formatted output is read from stdout.',
   )
 
   async stopServer() {
+    this.debugScanFeature.clear()
     if (this.client !== undefined) {
       this.logger.info('Stopping language server')
       this.client.info('Stopping language server')

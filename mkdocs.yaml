@@ -84,6 +84,7 @@ nav:
       - start/installing.md
       - start/config.md
   - Development:
+      - Debug hovers and feature scans: development/debug-scans.md
       - Versioning and releases: development/versioning.md
   - Features:
       - features/features.md

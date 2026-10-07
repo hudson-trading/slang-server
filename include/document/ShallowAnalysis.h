@@ -141,9 +141,11 @@ public:
     /// @brief Gets the source manager for this analysis
     SourceManager& getSourceManager() const { return m_sourceManager; }
 
+#ifdef SLANG_SERVER_DEBUG
     /// @brief Generates debug hover information for a syntax node, traversing up the parent
     /// syntax pointers
     markup::Paragraph getDebugHover(const SourceLocation& loc) const;
+#endif
 
     /// @brief Gets the AST symbol that a declared token refers to, if any
     const slang::ast::Symbol* getSymbolAtToken(const slang::parsing::Token* node) const;

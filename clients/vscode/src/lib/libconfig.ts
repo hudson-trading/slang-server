@@ -316,10 +316,15 @@ export abstract class ExtensionComponent extends ExtensionNode {
     {
       // commands
       let commands: any = []
+      let paletteCommands: any = []
       this.preOrderTraverse((node: ExtensionNode) => {
         if (node instanceof CommandNode) {
-          let cmd = { command: node.configPath, ...node.obj }
+          const { paletteWhen, ...commandSpec } = node.obj
+          let cmd = { command: node.configPath, ...commandSpec }
           commands.push(cmd)
+          if (paletteWhen) {
+            paletteCommands.push({ command: node.configPath, when: paletteWhen })
+          }
         } else if (node instanceof ServerCommandNode) {
           commands.push({ command: node.command, title: node.title })
         }
@@ -331,6 +336,7 @@ export abstract class ExtensionComponent extends ExtensionNode {
         title: 'Extdev: update config (package.json and CONFIG.md)',
       })
       json.contributes.commands = commands
+      json.contributes.menus.commandPalette = paletteCommands
     }
   }
 
@@ -356,6 +362,8 @@ interface CommandConfigSpec {
   // From vscode api
   category?: string
   enablement?: string
+  /** Visibility condition for the Command Palette, independent of command enablement. */
+  paletteWhen?: string
   keybind?: string
 }
 interface ContextCommandSpec extends CommandConfigSpec {

@@ -165,6 +165,11 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     registerCommand<std::nullopt_t, bool>("slang.autoConfigure",
                                           [this](std::monostate) { return autoConfigure({}); });
 
+#ifdef SLANG_SERVER_DEBUG
+    registerCommand<lsp::TextDocumentIdentifier, DebugScanResult, &SlangServer::debugScanDocument>(
+        "slang.debug.scanDocument");
+#endif
+
     if (params.workspaceFolders.has_value() && !params.workspaceFolders->empty()) {
         auto folders = params.workspaceFolders.value();
         if (folders.size() > 1) {

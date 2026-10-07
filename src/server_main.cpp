@@ -12,6 +12,10 @@
 #endif
 
 #include "SlangServer.h"
+#ifdef SLANG_SERVER_DEBUG
+#    include "debug/WorkspaceScan.h"
+#    include <fstream>
+#endif
 #include <fmt/format.h>
 #include <rfl/DefaultIfMissing.hpp>
 
@@ -45,7 +49,21 @@ int main(int argc, char** argv) {
     std::optional<bool> configSchema;
     cmdline.add("--config-schema", configSchema, "Print json schema of config file and exit");
 
-    cmdline.parse(argc, argv);
+#ifdef SLANG_SERVER_DEBUG
+    std::optional<std::string> scanTarget, scanWorkspace, scanOutput;
+    cmdline.add("--debug-scan", scanTarget, "Scan an HDL file or directory and report feature gaps",
+                "path");
+    cmdline.add("--workspace", scanWorkspace, "Workspace configuration root for --debug-scan",
+                "path");
+    cmdline.add("--output", scanOutput, "Write the scan JSON to this file instead of stdout",
+                "path");
+#endif
+
+    if (!cmdline.parse(argc, argv)) {
+        for (const auto& error : cmdline.getErrors())
+            std::cerr << error.message << '\n';
+        return 2;
+    }
 
     if (showHelp == true) {
         OS::print(cmdline.getHelpText("Slang Language Server"));
@@ -75,6 +93,33 @@ int main(int argc, char** argv) {
         }
         return 0;
     }
+#ifdef SLANG_SERVER_DEBUG
+    if (scanTarget) {
+        auto report = debugScanWorkspace(*scanTarget, scanWorkspace.value_or(""));
+        auto payload = rfl::json::write<rfl::UnderlyingEnums>(report, rfl::json::pretty) + "\n";
+        if (!scanOutput) {
+            std::cout << payload;
+        }
+        else {
+            std::ofstream output(*scanOutput, std::ios::binary);
+            output << payload;
+            output.close();
+            if (!output) {
+                std::cerr << "Cannot write scan report: " << *scanOutput << '\n';
+                return 2;
+            }
+        }
+        std::cerr << rfl::json::write(report.summary) << '\n';
+        for (const auto& group : report.groups)
+            std::cerr << group.count << ' ' << group.code << ' ' << group.syntaxKind << ' '
+                      << group.role << ' ' << group.completionKind << '\n';
+        return !report.summary.complete ? 2 : report.summary.issues ? 1 : 0;
+    }
+    if (scanWorkspace || scanOutput) {
+        std::cerr << "--workspace and --output require --debug-scan\n";
+        return 2;
+    }
+#endif
     SlangLspClient client;
     SlangServer server(client);
     server.run();

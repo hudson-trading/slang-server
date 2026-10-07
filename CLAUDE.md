@@ -49,3 +49,13 @@ We use `uv` for managing the python venv and requirements
 1. Build: `cmake -B build && cmake --build build -j8`
 2. Test: `ctest --test-dir build --output-on-failure`
 3. Format: Automatic via pre-commit hooks
+
+## Debug feature scans
+
+Build with `-DSLANG_SERVER_DEBUG=ON` to enable debug hovers and the
+`slang.debug.scanDocument` command. Agents can run
+`build/bin/slang-server --debug-scan /path/to/repo/folder --workspace /path/to/repo --output /tmp/scan.json`
+to collect and group missing hover, definition, and completion findings. See
+[the scan guide](docs/development/debug-scans.md) for the protocol, report format,
+and triage workflow. Reduce proprietary examples to generic regression tests
+before fixing slang-server.

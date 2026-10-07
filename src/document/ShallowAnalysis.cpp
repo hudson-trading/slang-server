@@ -1019,6 +1019,7 @@ std::vector<lsp::DocumentLink> ShallowAnalysis::getDocLinks() const {
     return links;
 }
 
+#ifdef SLANG_SERVER_DEBUG
 markup::Paragraph ShallowAnalysis::getDebugHover(const SourceLocation& loc) const {
     markup::Paragraph para;
     auto tok = syntaxes.getTokenAt(loc);
@@ -1072,5 +1073,6 @@ markup::Paragraph ShallowAnalysis::getDebugHover(const SourceLocation& loc) cons
 
     return para;
 }
+#endif
 
 } // namespace server

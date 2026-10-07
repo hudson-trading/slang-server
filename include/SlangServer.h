@@ -16,6 +16,9 @@
 #include "ast/WcpClient.h"
 #include "document/SlangDoc.h"
 #include "lsp/FileWatchers.h"
+#ifdef SLANG_SERVER_DEBUG
+#    include "debug/DocumentScan.h"
+#endif
 #include "lsp/LspServer.h"
 #include "lsp/LspTypes.h"
 #include <functional>
@@ -110,6 +113,12 @@ public:
                     bool requireValidConfig = false);
 
     const Config& getConfig() const { return m_config; }
+
+#ifdef SLANG_SERVER_DEBUG
+    /// Scan an open document and publish language-feature coverage findings as diagnostics.
+    DebugScanResult debugScanDocument(const lsp::TextDocumentIdentifier& document,
+                                      const lsp::RequestContext& ctx = {});
+#endif
 
     /// @brief Configure the driver with flags from the config file
     void configureDriver(slang::driver::Driver& driver);
