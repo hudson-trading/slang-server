@@ -2,8 +2,187 @@
 // SPDX-License-Identifier: MIT
 
 #include "utils/ServerHarness.h"
+#include <catch2/generators/catch_generators.hpp>
 
 using namespace slang;
+
+TEST_CASE("Class methods resolve before their declarations in nested statements", "[scan-gaps]") {
+    ServerHarness server;
+    auto doc = server.openFile("forward_methods.sv", R"(
+class Worker #(parameter int WIDTH = 4);
+    function void run();
+        if (WIDTH) begin
+            int value = later();
+        end
+        void'(later());
+    endfunction
+    function int later(); return WIDTH; endfunction
+endclass
+)");
+    for (auto cursor : {doc.after("value = "), doc.after("void'(")}) {
+        auto definitions = cursor.getDefinitions();
+        REQUIRE(definitions.size() == 1);
+        CHECK(definitions.front().targetSelectionRange.start ==
+              doc.after("function int ").getPosition());
+        auto hover = doc.getHoverAt(cursor.m_offset);
+        REQUIRE(hover);
+        CHECK(rfl::get<lsp::MarkupContent>(hover->contents).value.find("later") !=
+              std::string::npos);
+    }
+}
+
+TEST_CASE("Calls resolve receivers declared after the enclosing class", "[scan-gaps]") {
+    ServerHarness server;
+    auto doc = server.openFile("forward_receiver.sv", R"(
+module top;
+    class Worker;
+        function void run();
+            controller.worker.consume(1);
+        endfunction
+        function void consume(int count); endfunction
+    endclass
+    class Controller;
+        Worker worker;
+    endclass
+    Controller controller;
+endmodule
+)");
+    for (const auto& diagnostic : doc.getDiagnostics()) {
+        CAPTURE(diagnostic.message);
+        CHECK(diagnostic.severity != lsp::DiagnosticSeverity::Error);
+    }
+    for (auto [reference, declaration, name] :
+         {std::tuple{"controller.worker.consume", "Controller ", "controller"},
+          std::tuple{"worker.consume", "Worker ", "worker"},
+          std::tuple{"consume(1)", "function void ", "consume"}}) {
+        CAPTURE(name);
+        auto cursor = doc.before(reference);
+        auto definitions = cursor.getDefinitions();
+        REQUIRE(definitions.size() == 1);
+        CHECK(definitions.front().targetSelectionRange.start ==
+              doc.before(std::string(declaration) + name).after(declaration).getPosition());
+        auto hover = doc.getHoverAt(cursor.m_offset);
+        REQUIRE(hover);
+        CHECK(rfl::get<lsp::MarkupContent>(hover->contents).value.find(name) != std::string::npos);
+        auto items = cursor.getCompletions();
+        CHECK(std::ranges::any_of(items, [&](const CompletionHandle& item) {
+            return item.m_item.label == name;
+        }));
+    }
+}
+
+TEST_CASE("Forward receiver lookup respects compilation flags and local shadowing", "[scan-gaps]") {
+    auto allowForward = GENERATE(false, true);
+    auto shadowed = GENERATE(false, true);
+    CAPTURE(allowForward, shadowed);
+    ServerHarness server;
+    if (allowForward) {
+        Config config;
+        config.flagsByFile.value().push_back({"test", "--allow-use-before-declare"});
+        REQUIRE(server.loadConfig(config));
+    }
+    auto doc = server.openFile("forward_value.sv",
+                               fmt::format(R"(
+module top;
+    class Worker;
+        int value;
+        function int read({});
+            return controller.value;
+        endfunction
+    endclass
+    Worker controller;
+endmodule
+)",
+                                           shadowed ? "Worker controller" : ""));
+    auto cursor = doc.after("return ");
+    auto definitions = cursor.getDefinitions();
+    if (!allowForward && !shadowed) {
+        CHECK(definitions.empty());
+        auto diagnostics = doc.getDiagnostics();
+        CHECK(std::ranges::any_of(diagnostics, [](const auto& diagnostic) {
+            return diagnostic.message.find("used before its declaration") != std::string::npos;
+        }));
+        return;
+    }
+    REQUIRE(definitions.size() == 1);
+    CHECK(definitions.front().targetSelectionRange.start ==
+          doc.before(shadowed ? "controller);" : "controller;").getPosition());
+    auto member = doc.after("return controller.");
+    auto memberDefinitions = member.getDefinitions();
+    REQUIRE(memberDefinitions.size() == 1);
+    CHECK(memberDefinitions.front().targetSelectionRange.start ==
+          doc.before("value;").getPosition());
+    REQUIRE(doc.getHoverAt(cursor.m_offset));
+    REQUIRE(doc.getHoverAt(member.m_offset));
+    auto items = member.getCompletions(".");
+    CHECK(std::ranges::any_of(items, [](const CompletionHandle& item) {
+        return item.m_item.label == "value";
+    }));
+}
+
+TEST_CASE("Uninstantiated generic classes retain local feature scopes", "[generic-class]") {
+    for (const auto& parameters :
+         {"parameter int WIDTH = 4", "parameter int WIDTH", "parameter type T"}) {
+        CAPTURE(parameters);
+        ServerHarness server;
+        auto doc = server.openFile("generic.sv", fmt::format(R"(
+package sample_pkg;
+    class Generic #({});
+        int value;
+        function int read(int arg);
+            return value + arg;
+        endfunction
+    endclass
+endpackage
+)",
+                                                             parameters));
+        for (const auto& name : {"value", "arg"}) {
+            CAPTURE(name);
+            auto cursor = doc.after("return ").before(name);
+            auto definitions = cursor.getDefinitions();
+            REQUIRE(definitions.size() == 1);
+            CHECK(definitions.front().targetUri == doc.m_uri);
+            CHECK(definitions.front().targetSelectionRange.start == doc.before(name).getPosition());
+            auto hover = doc.getHoverAt(cursor.m_offset);
+            REQUIRE(hover);
+            CHECK(rfl::get<lsp::MarkupContent>(hover->contents).value.find(name) !=
+                  std::string::npos);
+            auto items = cursor.getCompletions();
+            auto item = std::ranges::find_if(items, [&](const CompletionHandle& item) {
+                return item.m_item.label == name;
+            });
+            REQUIRE(item != items.end());
+            item->resolve();
+            REQUIRE(item->m_item.documentation);
+            CHECK(rfl::get<lsp::MarkupContent>(*item->m_item.documentation).value.find(name) !=
+                  std::string::npos);
+        }
+    }
+}
+
+TEST_CASE("Named class parameters navigate to the parameter declaration", "[generic-class]") {
+    ServerHarness server;
+    auto doc = server.openFile("generic.sv", R"(
+package sample_pkg;
+    class Generic #(parameter type T = int, parameter int WIDTH = 1);
+    endclass
+    typedef Generic#(.T(logic), .WIDTH(4)) value_t;
+endpackage
+)");
+    for (const auto& name : {"T", "WIDTH"}) {
+        CAPTURE(name);
+        auto cursor = doc.before("." + std::string(name));
+        ++cursor.m_offset;
+        auto definitions = cursor.getDefinitions();
+        REQUIRE(definitions.size() == 1);
+        CHECK(definitions.front().targetSelectionRange.start ==
+              doc.before(std::string(name) + " =").getPosition());
+        auto definition = doc.getDefinitionInfoAt(cursor.m_offset);
+        REQUIRE(definition);
+        REQUIRE(definition->symbol());
+        CHECK(definition->symbol()->name == name);
+    }
+}
 
 TEST_CASE("FindSyntax") {
     /// Find the syntax at each location in the file

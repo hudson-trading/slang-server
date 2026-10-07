@@ -53,6 +53,65 @@ lsp::InitializeParams makeCompletionResolveParams(std::vector<std::string> prope
 
 } // namespace
 
+TEST_CASE("Package lexical completions include compilation-unit imports", "[scan-gaps]") {
+    ServerHarness server;
+    auto header = server.openFile("imports.svh", "import library_pkg::*;\n");
+    auto doc = server.openFile("unit_import.sv", R"(
+package library_pkg;
+    class Phase; endclass
+endpackage
+`include "imports.svh"
+int unit_only;
+package user_pkg;
+    class Worker;
+        mailbox #(int) messages;
+        function void run(Phase phase); endfunction
+    endclass
+endpackage
+module top;
+    user_pkg::Worker worker;
+endmodule
+)");
+    for (auto cursor : {doc.before("mailbox"), doc.after("run(")}) {
+        auto items = cursor.getCompletions();
+        for (auto* name : {"mailbox", "Phase"}) {
+            CAPTURE(name);
+            CHECK(std::ranges::any_of(items, [&](const CompletionHandle& item) {
+                return item.m_item.label == name;
+            }));
+        }
+    }
+    auto scoped = doc.after("user_pkg::").getCompletions(":");
+    CHECK(std::ranges::none_of(scoped, [](const CompletionHandle& item) {
+        return item.m_item.label == "Phase" || item.m_item.label == "unit_only";
+    }));
+}
+
+TEST_CASE("Superclass member completions use the base class", "[scan-gaps]") {
+    ServerHarness server;
+    auto doc = server.openFile("super_completion.sv", R"(
+class Base;
+    virtual function void build(); endfunction
+endclass
+class Derived extends Base;
+    function void derived_only(); endfunction
+    virtual function void build(); super.build(); endfunction
+endclass
+)");
+    auto cursor = doc.after("super.");
+    auto items = cursor.getCompletions(".");
+    CHECK(std::ranges::any_of(items, [](const CompletionHandle& item) {
+        return item.m_item.label == "build";
+    }));
+    CHECK(std::ranges::none_of(items, [](const CompletionHandle& item) {
+        return item.m_item.label == "derived_only";
+    }));
+    auto definitions = cursor.getDefinitions();
+    REQUIRE(definitions.size() == 1);
+    CHECK(definitions.front().targetSelectionRange.start ==
+          doc.after("virtual function void ").getPosition());
+}
+
 TEST_CASE("Unmatched completion triggers do not fall back to lexical suggestions") {
     ServerHarness server("repo1");
 
@@ -673,6 +732,81 @@ TEST_CASE("MidIdentifierCompletion") {
         item->insert();
         CHECK(doc.getText().find("`MID_MACRO(1)") != std::string::npos);
         CHECK(doc.getText().find("`MID_MACRORCO(1)") == std::string::npos);
+    }
+}
+
+TEST_CASE("Class names complete in scoped types and static expressions", "[generic-class]") {
+    ServerHarness server;
+    auto doc = server.openFile("class_completion.sv", R"(
+package sample_pkg;
+    class Generic #(parameter int WIDTH = 4);
+        static function int read(); return WIDTH; endfunction
+    endclass
+    class Plain;
+    endclass
+endpackage
+module top;
+    import sample_pkg::*;
+    typedef sample_pkg::Generic#(2) value_t;
+    function void consume(Plain item); endfunction
+    initial $display(Generic#(2)::read());
+endmodule
+)");
+    for (const auto& cursor :
+         {doc.after("typedef sample_pkg::"), doc.after("consume("), doc.after("$display(")}) {
+        auto position = cursor;
+        auto items = position.getCompletions();
+        for (const auto& name : {"Generic", "Plain"}) {
+            CAPTURE(name, cursor.m_offset);
+            CHECK(std::ranges::any_of(items, [&](const CompletionHandle& item) {
+                return item.m_item.label == name &&
+                       item.m_item.kind == lsp::CompletionItemKind::Class;
+            }));
+        }
+    }
+}
+
+TEST_CASE("Lexical completions retain enclosing scopes and imported types", "[scan-gaps]") {
+    ServerHarness server("comp_repo");
+    auto doc = server.openFile("lexical_types.sv", R"(
+package types_pkg;
+    typedef byte unsigned octet_t;
+endpackage
+package model_pkg;
+    import types_pkg::octet_t;
+    typedef enum octet_t { Idle, Busy } state_t;
+    class Holder #(type T = int); endclass
+    class Node;
+        Node next;
+        Holder#(Node) holder;
+        static function int count(); return 1; endfunction
+        function int read(); return Node::count(); endfunction
+    endclass
+endpackage
+module top;
+    (* keep = 1 *) simple_counter instance_name();
+    for (genvar i = 0; i < 2; i++) begin : stages
+        wire value;
+        if (i > 0) assign value = stages[i-1].value;
+    end
+endmodule
+)");
+    for (auto [prefix, expected] : {
+             std::pair{"typedef enum ", "octet_t"},
+             std::pair{"        Node", "Node"},
+             std::pair{"Holder#(", "Node"},
+             std::pair{"function int read(); return ", "Node"},
+             std::pair{"(* keep = 1 *) ", "simple_counter"},
+             std::pair{"assign value = ", "stages"},
+         }) {
+        CAPTURE(prefix, expected);
+        auto cursor = doc.after(prefix);
+        auto items = cursor.getCompletions();
+        auto item = std::ranges::find(items, expected,
+                                      [](const auto& item) { return item.m_item.label; });
+        REQUIRE(item != items.end());
+        item->resolve();
+        REQUIRE(item->m_item.documentation);
     }
 }
 
@@ -1932,7 +2066,7 @@ TEST_CASE("NonProceduralSignalCompletion") {
     CHECK(findByLabel("my_wire") != comps.end());
     CHECK(findByLabel("a") != comps.end());
     CHECK(findByLabel("b") != comps.end());
-    CHECK(findByLabel("mailbox") == comps.end());
+    CHECK(findByLabel("mailbox") != comps.end());
 }
 
 TEST_CASE("ProceduralBlockSignalCompletion") {

@@ -797,6 +797,52 @@
         }
       },
       {
+        "label": "mailbox",
+        "labelDetails": {
+          "detail": " ",
+          "description": "std"
+        },
+        "kind": "Class",
+        "documentation": "",
+        "filterText": "mailbox",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 64,
+              "character": 25
+            },
+            "end": {
+              "line": 64,
+              "character": 25
+            }
+          },
+          "newText": "mailbox"
+        }
+      },
+      {
+        "label": "process",
+        "labelDetails": {
+          "detail": " ",
+          "description": "std"
+        },
+        "kind": "Class",
+        "documentation": "",
+        "filterText": "process",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 64,
+              "character": 25
+            },
+            "end": {
+              "line": 64,
+              "character": 25
+            }
+          },
+          "newText": "process"
+        }
+      },
+      {
         "label": "randomize",
         "labelDetails": {
           "detail": " function",
@@ -874,6 +920,29 @@
         }
       },
       {
+        "label": "semaphore",
+        "labelDetails": {
+          "detail": " ",
+          "description": "std"
+        },
+        "kind": "Class",
+        "documentation": "",
+        "filterText": "semaphore",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 64,
+              "character": 25
+            },
+            "end": {
+              "line": 64,
+              "character": 25
+            }
+          },
+          "newText": "semaphore"
+        }
+      },
+      {
         "label": "state_t",
         "labelDetails": {
           "detail": " EnumType"
@@ -948,6 +1017,29 @@
             }
           },
           "newText": "util_pkg"
+        }
+      },
+      {
+        "label": "weak_reference",
+        "labelDetails": {
+          "detail": " ",
+          "description": "std"
+        },
+        "kind": "Class",
+        "documentation": "",
+        "filterText": "weak_reference",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 64,
+              "character": 25
+            },
+            "end": {
+              "line": 64,
+              "character": 25
+            }
+          },
+          "newText": "weak_reference"
         }
       },
       {

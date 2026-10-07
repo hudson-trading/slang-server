@@ -167,8 +167,6 @@ void InstanceCompletionQuery::addCompletions(std::vector<lsp::CompletionItem>& r
                 detail = " Package";
                 break;
             case syntax::SyntaxKind::ClassDeclaration:
-                if (context.kind == CompletionContextKind::Expression)
-                    return;
                 detail = " Class";
                 break;
             default:
