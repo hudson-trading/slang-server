@@ -1591,8 +1591,6 @@ class C3;
                              ^^^ Refs[3]
 
             option.weight = 2;
-            ^^^^^^Exception occurred
-                   ^^^^^^Exception occurred
 
             wildcard bins a = { [0:63],65 };
                           ^ Refs[2]
@@ -1630,8 +1628,6 @@ class C3;
                  ^ Refs[3]
 
             option.weight = c;
-            ^^^^^^Exception occurred
-                   ^^^^^^Exception occurred
                             ^ Refs[2]
 
             bins one = '{ '{1,2}, '{3,4}, '{5,6} };

@@ -1,0 +1,274 @@
+[
+  {
+    "Sample::constraint_mode": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `constraint_mode` in `Sample`  \n\n\n---\n\n````systemverilog\nfunction void constraint_mode(input bit on_ff);\n````\n\n---\n\nEnables or disables all constraint blocks in this object.\n\n---\n\nIEEE 1800-2023 §18.9"
+      }
+    }
+  },
+  {
+    "Sample::get_randstate": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `get_randstate` in `Sample`  \n\n\n---\n\n````systemverilog\nfunction string get_randstate();\n````\n\n---\n\nReturns this object's random number generator state as a string.\n\n---\n\nIEEE 1800-2023 §18.13.4"
+      }
+    }
+  },
+  {
+    "Sample::post_randomize": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `post_randomize` in `Sample`  \n\n\n---\n\n````systemverilog\nfunction void post_randomize();\n````\n\n---\n\nCallback invoked after successful randomization; override it to process the new values.\n\n---\n\nIEEE 1800-2023 §18.6.2"
+      }
+    }
+  },
+  {
+    "Sample::pre_randomize": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `pre_randomize` in `Sample`  \n\n\n---\n\n````systemverilog\nfunction void pre_randomize();\n````\n\n---\n\nCallback invoked before randomization; override it to prepare the object.\n\n---\n\nIEEE 1800-2023 §18.6.2"
+      }
+    }
+  },
+  {
+    "Sample::rand_mode": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `rand_mode` in `Sample`  \n\n\n---\n\n````systemverilog\nfunction void rand_mode(input bit on_ff);\n````\n\n---\n\nEnables or disables randomization of all random variables in this object.\n\n---\n\nIEEE 1800-2023 §18.8"
+      }
+    }
+  },
+  {
+    "Sample::randomize": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `randomize` in `Sample`  \n\n\n---\n\n````systemverilog\nvirtual function int randomize(...);\n````\n\n---\n\nRandomizes this object's active random variables subject to its enabled constraints and an optional with block. Returns 1 on success or 0 on failure.\n\n---\n\nIEEE 1800-2023 §18.6.1"
+      }
+    }
+  },
+  {
+    "Sample::set_randstate": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `set_randstate` in `Sample`  \n\n\n---\n\n````systemverilog\nfunction void set_randstate(input string state);\n````\n\n---\n\nRestores this object's random number generator state from a previously saved string.\n\n---\n\nIEEE 1800-2023 §18.13.5"
+      }
+    }
+  },
+  {
+    "Sample::srandom": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `srandom` in `Sample`  \n\n\n---\n\n````systemverilog\nfunction void srandom(input int seed);\n````\n\n---\n\nSeeds this object's random number generator.\n\n---\n\nIEEE 1800-2023 §18.13.3"
+      }
+    }
+  },
+  {
+    "mailbox::get": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `get` in `std::mailbox`  \n\n\n---\n\n````systemverilog\ntask get(ref int message);\n````\n\n---\n\nRemoves the oldest message, blocking while the mailbox is empty. A message type mismatch is a runtime error.\n\n---\n\nIEEE 1800-2023 §15.4.5"
+      }
+    }
+  },
+  {
+    "mailbox::new": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `new` in `std::mailbox`  \n\n\n---\n\n````systemverilog\nfunction new(input int bound = 0);\n````\n\n---\n\nCreates a mailbox. A bound of zero gives an unbounded queue; a positive bound limits its capacity.\n\n---\n\nIEEE 1800-2023 §15.4.1"
+      }
+    }
+  },
+  {
+    "mailbox::num": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `num` in `std::mailbox`  \n\n\n---\n\n````systemverilog\nfunction int num();\n````\n\n---\n\nReturns the current number of queued messages.\n\n---\n\nIEEE 1800-2023 §15.4.2"
+      }
+    }
+  },
+  {
+    "mailbox::peek": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `peek` in `std::mailbox`  \n\n\n---\n\n````systemverilog\ntask peek(ref int message);\n````\n\n---\n\nCopies the oldest message without removing it, blocking while the mailbox is empty. A message type mismatch is a runtime error.\n\n---\n\nIEEE 1800-2023 §15.4.7"
+      }
+    }
+  },
+  {
+    "mailbox::put": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `put` in `std::mailbox`  \n\n\n---\n\n````systemverilog\ntask put(input int message);\n````\n\n---\n\nAppends a message in FIFO order, blocking while a bounded mailbox is full.\n\n---\n\nIEEE 1800-2023 §15.4.3"
+      }
+    }
+  },
+  {
+    "mailbox::try_get": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `try_get` in `std::mailbox`  \n\n\n---\n\n````systemverilog\nfunction int try_get(ref int message);\n````\n\n---\n\nRemoves the oldest message without blocking. Returns a positive integer on success, zero if empty, or a negative integer for a type mismatch.\n\n---\n\nIEEE 1800-2023 §15.4.6"
+      }
+    }
+  },
+  {
+    "mailbox::try_peek": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `try_peek` in `std::mailbox`  \n\n\n---\n\n````systemverilog\nfunction int try_peek(ref int message);\n````\n\n---\n\nCopies the oldest message without removing it or blocking. Returns a positive integer on success, zero if empty, or a negative integer for a type mismatch.\n\n---\n\nIEEE 1800-2023 §15.4.8"
+      }
+    }
+  },
+  {
+    "mailbox::try_put": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `try_put` in `std::mailbox`  \n\n\n---\n\n````systemverilog\nfunction int try_put(input int message);\n````\n\n---\n\nAppends a message without blocking. Returns a positive integer on success or zero if the mailbox is full.\n\n---\n\nIEEE 1800-2023 §15.4.4"
+      }
+    }
+  },
+  {
+    "process::await": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `await` in `std::process`  \n\n\n---\n\n````systemverilog\ntask await();\n````\n\n---\n\nWaits until this process terminates. A process cannot await itself.\n\n---\n\nIEEE 1800-2023 §9.7"
+      }
+    }
+  },
+  {
+    "process::get_randstate": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `get_randstate` in `std::process`  \n\n\n---\n\n````systemverilog\nfunction string get_randstate();\n````\n\n---\n\nReturns this process's random number generator state as a string.\n\n---\n\nIEEE 1800-2023 §18.13.4"
+      }
+    }
+  },
+  {
+    "process::kill": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `kill` in `std::process`  \n\n\n---\n\n````systemverilog\nfunction void kill();\n````\n\n---\n\nTerminates this process and its descendant subprocesses.\n\n---\n\nIEEE 1800-2023 §9.7"
+      }
+    }
+  },
+  {
+    "process::resume": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `resume` in `std::process`  \n\n\n---\n\n````systemverilog\nfunction void resume();\n````\n\n---\n\nResumes a suspended process.\n\n---\n\nIEEE 1800-2023 §9.7"
+      }
+    }
+  },
+  {
+    "process::self": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `self` in `std::process`  \n\n\n---\n\n````systemverilog\nstatic function process self();\n````\n\n---\n\nReturns a handle to the calling process.\n\n---\n\nIEEE 1800-2023 §9.7"
+      }
+    }
+  },
+  {
+    "process::set_randstate": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `set_randstate` in `std::process`  \n\n\n---\n\n````systemverilog\nfunction void set_randstate(input string state);\n````\n\n---\n\nRestores this process's random number generator state from a previously saved string.\n\n---\n\nIEEE 1800-2023 §18.13.5"
+      }
+    }
+  },
+  {
+    "process::srandom": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `srandom` in `std::process`  \n\n\n---\n\n````systemverilog\nfunction void srandom(input int seed);\n````\n\n---\n\nSeeds this process's random number generator.\n\n---\n\nIEEE 1800-2023 §18.13.3"
+      }
+    }
+  },
+  {
+    "process::status": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `status` in `std::process`  \n\n\n---\n\n````systemverilog\nfunction std::process::state status();\n````\n\n---\n\nReturns the current process state.\n\n---\n\nIEEE 1800-2023 §9.7"
+      }
+    }
+  },
+  {
+    "process::suspend": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `suspend` in `std::process`  \n\n\n---\n\n````systemverilog\nfunction void suspend();\n````\n\n---\n\nSuspends execution of this process.\n\n---\n\nIEEE 1800-2023 §9.7"
+      }
+    }
+  },
+  {
+    "semaphore::get": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `get` in `std::semaphore`  \n\n\n---\n\n````systemverilog\ntask get(input int keyCount = 1);\n````\n\n---\n\nObtains the requested number of keys, blocking until enough keys are available.\n\n---\n\nIEEE 1800-2023 §15.3.3"
+      }
+    }
+  },
+  {
+    "semaphore::new": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `new` in `std::semaphore`  \n\n\n---\n\n````systemverilog\nfunction new(input int keyCount = 0);\n````\n\n---\n\nCreates a semaphore with the given number of keys; the default is zero.\n\n---\n\nIEEE 1800-2023 §15.3.1"
+      }
+    }
+  },
+  {
+    "semaphore::put": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `put` in `std::semaphore`  \n\n\n---\n\n````systemverilog\nfunction void put(input int keyCount = 1);\n````\n\n---\n\nReturns keys to the semaphore, making them available to waiting processes.\n\n---\n\nIEEE 1800-2023 §15.3.2"
+      }
+    }
+  },
+  {
+    "semaphore::try_get": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `try_get` in `std::semaphore`  \n\n\n---\n\n````systemverilog\nfunction int try_get(input int keyCount = 1);\n````\n\n---\n\nTries to obtain keys without blocking. Returns a positive integer on success or 0 if insufficient keys are available.\n\n---\n\nIEEE 1800-2023 §15.3.4"
+      }
+    }
+  },
+  {
+    "std::randomize": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `randomize` in `std`  \n\n\n---\n\n````systemverilog\nfunction int randomize(...);\n````\n\n---\n\nRandomizes the supplied scope variables subject to an optional with constraint block. Returns 1 on success or 0 on failure.\n\n---\n\nIEEE 1800-2023 §18.12"
+      }
+    }
+  },
+  {
+    "weak_reference::clear": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `clear` in `std::weak_reference`  \n\n\n---\n\n````systemverilog\nfunction void clear();\n````\n\n---\n\nClears the weak reference so subsequent get() calls return null.\n\n---\n\nIEEE 1800-2023 §8.30.4"
+      }
+    }
+  },
+  {
+    "weak_reference::get": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `get` in `std::weak_reference`  \n\n\n---\n\n````systemverilog\nfunction Sample get();\n````\n\n---\n\nReturns the referent, or null if the weak reference has been cleared.\n\n---\n\nIEEE 1800-2023 §8.30.3"
+      }
+    }
+  },
+  {
+    "weak_reference::get_id": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `get_id` in `std::weak_reference`  \n\n\n---\n\n````systemverilog\nstatic function longint get_id(input Sample obj);\n````\n\n---\n\nReturns a stable identifier unique during the object's lifetime, or zero for null.\n\n---\n\nIEEE 1800-2023 §8.30.5"
+      }
+    }
+  },
+  {
+    "weak_reference::new": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `new` in `std::weak_reference`  \n\n\n---\n\n````systemverilog\nfunction new(input Sample referent);\n````\n\n---\n\nCreates a weak reference to the referent without keeping it strongly reachable.\n\n---\n\nIEEE 1800-2023 §8.30.2"
+      }
+    }
+  }
+]

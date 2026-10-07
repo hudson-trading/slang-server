@@ -225,6 +225,36 @@ endmodule
     CHECK(result.diagnostics.empty());
 }
 
+TEST_CASE("Debug scan checks built-in hovers and completions without requiring source",
+          "[debug-scan][scan-gaps]") {
+    ScanHarness server;
+    auto doc = server.openFile("builtin_scan.sv", R"(
+module top;
+    mailbox #(int) messages;
+    int values[4];
+    initial begin
+        values.shuffle();
+        void'(messages.try_put(1));
+    end
+endmodule
+)");
+    auto result = server.debugScanDocument({doc.m_uri});
+    for (const auto& diagnostic : result.diagnostics)
+        INFO(rfl::json::write(diagnostic));
+    CHECK(result.diagnostics.empty());
+    CHECK(result.hoverChecks > result.definitionChecks);
+    CHECK(result.completionChecks >= 5);
+
+    server.omitCompletions = true;
+    result = server.debugScanDocument({doc.m_uri});
+    for (auto* name : {"shuffle", "try_put"}) {
+        CAPTURE(name);
+        CHECK(std::ranges::any_of(result.diagnostics, [&](const auto& diagnostic) {
+            return rfl::get<std::string>(*diagnostic.code) == "missing-completion" &&
+                   diagnostic.range.start == doc.before(name).getPosition();
+        }));
+    }
+}
 TEST_CASE("Native scans share editor analysis and preserve workspace configuration",
           "[debug-scan]") {
     auto root = fs::canonical(fs::temp_directory_path()) /

@@ -112,6 +112,42 @@ endclass
           doc.after("virtual function void ").getPosition());
 }
 
+TEST_CASE("Built-in methods complete for their receiver types", "[scan-gaps]") {
+    ServerHarness server;
+    auto doc = server.openFile("array_methods.sv", R"(
+module top;
+    int values[4];
+    int queue_values[$];
+    int associative_values[int];
+    int scalar;
+    initial begin
+        values.shuffle();
+        queue_values.shuffle();
+        associative_values.first(scalar);
+        scalar.nonexistent();
+    end
+endmodule
+)");
+    for (auto cursor : {doc.after("values."), doc.after("queue_values.")}) {
+        auto items = cursor.getCompletions(".");
+        auto item = std::ranges::find_if(items, [](const CompletionHandle& item) {
+            return item.m_item.label == "shuffle";
+        });
+        REQUIRE(item != items.end());
+        CHECK(item->m_item.kind == lsp::CompletionItemKind::Method);
+        REQUIRE(item->m_item.documentation);
+        CHECK(rfl::get<lsp::MarkupContent>(*item->m_item.documentation).value.find("shuffle") !=
+              std::string::npos);
+        CHECK(getCompletionTextEdit(item->m_item).newText == "shuffle");
+    }
+    for (auto cursor : {doc.after("associative_values."), doc.after("scalar.")}) {
+        auto items = cursor.getCompletions(".");
+        CHECK(std::ranges::none_of(items, [](const CompletionHandle& item) {
+            return item.m_item.label == "shuffle";
+        }));
+    }
+}
+
 TEST_CASE("Unmatched completion triggers do not fall back to lexical suggestions") {
     ServerHarness server("repo1");
 

@@ -78,7 +78,12 @@ struct DefinitionInfo {
         bool renderInputPortDriver = false;
         size_t generatedSignalCount = 1;
 
-        const slang::parsing::Token& nameToken() const { return syntaxes.front().nameToken; }
+        /// Name without a source location for built-ins that have no declaration syntax.
+        slang::parsing::Token builtinName;
+
+        const slang::parsing::Token& nameToken() const {
+            return syntaxes.empty() ? builtinName : syntaxes.front().nameToken;
+        }
 
         bool operator==(const SymbolTarget& other) const {
             return syntaxes == other.syntaxes && symbol == other.symbol &&
