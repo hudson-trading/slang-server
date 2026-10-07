@@ -110,30 +110,48 @@ jobs:
     env:
       SLANG_SERVER_ARTIFACT_NAME: slang-server-${{ matrix.name }}
     steps:
-      - name: Install dependencies (manylinux_2_28)
-        if: startsWith(matrix.container, 'quay.io/pypa/manylinux_2_28')
-        run: |
-          # manylinux_2_28 already provides gcc-toolset-14, cmake, make, git, python.
-          # Only need gcc-toolset-14-libatomic-devel for the atomic intrinsics.
-          dnf -y install gcc-toolset-14-libatomic-devel
-          cmake --version
-      - name: Install Clang 21 (Ubuntu)
-        if: startsWith(matrix.preset, 'clang-')
-        run: |
-          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-          sudo add-apt-repository "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-21 main"
-          sudo apt-get update
-          sudo apt-get install -y clang-21
-      - name: Install GCC 13 (Ubuntu)
-        if: contains(matrix.name, 'gcc-13')
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y g++-13
       - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref || github.ref }}
           submodules: true
           fetch-depth: 0
+
+      - name: Cache system package downloads
+        if: startsWith(matrix.container, 'quay.io/pypa/manylinux_2_28') || startsWith(matrix.preset, 'clang-') || contains(matrix.name, 'gcc-13')
+        uses: actions/cache@v6
+        with:
+          path: |
+            .cache/downloads/apt/*.deb
+            .cache/downloads/dnf
+          key: system-deps-v1-${{ matrix.name }}-${{ hashFiles('.github/workflows/build.yml') }}-${{ github.run_id }}
+          restore-keys: |
+            system-deps-v1-${{ matrix.name }}-
+
+      - name: Install dependencies (manylinux_2_28)
+        if: startsWith(matrix.container, 'quay.io/pypa/manylinux_2_28')
+        run: |
+          # manylinux_2_28 already provides gcc-toolset-14, cmake, make, git, python.
+          # Only need gcc-toolset-14-libatomic-devel for the atomic intrinsics.
+          dnf --setopt=cachedir="${GITHUB_WORKSPACE}/.cache/downloads/dnf" --setopt=keepcache=True \
+            -y install gcc-toolset-14-libatomic-devel
+          cmake --version
+      - name: Install Clang 21 (Ubuntu)
+        if: startsWith(matrix.preset, 'clang-')
+        run: |
+          mkdir -p .cache/downloads/apt
+          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+          sudo add-apt-repository "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-21 main"
+          sudo apt-get update
+          sudo apt-get -o Dir::Cache::archives="${GITHUB_WORKSPACE}/.cache/downloads/apt" \
+            -o APT::Keep-Downloaded-Packages=true install -y clang-21
+      - name: Install GCC 13 (Ubuntu)
+        if: contains(matrix.name, 'gcc-13')
+        run: |
+          mkdir -p .cache/downloads/apt
+          sudo apt-get update
+          sudo apt-get -o Dir::Cache::archives="${GITHUB_WORKSPACE}/.cache/downloads/apt" \
+            -o APT::Keep-Downloaded-Packages=true install -y g++-13
+
       - name: Set up Alpine Linux
         if: matrix.alpine == true
         uses: jirutka/setup-alpine@v1
@@ -156,8 +174,19 @@ jobs:
         with:
           xcode-version: 'latest'
 
+      - name: Cache CMake dependency sources
+        id: cmake-deps
+        uses: actions/cache@v6
+        with:
+          path: build/${{ matrix.preset }}/_deps/*-src
+          key: cmake-deps-v1-${{ matrix.name }}-${{ hashFiles('CMakeLists.txt', 'CMakePresets.json', 'cmake/**', 'external/**/CMakeLists.txt', 'external/**/*.cmake') }}
+
+      # Exact matches contain the requested sources, so CMake can skip fetching.
       - name: Configure
-        run: cmake --preset ${{ matrix.preset }} -DSLANG_CI_BUILD=ON ${{ matrix.cmake_args }}
+        run: >-
+          cmake --preset ${{ matrix.preset }} -DSLANG_CI_BUILD=ON
+          -DFETCHCONTENT_FULLY_DISCONNECTED=${{ steps.cmake-deps.outputs.cache-hit == 'true' && 'ON' || 'OFF' }}
+          ${{ matrix.cmake_args }}
 
       - name: Build
         run: cmake --build build/${{ matrix.preset }} -j8
@@ -168,6 +197,9 @@ jobs:
       - name: Set up uv
         if: matrix.skip_pytests != true
         uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
 
       - name: Run pytest (Linux/macOS)
         if: runner.os != 'Windows' && matrix.skip_pytests != true
@@ -184,6 +216,16 @@ jobs:
           .venv\Scripts\activate
           uv sync
           pytest tests\system\ --binary build\${{ matrix.preset }}\bin\slang-server.exe
+
+      - name: Cache LuaRocks downloads
+        if: runner.os != 'Windows' && matrix.container == '' && matrix.skip_neovim_tests != true
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/luarocks
+          key: luarocks-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('clients/neovim/*.rockspec') }}-${{ github.run_id }}
+          restore-keys: |
+            luarocks-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('clients/neovim/*.rockspec') }}-
+            luarocks-v1-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Run Neovim plugin tests
         # This should work on Windows as well, but there's some linker error
