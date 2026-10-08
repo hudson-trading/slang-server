@@ -966,7 +966,10 @@ void SlangServer::onWorkspaceDidChangeWatchedFiles(const lsp::DidChangeWatchedFi
     bool needsReload = m_configReloadPending;
     for (const auto& change : params.changes) {
         auto path = change.uri.getPath();
-        if (path.ends_with("/.slang/server.json") || path.ends_with("/.slang/local/server.json")) {
+        std::string slashed(path);
+        std::replace(slashed.begin(), slashed.end(), '\\', '/');
+        if (slashed.ends_with("/.slang/server.json") ||
+            slashed.ends_with("/.slang/local/server.json")) {
             needsReload = true;
             break;
         }
