@@ -84,6 +84,44 @@ private:
     slang::flat_hash_set<std::string_view> hashed;
 };
 
+template<typename T, typename GetPath>
+std::vector<const T*> nearestFiles(const fs::path& source, std::span<const T> candidates,
+                                   GetPath getPath) {
+    std::error_code ec;
+    auto sourcePath = fs::weakly_canonical(source, ec);
+    if (ec)
+        return {};
+
+    std::vector<std::pair<fs::path, const T*>> nearest;
+    size_t nearestDistance = std::numeric_limits<size_t>::max();
+    for (const auto& candidate : candidates) {
+        auto* candidatePath = getPath(candidate);
+        if (!candidatePath)
+            continue;
+        auto path = fs::weakly_canonical(*candidatePath, ec);
+        if (ec)
+            continue;
+        auto relative = path.parent_path().lexically_relative(sourcePath.parent_path());
+        if (relative.empty())
+            continue;
+        auto distance = size_t(
+            std::ranges::count_if(relative, [](const auto& part) { return part != "."; }));
+        if (distance < nearestDistance) {
+            nearest.clear();
+            nearestDistance = distance;
+        }
+        if (distance == nearestDistance)
+            nearest.emplace_back(std::move(path), &candidate);
+    }
+    std::ranges::sort(nearest, {}, [](const auto& entry) -> const auto& { return entry.first; });
+    std::vector<const T*> result;
+    for (size_t i = 0; i < nearest.size(); ++i) {
+        if (i == 0 || nearest[i].first != nearest[i - 1].first)
+            result.push_back(nearest[i].second);
+    }
+    return result;
+}
+
 std::optional<fs::path> nearestInclude(std::string_view spelling, const fs::path& source,
                                        std::span<const fs::path* const> candidates) {
     auto includePath = fs::path(spelling).lexically_normal();
@@ -91,49 +129,35 @@ std::optional<fs::path> nearestInclude(std::string_view spelling, const fs::path
         std::ranges::any_of(includePath, [](const auto& part) { return part == ".."; }))
         return std::nullopt;
 
-    std::optional<fs::path> nearest;
-    fs::path nearestIdentity;
-    size_t nearestDistance = std::numeric_limits<size_t>::max();
-    for (const auto* candidate : candidates) {
+    auto nearest = nearestFiles(source, candidates, [&](const fs::path* candidate) {
         auto remaining = candidate->lexically_normal();
         auto suffix = includePath;
         while (!suffix.empty() && suffix.filename() == remaining.filename()) {
             suffix = suffix.parent_path();
             remaining = remaining.parent_path();
         }
-        if (!suffix.empty())
-            continue;
-
         std::error_code ec;
-        if (!fs::is_regular_file(*candidate, ec))
-            continue;
-        auto path = fs::weakly_canonical(*candidate, ec);
-        if (ec)
-            continue;
-        auto relative = path.parent_path().lexically_relative(source.parent_path());
-        if (relative.empty())
-            continue;
-        auto distance = size_t(
-            std::ranges::count_if(relative, [](const auto& part) { return part != "."; }));
-        if (distance < nearestDistance || (distance == nearestDistance && path < nearestIdentity)) {
-            nearest = *candidate;
-            nearestIdentity = std::move(path);
-            nearestDistance = distance;
-        }
-    }
-    return nearest;
+        return suffix.empty() && fs::is_regular_file(*candidate, ec) ? candidate : nullptr;
+    });
+    return nearest.empty() ? std::nullopt : std::optional<fs::path>(**nearest.front());
 }
 
 } // namespace
 
 void Indexer::extractFromRoot(const slang::syntax::CompilationUnitSyntax& root,
-                              const slang::parsing::ParserMetadata& meta, IndexedPath& dest) {
+                              const slang::parsing::ParserMetadata& meta,
+                              const slang::SourceManager& sourceManager,
+                              slang::BufferID primaryBuffer, IndexedPath& dest) {
     using namespace slang::syntax;
 
     // Extract top-level symbols
     for (auto* member : root.members) {
         if (ModuleDeclarationSyntax::isKind(member->kind)) {
             auto& decl = member->as<ModuleDeclarationSyntax>();
+            if (primaryBuffer != slang::BufferID::getPlaceholder() &&
+                sourceManager.getFullyExpandedLoc(decl.header->name.location()).buffer() !=
+                    primaryBuffer)
+                continue;
             std::string_view name = decl.header->name.valueText();
             if (!name.empty()) {
                 dest.symbols.push_back(GlobalSymbol{.name = std::string(name), .kind = decl.kind});
@@ -185,13 +209,15 @@ void Indexer::extractHeaderSymbols(const slang::syntax::CompilationUnitSyntax& r
 }
 
 template<typename MacroRange>
-void Indexer::extractMacros(const MacroRange& macros, IndexedPath& dest) {
+void Indexer::extractMacros(const MacroRange& macros, const slang::SourceManager& sourceManager,
+                            slang::BufferID primaryBuffer, IndexedPath& dest) {
     for (const auto* macro : macros) {
         if (!macro)
             continue;
 
-        // Only add macros defined in this file (not included files)
-        if (macro->name.location() == slang::SourceLocation::NoLocation)
+        if (macro->name.location() == slang::SourceLocation::NoLocation ||
+            (primaryBuffer != slang::BufferID::getPlaceholder() &&
+             sourceManager.getFullyExpandedLoc(macro->name.location()).buffer() != primaryBuffer))
             continue;
 
         dest.macros.push_back(std::string(macro->name.valueText()));
@@ -244,11 +270,11 @@ std::vector<Indexer::IndexedPath> Indexer::indexPaths(const std::vector<fs::path
 
             // Extract macros only if no global symbols were found (header files)
             if (!meta.nodeMeta.empty()) {
-                extractFromRoot(root, meta, dest);
+                extractFromRoot(root, meta, sourceManager, buffer.id, dest);
             }
             else if (meta.classDecls.empty()) {
                 // If an svh file contains a class, it's likely actually included in a package
-                extractMacros(preprocessor.getDefinedMacros(), dest);
+                extractMacros(preprocessor.getDefinedMacros(), sourceManager, buffer.id, dest);
             }
         }
     };
@@ -278,11 +304,12 @@ void Indexer::updateDocument(const fs::path& path, const slang::syntax::SyntaxTr
     // Extract new data
     IndexedPath newPath;
     extractFromRoot(tree.root().as<slang::syntax::CompilationUnitSyntax>(), tree.getMetadata(),
-                    newPath);
+                    tree.sourceManager(), tree.getSourceBufferIds()[0], newPath);
 
     // Extract macros only if no global symbols were found (header files)
     if (newPath.symbols.empty()) {
-        extractMacros(tree.getDefinedMacros(), newPath);
+        extractMacros(tree.getDefinedMacros(), tree.sourceManager(), tree.getSourceBufferIds()[0],
+                      newPath);
     }
 
     for (const auto& include : tree.getIncludeDirectives()) {
@@ -917,14 +944,28 @@ std::vector<fs::path> Indexer::getFilesReferencingSymbol(std::string_view name) 
     return result;
 }
 
-std::optional<Indexer::GlobalSymbolLoc> Indexer::getFirstSymbolLoc(std::string_view name) const {
+std::optional<Indexer::GlobalSymbolLoc> Indexer::getNearestSymbolLoc(std::string_view name,
+                                                                     const fs::path& source) const {
+    auto nearest = getNearestSymbolLocs(name, source);
+    return nearest.empty() ? std::nullopt : std::optional(nearest.front());
+}
+
+std::vector<Indexer::GlobalSymbolLoc> Indexer::getNearestSymbolLocs(std::string_view name,
+                                                                    const fs::path& source) const {
     IndexReadGuard guard(*this);
 
     auto it = symbolToFiles_.find(std::string(name));
     if (it == symbolToFiles_.end() || it->second.empty()) {
-        return std::nullopt;
+        return {};
     }
-    return it->second[0];
+    if (it->second.size() == 1)
+        return {it->second[0]};
+    auto nearest = nearestFiles<GlobalSymbolLoc>(source, it->second,
+                                                 [](const auto& entry) { return entry.uri; });
+    std::vector<GlobalSymbolLoc> result;
+    for (auto* candidate : nearest)
+        result.push_back(*candidate);
+    return result;
 }
 
 std::vector<std::string> Indexer::getAllMacroNames() const {

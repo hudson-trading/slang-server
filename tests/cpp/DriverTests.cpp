@@ -879,6 +879,89 @@ TEST_CASE("getAnalysis with cross-file dependencies is stable") {
     CHECK(a1.get() == a2.get());
 }
 
+TEST_CASE("Dependencies use the nearest indexed declaration to each reference") {
+    ServerHarness server("nearest_symbols");
+    auto root = fs::current_path();
+
+    auto checkDependencies = [&](DocumentHandle& doc, std::vector<fs::path> expected) {
+        auto trees = server.m_driver->getDependentTrees(doc.doc->getSyntaxTree());
+        std::vector<fs::path> paths;
+        for (const auto& tree : trees)
+            paths.push_back(server.m_driver->sm.getFullPath(tree->getSourceBufferIds()[0]));
+        for (auto& path : expected)
+            path = root / path;
+        std::ranges::sort(paths);
+        std::ranges::sort(expected);
+        CHECK(paths == expected);
+    };
+
+    SECTION("module and package choices are local to each open document") {
+        for (const auto* directory : {"b", "a", "b"}) {
+            auto doc = server.openFile(std::string(directory) + "/top.sv", R"(module top;
+    import shared_pkg::*;
+    logic [WIDTH-1:0] value;
+    shared_mod child();
+endmodule
+)");
+            checkDependencies(doc, {fs::path(directory) / "shared_mod.sv",
+                                    fs::path(directory) / "shared_pkg.sv"});
+            auto* package = doc.doc->getAnalysis()->getCompilation()->getPackage("shared_pkg");
+            REQUIRE(package);
+            CHECK(server.m_driver->sm.getFullPath(package->location.buffer()) ==
+                  root / directory / "shared_pkg.sv");
+            auto* module = doc.doc->getAnalysis()->getDefinition("shared_mod");
+            REQUIRE(module);
+            CHECK(server.m_driver->sm.getFullPath(module->location.buffer()) ==
+                  root / directory / "shared_mod.sv");
+        }
+    }
+
+    SECTION("recursive package references use the package directory") {
+        auto doc = server.openFile("a/top.sv", "module top; use_pkg::word_t value; endmodule\n");
+        checkDependencies(doc, {"b/use_pkg.sv", "b/shared_pkg.sv"});
+    }
+
+    SECTION("included references use the included file directory") {
+        auto doc = server.openFile("a/top.sv",
+                                   "module top;\n`include \"../b/uses.svh\"\nendmodule\n");
+        checkDependencies(doc, {"b/shared_mod.sv", "b/shared_pkg.sv"});
+    }
+
+    SECTION("equally near declarations resolve in path order") {
+        auto doc = server.openFile("top.sv", R"(module top;
+    import shared_pkg::*;
+    shared_mod child();
+endmodule
+)");
+        checkDependencies(doc, {"a/shared_mod.sv", "a/shared_pkg.sv"});
+    }
+
+    SECTION("top level loading follows nearest dependencies recursively") {
+        auto doc = server.openFile("a/top.sv", "module top; parent p(); endmodule\n");
+        server.setTopLevel(std::string(doc.m_uri.getPath()));
+        REQUIRE(server.m_driver->comp);
+        auto preferredPath = server.m_driver->comp->getPreferredSymbolPath("shared_mod");
+        REQUIRE(preferredPath);
+        CHECK(fs::path(*preferredPath) == root / "b/shared_mod.sv");
+    }
+
+    SECTION("saving an include wrapper does not change the nearest declaration") {
+        auto doc = server.openFile("a/top.sv", "module top; shared_mod child(); endmodule\n");
+        checkDependencies(doc, {"a/shared_mod.sv"});
+        auto wrapper = server.openFile("a/aaa_wrapper.sv", "`include \"../b/shared_mod.sv\"\n");
+        wrapper.save();
+        CHECK(server.m_indexer.getFilesForSymbol("shared_mod").size() == 2);
+        CHECK(server.m_indexer.getFilesForSymbol("shared_bus").size() == 2);
+        doc.append("// refresh\n");
+        doc.publishChanges();
+        checkDependencies(doc, {"a/shared_mod.sv"});
+        auto* module = doc.doc->getAnalysis()->getDefinition("shared_mod");
+        REQUIRE(module);
+        CHECK(server.sourceManager().getFullPath(module->location.buffer()) ==
+              root / "a/shared_mod.sv");
+    }
+}
+
 TEST_CASE("Document log paths are workspace relative") {
     ServerHarness server("indexer_test");
     auto hdl = server.openFile("crossfile_module.sv");
