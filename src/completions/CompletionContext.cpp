@@ -136,6 +136,13 @@ CompletionContext CompletionContext::fromLocation(SlangDoc& doc, SourceLocation 
             return ctx;
         }
 
+        if (auto* reference = node->as_if<TypeReferenceSyntax>();
+            reference && reference->openParen.range().end() <= loc &&
+            loc <= reference->closeParen.location()) {
+            ctx.kind = CompletionContextKind::Expression;
+            return ctx;
+        }
+
         if (DataTypeSyntax::isKind(kind) || kind == SyntaxKind::ClassName ||
             kind == SyntaxKind::ExtendsClause || kind == SyntaxKind::ImplementsClause) {
             ctx.kind = CompletionContextKind::PortList;
