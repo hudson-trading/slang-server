@@ -6,7 +6,100 @@ The server uses a hierarchical configuration system with three config files:
 2. `~/.slang/server.json` — user config (personal defaults across all projects)
 3. `${workspaceFolder}/.slang/local/server.json` — local config (`.slang/local` should be ignored by source control)
 
-Later files override earlier ones for scalar values. Lists (like `index` and `incdirs`) are appended across all files.
+Later files override earlier ones for scalar values. Lists (like `index` and `incdirs`) are appended across all files. `env` objects merge by variable name.
+
+### Environment variables
+
+`build`, `index[].dirs`, `index[].excludeDirs`, and `incdirs` accept `$VAR`, `${VAR}`, and
+`$(VAR)` references to variables inherited by the server process. For example:
+
+```json
+{
+  "index": [{"dirs": ["hw", "build", "${UVM_HOME}/src"]}],
+  "incdirs": ["${UVM_HOME}/src"]
+}
+```
+
+Expansion happens before resolving relative paths against the workspace root.
+Values containing spaces stay in one path, and variable values are not expanded
+recursively. Unset or empty variables produce an editor error naming the variable
+and config field, with a link to this section for editor setup instructions.
+An unresolved `build` path leaves the server in exploration mode.
+Unresolved include paths and index roots are skipped; an
+unresolved exclusion skips its entire index entry. An unresolved index root or
+exclusion also disables the implicit workspace scan. Auto-configure preserves
+variable references in saved paths, including when it narrows a workspace root
+such as `${PROJECT_ROOT}` to `${PROJECT_ROOT}/hw`.
+
+`flags` and `.f` file contents also expand these variable forms, including nested
+`-f`, `-F`, and `-C` file lists. Unset or empty variables produce an editor error;
+file-list errors include the file, line, and column. The affected flag string or
+file list is rejected before its arguments are applied. Comments, single-quoted
+text, and escaped dollar signs outside quotes remain literal. Use double quotes
+around variable references whose values contain spaces, such as
+`-f "${BUILD_ROOT}/design.f"`. Variable values are expanded only once.
+
+Set startup overrides in the `env` field of any `server.json` config:
+
+```json
+{
+  "env": {
+    "UVM_HOME": "/tools/uvm"
+  },
+  "incdirs": ["${UVM_HOME}/src"]
+}
+```
+
+Variables merge by name in workspace, user, then local order. Later values
+replace earlier values for the same name, while unrelated variables are kept.
+Use `~/.slang/server.json` for personal defaults across projects, or
+`.slang/local/server.json` for machine-specific project paths. Paths must exist
+on the machine running the server.
+
+The editor loads these variables **before starting the server**. They override
+its inherited environment; other inherited variables remain available. Values
+are literal strings: shell expressions and `${VAR}` references inside `env`
+are not expanded. Restart the language server after changing `env`, including
+when deleting an override. Other config changes continue to reload normally.
+
+#### VS Code
+
+The extension reads `env` automatically for normal and debug launches. Run
+**slang: Restart Language Server** after editing it. This also works with remote
+SSH, WSL, and containers, using config files on the server's machine.
+
+#### Neovim
+
+Install the [slang-server.nvim plugin](../features/hdl/neovim.md) and use its
+`server_cmd` helper to load `env` on every launch. For Neovim 0.11 and newer with
+nvim-lspconfig:
+
+```lua
+vim.lsp.config("slang_server", {
+  cmd = require("slang-server").server_cmd({ "slang-server" }),
+})
+vim.lsp.enable("slang_server")
+```
+
+Pass your executable path and arguments in place of `{ "slang-server" }` if
+needed. The helper uses the resolved workspace root, preserves `cmd_cwd` and
+`detached`, and layers `env` over any existing `cmd_env` overrides without
+changing Neovim's own environment.
+
+For Neovim 0.10 with nvim-lspconfig, pass the resolved config in `on_new_config`:
+
+```lua
+require("lspconfig").slang_server.setup({
+  on_new_config = function(config)
+    config.cmd = require("slang-server").server_cmd(config.cmd, config)
+  end,
+})
+```
+
+Restart the LSP client after editing `env`. Plain nvim-lspconfig and other
+clients must arrange to load these variables themselves; the server stores
+`env` as configuration but does not modify its process environment. Exporting
+variables in an existing editor's terminal does not update the server either.
 
 ### Flags precedence
 
@@ -95,7 +188,8 @@ All configuration options are optional and have sensible defaults. In VSCode, th
 
 :   **Type:** `string`
 
-    Build file to automatically open on start.
+    Build file to automatically open on start. Supports environment variables,
+    for example `"${BUILD_ROOT}/compile.f"`.
 
     **Example:** `"./build/compile.f"`
 

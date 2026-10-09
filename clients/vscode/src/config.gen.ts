@@ -6,9 +6,11 @@
  */
 
 export interface Config {
-  /** Flags to pass to slang */
+  /** Environment variables set by the editor before starting slang-server. Values are literal strings; local overrides user overrides workspace. Restart the server after changes. Neovim requires the server_cmd helper. */
+  env?: Record<string, string>
+  /** Flags to pass to slang. Environment variables are expanded; unset or empty variables are errors. */
   flags?: string
-  /** Include directories, relative to the workspace root. Searched after directories supplied through flags and build files. */
+  /** Include directories, relative to the workspace root. Searched after directories supplied through flags and build files. Supports $VAR, ${VAR}, and $(VAR) environment variables. */
   incdirs?: string[]
   /**
    * @deprecated
@@ -24,7 +26,7 @@ export interface Config {
   excludeDirs?: string[]
   /** Thread count to use for indexing */
   indexingThreads?: number
-  /** Build file to use */
+  /** Build file to use. Supports $VAR, ${VAR}, and $(VAR) environment variables. */
   build?: string | null
   /** Build file glob pattern, e.g. `builds/{}.f`. Used for selecting build files. If omitted and no other build source is configured, defaults to matching all `.f` files in the workspace. */
   buildPattern?: string | null
@@ -57,9 +59,9 @@ export interface Config__HoverConfig {
 }
 
 export interface Config__IndexConfig {
-  /** Directories to index */
+  /** Directories to index. Supports $VAR, ${VAR}, and $(VAR) environment variables. */
   dirs?: string[]
-  /** Exact directory names to exclude at all path levels, or specific workspace-relative paths starting with './' (absolute paths are also supported). Wildcards are not supported. */
+  /** Exact directory names to exclude at all path levels, or specific workspace-relative paths starting with './' (absolute paths are also supported). Wildcards are not supported. Supports $VAR, ${VAR}, and $(VAR) environment variables. */
   excludeDirs?: string[] | null
 }
 
