@@ -43,13 +43,20 @@ struct Indexer {
     // Updating interface
     //////////////////////////////////////////
 
-    /// Index workspace symbols and gathered include filenames.
+    /// External-only roots supplement the default workspace scan. An explicit workspace scope
+    /// or an empty dirs entry disables that default.
+    static bool usesDefaultWorkspaceIndex(std::span<const Config::IndexConfig> indexConfigs,
+                                          const std::filesystem::path& workspace);
+
+    /// Index the workspace; only auto-configure requests directory suggestions.
     void startIndexing(const std::vector<Config::IndexConfig>& indexConfigs,
-                       std::optional<std::string_view> workspaceFolder);
+                       std::optional<std::string_view> workspaceFolder,
+                       bool inferIncludeDirectories = false);
 
     // Legacy glob-based indexing, slower
     void startIndexing(const std::vector<std::string>& globs,
-                       const std::vector<std::string>& excludeDirs);
+                       const std::vector<std::string>& excludeDirs,
+                       bool inferIncludeDirectories = false);
 
     // For workspace changes
     void addDocuments(const std::vector<std::filesystem::path>& paths);
@@ -75,6 +82,41 @@ struct Indexer {
     /// path. Retain the indexed path spelling so callers can derive its include directory.
     std::optional<std::filesystem::path> getNearestFileForInclude(
         std::string_view path, const std::filesystem::path& source) const;
+
+    /// Suggestions from explicitly requested inference; empty after ordinary full indexing.
+    std::vector<std::filesystem::path> getIncludeDirectories() const;
+
+    /// Choose roots covering indexed files inside the workspace, balancing crawl size and root
+    /// count. Requires explicit directory discovery; sources directly in the workspace prevent
+    /// narrowing. External index roots do not affect suggestions.
+    std::vector<std::filesystem::path> getSuggestedIndexDirectories(
+        const std::filesystem::path& workspace) const;
+
+    /// Indexed files and safe directory exclusions matched by one Git ignore rule.
+    struct GitIgnoreMatch {
+        /// Ignore file, line number, and pattern as reported by Git.
+        std::string rule;
+        /// Matching indexed files, relative to the workspace.
+        std::vector<std::filesystem::path> files;
+        /// Ignored folders without tracked or re-included sources, relative to the workspace.
+        std::vector<std::filesystem::path> directories;
+        /// Directory basenames that can be excluded without hiding tracked or re-included files.
+        std::vector<std::string> names;
+    };
+
+    /// Ask Git about indexed files and crawled directories, excluding tracked files, submodules,
+    /// and external roots. Include existing exact exclusions to compact into directory names.
+    /// Return no matches if Git is unavailable or the workspace is not in a repository.
+    std::vector<GitIgnoreMatch> getGitIgnoreMatches(
+        const std::filesystem::path& workspace,
+        std::span<const Config::IndexConfig> indexConfigs = {}) const;
+
+    /// Apply newly configured absolute directory exclusions to cached index data and suggestions.
+    void excludeDirectories(std::span<const std::filesystem::path> directories);
+
+    /// Find suggested directories that conflict with each other or existing configured headers.
+    std::vector<std::filesystem::path> getConflictingIncludeDirectories(
+        std::span<const std::filesystem::path> configuredDirectories = {}) const;
 
     /// Find headers that declare a name at their outermost scope.
     std::vector<std::filesystem::path> getHeadersForSymbol(std::string_view name) const;
@@ -149,6 +191,15 @@ private:
     std::unordered_map<std::filesystem::path, std::vector<std::filesystem::path>>
         resolvedIncluders_;
 
+    /// Search-root suggestions populated only when auto-configure requests inference.
+    std::vector<std::filesystem::path> includeDirectories_;
+
+    /// Number of filesystem entries encountered immediately inside each crawled directory.
+    using DirectoryEntryCounts = std::unordered_map<std::filesystem::path, size_t>;
+
+    /// Crawl counts collected only for auto-configure, replaced by every full index.
+    DirectoryEntryCounts directoryEntryCounts_;
+
     /// Header declarations for include quick fixes, updated along with symbols and macros.
     std::unordered_map<std::string, slang::SmallVector<const std::filesystem::path*, 2>>
         headerSymbolToFiles_;
@@ -157,12 +208,16 @@ private:
     std::unordered_set<std::filesystem::path> uniqueUris_;
 
     void indexPath(const std::filesystem::path& path, IndexedPath& indexedFile);
-    /// Build symbols and include filename indexes.
-    void indexAndReport(std::vector<std::filesystem::path> pathsToIndex);
+    /// Build symbols and include filename indexes, optionally inferring search directories.
+    void indexAndReport(std::vector<std::filesystem::path> pathsToIndex,
+                        bool inferIncludeDirectories, DirectoryEntryCounts directoryEntries = {});
 
     /// Replace parsed edges and their reverse entries; all paths must already be canonical.
     void replaceIncludes(const std::filesystem::path& path,
                          std::vector<std::filesystem::path> targets);
+
+    /// Resolve gathered includes across the workspace only for explicit auto-configuration.
+    void inferIncludeSearchDirectories(std::span<const std::filesystem::path> paths);
 
     /// Remove declarations and gathered includes, and invalidate parsed relationships for a file.
     void removePathFromIndex(const std::filesystem::path* pathPtr);
@@ -188,7 +243,9 @@ private:
 
     static void collectFilesFromDirectory(const std::filesystem::path& dir,
                                           const std::vector<std::string>& excludeDirs,
-                                          std::vector<std::filesystem::path>& outFiles);
+                                          std::vector<std::filesystem::path>& outFiles,
+                                          DirectoryEntryCounts* directoryEntries = nullptr,
+                                          std::span<const std::string> excludedPaths = {});
 
     // Core indexing function that splits work across threads
     std::vector<IndexedPath> indexPaths(const std::vector<std::filesystem::path>& paths) const;

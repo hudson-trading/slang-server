@@ -53,6 +53,7 @@ endpackage
           std::vector<fs::path>{physical / "base/all.svh"});
     CHECK(server.m_indexer.getFilesIncluding(alias / "base/item.svh") ==
           std::vector<fs::path>{physical / "base/all.svh"});
+    CHECK(server.m_indexer.getIncludeDirectories().empty());
 
     auto header = server.openFile(((openAlias ? alias : physical) / "base/item.svh").string());
     auto lenses = server.getDocCodeLens({.textDocument = {header.m_uri}});

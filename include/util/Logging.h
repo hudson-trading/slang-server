@@ -19,6 +19,10 @@
 
 #define WARN(format_string, ...) server::logging::warn(format_string __VA_OPT__(, ) __VA_ARGS__);
 
+// Windows headers define ERROR as an integer constant.
+#ifdef ERROR
+#    undef ERROR
+#endif
 #define ERROR(format_string, ...) server::logging::error(format_string __VA_OPT__(, ) __VA_ARGS__);
 
 #define RFL_INFO(some_struct)                                      \
