@@ -289,18 +289,12 @@ void InlayHintCollector::handle(const MacroUsageSyntax& syntax) {
         return;
     }
 
-    // TODO: maybe we should also use the index for these?
-    const DefineDirectiveSyntax* def = nullptr;
-    if (auto it = m_analysis.macroUsageDefinitions.find(&syntax);
-        it != m_analysis.macroUsageDefinitions.end()) {
-        def = it->second;
+    auto defInfo = m_analysis.macroUsageDefinitions.find(&syntax);
+    if (defInfo == m_analysis.macroUsageDefinitions.end()) {
+        return;
     }
-    if (!def) {
-        auto it = m_analysis.macros.find(syntax.directive.valueText().substr(1));
-        if (it != m_analysis.macros.end())
-            def = it->second;
-    }
-    if (!def || !def->formalArguments) {
+    const auto* def = defInfo->second;
+    if (!def->formalArguments) {
         return;
     }
     // Check if we should show hints based on arg count
