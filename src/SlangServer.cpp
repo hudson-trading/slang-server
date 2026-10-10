@@ -312,7 +312,10 @@ void SlangServer::onInitialized(const lsp::InitializedParams&) {
                 // Config files
                 lsp::FileSystemWatcher{
                     .globPattern = lsp::RelativePattern{.baseUri = m_workspaceFolder->uri,
-                                                        .pattern = ".slang/**/*.json"}},
+                                                        .pattern = ".slang/server.json"}},
+                lsp::FileSystemWatcher{
+                    .globPattern = lsp::RelativePattern{.baseUri = m_workspaceFolder->uri,
+                                                        .pattern = ".slang/local/server.json"}},
                 // Build/flag files
                 lsp::FileSystemWatcher{
                     .globPattern = lsp::RelativePattern{.baseUri = m_workspaceFolder->uri,
@@ -963,7 +966,10 @@ void SlangServer::onWorkspaceDidChangeWatchedFiles(const lsp::DidChangeWatchedFi
     bool needsReload = m_configReloadPending;
     for (const auto& change : params.changes) {
         auto path = change.uri.getPath();
-        if (path.ends_with(".json")) {
+        std::string slashed(path);
+        std::replace(slashed.begin(), slashed.end(), '\\', '/');
+        if (slashed.ends_with("/.slang/server.json") ||
+            slashed.ends_with("/.slang/local/server.json")) {
             needsReload = true;
             break;
         }
