@@ -717,6 +717,18 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
     if (!loc) {
         return {};
     }
+
+    // Anywhere on `include "file.svh", the gap between the two tokens included
+    const syntax::SyntaxNode* atSyntax = analysis->syntaxes.getSyntaxAt(loc.value());
+    const bool isIncludeRef = atSyntax && atSyntax->kind == syntax::SyntaxKind::IncludeDirective;
+    if (isIncludeRef) {
+        auto& include = atSyntax->as<syntax::IncludeDirectiveSyntax>();
+        auto buffer = analysis->getIncludedBuffer(include);
+        if (!buffer)
+            return {};
+        return DefinitionInfo{sm, DefinitionInfo::IncludeTarget{include.fileName, *buffer}};
+    }
+
     const parsing::Token* declTok = analysis->syntaxes.getWordTokenAt(loc.value());
     if (!declTok) {
         return {};

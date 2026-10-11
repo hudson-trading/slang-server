@@ -1059,6 +1059,15 @@ std::vector<lsp::DocumentLink> ShallowAnalysis::getDocLinks() const {
     return links;
 }
 
+std::optional<BufferID> ShallowAnalysis::getIncludedBuffer(
+    const syntax::IncludeDirectiveSyntax& syntax) const {
+    for (auto& inc : m_tree->getIncludeDirectives()) {
+        if (inc.syntax == &syntax)
+            return inc.buffer.id;
+    }
+    return std::nullopt;
+}
+
 bool ShallowAnalysis::hasValidBuffers() {
     for (auto& tree : m_allTrees) {
         if (!server::hasValidBuffers(m_sourceManager, tree)) {

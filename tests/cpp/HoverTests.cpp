@@ -1248,3 +1248,27 @@ endmodule
     recordNoSystemHover("queue selector $", "$] ==");
     recordNoSystemHover("$root", "$root", false);
 }
+
+TEST_CASE("HoverIncludeDirective") {
+    ServerHarness server;
+
+    server.openFile("payload.svh", R"(class payload;
+endclass
+)");
+
+    auto doc = server.openFile("pkg.sv", R"(package pkg;
+    `include "payload.svh"
+endpackage
+)");
+
+    // On the directive, on the gap after it, and on the file name
+    for (const auto& anchor :
+         {std::string("    `inc"), std::string("`include"), std::string("`include \"pay")}) {
+        auto hover = doc.getHoverAt(doc.after(anchor).m_offset);
+        REQUIRE(hover.has_value());
+
+        auto content = rfl::get<lsp::MarkupContent>(hover->contents);
+        CHECK(content.value.find("### payload.svh") != std::string::npos);
+        CHECK(content.value.find("/payload.svh") != std::string::npos);
+    }
+}
