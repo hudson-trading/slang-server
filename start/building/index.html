@@ -1069,13 +1069,16 @@
 git<span class="w"> </span>clone<span class="w"> </span>https://github.com/hudson-trading/slang-server.git
 <span class="nb">cd</span><span class="w"> </span>slang-server
 
-<span class="c1"># Pull dependencies (slang and reflect-cpp)</span>
-git<span class="w"> </span>submodule<span class="w"> </span>update<span class="w"> </span>--init<span class="w"> </span>--recursive
+<span class="c1"># Pull direct dependencies (slang, reflect-cpp, and ctre)</span>
+git<span class="w"> </span>submodule<span class="w"> </span>update<span class="w"> </span>--init
 
 <span class="c1"># Build with cmake using a C++20 compliant compiler</span>
 cmake<span class="w"> </span>-B<span class="w"> </span>build<span class="w"> </span>-DCMAKE_BUILD_TYPE<span class="o">=</span>Release
 cmake<span class="w"> </span>--build<span class="w"> </span>build<span class="w"> </span>-j<span class="w"> </span>--target<span class="w"> </span>slang_server
 </code></pre></div>
+<p>Only direct submodules are needed. Leave out <code>--recursive</code> to skip reflect-cpp's
+optional <code>vcpkg</code> submodule; slang-server uses its bundled JSON support with
+<code>REFLECTCPP_USE_VCPKG=OFF</code> by default.</p>
 <p>The binary will be at <code>build/bin/slang-server</code>.</p>
 <h3 id="nix-development-shell">Nix Development Shell<a class="headerlink" href="#nix-development-shell" title="Permanent link">&para;</a></h3>
 <p>If you use Nix with flakes enabled, the repository provides a development shell for x86-64 Linux, ARM64 Linux, and Apple Silicon macOS. It includes the compiler, CMake, Ninja, Python, <code>uv</code>, and build and test dependencies.</p>

@@ -539,6 +539,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#auto-configure" class="md-nav__link">
+    <span class="md-ellipsis">
+      Auto-configure
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#config-options" class="md-nav__link">
     <span class="md-ellipsis">
       Config Options
@@ -561,6 +570,15 @@
   <a href="#flags" class="md-nav__link">
     <span class="md-ellipsis">
       flags
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#incdirs" class="md-nav__link">
+    <span class="md-ellipsis">
+      incdirs
     </span>
   </a>
   
@@ -1162,6 +1180,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#auto-configure" class="md-nav__link">
+    <span class="md-ellipsis">
+      Auto-configure
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#config-options" class="md-nav__link">
     <span class="md-ellipsis">
       Config Options
@@ -1184,6 +1211,15 @@
   <a href="#flags" class="md-nav__link">
     <span class="md-ellipsis">
       flags
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#incdirs" class="md-nav__link">
+    <span class="md-ellipsis">
+      incdirs
     </span>
   </a>
   
@@ -1325,10 +1361,16 @@
 <li><code>~/.slang/server.json</code> — user config (personal defaults across all projects)</li>
 <li><code>${workspaceFolder}/.slang/local/server.json</code> — local config (<code>.slang/local</code> should be ignored by source control)</li>
 </ol>
-<p>Later files override earlier ones for scalar values. Lists (like <code>index</code>) are appended across all files.</p>
+<p>Later files override earlier ones for scalar values. Lists (like <code>index</code> and <code>incdirs</code>) are appended across all files.</p>
 <h3 id="flags-precedence">Flags precedence<a class="headerlink" href="#flags-precedence" title="Permanent link">&para;</a></h3>
 <p>The <code>flags</code> field has special merging behavior. Workspace flags override user flags (only one is used as the base), and local flags are always appended on top. This means you can set shared flags in <code>.slang/server.json</code>, and add personal flags (like extra <code>-D</code> defines) in <code>.slang/local/server.json</code> without overriding the shared ones.</p>
 <p>The server watches these config files, .f files that are passed in via flags and <code>.f</code> build files for changes, automatically reloading when they are saved.</p>
+<h2 id="auto-configure">Auto-configure<a class="headerlink" href="#auto-configure" title="Permanent link">&para;</a></h2>
+<p>Run <strong>slang: Auto-configure</strong> in VS Code to discover index and include directories and save them in <code>.slang/server.json</code>. Neovim and other LSP clients can invoke <code>slang.autoConfigure</code> through <code>workspace/executeCommand</code> with no arguments; no custom client handler is needed.</p>
+<p>When indexing uses the default workspace scan, or a workspace <code>index</code> entry lists <code>.</code> as a directory, the command chooses directories covering all indexed <code>.sv</code>, <code>.svh</code>, <code>.v</code>, and <code>.vh</code> files within the workspace. Separate source trees under <code>a/b</code> and <code>c/d</code> produce <code>"index": [{"dirs": ["a/b", "c/d"]}]</code>. Dense branches stay grouped under a shared parent, while branches with substantial unrelated content split into narrower directories. Each branch can use a different depth. The command reuses its directory crawl, requiring each additional directory to save roughly 5% of the workspace's filesystem entries (at least 32 entries for small workspaces). This favors a short config when dozens of deeper paths would save little overall. Empty workspaces and source files directly in the workspace root prevent narrowing. With only external library roots configured, the command adds a separate workspace entry. Replacing <code>.</code> preserves that entry's exclusions and all other index roots, including external library directories. Index settings inherited from user or local configuration and legacy <code>indexGlobs</code> / <code>excludeDirs</code> settings are preserved.</p>
+<p>The command scans the configured workspace index, uses existing quoted includes to identify missing search roots, and saves paths relative to the workspace. It preserves existing settings and include order, skips directories already in <code>incdirs</code>, and reports directories with conflicting header names instead of choosing an order for them. Suggestions are checked against each other and against existing configured directories, including user and local <code>incdirs</code> and headers outside the workspace index. The server reloads the configuration after saving it. Running the command again adds only newly discovered directories.</p>
+<p>Workspace include-directory suggestions are computed, logged, and saved only when the command runs. Editor analysis can add paths to an individual syntax tree using the nearest indexed matches for its unresolved includes. Those paths do not change <code>incdirs</code>, other documents, or global include lookup. Equally close matches are resolved in canonical path order. Files supplied through build files continue to use configured include lookup.</p>
+<p>When Git is available, auto-configure adds ignored folders to the matching workspace <code>index[].excludeDirs</code> entries as plain directory names, such as <code>"output_files"</code> and <code>".Xil"</code>. Repeated names are saved once. Git interprets nested ignore files, wildcards, and negations during discovery; the saved names use exact comparisons during indexing. Distinct names matched by a Git wildcard, such as <code>output_files</code> and <code>output_files_debug</code>, become separate entries. Ignored folders found during the crawl are considered even if they contain only non-HDL files. If a name would hide tracked files or re-included indexed sources elsewhere, safe specific paths are retained instead. Existing specific exclusions can be compacted into names, and obsolete wildcard exclusions in the workspace config are replaced on the next run. Ignored files are removed from discovery before choosing index and include directories. New exclusions are then limited to each entry's final index roots: narrowing <code>.</code> to <code>fpga</code> omits ignored folders found only outside <code>fpga</code>. Existing configured exclusions are preserved. File-only matches and folders covered by inherited or legacy index settings are reported for manual review. The server log records matching ignore files, lines, and patterns. Submodules and external index roots are outside this check.</p>
 <h2 id="config-options">Config Options<a class="headerlink" href="#config-options" title="Permanent link">&para;</a></h2>
 <p>All configuration options are optional and have sensible defaults. In VSCode, there are completions and hovers for <code>server.json</code> files. For other editors, you may be able to associate the <a href="https://github.com/hudson-trading/slang-server/blob/main/clients/vscode/resources/config.schema.json">config schema</a> with these config files to get these features.</p>
 <hr />
@@ -1339,11 +1381,13 @@
 <div class="language-typescript highlight"><pre><span></span><code><span class="kd">interface</span><span class="w"> </span><span class="nx">IndexConfig</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="cm">/** Directories to index */</span>
 <span class="w">  </span><span class="nx">dirs?</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">[]</span>
-<span class="w">  </span><span class="cm">/** Directories to exclude; only supports single directory names and applies to all path levels */</span>
+<span class="w">  </span><span class="cm">/** Exact directory names at all path levels, or specific paths starting with &#39;./&#39; */</span>
 <span class="w">  </span><span class="nx">excludeDirs?</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">[]</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="kc">null</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>Which directories to index; By default it indexes the entire workspace. It's <strong>highly</strong> recommended to configure this for your repo, especially if there are generated build directories and non-hardware directories that can be skipped.</p>
+<p>Which directories to index; by default it indexes the entire workspace. External library roots supplement this default: listing only directories outside the workspace still indexes the workspace. A configured directory inside the workspace, or an ancestor covering it, replaces the default scan. To index only external libraries, add a separate <code>{"dirs": []}</code> entry to disable the implicit workspace scan. Exclusions apply only to the directories in their own entry.</p>
+<p>It's <strong>highly</strong> recommended to configure workspace roots for your repo, especially if there are generated build directories and non-hardware directories that can be skipped.</p>
+<p>Bare <code>excludeDirs</code> entries match exact directory names at every level. For example, <code>"build"</code> skips folders named <code>build</code>, while retaining <code>build_extra</code> and source files named <code>build.sv</code>. Entries beginning with <code>./</code> identify an exact directory relative to the workspace; absolute paths are also supported. For example, <code>"./fpga/build"</code> excludes that folder and its descendants, while retaining <code>tools/build</code>. Wildcards are not supported.</p>
 </dd>
 </dl>
 <hr />
@@ -1356,6 +1400,16 @@
 <p>It's recommended to keep your slang flags in a <a href="https://sv-lang.com/user-manual.html#command-files">flag file</a>, that way it can be shared by both CI and the language server. Another nice setup is having <code>slang.f</code> contain your CI flags, then have <code>slang-server.f</code> include that file (via <code>-f path/to/slang.f</code>), along with more warnings so that more pedantic checks will show as yellow underlines in your editor.</p>
 <p>For preprocessor defines (<code>-D</code>), you can also use the <strong>"Add define"</strong> code action: place your cursor on an undefined macro name in an <code>`ifdef</code> and use the quick fix to automatically add <code>-D&lt;name&gt;</code> to <code>.slang/local/server.json</code>.</p>
 <p><strong>Example:</strong> <code>"-f path/to/slang_flags.f"</code></p>
+</dd>
+</dl>
+<hr />
+<h3 id="incdirs"><code>incdirs</code><a class="headerlink" href="#incdirs" title="Permanent link">&para;</a></h3>
+<dl>
+<dd>
+<p><strong>Type:</strong> <code>list[string]</code></p>
+<p>Ordered include search directories. Relative paths resolve from the workspace root, including entries in user and local configuration. Absolute paths are also accepted.</p>
+<p>Directories from <code>flags</code> and build files are searched before this list. File-local lookup follows slang's normal rules, including <code>--incdir-first</code>. Lists from workspace, user, and local configuration are appended in that order. System includes (<code>&lt;...&gt;</code>) continue to use system include directories.</p>
+<p><strong>Example:</strong> <code>"incdirs": ["rtl/include", "verification/include"]</code></p>
 </dd>
 </dl>
 <hr />
