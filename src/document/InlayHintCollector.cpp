@@ -287,11 +287,17 @@ void InlayHintCollector::handle(const MacroUsageSyntax& syntax) {
     }
 
     // TODO: maybe we should also use the index for these?
-    auto defInfo = m_analysis.macros.find(syntax.directive.valueText().substr(1));
-    if (defInfo == m_analysis.macros.end()) {
-        return;
+    const DefineDirectiveSyntax* def = nullptr;
+    if (auto it = m_analysis.macroUsageDefinitions.find(&syntax);
+        it != m_analysis.macroUsageDefinitions.end()) {
+        def = it->second;
     }
-    if (!defInfo->second->formalArguments) {
+    if (!def) {
+        auto it = m_analysis.macros.find(syntax.directive.valueText().substr(1));
+        if (it != m_analysis.macros.end())
+            def = it->second;
+    }
+    if (!def || !def->formalArguments) {
         return;
     }
     // Check if we should show hints based on arg count
@@ -300,14 +306,13 @@ void InlayHintCollector::handle(const MacroUsageSyntax& syntax) {
     }
 
     // Iterate through minimum of actual and formal arguments
-    size_t numArgs = std::min(syntax.args->args.size(),
-                              defInfo->second->formalArguments->args.size());
+    size_t numArgs = std::min(syntax.args->args.size(), def->formalArguments->args.size());
     for (size_t i = 0; i < numArgs; i++) {
         auto argLoc = m_analysis.m_sourceManager.getFullyOriginalLoc(
             syntax.args->args[i]->getFirstToken().location());
         result.push_back(lsp::InlayHint{
             .position = toPosition(argLoc, m_analysis.m_sourceManager),
-            .label = fmt::format("{}:", defInfo->second->formalArguments->args[i]->name.rawText()),
+            .label = fmt::format("{}:", def->formalArguments->args[i]->name.rawText()),
             .kind = lsp::InlayHintKind::Parameter,
             .paddingRight = true,
         });
