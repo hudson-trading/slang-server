@@ -9,6 +9,13 @@
           "type": "string",
           "description": "Flags to pass to slang"
         },
+        "incdirs": {
+          "type": "array",
+          "description": "Include directories, relative to the workspace root. Searched after directories supplied through flags and build files.",
+          "items": {
+            "type": "string"
+          }
+        },
         "indexGlobs": {
           "type": "array",
           "description": "Globs of what to index. By default will index all sv and svh files in the workspace.",

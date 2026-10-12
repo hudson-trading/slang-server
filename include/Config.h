@@ -19,7 +19,7 @@
 /// 3. `.slang/local/server.json` — local config (untracked, personal overrides)
 ///
 /// Merging rules:
-/// - Array fields (e.g. index, indexGlobs) are appended across all files.
+/// - Array fields (e.g. index, incdirs) are appended across all files.
 /// - Scalar fields are overwritten by later files (local > user > workspace).
 /// - `flags` has special precedence: workspace overrides user (only one is used as the base),
 ///   and local flags are always appended on top. This means local flags add to whichever
@@ -30,6 +30,12 @@ struct Config {
     /// generate json schema from this by running with --config-schema
     // all fields must be optional
     rfl::Description<"Flags to pass to slang", std::string> flags;
+
+    /// Ordered include directories, relative to the workspace root unless absolute.
+    rfl::Description<"Include directories, relative to the workspace root. Searched after "
+                     "directories supplied through flags and build files.",
+                     std::vector<std::string>>
+        incdirs;
 
     // Legacy indexing globs, kept for backwards compatibility
     rfl::Deprecated<"Use 'index' instead.",

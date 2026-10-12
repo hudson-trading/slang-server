@@ -24,6 +24,7 @@
 #include <filesystem>
 #include <fmt/base.h>
 #include <fmt/ranges.h>
+#include <fstream>
 #include <memory>
 #include <optional>
 #include <ranges>
@@ -36,7 +37,6 @@
 #include <vector>
 
 #include "slang/syntax/AllSyntax.h"
-#include "slang/syntax/SyntaxPrinter.h"
 #include "slang/syntax/SyntaxVisitor.h"
 #include "slang/text/SourceLocation.h"
 #include "slang/text/SourceManager.h"
@@ -149,6 +149,13 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
                     &SlangServer::getActiveInstance>("slang.getActiveInstance");
     // File features
     registerCommand<ExpandMacroArgs, bool, &SlangServer::expandMacros>("slang.expandMacros");
+    registerCommand<lsp::Location, std::monostate, &SlangServer::showLocation>(
+        "slang.showLocation");
+
+    registerCommand<ServerDriver::IncludeContextSelection, bool>(
+        "slang.setIncludeContext", [this](const ServerDriver::IncludeContextSelection& selection) {
+            return m_driver->setIncludeContext(selection);
+        });
 
     // Config modification
     registerCommand<std::string, std::monostate, &SlangServer::addDefine>("slang.addDefine");
@@ -427,11 +434,36 @@ bool SlangServer::expandMacros(ExpandMacroArgs args) {
         return false;
     }
 
-    syntax::SyntaxPrinter printer(doc->getSyntaxTree()->sourceManager());
-    printer.setSquashNewlines(false);
-    printer.setIncludeDirectives(true);
-    printer.setExpandMacros(true);
-    OS::writeFile(args.dst, printer.print(*doc->getSyntaxTree()).str());
+    auto analysis = doc->getAnalysis();
+    const auto& expansions = analysis->syntaxes.macroExpansions;
+    std::vector<const syntax::SyntaxNode*> usages;
+    for (const auto& [usage, _] : expansions)
+        usages.push_back(usage);
+    std::ranges::sort(usages, [](const auto* left, const auto* right) {
+        auto a = left->sourceRange();
+        auto b = right->sourceRange();
+        return a.start() != b.start() ? a.start() < b.start() : a.end() > b.end();
+    });
+
+    auto text = doc->getText();
+    text.remove_suffix(1);
+    std::string expanded;
+    size_t offset = 0;
+    for (const auto* usage : usages) {
+        auto range = usage->sourceRange();
+        // An outer expansion already contains the expansions of its macro arguments.
+        if (range.start().offset() < offset)
+            continue;
+        expanded.append(text.substr(offset, range.start().offset() - offset));
+        expanded.append(expansions.at(usage).getText());
+        offset = range.end().offset();
+    }
+    expanded.append(text.substr(offset));
+    // Preserve source line endings without Windows text-mode translation.
+    std::ofstream file(args.dst, std::ios::binary);
+    file.exceptions(std::ios::failbit | std::ios::badbit);
+    file.write(expanded.data(), static_cast<std::streamsize>(expanded.size()));
+    file.flush();
     return true;
 }
 
@@ -545,6 +577,15 @@ std::monostate SlangServer::showHierLocation(const ShowHierLocationArgs& args) {
         .uri = location->uri,
         .takeFocus = args.takeFocus,
         .selection = location->range,
+    });
+    return {};
+}
+
+std::monostate SlangServer::showLocation(const lsp::Location& location) {
+    m_client.onShowDocument(lsp::ShowDocumentParams{
+        .uri = location.uri,
+        .takeFocus = true,
+        .selection = location.range,
     });
     return {};
 }
@@ -1085,22 +1126,78 @@ std::optional<std::vector<lsp::InlayHint>> SlangServer::getDocInlayHint(
 
 std::optional<std::vector<lsp::CodeLens>> SlangServer::getDocCodeLens(
     const lsp::CodeLensParams& params) {
-    if (!m_driver->comp) {
-        return std::nullopt;
-    }
     auto doc = m_driver->getDocument(params.textDocument.uri);
     if (!doc) {
         return std::nullopt;
     }
 
     std::vector<lsp::CodeLens> lenses;
-    auto& meta = doc->getSyntaxTree()->getMetadata();
+    auto tree = doc->getSyntaxTree();
+    auto path = m_driver->sm.getFullPath(doc->getBuffer());
+    auto contexts = m_driver->getIncludeContexts(path);
+    if (!contexts.empty()) {
+        const auto& active = contexts.front();
+        const auto& location = active.location;
+        lenses.push_back(lsp::CodeLens{
+            .range = {{0, 0}, {0, 0}},
+            .command =
+                lsp::Command{
+                    .title = fmt::format("Included by {}:{}",
+                                         fs::path(location.uri.getPath()).filename().string(),
+                                         location.range.start.line + 1),
+                    .command = "slang.showLocation",
+                    .arguments = std::vector<lsp::LSPAny>{rfl::to_generic(location)},
+                },
+        });
+        if (contexts.size() > 1) {
+            std::vector<SlangLspClient::QuickPickItem> items;
+            for (const auto& context : contexts) {
+                auto source = context.source->getWsRelativePath();
+                auto include = context.location.uri.getPath();
+                include.remove_prefix(m_driver->getWsRelativePathOffset(include));
+                auto description = std::string(source);
+                if (&context == &active)
+                    description += " (current)";
+                items.push_back({
+                    .label = fmt::format("{}:{}", include, context.location.range.start.line + 1),
+                    .description = std::move(description),
+                    .value = rfl::to_generic(ServerDriver::IncludeContextSelection{
+                        .uri = params.textDocument.uri,
+                        .source = context.source->getURI(),
+                        .occurrence = context.occurrence,
+                    }),
+                });
+            }
+            lenses.push_back(lsp::CodeLens{
+                .range = {{0, 0}, {0, 0}},
+                .command =
+                    lsp::Command{
+                        .title = fmt::format("And {} other{}", contexts.size() - 1,
+                                             contexts.size() == 2 ? "" : "s"),
+                        .tooltip = "Select include context",
+                        .command = "slang.quickPick",
+                        .arguments = std::vector<lsp::LSPAny>{rfl::to_generic(
+                            SlangLspClient::QuickPickParams{
+                                .placeholder = "Select include context",
+                                .items = std::move(items),
+                                .onSelectCommand = "slang.setIncludeContext",
+                            })},
+                    },
+            });
+        }
+    }
+    if (!m_driver->comp)
+        return lenses.empty() ? std::nullopt : std::optional(std::move(lenses));
+
+    auto& meta = tree->getMetadata();
     for (const auto& [decl, _] : meta.nodeMeta) {
         if (!decl || !decl->header) {
             continue;
         }
 
         const auto& nameToken = decl->header->name;
+        if (nameToken.location().buffer() != doc->getBuffer())
+            continue;
         auto moduleName = std::string(nameToken.valueText());
         if (moduleName.empty()) {
             continue;

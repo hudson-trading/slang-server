@@ -6,7 +6,7 @@ The server uses a hierarchical configuration system with three config files:
 2. `~/.slang/server.json` — user config (personal defaults across all projects)
 3. `${workspaceFolder}/.slang/local/server.json` — local config (`.slang/local` should be ignored by source control)
 
-Later files override earlier ones for scalar values. Lists (like `index`) are appended across all files.
+Later files override earlier ones for scalar values. Lists (like `index` and `incdirs`) are appended across all files.
 
 ### Flags precedence
 
@@ -50,6 +50,18 @@ All configuration options are optional and have sensible defaults. In VSCode, th
     For preprocessor defines (`-D`), you can also use the **"Add define"** code action: place your cursor on an undefined macro name in an `` `ifdef `` and use the quick fix to automatically add `-D<name>` to `.slang/local/server.json`.
 
     **Example:** `"-f path/to/slang_flags.f"`
+
+---
+
+### `incdirs`
+
+:   **Type:** `list[string]`
+
+    Ordered include search directories. Relative paths resolve from the workspace root, including entries in user and local configuration. Absolute paths are also accepted.
+
+    Directories from `flags` and build files are searched before this list. File-local lookup follows slang's normal rules, including `--incdir-first`. Lists from workspace, user, and local configuration are appended in that order. System includes (`<...>`) continue to use system include directories.
+
+    **Example:** `"incdirs": ["rtl/include", "verification/include"]`
 
 ---
 

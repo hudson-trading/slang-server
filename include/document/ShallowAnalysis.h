@@ -8,7 +8,7 @@
 #pragma once
 
 #include "Config.h"
-#include "ast/ActiveDesignContext.h"
+#include "ast/ShallowCompilation.h"
 #include "document/SymbolIndexer.h"
 #include "document/SymbolTreeVisitor.h"
 #include "document/SyntaxIndexer.h"
@@ -22,8 +22,6 @@
 #include <vector>
 
 #include "slang/analysis/AnalysisManager.h"
-#include "slang/analysis/AnalysisOptions.h"
-#include "slang/analysis/AnalysisQueries.h"
 #include "slang/ast/ASTContext.h"
 #include "slang/ast/Compilation.h"
 #include "slang/ast/Lookup.h"
@@ -35,29 +33,17 @@
 #include "slang/syntax/SyntaxTree.h"
 #include "slang/text/SourceLocation.h"
 #include "slang/text/SourceManager.h"
-#include "slang/util/Bag.h"
 namespace server {
 using namespace slang;
 
 class DocumentHandle;
-class ServerCompilation;
 
+/// Indexes and queries one source buffer within a shared shallow compilation.
 class ShallowAnalysis {
 public:
-    /// @brief Constructs a DocumentAnalysis instance with syntax and symbol indexing
-    ///
-    /// An instance is created on every document open and change.
-    /// It's designed to provide index structures for performing lookups, and all the data that's
-    /// immediately queried by the client following an open or change.
-    /// @param sourceManager Reference to the source manager for file operations
-    /// @param buffer The source buffer containing the document to analyze
-    /// @param tree The syntax tree for the document
-    /// @param options Compilation options bag for semantic analysis
-    /// @param trees Additional syntax trees that this document depends on
-    ShallowAnalysis(SourceManager& sourceManager, slang::BufferID buffer,
-                    std::shared_ptr<slang::syntax::SyntaxTree> tree, slang::Bag options,
-                    const std::vector<std::shared_ptr<slang::syntax::SyntaxTree>>& allTrees = {},
-                    const ServerCompilation* design = nullptr);
+    /// Index the selected source buffer, retaining the compilation that owns its syntax and
+    /// symbols.
+    ShallowAnalysis(slang::BufferID buffer, std::shared_ptr<ShallowCompilation> compilation);
 
     /// @brief Retrieves document symbols for LSP outline view, called right after open
     /// @return Tree of LSP document symbols representing the document CST structure
@@ -105,33 +91,52 @@ public:
     /// @return Vector of module declaration syntax nodes
     std::vector<const slang::syntax::ModuleDeclarationSyntax*> getModules() const;
 
-    /// @brief Return true if shallow compilation has the latest buffers in all it's syntax trees
-    bool hasValidBuffers();
+    /// Whether the shared compilation still uses the latest source buffers.
+    bool hasValidBuffers() const { return m_shallowCompilation->hasValidBuffers(); }
 
-    const std::unique_ptr<slang::ast::Compilation>& getCompilation() const { return m_compilation; }
+    /// Shared owner of the syntax, symbols, and compilation-wide analysis state.
+    const std::shared_ptr<ShallowCompilation>& getShallowCompilation() const {
+        return m_shallowCompilation;
+    }
+
+    /// Slang compilation used for symbol lookup.
+    const std::unique_ptr<slang::ast::Compilation>& getCompilation() const {
+        return m_shallowCompilation->getCompilation();
+    }
 
     /// @brief Gets semantic diagnostics after shallowly elaborating edited-file definitions.
-    const Diagnostics& getSemanticDiagnostics();
+    const Diagnostics& getSemanticDiagnostics() {
+        return m_shallowCompilation->getSemanticDiagnostics();
+    }
 
     /// @brief Ensures the shallow compilation has been analyzed and returns the slang
     /// `AnalysisManager`. Returns nullptr if analysis could not be run, for example no top
     /// instances.
-    const slang::analysis::AnalysisManager* getAnalysisManager();
+    const slang::analysis::AnalysisManager* getAnalysisManager() {
+        return m_shallowCompilation->getAnalysisManager();
+    }
 
     /// @brief Gets a list of drivers for a given value symbol
     std::vector<const slang::analysis::ValueDriver*> getDrivers(
-        const slang::ast::ValueSymbol& symbol);
+        const slang::ast::ValueSymbol& symbol) {
+        return m_shallowCompilation->getDrivers(symbol);
+    }
 
     /// @brief Return the corresponding symbol from the selected full-design instance, if any.
-    const slang::ast::Symbol* getDesignSymbol(const slang::ast::Symbol& shallowSymbol) const;
+    const slang::ast::Symbol* getDesignSymbol(const slang::ast::Symbol& shallowSymbol) const {
+        return m_shallowCompilation->getDesignSymbol(shallowSymbol);
+    }
 
     /// Return the full-design instance referenced by a module, named parameter, or named port
     /// token at an instantiation site.
     std::optional<std::string> getDesignInstancePathAtToken(
         const slang::parsing::Token* token) const;
 
+    /// Return the selected full-design connection for an interface port, if available.
     const InterfaceConnection* getActiveInterfaceConnection(
-        const slang::ast::InterfacePortSymbol& port) const;
+        const slang::ast::InterfacePortSymbol& port) const {
+        return m_shallowCompilation->getActiveInterfaceConnection(port);
+    }
 
     /// @brief Gets the source manager for this analysis
     SourceManager& getSourceManager() const { return m_sourceManager; }
@@ -190,7 +195,7 @@ public:
 
     /// @brief Runs analysis on the shallow compilation and returns diagnostics
     /// @return The analysis diagnostics (owned by internal AnalysisManager)
-    Diagnostics getAnalysisDiags();
+    Diagnostics getAnalysisDiags() { return m_shallowCompilation->getAnalysisDiags(); }
 
 private:
     /// Reference to the source manager. Not const because we may need to parse macro args.
@@ -199,31 +204,8 @@ private:
     /// Buffer ID for this document
     slang::BufferID m_buffer;
 
-    /// The syntax tree being analyzed
-    std::shared_ptr<slang::syntax::SyntaxTree> m_tree;
-
-    /// All syntax trees needed for the shallow compilation
-    std::vector<std::shared_ptr<slang::syntax::SyntaxTree>> m_allTrees;
-
-    /// Compilation context for symbol resolution
-    std::unique_ptr<slang::ast::Compilation> m_compilation;
-
-    /// Information from the active design when a top level or filelist is set
-    std::optional<ActiveDesignContext> m_activeDesign;
-
-    /// Analysis manager for running driver analysis (multi-driven, unused, etc)
-    std::unique_ptr<slang::analysis::AnalysisManager> m_driverAnalysis = nullptr;
-
-    /// Instance-aware driver queries that can elaborate the unfrozen compilation.
-    std::unique_ptr<slang::analysis::AnalysisQueries> m_analysisQueries;
-
-    /// Cached diagnostics from the latest analysis run, if available
-    std::optional<Diagnostics> m_cachedAnalysisDiags;
-
-    bool m_editedDefinitionsElaborated = false;
-
-    /// Analysis options for driver analysis (numThreads=1 to avoid persistent threads)
-    slang::analysis::AnalysisOptions m_analysisOptions;
+    /// Keeps the syntax and symbols referenced by this file's indexes alive.
+    std::shared_ptr<ShallowCompilation> m_shallowCompilation;
 
     /// Symbol tree visitor for /documentSymbols
     /// Currently this is relies on syntax, but we should switch it to use the shallow compilation

@@ -153,6 +153,9 @@ public:
     };
     std::monostate showHierLocation(const ShowHierLocationArgs& args);
 
+    /// Open a source location in the editor, focusing and selecting its range.
+    std::monostate showLocation(const lsp::Location& location);
+
     std::monostate openModuleDefinition(const std::string& moduleName);
 
     struct ExpandMacroArgs {

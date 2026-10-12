@@ -25,7 +25,7 @@ public:
     explicit SymbolTreeVisitor(const slang::SourceManager& sourceManager);
 
     std::vector<lsp::DocumentSymbol> getSymbols(std::shared_ptr<slang::syntax::SyntaxTree> tree,
-                                                bool macros);
+                                                bool macros, slang::BufferID buffer = {});
     void invalidate() { m_symbols.clear(); }
 
     void handle(const slang::syntax::GenerateBlockSyntax& node);
@@ -82,6 +82,8 @@ private:
     void handleRecursive(const slang::syntax::SyntaxNode& node, lsp::DocumentSymbol& symbol);
 
     const slang::SourceManager& m_sourceManager;
+    /// Source buffer whose declarations are shown in this document's outline.
+    slang::BufferID m_buffer;
     std::vector<lsp::DocumentSymbol> m_symbols;
     std::vector<lsp::DocumentSymbol>* m_currentSymbols = &m_symbols;
 };

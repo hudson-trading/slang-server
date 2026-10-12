@@ -859,6 +859,7 @@ TEST_CASE("IncrementalChangesRejectInvalidRanges") {
 TEST_CASE("WatchedFiles_ReloadsClosedDependenciesBeforeAnalysis") {
     auto tempDir = std::filesystem::temp_directory_path() / "slang_test_watched_dependencies";
     std::filesystem::create_directories(tempDir);
+    tempDir = std::filesystem::canonical(tempDir); // Normalize Windows short temp paths.
     std::ofstream(tempDir / "width.svh") << "`define WIDTH 8\n";
     std::ofstream(tempDir / "child.sv") << "module child(input logic [7:0] data); endmodule\n";
     // openFile normalizes to LF, making an accidental disk reload visible on every platform.
@@ -880,7 +881,7 @@ TEST_CASE("WatchedFiles_ReloadsClosedDependenciesBeforeAnalysis") {
     auto headerUri = URI::fromFile(tempDir / "width.svh");
     auto childUri = URI::fromFile(tempDir / "child.sv");
     CHECK_FALSE(server.m_driver->docs.contains(headerUri));
-    CHECK(server.m_driver->docs.contains(childUri));
+    REQUIRE(server.m_driver->docs.contains(childUri));
     CHECK_FALSE(server.m_driver->isDocumentOpen(childUri));
     REQUIRE(parent.getDiagnostics().empty());
 
@@ -895,7 +896,9 @@ TEST_CASE("WatchedFiles_ReloadsClosedDependenciesBeforeAnalysis") {
     CHECK(parent.doc->getText() == originalText);
     CHECK(parent.doc->getAnalysis() != originalAnalysis);
     CHECK(parent.getDiagnostics().empty());
-    CHECK(server.getDoc(childUri)->getText().find("[15:0]") != std::string_view::npos);
+    auto child = server.getDoc(childUri);
+    REQUIRE(child);
+    CHECK(child->getText().find("[15:0]") != std::string_view::npos);
     CHECK(std::ranges::count(server.client.diagnosticPublications, parent.m_uri) == 1);
 
     std::filesystem::remove_all(tempDir);

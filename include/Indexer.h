@@ -13,7 +13,9 @@
 #include <concepts>
 #include <condition_variable>
 #include <mutex>
+#include <optional>
 #include <shared_mutex>
+#include <span>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -41,7 +43,7 @@ struct Indexer {
     // Updating interface
     //////////////////////////////////////////
 
-    // Primary indexing function, called on startup
+    /// Index workspace symbols and gathered include filenames.
     void startIndexing(const std::vector<Config::IndexConfig>& indexConfigs,
                        std::optional<std::string_view> workspaceFolder);
 
@@ -56,12 +58,32 @@ struct Indexer {
     // For open document lifecycle
     void updateDocument(const std::filesystem::path& uri, const slang::syntax::SyntaxTree& tree);
 
+    /// Refresh direct include relationships from parsed buffers without changing search roots.
+    void updateIncludes(const slang::syntax::SyntaxTree& tree);
+
     //////////////////////////////////////////
     // Querying interface
     //////////////////////////////////////////
     std::vector<std::filesystem::path> getFilesForSymbol(std::string_view name) const;
     std::vector<std::filesystem::path> getFilesForMacro(std::string_view name) const;
     std::vector<std::filesystem::path> getFilesReferencingSymbol(std::string_view name) const;
+
+    /// Find files from the last full index whose path ends with the relative include path.
+    std::vector<std::filesystem::path> getFilesForInclude(std::string_view path) const;
+
+    /// Find the nearest indexed include match by directory distance, breaking ties by canonical
+    /// path. Retain the indexed path spelling so callers can derive its include directory.
+    std::optional<std::filesystem::path> getNearestFileForInclude(
+        std::string_view path, const std::filesystem::path& source) const;
+
+    /// Find headers that declare a name at their outermost scope.
+    std::vector<std::filesystem::path> getHeadersForSymbol(std::string_view name) const;
+
+    /// Check gathered filenames and parsed relationships without resolving paths.
+    bool hasPotentialIncluders(const std::filesystem::path& canonicalPath) const;
+
+    /// Resolve matching gathered include filenames on demand, preferring parsed relationships.
+    std::vector<std::filesystem::path> getFilesIncluding(const std::filesystem::path& path);
 
     struct GlobalSymbolLoc {
         const std::filesystem::path* uri;
@@ -95,6 +117,10 @@ private:
         slang::SmallVector<GlobalSymbol> symbols;
         slang::SmallVector<std::string> macros;
         slang::SmallVector<std::string> referencedSymbols;
+        /// Declarations available by including this header in the enclosing scope.
+        slang::SmallVector<std::string> headerSymbols;
+        /// Quoted include spellings encountered without expanding other files.
+        slang::SmallVector<std::string> includes;
     };
 
     // Index storage
@@ -105,13 +131,40 @@ private:
     // Top level references; References tend to have more entries
     std::unordered_map<std::string, std::vector<const std::filesystem::path*>> symbolReferences_;
 
+    /// Filename snapshot rebuilt only by full indexing, independent of document updates.
+    std::unordered_map<std::string, slang::SmallVector<const std::filesystem::path*, 2>>
+        includeToFiles_;
+
+    /// Files containing each include filename, gathered without resolving include paths.
+    std::unordered_map<std::string, slang::SmallVector<const std::filesystem::path*, 2>>
+        includeReferences_;
+
+    /// Reverse relationships from parsed buffers, keyed by canonical paths.
+    std::unordered_map<std::filesystem::path, std::vector<std::filesystem::path>> includers_;
+
+    /// Parsed outgoing relationships; an empty entry suppresses speculative include matches.
+    std::unordered_map<std::filesystem::path, std::vector<std::filesystem::path>> includedFiles_;
+
+    /// Results of requested includer lookups, invalidated by index and parsed-buffer updates.
+    std::unordered_map<std::filesystem::path, std::vector<std::filesystem::path>>
+        resolvedIncluders_;
+
+    /// Header declarations for include quick fixes, updated along with symbols and macros.
+    std::unordered_map<std::string, slang::SmallVector<const std::filesystem::path*, 2>>
+        headerSymbolToFiles_;
+
     // Storage for unique URIs (all pointers in the index point here)
     std::unordered_set<std::filesystem::path> uniqueUris_;
 
     void indexPath(const std::filesystem::path& path, IndexedPath& indexedFile);
+    /// Build symbols and include filename indexes.
     void indexAndReport(std::vector<std::filesystem::path> pathsToIndex);
 
-    // Remove all index entries for a path without needing the file contents
+    /// Replace parsed edges and their reverse entries; all paths must already be canonical.
+    void replaceIncludes(const std::filesystem::path& path,
+                         std::vector<std::filesystem::path> targets);
+
+    /// Remove declarations and gathered includes, and invalidate parsed relationships for a file.
     void removePathFromIndex(const std::filesystem::path* pathPtr);
 
     // Intern a URI to get a stable pointer
@@ -127,6 +180,11 @@ private:
     // Extracts macros
     template<typename MacroRange>
     static void extractMacros(const MacroRange& macros, IndexedPath& dest);
+
+    /// Extract outermost declarations from headers and files with top-level classes.
+    static void extractHeaderSymbols(const slang::syntax::CompilationUnitSyntax& root,
+                                     slang::BufferID buffer, const std::filesystem::path& path,
+                                     IndexedPath& dest);
 
     static void collectFilesFromDirectory(const std::filesystem::path& dir,
                                           const std::vector<std::string>& excludeDirs,

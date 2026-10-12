@@ -8,6 +8,8 @@
 export interface Config {
   /** Flags to pass to slang */
   flags?: string
+  /** Include directories, relative to the workspace root. Searched after directories supplied through flags and build files. */
+  incdirs?: string[]
   /**
    * @deprecated
    * Globs of what to index. By default will index all sv and svh files in the workspace.

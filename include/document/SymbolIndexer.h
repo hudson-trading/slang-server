@@ -43,6 +43,9 @@ public:
 
     slang::BufferID m_buffer;
 
+    /// Buffers enclosing this header, whose scopes must be traversed to reach its declarations.
+    slang::SmallVector<slang::BufferID> enclosingBuffers;
+
     SymbolIndexer(slang::BufferID buffer);
 
     const slang::ast::Symbol* getSymbol(const slang::parsing::Token* node) const;
@@ -65,7 +68,7 @@ public:
     void handle(const slang::ast::PackageSymbol& sym) {
         // For packages, only recurse if it's in our buffer
         indexSymbolName(sym);
-        if (sym.location.buffer() == m_buffer) {
+        if (shouldVisit(sym.location.buffer())) {
             visitDefault(sym);
         }
     }
@@ -98,12 +101,18 @@ public:
         requires std::is_base_of_v<slang::ast::Symbol, T>
     void handle(const T& astNode) {
         indexSymbolName(astNode);
-        if (astNode.location.buffer() == m_buffer) {
+        if (shouldVisit(astNode.location.buffer())) {
             visitDefault(astNode);
         }
     }
 
 private:
+    /// Whether this scope belongs to the document or one of its includers.
+    bool shouldVisit(slang::BufferID buffer) const {
+        return buffer == m_buffer ||
+               std::ranges::find(enclosingBuffers, buffer) != enclosingBuffers.end();
+    }
+
     static const uint32_t MAX_INSTANCE_DEPTH = 8;
     /// Helper to index instance syntax (shared by InstanceSymbol and InstanceArraySymbol)
     void indexInstanceSyntax(const slang::syntax::HierarchicalInstanceSyntax& instSyntax,

@@ -82,10 +82,10 @@ module struct_enum_test(
        ^^^^^^^^^^^^^^^^ Refs[2]
 
     input logic clk,
-                ^^^ Refs[3]
+                ^^^ Refs[4]
 
     input logic rst
-                ^^^ Refs[3]
+                ^^^ Refs[4]
 
 );
 
@@ -136,10 +136,10 @@ module struct_enum_test(
     // Nested struct member accesses
 
     always_ff @(posedge clk) begin
-                        ^^^ Refs[3]
+                        ^^^ Refs[4]
 
         if (rst) begin
-            ^^^ Refs[3]
+            ^^^ Refs[4]
 
             packet.request.addr <= 8'h00;
             ^^^^^^ Refs[10]
@@ -192,10 +192,10 @@ module struct_enum_test(
     // Enum member usage
 
     always_ff @(posedge clk) begin
-                        ^^^ Refs[3]
+                        ^^^ Refs[4]
 
         if (rst) begin
-            ^^^ Refs[3]
+            ^^^ Refs[4]
 
             current_state <= IDLE;
             ^^^^^^^^^^^^^ Refs[8]
