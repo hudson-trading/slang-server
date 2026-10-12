@@ -16,13 +16,17 @@
 git clone https://github.com/hudson-trading/slang-server.git
 cd slang-server
 
-# Pull dependencies (slang and reflect-cpp)
-git submodule update --init --recursive
+# Pull direct dependencies (slang, reflect-cpp, and ctre)
+git submodule update --init
 
 # Build with cmake using a C++20 compliant compiler
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j --target slang_server
 ```
+
+Only direct submodules are needed. Leave out `--recursive` to skip reflect-cpp's
+optional `vcpkg` submodule; slang-server uses its bundled JSON support with
+`REFLECTCPP_USE_VCPKG=OFF` by default.
 
 The binary will be at `build/bin/slang-server`.
 
