@@ -27,7 +27,7 @@
         },
         "index": {
           "type": "array",
-          "description": "Index configurations; by default indexes all .sv, .svh, .v, and .vh files in the workspace.",
+          "description": "Index configurations; by default indexes all .sv, .svh, .v, and .vh files in the workspace. External-only roots supplement this default. A workspace directory or an empty dirs entry replaces the default scan.",
           "items": {
             "$ref": "#/$defs/Config__IndexConfig"
           }
@@ -170,7 +170,7 @@
           }
         },
         "excludeDirs": {
-          "description": "Directories to exclude; only supports single directory names and applies to all path levels",
+          "description": "Exact directory names to exclude at all path levels, or specific workspace-relative paths starting with './' (absolute paths are also supported). Wildcards are not supported.",
           "anyOf": [
             {
               "type": "array",

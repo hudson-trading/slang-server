@@ -173,6 +173,7 @@ TEST_CASE("CodeAction_AddInclude_PreservesConfiguredSearchRootAfterRemoval") {
     }
     auto doc = server.openFile("design/top.sv");
     CHECK(doc.getDiagnostics().empty());
+    auto directories = server.m_indexer.getIncludeDirectories();
     doc.replaceAll("module top(output int width); assign width = `COMMON_WIDTH; endmodule\n");
     doc.save();
 
@@ -183,6 +184,7 @@ TEST_CASE("CodeAction_AddInclude_PreservesConfiguredSearchRootAfterRemoval") {
     doc.replaceAll(doc.withTextEdits(action->edit->changes->at(doc.m_uri.str())));
     doc.publishChanges();
     CHECK(doc.getDiagnostics().empty());
+    CHECK(server.m_indexer.getIncludeDirectories() == directories);
 }
 
 TEST_CASE("CodeAction_AddInclude_UsesConfiguredSpelling") {

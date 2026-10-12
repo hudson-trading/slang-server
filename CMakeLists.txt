@@ -324,6 +324,7 @@ add_library(
   src/util/Formatting.cpp
   src/util/SlangExtensions.cpp
   src/util/Markdown.cpp
+  src/util/Process.cpp
   src/Config.cpp
   src/Indexer.cpp
   src/ServerDriver.cpp

@@ -5,6 +5,7 @@
 #include "catch2/catch_test_macros.hpp"
 #include "utils/ServerHarness.h"
 #include "utils/Utils.h"
+#include <catch2/generators/catch_generators.hpp>
 #include <filesystem>
 #include <fstream>
 
@@ -139,6 +140,30 @@ TEST_CASE("Index include candidates stay fixed until a full reindex") {
     CHECK(indexer.getFilesForInclude("entry.svh").empty());
 }
 
+TEST_CASE("Include-directory inference is explicit and excludes local include directories") {
+    ServerHarness server("include_paths");
+    auto& indexer = server.m_indexer;
+    auto root = fs::current_path();
+    auto directories = std::vector<fs::path>{root};
+    CHECK(indexer.getIncludeDirectories().empty());
+    indexer.startIndexing(std::vector<Config::IndexConfig>{}, root.string(), true);
+    CHECK(indexer.getIncludeDirectories() == directories);
+    auto doc = server.openFile("design/top.sv");
+    doc.replaceAll("`include \"common.svh\"\nmodule top; endmodule\n");
+    doc.save();
+    CHECK(indexer.getIncludeDirectories() == directories);
+    auto header = root / "library/common/common.svh";
+    indexer.addDocuments({header});
+    indexer.onWorkspaceDidChangeWatchedFiles(
+        {.changes = {{URI::fromFile(header), lsp::FileChangeType::Deleted}}});
+    CHECK(indexer.getIncludeDirectories() == directories);
+    indexer.onWorkspaceDidChangeWatchedFiles(
+        {.changes = {{URI::fromFile(header), lsp::FileChangeType::Created}}});
+    CHECK(indexer.getIncludeDirectories() == directories);
+    indexer.startIndexing(std::vector<std::string>{(root / "local/source.sv").string()}, {});
+    CHECK(indexer.getIncludeDirectories().empty());
+}
+
 TEST_CASE("Index records direct relative and nested includers") {
     ServerHarness server("header_context");
     auto root = fs::current_path();
@@ -147,9 +172,11 @@ TEST_CASE("Index records direct relative and nested includers") {
     CHECK(server.m_indexer.getFilesIncluding(root / "src/fields.svh") ==
           std::vector<fs::path>{root / "src/transaction.svh"});
     CHECK(server.m_indexer.getFilesIncluding(root / "device_pkg.sv").empty());
+    CHECK(server.m_indexer.getIncludeDirectories().empty());
 }
 
 TEST_CASE("Includer lookup resolves repeated filenames separately for each source directory") {
+    const bool inferDirectories = GENERATE(false, true);
     auto root = fs::weakly_canonical(fs::temp_directory_path()) /
                 fmt::format("slang_repeated_includes_{}", slang::OS::getpid());
     slang::ScopeGuard cleanup([&] { fs::remove_all(root); });
@@ -169,10 +196,10 @@ TEST_CASE("Includer lookup resolves repeated filenames separately for each sourc
     for (const auto* directory : {"a/src", "a/inc", "b/src", "b/inc", "local", "shared"})
         paths.push_back((root / directory / "*.sv*").string());
     for (bool reverse : {false, true}) {
-        CAPTURE(reverse);
+        CAPTURE(inferDirectories, reverse);
         if (reverse)
             std::ranges::reverse(paths);
-        indexer.startIndexing(paths, {});
+        indexer.startIndexing(paths, {}, inferDirectories);
         auto firstParents = indexer.getFilesIncluding(root / "a/inc/types.svh");
         std::ranges::sort(firstParents);
         CHECK(firstParents == std::vector<fs::path>{sources[0], sources[1]});
@@ -183,6 +210,9 @@ TEST_CASE("Includer lookup resolves repeated filenames separately for each sourc
         auto sharedParents = indexer.getFilesIncluding(root / "shared/unique.svh");
         std::ranges::sort(sharedParents);
         CHECK(sharedParents == sources);
+        CHECK(
+            indexer.getIncludeDirectories() ==
+            (inferDirectories ? std::vector<fs::path>{root / "shared"} : std::vector<fs::path>{}));
     }
 }
 
@@ -214,6 +244,7 @@ TEST_CASE("Includer lookup resolves only the requested gathered filename") {
     CHECK(indexer.getFilesIncluding(late) == std::vector<fs::path>{source});
     CHECK(indexer.getFilesIncluding(root / "first/types.svh").empty());
     CHECK(indexer.getFilesIncluding(root / "second/types.svh") == std::vector<fs::path>{source});
+    CHECK(indexer.getIncludeDirectories().empty());
 
     indexer.startIndexing(std::vector<std::string>{ready.string()}, {});
     CHECK(indexer.getFilesIncluding(ready).empty());
@@ -255,6 +286,7 @@ TEST_CASE("Parsed include results override gathered filename candidates") {
 }
 
 TEST_CASE("Include lookup caches refresh after reindexing and file changes") {
+    const bool inferDirectories = GENERATE(false, true);
     auto root = fs::weakly_canonical(fs::temp_directory_path()) /
                 fmt::format("slang_include_cache_refresh_{}", slang::OS::getpid());
     slang::ScopeGuard cleanup([&] { fs::remove_all(root); });
@@ -268,17 +300,19 @@ TEST_CASE("Include lookup caches refresh after reindexing and file changes") {
     fs::create_directory_symlink(root / "first", alias);
     std::vector<Config::IndexConfig> configs{{.dirs = std::vector<std::string>{"headers", "src"}}};
     Indexer indexer;
-    indexer.startIndexing(configs, root.string());
+    indexer.startIndexing(configs, root.string(), inferDirectories);
     CHECK(indexer.getFilesIncluding(root / "first/types.svh") == std::vector<fs::path>{source});
     CHECK(indexer.getFilesIncluding(root / "src/late.svh").empty());
 
     fs::remove(alias);
     fs::create_directory_symlink(root / "second", alias);
     std::ofstream(root / "src/late.svh") << "typedef int late_t;\n";
-    indexer.startIndexing(configs, root.string());
+    indexer.startIndexing(configs, root.string(), inferDirectories);
     CHECK(indexer.getFilesIncluding(root / "first/types.svh").empty());
     CHECK(indexer.getFilesIncluding(root / "second/types.svh") == std::vector<fs::path>{source});
     CHECK(indexer.getFilesIncluding(root / "src/late.svh") == std::vector<fs::path>{source});
+    CHECK(indexer.getIncludeDirectories() ==
+          (inferDirectories ? std::vector<fs::path>{root / "second"} : std::vector<fs::path>{}));
 
     auto local = root / "src/types.svh";
     std::ofstream(local) << "typedef int local_t;\n";
@@ -295,7 +329,7 @@ TEST_CASE("Include lookup caches refresh after reindexing and file changes") {
     CHECK(indexer.getFilesIncluding(root / "second/types.svh") == std::vector<fs::path>{source});
 }
 
-TEST_CASE("File notifications update include relationships") {
+TEST_CASE("File notifications update include relationships without inferring directories") {
     auto root = fs::weakly_canonical(fs::temp_directory_path()) /
                 fmt::format("slang_include_updates_{}", slang::OS::getpid());
     fs::create_directories(root / "inc");
@@ -312,7 +346,9 @@ TEST_CASE("File notifications update include relationships") {
     Indexer indexer;
     indexer.startIndexing(std::vector<std::string>{source.string(), first.string(), second.string(),
                                                    extra.string()},
-                          {});
+                          {}, true);
+    auto directories = indexer.getIncludeDirectories();
+    CHECK(directories == std::vector<fs::path>{root / "inc"});
     CHECK(indexer.getFilesIncluding(first) == std::vector<fs::path>{source});
 
     std::ofstream(source) << "`include \"second.svh\"\n";
@@ -326,6 +362,7 @@ TEST_CASE("File notifications update include relationships") {
         {.changes = {{URI::fromFile(source), lsp::FileChangeType::Changed}}});
     CHECK(indexer.getFilesIncluding(second).empty());
     CHECK(indexer.getFilesIncluding(extra) == std::vector<fs::path>{source});
+    CHECK(indexer.getIncludeDirectories() == directories);
 
     std::ofstream(source) << "`include \"extra/new.svh\"\n";
     indexer.onWorkspaceDidChangeWatchedFiles(
@@ -349,6 +386,7 @@ TEST_CASE("File notifications update include relationships") {
     indexer.onWorkspaceDidChangeWatchedFiles(
         {.changes = {{URI::fromFile(renamed), lsp::FileChangeType::Deleted}}});
     CHECK(indexer.getFilesIncluding(second).empty());
+    CHECK(indexer.getIncludeDirectories() == directories);
 }
 
 TEST_CASE("Index distinguishes package-relative includes from search-root-relative includes") {
@@ -358,6 +396,7 @@ TEST_CASE("Index distinguishes package-relative includes from search-root-relati
                                    (root / "src/types.svh").string(),
                                    (root / "src/macros.svh").string()};
     indexer.startIndexing(paths, {});
+    CHECK(indexer.getIncludeDirectories().empty());
     CHECK(indexer.getFilesIncluding(root / "src/types.svh") ==
           std::vector<fs::path>{root / "device_pkg.sv"});
     CHECK(indexer.getFilesIncluding(root / "src/macros.svh") ==
@@ -365,6 +404,9 @@ TEST_CASE("Index distinguishes package-relative includes from search-root-relati
 
     paths.push_back((root / "src/worker.sv").string());
     indexer.startIndexing(paths, {});
+    CHECK(indexer.getIncludeDirectories().empty());
+    indexer.startIndexing(paths, {}, true);
+    CHECK(indexer.getIncludeDirectories() == std::vector<fs::path>{root});
     auto parents = indexer.getFilesIncluding(root / "src/macros.svh");
     std::ranges::sort(parents);
     CHECK(parents == std::vector<fs::path>{root / "src/types.svh", root / "src/worker.sv"});
@@ -372,6 +414,7 @@ TEST_CASE("Index distinguishes package-relative includes from search-root-relati
 
 TEST_CASE("Package-relative includes resolve without inferred search directories") {
     ServerHarness server("header_context");
+    CHECK(server.m_indexer.getIncludeDirectories().empty());
     auto header = server.openFile("src/driver.svh");
     auto package = server.openFile("device_pkg.sv");
     CHECK(header.doc->getCompilation() == package.doc->getCompilation());

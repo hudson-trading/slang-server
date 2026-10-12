@@ -387,6 +387,10 @@
     },
     "commands": [
       {
+        "command": "slang.autoConfigure",
+        "title": "slang: Auto-configure"
+      },
+      {
         "command": "slang.project.setTopLevel",
         "title": "Set Top Level",
         "shortTitle": "Set Top",

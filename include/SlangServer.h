@@ -168,6 +168,9 @@ public:
     // Add a -D define to .slang/local/server.json and reload config
     std::monostate addDefine(const std::string& macroName);
 
+    /// Discover workspace settings, update .slang/server.json, and reload the server.
+    bool autoConfigure(const std::monostate&);
+
     ////////////////////////////////////////////////
     /// Server Lifecycle
     ////////////////////////////////////////////////

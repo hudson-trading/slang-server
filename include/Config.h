@@ -26,6 +26,7 @@
 ///   of workspace/user flags won, rather than replacing them.
 ///
 /// The "Add define" code action writes `-D` flags to `.slang/local/server.json`.
+/// The "Auto-configure" command discovers index and include directories for `.slang/server.json`.
 struct Config {
     /// generate json schema from this by running with --config-schema
     // all fields must be optional
@@ -47,14 +48,16 @@ struct Config {
     struct IndexConfig {
         rfl::Description<"Directories to index", std::vector<std::string>> dirs;
         rfl::Description<
-            "Directories to exclude; only supports single directory names and applies to "
-            "all path levels",
+            "Exact directory names to exclude at all path levels, or specific workspace-relative "
+            "paths starting with './' (absolute paths are also supported). Wildcards are not "
+            "supported.",
             std::optional<std::vector<std::string>>>
             excludeDirs;
     };
 
     rfl::Description<"Index configurations; by default indexes all .sv, .svh, .v, and .vh files in "
-                     "the workspace.",
+                     "the workspace. External-only roots supplement this default. A workspace "
+                     "directory or an empty dirs entry replaces the default scan.",
                      std::vector<IndexConfig>>
         index = {};
 

@@ -7,6 +7,7 @@ import { ext } from '../extension'
 import {
   CommandNode,
   EditorButton,
+  ServerCommandNode,
   TreeItemButton,
   ViewButton,
   ViewComponent,
@@ -481,6 +482,8 @@ export class ProjectComponent
       await this.refreshSlangCompilation({ preserveFocusedPath: false })
     }
   )
+
+  autoConfigure = new ServerCommandNode('slang.autoConfigure', 'slang: Auto-configure')
 
   selectTopLevel: CommandNode = new CommandNode(
     {

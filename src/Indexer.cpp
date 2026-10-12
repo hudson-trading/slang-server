@@ -10,11 +10,15 @@
 
 #include "Config.h"
 #include "util/Logging.h"
+#include "util/Process.h"
 #include <BS_thread_pool.hpp>
 #include <cctype>
 #include <filesystem>
 #include <fmt/format.h>
+#include <iterator>
 #include <limits>
+#include <map>
+#include <set>
 #include <string_view>
 #include <unordered_map>
 
@@ -36,6 +40,49 @@
 namespace fs = std::filesystem;
 
 namespace {
+
+// Borrows stable strings, keeping short exclusion lists out of the hash table.
+class ExclusionSet {
+public:
+    explicit ExclusionSet(std::span<const std::string> values) : values(values) {
+        if (values.size() > 8) {
+            hashed.reserve(values.size());
+            for (const auto& value : values)
+                hashed.insert(value);
+        }
+    }
+
+    bool empty() const { return values.empty(); }
+
+    bool contains(std::string_view value) const {
+        if (hashed.empty())
+            return std::ranges::find(values, value) != values.end();
+        return hashed.contains(value);
+    }
+
+    // Both the stored directories and the query have normalized, trailing '/' separators.
+    bool containsDirectoryOrAncestor(std::string_view path) const {
+        // Walking and hashing every ancestor costs more than a few prefix comparisons.
+        if (values.size() <= 16) {
+            return std::ranges::any_of(values,
+                                       [&](const auto& value) { return path.starts_with(value); });
+        }
+        while (!path.empty()) {
+            if (hashed.contains(path))
+                return true;
+            path.remove_suffix(1);
+            const auto separator = path.find_last_of('/');
+            if (separator == std::string_view::npos)
+                break;
+            path = path.substr(0, separator + 1);
+        }
+        return false;
+    }
+
+private:
+    std::span<const std::string> values;
+    slang::flat_hash_set<std::string_view> hashed;
+};
 
 std::optional<fs::path> nearestInclude(std::string_view spelling, const fs::path& source,
                                        std::span<const fs::path* const> candidates) {
@@ -478,6 +525,289 @@ std::vector<fs::path> Indexer::getFilesIncluding(const fs::path& path) {
     return result;
 }
 
+std::vector<fs::path> Indexer::getIncludeDirectories() const {
+    IndexReadGuard guard(*this);
+    return includeDirectories_;
+}
+
+std::vector<fs::path> Indexer::getSuggestedIndexDirectories(const fs::path& workspace) const {
+    IndexReadGuard guard(*this);
+    if (directoryEntryCounts_.empty())
+        return {};
+    const auto root = fs::absolute(workspace).lexically_normal();
+    struct Directory {
+        size_t entries = 0;
+        bool hasSources = false;
+        std::map<fs::path, Directory> children;
+    } tree;
+    auto addDirectory = [&](const fs::path& path) -> Directory* {
+        auto relative = fs::absolute(path).lexically_normal().lexically_relative(root);
+        if (relative.empty() || relative.is_absolute() || *relative.begin() == "..")
+            return nullptr;
+        auto* node = &tree;
+        for (const auto& part : relative) {
+            if (!part.empty() && part != ".")
+                node = &node->children[part];
+        }
+        return node;
+    };
+    size_t workspaceEntries = 0;
+    for (const auto& [path, entries] : directoryEntryCounts_) {
+        auto* directory = addDirectory(path);
+        if (directory) {
+            directory->entries = entries;
+            workspaceEntries += entries;
+        }
+    }
+    for (const auto& [_, files] : includeToFiles_) {
+        for (const auto* file : files) {
+            auto* directory = addDirectory(file->parent_path());
+            if (!directory)
+                continue;
+            if (directory == &tree)
+                return {};
+            directory->hasSources = true;
+        }
+    }
+    struct Selection {
+        size_t entries = 0;
+        size_t cost = 0;
+        std::vector<fs::path> directories;
+    };
+    // Each extra root must save roughly 5% of the workspace crawl, with a floor for small trees.
+    const auto rootPenalty = std::max(size_t(32), workspaceEntries / 20);
+    auto select = [rootPenalty](auto&& self, const Directory& directory,
+                                const fs::path& path) -> Selection {
+        Selection result{.entries = directory.entries};
+        for (const auto& [name, child] : directory.children) {
+            auto selected = self(self, child, path / name);
+            result.entries += selected.entries;
+            result.cost += selected.cost;
+            result.directories.insert(result.directories.end(),
+                                      std::make_move_iterator(selected.directories.begin()),
+                                      std::make_move_iterator(selected.directories.end()));
+        }
+        auto parentCost = result.entries + rootPenalty;
+        if (!path.empty() &&
+            (directory.hasSources || (!result.directories.empty() && parentCost <= result.cost))) {
+            result.cost = parentCost;
+            result.directories = {path};
+        }
+        return result;
+    };
+    return select(select, tree, {}).directories;
+}
+
+std::vector<Indexer::GitIgnoreMatch> Indexer::getGitIgnoreMatches(
+    const fs::path& workspace, std::span<const Config::IndexConfig> indexConfigs) const {
+    const auto root = fs::absolute(workspace).lexically_normal();
+    std::vector<std::string> files;
+    std::set<std::string> directories;
+    std::unordered_set<std::string> protectedNames;
+    auto protectNames = [&](const fs::path& directory) {
+        for (auto parent = directory; parent.has_relative_path(); parent = parent.parent_path())
+            protectedNames.insert(parent.filename().string());
+    };
+    protectNames(root);
+    auto addParents = [](const fs::path& path, auto& into) {
+        for (auto parent = path.parent_path(); !parent.empty() && parent != ".";
+             parent = parent.parent_path())
+            into.insert(parent.generic_string() + '/');
+    };
+    {
+        IndexReadGuard guard(*this);
+        for (const auto& [_, paths] : includeToFiles_) {
+            for (const auto* path : paths) {
+                auto relative = path->lexically_relative(root);
+                if (!relative.empty() && !relative.is_absolute() && *relative.begin() != "..") {
+                    files.push_back(relative.generic_string());
+                    addParents(relative, directories);
+                }
+                else {
+                    // A name exclusion may share an index entry with external source roots.
+                    protectNames(path->parent_path());
+                }
+            }
+        }
+        for (const auto& [directory, _] : directoryEntryCounts_) {
+            auto relative = directory.lexically_relative(root);
+            if (!relative.empty() && relative != "." && !relative.is_absolute() &&
+                *relative.begin() != "..") {
+                directories.insert((relative / "").generic_string());
+                addParents(relative, directories);
+            }
+        }
+    }
+    for (const auto& entry : indexConfigs) {
+        for (const auto& exclusion :
+             entry.excludeDirs.value().value_or(std::vector<std::string>{})) {
+            if ((!exclusion.starts_with("./") && !fs::path(exclusion).is_absolute()) ||
+                exclusion.find_first_of("*?") != std::string::npos)
+                continue;
+            auto relative = (root / exclusion).lexically_normal().lexically_relative(root);
+            if (!relative.empty() && relative != "." && !relative.is_absolute() &&
+                *relative.begin() != "..") {
+                directories.insert((relative / "").generic_string());
+                addParents(relative, directories);
+            }
+        }
+    }
+    if (files.empty() && directories.empty())
+        return {};
+    std::ranges::sort(files);
+
+    const std::vector<std::string> listArguments{"git",     "-C", root.string(), "ls-files",
+                                                 "--stage", "-z", "--"};
+    auto tracked = server::runProcess(listArguments);
+    if (!tracked || tracked->exitCode != 0)
+        return {};
+    std::vector<std::string> submodules;
+    std::unordered_set<std::string_view> trackedFiles;
+    std::unordered_set<std::string> protectedDirectories;
+    std::string_view records = tracked->output;
+    while (!records.empty()) {
+        auto end = records.find('\0');
+        if (end == std::string_view::npos)
+            return {};
+        auto record = records.substr(0, end);
+        auto separator = record.find('\t');
+        if (separator != std::string_view::npos) {
+            auto path = record.substr(separator + 1);
+            trackedFiles.insert(path);
+            addParents(fs::path(path), protectedDirectories);
+            if (record.starts_with("160000 ")) {
+                submodules.push_back(std::string(path) + '/');
+                protectedDirectories.insert(std::string(path) + '/');
+            }
+        }
+        records.remove_prefix(end + 1);
+    }
+
+    // check-ignore rejects paths inside submodules; their ignore rules belong to another repo.
+    std::string input;
+    std::set<std::string> queries(files.begin(), files.end());
+    queries.insert(directories.begin(), directories.end());
+    for (const auto& file : queries) {
+        if (trackedFiles.contains(file) || protectedDirectories.contains(file))
+            continue;
+        if (std::ranges::none_of(submodules, [&](const auto& directory) {
+                return file.starts_with(directory);
+            })) {
+            input += file;
+            input += '\0';
+        }
+    }
+    if (input.empty())
+        return {};
+    // The snapshot above already protects tracked paths. Without --no-index, Git searches its
+    // index again for every input path, which is expensive in large repositories.
+    const std::vector<std::string> arguments{"git",        "-C",      root.string(), "check-ignore",
+                                             "--no-index", "--stdin", "-z",          "--verbose"};
+    auto ignored = server::runProcess(arguments, input);
+    if (!ignored || (ignored->exitCode != 0 && ignored->exitCode != 1))
+        return {};
+
+    std::map<std::string, GitIgnoreMatch> matches;
+    std::unordered_set<std::string> ignoredFiles;
+    std::map<std::string, std::string> ignoredDirectories;
+    records = ignored->output;
+    while (!records.empty()) {
+        std::string_view fields[4];
+        for (auto& field : fields) {
+            auto end = records.find('\0');
+            if (end == std::string_view::npos)
+                return {};
+            field = records.substr(0, end);
+            records.remove_prefix(end + 1);
+        }
+        if (fields[2].empty() || fields[2].starts_with('!'))
+            continue;
+        auto rule = fmt::format("{}:{}: {}", fields[0], fields[1], fields[2]);
+        if (fields[3].ends_with('/')) {
+            ignoredDirectories.emplace(fields[3], rule);
+        }
+        else {
+            ignoredFiles.emplace(fields[3]);
+            auto match = matches.try_emplace(rule, GitIgnoreMatch{.rule = rule}).first;
+            match->second.files.emplace_back(fields[3]);
+        }
+    }
+    for (const auto& file : files) {
+        if (!ignoredFiles.contains(file))
+            addParents(fs::path(file), protectedDirectories);
+    }
+    std::set<std::string> selected;
+    for (const auto& [directory, rule] : ignoredDirectories) {
+        if (protectedDirectories.contains(directory))
+            continue;
+        bool covered = false;
+        for (auto parent = fs::path(directory).parent_path().parent_path(); !parent.empty();
+             parent = parent.parent_path()) {
+            if (selected.contains(parent.generic_string() + '/')) {
+                covered = true;
+                break;
+            }
+        }
+        if (!covered) {
+            selected.insert(directory);
+            auto match = matches.try_emplace(rule, GitIgnoreMatch{.rule = rule}).first;
+            match->second.directories.push_back(fs::path(directory).parent_path());
+        }
+    }
+    for (const auto& directory : protectedDirectories)
+        protectedNames.insert(fs::path(directory).parent_path().filename().string());
+    std::vector<GitIgnoreMatch> result;
+    for (auto& [_, match] : matches) {
+        for (const auto& directory : match.directories) {
+            auto name = directory.filename().string();
+            if (!protectedNames.contains(name) &&
+                std::ranges::find(match.names, name) == match.names.end())
+                match.names.push_back(std::move(name));
+        }
+        result.push_back(std::move(match));
+    }
+    return result;
+}
+
+void Indexer::excludeDirectories(std::span<const fs::path> directories) {
+    if (directories.empty())
+        return;
+    IndexWriteGuard guard(*this);
+    std::vector<std::string> prefixes;
+    prefixes.reserve(directories.size());
+    for (const auto& directory : directories)
+        prefixes.push_back((fs::absolute(directory).lexically_normal() / "").generic_string());
+    const ExclusionSet excludedPaths(prefixes);
+    auto excluded = [&](const fs::path& path) {
+        return excludedPaths.containsDirectoryOrAncestor(
+            (fs::absolute(path).lexically_normal() / "").generic_string());
+    };
+    std::unordered_set<fs::path> remaining;
+    for (auto it = includeToFiles_.begin(); it != includeToFiles_.end();) {
+        auto& paths = it->second;
+        paths.erase(std::remove_if(paths.begin(), paths.end(),
+                                   [&](const auto* path) { return excluded(*path); }),
+                    paths.end());
+        for (const auto* path : paths)
+            remaining.insert(*path);
+        if (paths.empty())
+            it = includeToFiles_.erase(it);
+        else
+            ++it;
+    }
+    std::vector<fs::path> sources;
+    for (auto it = indexedFiles.begin(); it != indexedFiles.end();) {
+        const auto* path = (it++)->first;
+        if (excluded(*path))
+            removePathFromIndex(path);
+        else if (remaining.contains(fs::absolute(*path).lexically_normal()))
+            sources.push_back(*path);
+    }
+    std::erase_if(directoryEntryCounts_, [&](const auto& entry) { return excluded(entry.first); });
+    includeDirectories_.clear();
+    inferIncludeSearchDirectories(sources);
+}
+
 std::optional<fs::path> Indexer::getNearestFileForInclude(std::string_view path,
                                                           const fs::path& source) const {
     IndexReadGuard guard(*this);
@@ -485,6 +815,38 @@ std::optional<fs::path> Indexer::getNearestFileForInclude(std::string_view path,
     if (it == includeToFiles_.end())
         return std::nullopt;
     return nearestInclude(path, source, it->second);
+}
+
+std::vector<fs::path> Indexer::getConflictingIncludeDirectories(
+    std::span<const fs::path> configuredDirectories) const {
+    IndexReadGuard guard(*this);
+    std::unordered_map<fs::path, std::pair<fs::path, fs::path>> matches;
+    std::unordered_set<fs::path> conflicts;
+    for (const auto& [_, files] : includeToFiles_) {
+        for (const auto* file : files) {
+            auto canonical = fs::weakly_canonical(*file);
+            for (const auto& directory : includeDirectories_) {
+                auto relative = canonical.lexically_relative(directory);
+                if (relative.empty() || *relative.begin() == "..")
+                    continue;
+                auto [it, inserted] = matches.try_emplace(relative, canonical, directory);
+                if (!inserted && it->second.first != canonical) {
+                    conflicts.insert(directory);
+                    conflicts.insert(it->second.second);
+                }
+                for (const auto& configured : configuredDirectories) {
+                    auto existing = configured / relative;
+                    std::error_code ec;
+                    if (fs::is_regular_file(existing, ec) &&
+                        fs::weakly_canonical(existing) != canonical)
+                        conflicts.insert(directory);
+                }
+            }
+        }
+    }
+    std::vector<fs::path> result(conflicts.begin(), conflicts.end());
+    std::ranges::sort(result);
+    return result;
 }
 
 std::vector<fs::path> Indexer::getHeadersForSymbol(std::string_view name) const {
@@ -627,9 +989,25 @@ void Indexer::onWorkspaceDidChangeWatchedFiles(const lsp::DidChangeWatchedFilesP
 
 void Indexer::collectFilesFromDirectory(const fs::path& dir,
                                         const std::vector<std::string>& excludeDirs,
-                                        std::vector<fs::path>& outFiles) {
+                                        std::vector<fs::path>& outFiles,
+                                        DirectoryEntryCounts* directoryEntries,
+                                        std::span<const std::string> excludedPaths) {
 
-    if (!fs::exists(dir) || !fs::is_directory(dir)) {
+    const ExclusionSet excludedNames(excludeDirs);
+    const ExclusionSet paths(excludedPaths);
+    auto excludedPath = [&](const fs::path& path) {
+        if (paths.empty())
+            return false;
+        const auto normalized = (fs::absolute(path).lexically_normal() / "").generic_string();
+        return paths.contains(normalized);
+    };
+
+    if ((!excludedNames.empty() &&
+         std::ranges::any_of(
+             dir, [&](const auto& part) { return excludedNames.contains(part.string()); })) ||
+        (!paths.empty() && paths.containsDirectoryOrAncestor(
+                               (fs::absolute(dir).lexically_normal() / "").generic_string())) ||
+        !fs::exists(dir) || !fs::is_directory(dir)) {
         return;
     }
     auto startSize = outFiles.size();
@@ -640,10 +1018,14 @@ void Indexer::collectFilesFromDirectory(const fs::path& dir,
              dir, fs::directory_options::skip_permission_denied, ec);
          it != fs::recursive_directory_iterator(); ++it) {
 
+        if (directoryEntries)
+            ++(*directoryEntries)[it->path().parent_path().lexically_normal()];
+
         // Check for exclude when entering a new directory
         if (it->is_directory(ec)) {
-            // This map tends to be small; linear search is fine
-            if (isExcluded(it->path().string(), excludeDirs)) {
+            if ((!excludedNames.empty() &&
+                 excludedNames.contains(it->path().filename().string())) ||
+                excludedPath(it->path())) {
                 it.disable_recursion_pending();
                 continue;
             }
@@ -660,41 +1042,82 @@ void Indexer::collectFilesFromDirectory(const fs::path& dir,
     INFO("Found {} files", outFiles.size() - startSize);
 }
 
-void Indexer::startIndexing(const std::vector<Config::IndexConfig>& indexConfigs,
-                            std::optional<std::string_view> workspaceFolder) {
-    std::vector<fs::path> pathsToIndex;
-
-    if (indexConfigs.empty()) {
-        // No index configs - index entire workspace
-        if (workspaceFolder.has_value()) {
-            collectFilesFromDirectory(fs::path(*workspaceFolder), {}, pathsToIndex);
-        }
-    }
-    else {
-        for (const auto& cfg : indexConfigs) {
-            for (const auto& dir : cfg.dirs.value()) {
-                fs::path fullDirPath;
-                if (fs::path(dir).is_absolute()) {
-                    fullDirPath = fs::path(dir);
-                }
-                else if (workspaceFolder.has_value()) {
-                    fullDirPath = fs::path(*workspaceFolder) / fs::path(dir);
-                }
-                else {
-                    continue;
-                }
-                collectFilesFromDirectory(
-                    fullDirPath, cfg.excludeDirs.value().value_or(std::vector<std::string>{}),
-                    pathsToIndex);
+bool Indexer::usesDefaultWorkspaceIndex(std::span<const Config::IndexConfig> indexConfigs,
+                                        const fs::path& workspace) {
+    if (indexConfigs.empty())
+        return true;
+    auto within = [](const fs::path& path, const fs::path& directory) {
+        auto relative = path.lexically_relative(directory);
+        return !relative.empty() && !relative.is_absolute() && *relative.begin() != "..";
+    };
+    const auto root = workspace.lexically_normal();
+    std::error_code ec;
+    const auto canonicalRoot = fs::weakly_canonical(root, ec);
+    for (const auto& entry : indexConfigs) {
+        if (entry.dirs.value().empty())
+            return false;
+        for (const auto& directory : entry.dirs.value()) {
+            auto path = (root / directory).lexically_normal();
+            if (within(path, root) || within(root, path))
+                return false;
+            if (!canonicalRoot.empty()) {
+                path = fs::weakly_canonical(path, ec);
+                if (!ec && (within(path, canonicalRoot) || within(canonicalRoot, path)))
+                    return false;
             }
         }
     }
+    return true;
+}
 
-    indexAndReport(pathsToIndex);
+void Indexer::startIndexing(const std::vector<Config::IndexConfig>& indexConfigs,
+                            std::optional<std::string_view> workspaceFolder,
+                            bool inferIncludeDirectories) {
+    std::vector<fs::path> pathsToIndex;
+    DirectoryEntryCounts directoryEntries;
+    auto* counts = inferIncludeDirectories ? &directoryEntries : nullptr;
+
+    if (workspaceFolder && usesDefaultWorkspaceIndex(indexConfigs, fs::path(*workspaceFolder)))
+        collectFilesFromDirectory(fs::path(*workspaceFolder), {}, pathsToIndex, counts);
+    for (const auto& cfg : indexConfigs) {
+        std::vector<std::string> excludedNames;
+        std::vector<std::string> excludedPaths;
+        for (const auto& exclusion : cfg.excludeDirs.value().value_or(std::vector<std::string>{})) {
+            if (fs::path(exclusion).is_absolute() || exclusion.starts_with("./")) {
+                auto path = fs::path(exclusion);
+                if (!path.is_absolute()) {
+                    if (!workspaceFolder)
+                        continue;
+                    path = fs::path(*workspaceFolder) / path;
+                }
+                excludedPaths.push_back(
+                    (fs::absolute(path).lexically_normal() / "").generic_string());
+            }
+            else
+                excludedNames.push_back(exclusion);
+        }
+        for (const auto& dir : cfg.dirs.value()) {
+            fs::path fullDirPath;
+            if (fs::path(dir).is_absolute()) {
+                fullDirPath = fs::path(dir);
+            }
+            else if (workspaceFolder.has_value()) {
+                fullDirPath = fs::path(*workspaceFolder) / fs::path(dir);
+            }
+            else {
+                continue;
+            }
+            collectFilesFromDirectory(fullDirPath.lexically_normal(), excludedNames, pathsToIndex,
+                                      counts, excludedPaths);
+        }
+    }
+
+    indexAndReport(pathsToIndex, inferIncludeDirectories, std::move(directoryEntries));
 }
 
 void Indexer::startIndexing(const std::vector<std::string>& globs,
-                            const std::vector<std::string>& excludeDirs) {
+                            const std::vector<std::string>& excludeDirs,
+                            bool inferIncludeDirectories) {
     std::vector<fs::path> pathsToIndex;
     for (const auto& pattern : globs) {
         ScopedTimer t_glob("Globbing " + pattern);
@@ -716,14 +1139,76 @@ void Indexer::startIndexing(const std::vector<std::string>& globs,
         INFO("Found {} files from pattern {}", pathsToIndex.size() - beginCount, pattern);
     }
 
-    indexAndReport(pathsToIndex);
+    indexAndReport(pathsToIndex, inferIncludeDirectories);
 }
 
-void Indexer::indexAndReport(std::vector<fs::path> pathsToIndex) {
+void Indexer::inferIncludeSearchDirectories(std::span<const fs::path> paths) {
+    ScopedTimer timer("Include-directory inference");
+    std::unordered_map<fs::path, std::pair<fs::path, std::string>> directorySources;
+    for (const auto& path : paths) {
+        auto file = indexedFiles.find(internUri(path));
+        if (file == indexedFiles.end() || file->second.includes.empty())
+            continue;
+        auto parent = fs::weakly_canonical(path);
+        for (const auto& spelling : file->second.includes) {
+            std::error_code ec;
+            if (fs::is_regular_file(parent.parent_path() / spelling, ec))
+                continue;
+            auto includePath = fs::path(spelling).lexically_normal();
+            if (includePath.empty() || includePath.is_absolute() ||
+                std::ranges::any_of(includePath, [](const auto& part) { return part == ".."; }))
+                continue;
+            auto candidates = includeToFiles_.find(includePath.filename().string());
+            if (candidates == includeToFiles_.end())
+                continue;
+            const fs::path* match = nullptr;
+            fs::path identity;
+            for (const auto* candidate : candidates->second) {
+                auto remaining = *candidate;
+                auto suffix = includePath;
+                while (!suffix.empty() && suffix.filename() == remaining.filename()) {
+                    suffix = suffix.parent_path();
+                    remaining = remaining.parent_path();
+                }
+                if (!suffix.empty() || !fs::is_regular_file(*candidate, ec))
+                    continue;
+                auto canonical = fs::weakly_canonical(*candidate, ec);
+                if (ec)
+                    continue;
+                if (match && identity != canonical) {
+                    match = nullptr;
+                    break;
+                }
+                match = candidate;
+                identity = std::move(canonical);
+            }
+            if (!match)
+                continue;
+            auto directory = *match;
+            for (auto suffix = includePath; !suffix.empty(); suffix = suffix.parent_path())
+                directory = directory.parent_path();
+            directory = fs::weakly_canonical(directory);
+            directorySources.try_emplace(directory, parent, spelling);
+        }
+    }
+    for (const auto& [directory, _] : directorySources)
+        includeDirectories_.push_back(directory);
+    std::ranges::sort(includeDirectories_);
+    INFO("Found {} inferred include directories", includeDirectories_.size());
+    for (const auto& directory : includeDirectories_) {
+        const auto& [source, spelling] = directorySources.at(directory);
+        INFO("Inferred include directory: {} (from `include \"{}\" in {})", directory.string(),
+             spelling, source.string());
+    }
+}
+
+void Indexer::indexAndReport(std::vector<fs::path> pathsToIndex, bool inferIncludeDirectories,
+                             DirectoryEntryCounts directoryEntries) {
     INFO("Indexing {} files", pathsToIndex.size());
 
     IndexWriteGuard guard(*this);
     ScopedTimer t_index("Workspace indexing");
+    directoryEntryCounts_ = std::move(directoryEntries);
     includeReferences_.clear();
     includers_.clear();
     includedFiles_.clear();
@@ -742,6 +1227,10 @@ void Indexer::indexAndReport(std::vector<fs::path> pathsToIndex) {
         if (std::ranges::find(paths, interned) == paths.end())
             paths.push_back(interned);
     }
+
+    includeDirectories_.clear();
+    if (inferIncludeDirectories)
+        inferIncludeSearchDirectories(pathsToIndex);
 
     // Estimate memory usage
     size_t symbolsSize = 0;

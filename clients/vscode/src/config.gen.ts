@@ -15,7 +15,7 @@ export interface Config {
    * Globs of what to index. By default will index all sv and svh files in the workspace.
    */
   indexGlobs?: string[]
-  /** Index configurations; by default indexes all .sv, .svh, .v, and .vh files in the workspace. */
+  /** Index configurations; by default indexes all .sv, .svh, .v, and .vh files in the workspace. External-only roots supplement this default. A workspace directory or an empty dirs entry replaces the default scan. */
   index?: Config__IndexConfig[]
   /**
    * @deprecated
@@ -59,7 +59,7 @@ export interface Config__HoverConfig {
 export interface Config__IndexConfig {
   /** Directories to index */
   dirs?: string[]
-  /** Directories to exclude; only supports single directory names and applies to all path levels */
+  /** Exact directory names to exclude at all path levels, or specific workspace-relative paths starting with './' (absolute paths are also supported). Wildcards are not supported. */
   excludeDirs?: string[] | null
 }
 
