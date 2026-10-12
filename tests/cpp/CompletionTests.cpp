@@ -11,6 +11,7 @@
 #include "utils/GoldenTest.h"
 #include "utils/ServerHarness.h"
 #include <algorithm>
+#include <catch2/generators/catch_generators.hpp>
 #include <filesystem>
 #include <optional>
 #include <rfl/Variant.hpp>
@@ -400,6 +401,47 @@ TEST_CASE("ModuleCompletionInvalidUtf8") {
     auto& documentation = rfl::get<lsp::MarkupContent>(*item.documentation);
     CHECK(documentation.value.find("\\xb2\\xe2\\xca\\xd4") != std::string::npos);
     CHECK_NOTHROW(rfl::json::write(item));
+}
+
+TEST_CASE("Indexed completions use the nearest declaration to the requesting document") {
+    ServerHarness server("nearest_symbols");
+    auto directory = GENERATE("a", "b", ".");
+    auto chosenDirectory = directory == std::string_view(".") ? "a" : directory;
+    auto doc = server.openFile(std::string(directory) + "/top.sv", R"(module top;
+    shared_
+endmodule
+)");
+    auto other = server.openFile(std::string(chosenDirectory == std::string_view("a") ? "b" : "a") +
+                                     "/other.sv",
+                                 "module other;\nshared_\nendmodule\n");
+
+    SECTION("deferred module snippets retain the original request context") {
+        auto items = doc.after("shared_").getCompletions();
+        auto item = std::ranges::find(items, "shared_mod",
+                                      [](const auto& item) { return item.m_item.label; });
+        REQUIRE(item != items.end());
+        other.after("shared_").getCompletions();
+        item->resolve();
+        REQUIRE(item->m_item.insertText);
+        CHECK(item->m_item.insertText->find(std::string(".from_") + chosenDirectory + "(") !=
+              std::string::npos);
+    }
+
+    SECTION("instantiation suffixes use the local module") {
+        doc.replaceAll("module top;\nshared_mod #\nendmodule\n");
+        auto items = doc.after("shared_mod #").getCompletions("#");
+        REQUIRE(items.size() == 1);
+        REQUIRE(items.front().m_item.insertText);
+        CHECK(items.front().m_item.insertText->find(std::string(".from_") + chosenDirectory +
+                                                    "(") != std::string::npos);
+    }
+
+    SECTION("interface member fallback uses the local interface") {
+        doc.replaceAll("module top(shared_bus.); endmodule\n");
+        auto items = doc.after("shared_bus.").getCompletions(".");
+        REQUIRE(items.size() == 1);
+        CHECK(items.front().m_item.label == std::string("view_") + chosenDirectory);
+    }
 }
 
 TEST_CASE("PackageCompletion") {

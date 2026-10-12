@@ -676,15 +676,19 @@ std::shared_ptr<syntax::SyntaxTree> ServerDriver::parseShallowTree(SourceBuffer 
 }
 
 std::vector<std::shared_ptr<syntax::SyntaxTree>> ServerDriver::getDependentTrees(
-    std::shared_ptr<syntax::SyntaxTree> tree) {
+    std::shared_ptr<syntax::SyntaxTree> tree, bool fullHierarchy) {
+
     std::vector<std::shared_ptr<syntax::SyntaxTree>> result;
     std::queue<std::shared_ptr<syntax::SyntaxTree>> treesToProcess;
     flat_hash_set<std::string_view> knownNames;
-    flat_hash_set<std::string> processedFiles;
+    flat_hash_set<const syntax::SyntaxTree*> processedTrees{tree.get()};
+    std::unordered_set<std::filesystem::path> processedFiles;
     for (auto buffer : tree->getSourceBufferIds())
-        processedFiles.insert(sm.getFullPath(buffer).string());
+        processedFiles.insert(sm.getFullPath(buffer));
 
     treesToProcess.push(tree);
+    tree->getMetadata().visitDeclaredSymbols(
+        [&](std::string_view name) { knownNames.emplace(name); });
 
     while (!treesToProcess.empty()) {
         auto currentTree = treesToProcess.front();
@@ -692,51 +696,61 @@ std::vector<std::shared_ptr<syntax::SyntaxTree>> ServerDriver::getDependentTrees
 
         auto& meta = currentTree->getMetadata();
 
-        // Collect declared symbols from current tree
-        meta.visitDeclaredSymbols([&](std::string_view name) { knownNames.emplace(name); });
+        auto loadDependency = [&](parsing::Token token) {
+            auto name = token.valueText();
+            if (name.empty() || knownNames.contains(name))
+                return;
 
-        auto loadDependency = [&](std::string_view name) {
-            if (knownNames.find(name) != knownNames.end())
-                return; // already added
-
-            // Don't try multiple times
-            knownNames.emplace(name);
-            auto symbolLoc = m_indexer.getFirstSymbolLoc(name);
+            const auto& source = sm.getFullPath(sm.getFullyExpandedLoc(token.location()).buffer());
+            auto symbolLoc = m_indexer.getNearestSymbolLoc(name, source);
             if (!symbolLoc)
                 return;
-
-            std::string filePath = std::filesystem::weakly_canonical(*symbolLoc->uri).string();
-
+            knownNames.emplace(name);
             // An included file may declare this name only under different preprocessor flags.
             // Reloading it would discard that context and can re-enter this compilation's analysis.
-            if (processedFiles.find(filePath) != processedFiles.end())
+            if (processedFiles.contains(std::filesystem::weakly_canonical(*symbolLoc->uri)))
                 return;
-
-            processedFiles.insert(filePath);
-
-            auto newdoc = getDocument(URI::fromFile(filePath));
+            auto newdoc = getDocument(URI::fromFile(*symbolLoc->uri));
             if (newdoc) {
                 auto dependencyTree = newdoc->getSyntaxTree();
+                if (!processedTrees.insert(dependencyTree.get()).second)
+                    return;
                 for (auto buffer : dependencyTree->getSourceBufferIds())
-                    processedFiles.insert(sm.getFullPath(buffer).string());
+                    processedFiles.insert(sm.getFullPath(buffer));
                 result.push_back(dependencyTree);
+                dependencyTree->getMetadata().visitDeclaredSymbols(
+                    [&](std::string_view declared) { knownNames.emplace(declared); });
 
-                // Recurse into packages and interfaces, since they may contain types from other
-                // packages that are referenced by the analyzed module.
-                for (auto& [decl, _] : dependencyTree->getMetadata().nodeMeta) {
-                    if (decl->kind == syntax::SyntaxKind::PackageDeclaration ||
-                        decl->kind == syntax::SyntaxKind::InterfaceDeclaration) {
-                        treesToProcess.push(dependencyTree);
-                        break;
-                    }
-                }
+                if (fullHierarchy ||
+                    std::ranges::any_of(
+                        dependencyTree->getMetadata().nodeMeta, [](const auto& entry) {
+                            return entry.first->kind == syntax::SyntaxKind::PackageDeclaration ||
+                                   entry.first->kind == syntax::SyntaxKind::InterfaceDeclaration;
+                        }))
+                    treesToProcess.push(dependencyTree);
             }
             else {
-                ERROR("No doc found for {}", filePath);
+                ERROR("No doc found for {}", symbolLoc->uri->string());
             }
         };
 
-        meta.visitReferencedSymbols(loadDependency);
+        // Keep each reference's location so dependencies in included files use their own directory.
+        for (auto instance : meta.globalInstances)
+            loadDependency(instance->type);
+        for (auto name : meta.classPackageNames)
+            loadDependency(name->identifier);
+        for (auto import : meta.packageImports) {
+            for (auto item : import->items)
+                loadDependency(item->package);
+        }
+        for (auto type : meta.virtualInterfaceTypes)
+            loadDependency(type->name);
+        if (!fullHierarchy) {
+            for (auto port : meta.interfacePorts)
+                loadDependency(port->nameOrKeyword);
+            for (auto type : meta.namedPortTypes)
+                loadDependency(type->identifier);
+        }
     }
 
     return result;
@@ -794,25 +808,10 @@ std::unique_ptr<ServerDriver> ServerDriver::createFromTop(
         topName = topInstances[0]->name;
     }
 
-    std::vector<std::shared_ptr<syntax::SyntaxTree>> syntaxTrees{topTree};
-    auto* serverDriver = newDriver.get();
-    driver::SourceLoader::loadTrees(
-        syntaxTrees,
-        [serverDriver](std::string_view name) {
-            auto paths = serverDriver->m_indexer.getFilesForSymbol(name);
-            if (!paths.empty()) {
-                auto maybeBuf = serverDriver->sm.readSource(paths[0], /* library */ nullptr);
-                if (maybeBuf) {
-                    return *maybeBuf;
-                }
-                else {
-                    ERROR("Failed to read source for {}: {}", paths[0].string(),
-                          maybeBuf.error().message());
-                }
-            }
-            return SourceBuffer{};
-        },
-        newDriver->sm, newDriver->options);
+    auto syntaxTrees = newDriver->getDependentTrees(topTree, /* fullHierarchy */ true);
+    for (auto& dependency : syntaxTrees)
+        dependency->isLibraryUnit = true;
+    syntaxTrees.insert(syntaxTrees.begin(), topTree);
 
     std::vector<std::shared_ptr<SlangDoc>> documents;
     documents.reserve(syntaxTrees.size());
@@ -1074,8 +1073,8 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
                    sm.getFullyExpandedLoc(symbol->location).buffer() == doc->getBuffer();
         });
 
-    // A declaration in the queried document is authoritative. Externally resolved top-level
-    // names still use the index to retain other possible definitions.
+    // A declaration in the queried document is authoritative. Other top-level names retain
+    // every indexed definition tied at the nearest directory distance.
     bool searchIndex = localSymbols.empty() ||
                        (hasTopLevelResolution && !hasLocalTopLevelResolution);
     if (searchIndex) {
@@ -1094,16 +1093,22 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
             });
         };
 
-        std::vector<std::filesystem::path> visited;
-        auto paths = m_indexer.getFilesForSymbol(declTok->valueText());
-        if (paths.size() > 1)
-            std::ranges::sort(paths);
-        for (const auto& path : paths) {
-            if (std::ranges::find(visited, path) != visited.end())
-                continue;
-            visited.push_back(path);
-
-            auto symbolDoc = getDocument(URI::fromFile(path));
+        auto nearest = m_indexer.getNearestSymbolLocs(declTok->valueText(),
+                                                      doc->getURI().getPath());
+        if (!nearest.empty()) {
+            std::erase_if(symbols, [&](const auto& candidate) {
+                if (candidate.symbol->kind != ast::SymbolKind::Definition &&
+                    candidate.symbol->kind != ast::SymbolKind::Package)
+                    return false;
+                auto path = sm.getFullPath(
+                    sm.getFullyExpandedLoc(candidate.symbol->location).buffer());
+                return std::ranges::none_of(nearest, [&](const auto& entry) {
+                    return URI::fromFile(*entry.uri) == URI::fromFile(path);
+                });
+            });
+        }
+        for (const auto& entry : nearest) {
+            auto symbolDoc = getDocument(URI::fromFile(*entry.uri));
             if (!symbolDoc)
                 continue;
             auto symbolAnalysis = symbolDoc->getAnalysis();
@@ -1442,8 +1447,38 @@ std::optional<std::vector<lsp::Location>> ServerDriver::getDocReferences(
             targetSymbols.push_back({symbol, symbolAnalysis, symbolAnalysisBuffer});
     };
 
-    for (auto* symbol : analysis->getSymbolsAtToken(declTok))
-        addTargetSymbol(symbol, analysis, doc->getBuffer());
+    auto addTargetsAt = [&](const std::shared_ptr<SlangDoc>& referenceDoc,
+                            const std::shared_ptr<ShallowAnalysis>& referenceAnalysis,
+                            const parsing::Token* token) {
+        auto symbols = referenceAnalysis->getSymbolsAtToken(token);
+        bool hasGlobal = std::ranges::any_of(symbols, [](const auto* symbol) {
+            return symbol->kind == ast::SymbolKind::Definition ||
+                   symbol->kind == ast::SymbolKind::Package ||
+                   symbol->kind == ast::SymbolKind::InstanceBody;
+        });
+        if (hasGlobal || symbols.empty()) {
+            auto info = getDefinitionInfoAt(referenceDoc->getURI(),
+                                            toRange(token->range(), sm).start);
+            if (info) {
+                bool found = false;
+                for (const auto& entry : info->targets) {
+                    auto* target = std::get_if<DefinitionInfo::SymbolTarget>(&entry);
+                    if (target && (target->symbol->kind == ast::SymbolKind::Definition ||
+                                   target->symbol->kind == ast::SymbolKind::Package)) {
+                        addTargetSymbol(target->symbol, target->analysis,
+                                        referenceDoc->getBuffer());
+                        found = true;
+                    }
+                }
+                if (found)
+                    return;
+            }
+        }
+        for (auto* symbol : symbols)
+            addTargetSymbol(symbol, referenceAnalysis, referenceDoc->getBuffer());
+    };
+
+    addTargetsAt(doc, analysis, declTok);
 
     if (targetSymbols.empty())
         return std::nullopt;
@@ -1495,6 +1530,19 @@ std::optional<std::vector<lsp::Location>> ServerDriver::getDocReferences(
         const auto existingReferenceCount = references.size();
         auto targetLoc = sm.getFullyOriginalLoc(targetSymbol->location);
         auto targetDoc = getDocument(URI::fromFile(sm.getFullPath(targetLoc.buffer())));
+
+        const ast::Symbol* indexedSymbol = targetSymbol;
+        while (indexedSymbol && indexedSymbol->kind != ast::SymbolKind::Definition &&
+               indexedSymbol->kind != ast::SymbolKind::Package) {
+            if (auto* body = indexedSymbol->as_if<ast::InstanceBodySymbol>()) {
+                indexedSymbol = &body->getDefinition();
+                break;
+            }
+            auto* parent = indexedSymbol->getParentScope();
+            indexedSymbol = parent ? &parent->asSymbol() : nullptr;
+        }
+        const bool hasDuplicates = indexedSymbol &&
+                                   m_indexer.getFilesForSymbol(indexedSymbol->name).size() > 1;
 
         // Helper to process referencing files with a given finder function
         auto processReferencingFiles = [&](std::string_view name, auto&& finder) {
@@ -1584,6 +1632,27 @@ std::optional<std::vector<lsp::Location>> ServerDriver::getDocReferences(
             }
         }
 
+        if (hasDuplicates) {
+            const auto targetLocation = toOriginalLocation(SourceRange(targetLoc, targetLoc), sm);
+            auto begin = references.begin() + existingReferenceCount;
+            references.erase(
+                std::remove_if(
+                    begin, references.end(),
+                    [&](const auto& reference) {
+                        ctx.throwIfCancelled("while matching reference declarations");
+                        auto info = getDefinitionInfoAt(reference.uri, reference.range.start);
+                        if (!info)
+                            return true;
+                        auto definitions = info->getDefinitionLspLinks();
+                        return std::ranges::none_of(definitions, [&](const auto& definition) {
+                            return definition.targetUri == targetLocation.uri &&
+                                   definition.targetSelectionRange.start ==
+                                       targetLocation.range.start;
+                        });
+                    }),
+                references.end());
+        }
+
         const auto newReferenceEnd = references.size();
         for (size_t i = existingReferenceCount; i < newReferenceEnd; i++) {
             ctx.throwIfCancelled("while resolving reference components");
@@ -1601,14 +1670,8 @@ std::optional<std::vector<lsp::Location>> ServerDriver::getDocReferences(
             if (!referenceToken)
                 continue;
 
-            auto referenceSymbols = referenceAnalysis->getSymbolsAtToken(referenceToken);
-            if (referenceSymbols.size() < 2)
-                continue;
-
-            // A multi-symbol reference joins its symbols into the same reference component.
-            for (auto* symbol : referenceSymbols) {
-                addTargetSymbol(symbol, referenceAnalysis, referenceDoc->getBuffer());
-            }
+            // Tied declarations and multi-symbol tokens join the same reference component.
+            addTargetsAt(referenceDoc, referenceAnalysis, referenceToken);
         }
 
         auto output = references.begin() + existingReferenceCount;

@@ -131,8 +131,14 @@ struct Indexer {
         const std::filesystem::path* uri;
         slang::syntax::SyntaxKind kind;
     };
-    // Get first symbol location for a name (for instance completions, etc.)
-    std::optional<GlobalSymbolLoc> getFirstSymbolLoc(std::string_view name) const;
+    /// Find the nearest indexed declaration by directory distance, breaking ties by canonical path.
+    std::optional<GlobalSymbolLoc> getNearestSymbolLoc(std::string_view name,
+                                                       const std::filesystem::path& source) const;
+
+    /// Find all indexed declarations tied at the minimum directory distance, in canonical path
+    /// order. Multiple spellings of the same file produce one result.
+    std::vector<GlobalSymbolLoc> getNearestSymbolLocs(std::string_view name,
+                                                      const std::filesystem::path& source) const;
 
     // Get all macro names (for macro completions)
     std::vector<std::string> getAllMacroNames() const;
@@ -228,13 +234,16 @@ private:
     // Storage for all indexed files (for efficient removal)
     std::unordered_map<const std::filesystem::path*, IndexedPath> indexedFiles;
 
-    // Extracts symbols and referenced symbols
+    /// Extract declarations from the primary buffer and references from the parsed tree.
     static void extractFromRoot(const slang::syntax::CompilationUnitSyntax& root,
-                                const slang::parsing::ParserMetadata& meta, IndexedPath& dest);
+                                const slang::parsing::ParserMetadata& meta,
+                                const slang::SourceManager& sourceManager,
+                                slang::BufferID primaryBuffer, IndexedPath& dest);
 
-    // Extracts macros
+    /// Extract macros defined in the primary buffer.
     template<typename MacroRange>
-    static void extractMacros(const MacroRange& macros, IndexedPath& dest);
+    static void extractMacros(const MacroRange& macros, const slang::SourceManager& sourceManager,
+                              slang::BufferID primaryBuffer, IndexedPath& dest);
 
     /// Extract outermost declarations from headers and files with top-level classes.
     static void extractHeaderSymbols(const slang::syntax::CompilationUnitSyntax& root,

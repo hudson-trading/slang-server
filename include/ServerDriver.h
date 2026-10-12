@@ -103,8 +103,10 @@ public:
     /// selection. Refreshes client-side code lenses and inlay hints.
     bool setActiveInstance(std::string_view hierPath);
 
+    /// Load nearest indexed dependencies, recursing through packages and interfaces.
+    /// When fullHierarchy is set, also recurse through instantiated modules.
     std::vector<std::shared_ptr<syntax::SyntaxTree>> getDependentTrees(
-        std::shared_ptr<syntax::SyntaxTree> tree);
+        std::shared_ptr<syntax::SyntaxTree> tree, bool fullHierarchy = false);
 
     /// Infer include paths for this syntax tree only, then refresh its include relationships.
     std::shared_ptr<syntax::SyntaxTree> parseShallowTree(SourceBuffer buffer, Bag& documentOptions);
