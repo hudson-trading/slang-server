@@ -521,9 +521,11 @@ File input is sent to stdin, and formatted output is read from stdout.',
       const normalized = toPosix(str)
       let ret: vscode.Uri[]
       if (path.isAbsolute(normalized)) {
-        ret = (await glob(normalized)).map((p: string) => vscode.Uri.file(p))
+        ret = (await glob(normalized, { dot: true })).map((p: string) => vscode.Uri.file(p))
       } else {
-        ret = (await glob(toPosix(path.join(ws, str)))).map((p: string) => vscode.Uri.file(p))
+        ret = (await glob(toPosix(path.join(ws, str)), { dot: true })).map((p: string) =>
+          vscode.Uri.file(p)
+        )
       }
       return ret
     }

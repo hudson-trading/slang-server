@@ -105,9 +105,9 @@ All configuration options are optional and have sensible defaults. In VSCode, th
 
 :   **Type:** `string` (glob pattern)
 
-    Build file pattern used to find a `.f` file given the name of a waveform file. For example, `/tmp/{}.fst` with `builds/{}.f` looks for `build/foo.f` to load the compilation.
+    Build file pattern used by **Select build file** in VSCode. It also finds a `.f` file given the name of a waveform file: for example, `/tmp/foo.fst` with `builds/{}.f` looks for `builds/foo.f` to load the compilation.
 
-    If omitted and no other build source is configured, it defaults to matching all `.f` files in the workspace.
+    If omitted and no other build source is configured, it defaults to `**/*.f`, matching all `.f` files in the workspace, including hidden directories such as `.slang/`.
 
     **Example:** `"builds/{}.f"`
 
@@ -128,7 +128,7 @@ All configuration options are optional and have sensible defaults. In VSCode, th
     }
     ```
 
-    Provides additional build-file sources in the VSCode client. Each entry matches files with `glob`.
+    Provides additional sources for **Select build file** in the VSCode client. Each entry matches files with `glob`, including hidden directories such as `.slang/`.
 
     If `command` is omitted, the matched files are treated as existing `.f` files and can be selected directly.
 
