@@ -28,45 +28,28 @@ module cpu #(
     // ALU instance
     alu #(
         .WIDTH(DATA_WIDTH)
-//       ^^^^^ MissingCompletion[WIDTH] Context[Expression] Trigger[.] Items[0]
     ) alu_inst (
         .a(register_file[instruction[25:21]]),
-//       ^ MissingCompletion[a] Context[Expression] Trigger[.] Items[0]
         .b(register_file[instruction[20:16]]),
-//       ^ MissingCompletion[b] Context[Expression] Trigger[.] Items[0]
         .op(instruction[31:26]),
-//       ^^ MissingCompletion[op] Context[Expression] Trigger[.] Items[0]
         .result(alu_result),
-//       ^^^^^^ MissingCompletion[result] Context[Expression] Trigger[.] Items[0]
         .zero(alu_zero),
-//       ^^^^ MissingCompletion[zero] Context[Expression] Trigger[.] Items[0]
         .overflow(alu_overflow)
-//       ^^^^^^^^ MissingCompletion[overflow] Context[Expression] Trigger[.] Items[0]
     );
 
     // Memory controller instance
     memory_controller #(
         .ADDR_WIDTH(ADDR_WIDTH),
-//       ^^^^^^^^^^ MissingCompletion[ADDR_WIDTH] Context[Expression] Trigger[.] Items[0]
         .DATA_WIDTH(DATA_WIDTH)
-//       ^^^^^^^^^^ MissingCompletion[DATA_WIDTH] Context[Expression] Trigger[.] Items[0]
     ) mem_ctrl (
         .clk(clk),
-//       ^^^ MissingCompletion[clk] Context[Expression] Trigger[.] Items[0]
         .rst_n(rst_n),
-//       ^^^^^ MissingCompletion[rst_n] Context[Expression] Trigger[.] Items[0]
         .cpu_addr(mem_addr),
-//       ^^^^^^^^ MissingCompletion[cpu_addr] Context[Expression] Trigger[.] Items[0]
         .cpu_wdata(mem_wdata),
-//       ^^^^^^^^^ MissingCompletion[cpu_wdata] Context[Expression] Trigger[.] Items[0]
         .cpu_rdata(mem_rdata),
-//       ^^^^^^^^^ MissingCompletion[cpu_rdata] Context[Expression] Trigger[.] Items[0]
         .cpu_we(mem_we),
-//       ^^^^^^ MissingCompletion[cpu_we] Context[Expression] Trigger[.] Items[0]
         .cpu_req(mem_req),
-//       ^^^^^^^ MissingCompletion[cpu_req] Context[Expression] Trigger[.] Items[0]
         .cpu_ack(mem_ack)
-//       ^^^^^^^ MissingCompletion[cpu_ack] Context[Expression] Trigger[.] Items[0]
     );
 
     logic [DATA_WIDTH-1:0] alu_result;
@@ -82,20 +65,13 @@ module cpu #(
 
     alu #(
         .WIDTH(DATA_WIDTH)
-//       ^^^^^ MissingCompletion[WIDTH] Context[Expression] Trigger[.] Items[0]
     ) alu_inst_array [3:0] (
         .a(alu_array_a),
-//       ^ MissingCompletion[a] Context[Expression] Trigger[.] Items[0]
         .b(alu_array_b),
-//       ^ MissingCompletion[b] Context[Expression] Trigger[.] Items[0]
         .op(alu_array_op),
-//       ^^ MissingCompletion[op] Context[Expression] Trigger[.] Items[0]
         .result(alu_array_result),
-//       ^^^^^^ MissingCompletion[result] Context[Expression] Trigger[.] Items[0]
         .zero(alu_array_zero),
-//       ^^^^ MissingCompletion[zero] Context[Expression] Trigger[.] Items[0]
         .overflow(alu_array_overflow)
-//       ^^^^^^^^ MissingCompletion[overflow] Context[Expression] Trigger[.] Items[0]
     );
 
     // Instance array of length 1 - using simple_counter module
@@ -104,16 +80,11 @@ module cpu #(
 
     simple_counter #(
         .WIDTH(8)
-//       ^^^^^ MissingCompletion[WIDTH] Context[Expression] Trigger[.] Items[0]
     ) counter_inst [0:0] (
         .clk(clk),
-//       ^^^ MissingCompletion[clk] Context[Expression] Trigger[.] Items[0]
         .rst_n(rst_n),
-//       ^^^^^ MissingCompletion[rst_n] Context[Expression] Trigger[.] Items[0]
         .enable(counter_enable),
-//       ^^^^^^ MissingCompletion[enable] Context[Expression] Trigger[.] Items[0]
         .count(counter_count)
-//       ^^^^^ MissingCompletion[count] Context[Expression] Trigger[.] Items[0]
     );
 
     // Generate block with generate array
@@ -126,20 +97,13 @@ module cpu #(
 
             alu #(
                 .WIDTH(DATA_WIDTH)
-//               ^^^^^ MissingCompletion[WIDTH] Context[Expression] Trigger[.] Items[0]
             ) gen_alu_inst (
                 .a(gen_alu_a),
-//               ^ MissingCompletion[a] Context[Expression] Trigger[.] Items[0]
                 .b(gen_alu_b),
-//               ^ MissingCompletion[b] Context[Expression] Trigger[.] Items[0]
                 .op(gen_alu_op),
-//               ^^ MissingCompletion[op] Context[Expression] Trigger[.] Items[0]
                 .result(gen_alu_result),
-//               ^^^^^^ MissingCompletion[result] Context[Expression] Trigger[.] Items[0]
                 .zero(gen_alu_zero),
-//               ^^^^ MissingCompletion[zero] Context[Expression] Trigger[.] Items[0]
                 .overflow(gen_alu_overflow)
-//               ^^^^^^^^ MissingCompletion[overflow] Context[Expression] Trigger[.] Items[0]
             );
         end
     endgenerate

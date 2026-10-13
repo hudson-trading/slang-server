@@ -35,30 +35,18 @@ module cpu_testbench;
     // CPU instance
     cpu #(
         .DATA_WIDTH(32),
-//       ^^^^^^^^^^ MissingCompletion[DATA_WIDTH] Context[Expression] Trigger[.] Items[0]
         .ADDR_WIDTH(32)
-//       ^^^^^^^^^^ MissingCompletion[ADDR_WIDTH] Context[Expression] Trigger[.] Items[0]
     ) dut (
         .clk(clk),
-//       ^^^ MissingCompletion[clk] Context[Expression] Trigger[.] Items[0]
         .rst_n(rst_n),
-//       ^^^^^ MissingCompletion[rst_n] Context[Expression] Trigger[.] Items[0]
         .mem_addr(mem_addr),
-//       ^^^^^^^^ MissingCompletion[mem_addr] Context[Expression] Trigger[.] Items[0]
         .mem_wdata(mem_wdata),
-//       ^^^^^^^^^ MissingCompletion[mem_wdata] Context[Expression] Trigger[.] Items[0]
         .mem_rdata(mem_rdata),
-//       ^^^^^^^^^ MissingCompletion[mem_rdata] Context[Expression] Trigger[.] Items[0]
         .mem_we(mem_we),
-//       ^^^^^^ MissingCompletion[mem_we] Context[Expression] Trigger[.] Items[0]
         .mem_req(mem_req),
-//       ^^^^^^^ MissingCompletion[mem_req] Context[Expression] Trigger[.] Items[0]
         .mem_ack(mem_ack),
-//       ^^^^^^^ MissingCompletion[mem_ack] Context[Expression] Trigger[.] Items[0]
         .state(cpu_state),
-//       ^^^^^ MissingCompletion[state] Context[Expression] Trigger[.] Items[0]
         .halted(halted)
-//       ^^^^^^ MissingCompletion[halted] Context[Expression] Trigger[.] Items[0]
     );
 
     // Simple memory model for testing

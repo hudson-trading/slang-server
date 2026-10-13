@@ -4,6 +4,7 @@
 #include "utils/ServerHarness.h"
 #ifdef SLANG_SERVER_DEBUG
 #    include "debug/WorkspaceScan.h"
+#    include <catch2/generators/catch_generators.hpp>
 #    include <fstream>
 #    include <sstream>
 #endif
@@ -57,6 +58,32 @@ endmodule
     for (const auto& diagnostic : result.diagnostics)
         INFO(rfl::json::write(diagnostic));
     CHECK(result.diagnostics.empty());
+}
+
+TEST_CASE("Debug scan checks named call arguments even when the callee is unresolved",
+          "[debug-scan][named-arguments]") {
+    auto callee = GENERATE("present", "absent");
+    ScanHarness server;
+    auto doc = server.openFile("named_arguments.sv", std::string(R"(
+module top;
+    function automatic void present(input int value);
+    endfunction
+    initial
+)") + callee + "(.value(1));\nendmodule\n");
+    auto result = server.debugScanDocument({doc.m_uri});
+    CHECK(result.completionChecks == 2);
+    if (std::string_view(callee) == "present") {
+        CHECK(result.diagnostics.empty());
+    }
+    else {
+        auto position = doc.after("(.").getPosition();
+        std::set<std::string> codes;
+        for (const auto& diagnostic : result.diagnostics) {
+            if (diagnostic.range.start == position)
+                codes.insert(rfl::get<std::string>(*diagnostic.code));
+        }
+        CHECK(codes == std::set<std::string>{"missing-hover-goto", "missing-completion"});
+    }
 }
 
 TEST_CASE("Debug scan checks real hovers and preserves compiler diagnostics", "[debug-scan]") {

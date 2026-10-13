@@ -319,6 +319,7 @@ void SymbolIndexer::handle(const slang::ast::InstanceArraySymbol& sym) {
         auto& definition = result.definition->as<slang::ast::DefinitionSymbol>();
         auto& inst = slang::ast::InstanceSymbol::createInvalid(parentScope->getCompilation(),
                                                                definition);
+        inst.setParent(*parentScope);
         indexInstanceSyntax(instSyntax, inst.body, definition, &inst, sym.getParentScope());
     }
 }

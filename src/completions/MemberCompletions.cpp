@@ -17,6 +17,7 @@
 #include "lsp/LspTypes.h"
 #include "lsp/SnippetString.h"
 #include "lsp/URI.h"
+#include "util/Converters.h"
 #include "util/Formatting.h"
 #include "util/Logging.h"
 #include "util/SlangExtensions.h"
@@ -30,6 +31,7 @@
 #include "slang/ast/Compilation.h"
 #include "slang/ast/Lookup.h"
 #include "slang/ast/SemanticFacts.h"
+#include "slang/ast/symbols/ClassSymbols.h"
 #include "slang/ast/symbols/CompilationUnitSymbols.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
 #include "slang/ast/symbols/MemberSymbols.h"
@@ -342,7 +344,186 @@ private:
     const parsing::Token* receiverToken;
 };
 
+class NamedConnectionCompletionQuery final : public MemberCompletionQuery {
+public:
+    NamedConnectionCompletionQuery(lsp::Range replacementRange,
+                                   const syntax::SyntaxNode& connection) :
+        MemberCompletionQuery(std::move(replacementRange)), connection(connection) {
+        parsing::Token openParen;
+        if (auto* port = connection.as_if<syntax::NamedPortConnectionSyntax>())
+            openParen = port->openParen;
+        else if (auto* parameter = connection.as_if<syntax::NamedParamAssignmentSyntax>())
+            openParen = parameter->openParen;
+        else
+            openParen = connection.as<syntax::NamedArgumentSyntax>().openParen;
+        followedByCall = openParen && !openParen.isMissing();
+    }
+
+    CompletionQueryKind kind() const final { return CompletionQueryKind::NamedConnection; }
+
+    void getCompletions(std::vector<lsp::CompletionItem>& results, CompletionDispatch&,
+                        const std::shared_ptr<SlangDoc>& doc,
+                        const CompletionContext& context) const final {
+        const bool parameters = connection.kind == syntax::SyntaxKind::NamedParamAssignment;
+        auto* list = connection.parent.get();
+        auto* owner = list ? list->parent.get() : nullptr;
+        if (!owner)
+            return;
+
+        auto& analysis = *context.analysis;
+        const ast::Scope* scope = nullptr;
+        const syntax::HierarchicalInstanceSyntax* instance = nullptr;
+        auto* arguments = list->as_if<syntax::ArgumentListSyntax>();
+        std::span<const ast::FormalArgumentSymbol* const> formals;
+        bool fallbackScope = false;
+        if (arguments) {
+            formals = analysis.getCallArguments(*arguments);
+            scope = formals.empty() ? nullptr : formals.front()->getParentScope();
+        }
+        else if (auto* className = owner->as_if<syntax::ClassNameSyntax>()) {
+            scope = analysis.getScopeFromSym(analysis.getSymbolAtToken(&className->identifier));
+            fallbackScope = !scope;
+            if (!scope) {
+                // Required parameters can prevent specialization while the list is being typed.
+                auto* containingScope = analysis.getScopeAt(className->identifier.location());
+                if (!containingScope)
+                    return;
+                const ast::Symbol* generic = nullptr;
+                auto* qualified = className->parent->as_if<syntax::ScopedNameSyntax>();
+                if (qualified && qualified->right == className) {
+                    ast::LookupResult prefix;
+                    ast::Lookup::name(*qualified->left,
+                                      ast::ASTContext(*containingScope, ast::LookupLocation::max),
+                                      ast::LookupFlags::AllowUnit, prefix);
+                    auto* parentScope = analysis.getScopeFromSym(prefix.found);
+                    if (!parentScope && qualified->left->kind == syntax::SyntaxKind::IdentifierName)
+                        parentScope = analysis.getCompilation()->getPackage(
+                            qualified->left->getFirstToken().valueText());
+                    if (parentScope)
+                        generic = parentScope->find(className->identifier.valueText());
+                }
+                else {
+                    generic = ast::Lookup::unqualified(*containingScope,
+                                                       className->identifier.valueText());
+                }
+                if (generic && generic->kind == ast::SymbolKind::GenericClassDef)
+                    scope = analysis.getScopeFromSym(generic);
+            }
+        }
+        else if (auto* virtualType = owner->as_if<syntax::VirtualInterfaceTypeSyntax>()) {
+            scope = analysis.getScopeFromSym(analysis.getSymbolAtToken(&virtualType->name));
+            fallbackScope = true;
+        }
+        else if (auto* hierarchy = owner->as_if<syntax::HierarchyInstantiationSyntax>()) {
+            instance = parameters
+                           ? (hierarchy->instances.empty() ? nullptr : hierarchy->instances[0])
+                           : list->as_if<syntax::HierarchicalInstanceSyntax>();
+            auto* symbol = instance && instance->decl
+                               ? analysis.getSymbolAtToken(&instance->decl->name)
+                               : nullptr;
+            scope = analysis.getScopeFromSym(symbol);
+            fallbackScope = !scope;
+            if (!scope)
+                scope = analysis.getScopeFromSym(analysis.getSymbolAtToken(&hierarchy->type));
+        }
+        auto* body = scope ? scope->asSymbol().as_if<ast::InstanceBodySymbol>() : nullptr;
+        auto* classType = scope ? scope->asSymbol().as_if<ast::ClassType>() : nullptr;
+        if (!body && !classType && formals.empty())
+            return;
+
+        std::unordered_set<std::string_view> connected;
+        if (arguments) {
+            for (size_t i = 0; i < arguments->parameters.size(); ++i) {
+                if (auto* named = arguments->parameters[i]->as_if<syntax::NamedArgumentSyntax>()) {
+                    if (named != &connection)
+                        connected.insert(named->name.valueText());
+                }
+                else if (i < formals.size())
+                    connected.insert(formals[i]->name);
+            }
+        }
+        else if (parameters) {
+            for (auto* item : list->as<syntax::ParameterValueAssignmentSyntax>().parameters) {
+                if (auto* named = item->as_if<syntax::NamedParamAssignmentSyntax>();
+                    named && named != &connection)
+                    connected.insert(named->name.valueText());
+            }
+        }
+        else {
+            for (auto* item : instance->connections) {
+                if (auto* named = item->as_if<syntax::NamedPortConnectionSyntax>();
+                    named && named != &connection)
+                    connected.insert(named->name.valueText());
+            }
+        }
+
+        // A missing comma can leave the next connection in skipped tokens instead of the list.
+        auto lastToken = connection.getLastToken();
+        auto end = lastToken.range().end();
+        auto& tokens = analysis.syntaxes.collected;
+        auto next = std::ranges::lower_bound(tokens, end, {},
+                                             [](auto* token) { return token->location(); });
+        while (next != tokens.end() && (*next)->isMissing())
+            ++next;
+        const bool needsComma = next != tokens.end() && (*next)->kind == parsing::TokenKind::Dot &&
+                                (!followedByCall || !lastToken.isMissing());
+
+        auto add = [&](const ast::Symbol& candidate) {
+            if (candidate.name.empty() || connected.contains(candidate.name))
+                return;
+            auto item = getHierarchicalCompletion(scope->asSymbol(), candidate, doc->getURI().str(),
+                                                  true);
+            if (fallbackScope) {
+                resolve(candidate, item);
+                item.data.reset();
+            }
+            if (!followedByCall) {
+                SnippetString snippet;
+                snippet.appendText(candidate.name).appendText("(").appendTabstop().appendText(")");
+                if (needsComma)
+                    snippet.appendText(",");
+                item.insertText = snippet.getValue();
+                item.insertTextFormat = lsp::InsertTextFormat::Snippet;
+            }
+            else if (needsComma) {
+                auto position = toPosition(end, doc->getSourceManager());
+                item.additionalTextEdits = std::vector<lsp::TextEdit>{
+                    {.range = {.start = position, .end = position}, .newText = ","}};
+            }
+            setCompletionEdit(item);
+            results.push_back(std::move(item));
+        };
+        if (arguments) {
+            for (auto* formal : formals)
+                add(*formal);
+        }
+        else if (classType) {
+            for (auto* parameter : classType->genericParameters)
+                add(*parameter);
+        }
+        else if (parameters) {
+            for (auto* parameter : body->getParameters()) {
+                if (!parameter->isLocalParam())
+                    add(parameter->symbol);
+            }
+        }
+        else {
+            for (auto* port : body->getPortList())
+                add(*port);
+        }
+    }
+
+private:
+    const syntax::SyntaxNode& connection;
+};
+
 } // namespace
+
+std::unique_ptr<CompletionQuery> MemberCompletionQuery::createNamedConnection(
+    lsp::Range replacementRange, const syntax::SyntaxNode& connection) {
+    return std::make_unique<NamedConnectionCompletionQuery>(std::move(replacementRange),
+                                                            connection);
+}
 
 std::unique_ptr<CompletionQuery> MemberCompletionQuery::createLexical(
     lsp::Range replacementRange, bool followedByCall, bool followedByInstantiation) {
@@ -648,14 +829,11 @@ void MemberCompletionQuery::resolve(const slang::ast::Symbol& symbol, lsp::Compl
              slang::ast::InterfacePortSymbol::isKind(symbol.kind)) {
 
         // TODO: find a more consistent way to pick out the full decl
-        if (symbol.getSyntax()) {
-            if (symbol.getSyntax()->parent) {
-                symSyntax = symbol.getSyntax()->parent;
-            }
-            else {
-                symSyntax = symbol.getSyntax();
-            }
-        }
+        auto* declaration = symbol.getSyntax();
+        if (auto* parameter = symbol.as_if<ast::TypeParameterSymbol>())
+            declaration = parameter->getTypeAlias().getSyntax();
+        if (declaration)
+            symSyntax = declaration->parent ? declaration->parent.get() : declaration;
     }
     else if (slang::ast::InstanceSymbol::isKind(symbol.kind)) {
         symSyntax = symbol.getSyntax();

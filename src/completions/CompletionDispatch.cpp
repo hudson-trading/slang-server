@@ -170,6 +170,13 @@ std::unique_ptr<CompletionQuery> CompletionQuery::fromLocation(
             analysis->syntaxes.getTokenBefore(site.tokenBefore->location()), followedByCall);
     }
     if (site.tokenBefore && site.tokenBefore->kind == TokenKind::Dot) {
+        auto* syntax = analysis->syntaxes.getTokenParent(site.tokenBefore);
+        if (syntax && (syntax->kind == slang::syntax::SyntaxKind::NamedPortConnection ||
+                       syntax->kind == slang::syntax::SyntaxKind::NamedParamAssignment ||
+                       syntax->kind == slang::syntax::SyntaxKind::NamedArgument)) {
+            return completions::MemberCompletionQuery::createNamedConnection(
+                std::move(site.replacementRange), *syntax);
+        }
         return completions::MemberCompletionQuery::createMemberAccess(
             std::move(site.replacementRange),
             analysis->syntaxes.getTokenBefore(site.tokenBefore->location()), followedByCall);

@@ -190,6 +190,10 @@ public:
                                                         const slang::ast::Symbol* receiver,
                                                         std::string_view name) const;
 
+    /// Gets the declared formals of the function, task, or constructor owning an argument list.
+    std::span<const slang::ast::FormalArgumentSymbol* const> getCallArguments(
+        const slang::syntax::ArgumentListSyntax& arguments) const;
+
     /// Gets the target struct scope when the location is an assignment pattern key.
     const slang::ast::Scope* getAssignmentPatternKeyScope(slang::SourceLocation loc) const;
 
@@ -237,8 +241,9 @@ private:
     mutable slang::flat_hash_map<const slang::syntax::LoopGenerateSyntax*, GenvarElaboration>
         m_genvarElaborations;
 
-    mutable slang::flat_hash_map<const slang::ast::DefinitionSymbol*, const slang::ast::Scope*>
-        m_interfaceFallbackScopes;
+    /// Reusable scopes for module and class definitions without a usable instantiation.
+    mutable slang::flat_hash_map<const slang::ast::Symbol*, const slang::ast::Scope*>
+        m_definitionScopes;
 
     /// Cached receiver types for expressions that require binding beyond a symbol lookup.
     mutable slang::flat_hash_map<const slang::syntax::ExpressionSyntax*, const slang::ast::Type*>

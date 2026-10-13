@@ -39,6 +39,10 @@ public:
         lsp::Range replacementRange, const slang::parsing::Token* receiverToken,
         bool followedByCall);
 
+    /// Complete the external names in a named port or parameter assignment.
+    static std::unique_ptr<CompletionQuery> createNamedConnection(
+        lsp::Range replacementRange, const slang::syntax::SyntaxNode& connection);
+
     /// Resolve a member completion received through completionItem/resolve.
     static void resolve(CompletionDispatch& dispatch, lsp::CompletionItem& item,
                         const lsp::RequestContext& ctx);

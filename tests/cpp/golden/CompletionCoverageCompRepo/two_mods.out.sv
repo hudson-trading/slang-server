@@ -11,7 +11,6 @@ endmodule
 
 module outer_tb;
     inner_cell #(.width(8)) the_cell ();
-//                ^^^^^ MissingCompletion[width] Context[Expression] Trigger[.] Items[0]
 endmodule
 
 module leaf;
