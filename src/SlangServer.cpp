@@ -91,6 +91,7 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     registerWorkspaceExecuteCommand();
     registerWorkspaceSymbol();
     registerWorkspaceDidChangeWatchedFiles();
+    registerFileWatchers();
 
     // LSP Lifecycle
     registerInitialized();
@@ -314,22 +315,7 @@ void SlangServer::onInitialized(const lsp::InitializedParams&) {
     m_client.setConfig(m_config);
 
     if (m_workspaceFolder) {
-        auto options = lsp::DidChangeWatchedFilesRegistrationOptions{
-            .watchers{
-                // SystemVerilog/Verilog source files
-                lsp::FileSystemWatcher{
-                    .globPattern = lsp::RelativePattern{.baseUri = m_workspaceFolder->uri,
-                                                        .pattern = "**/*.{sv,svh,v,vh}"}},
-                // Config files
-                lsp::FileSystemWatcher{
-                    .globPattern = lsp::RelativePattern{.baseUri = m_workspaceFolder->uri,
-                                                        .pattern = ".slang/**/*.json"}},
-                // Build/flag files
-                lsp::FileSystemWatcher{
-                    .globPattern = lsp::RelativePattern{.baseUri = m_workspaceFolder->uri,
-                                                        .pattern = "**/*.f"}},
-            },
-        };
+        auto options = m_fileWatchers.registrationOptions(m_workspaceFolder->uri);
 
         m_client.getClientRegisterCapability(
             lsp::RegistrationParams{.registrations{lsp::Registration{
@@ -1295,44 +1281,54 @@ void SlangServer::onDocDidClose(const lsp::DidCloseTextDocumentParams& params) {
     m_driver->closeDocument(params.textDocument.uri);
 }
 
-void SlangServer::onWorkspaceDidChangeWatchedFiles(const lsp::DidChangeWatchedFilesParams& params) {
-    // Check if any config or active build files changed
-    bool needsReload = m_configReloadPending;
-    for (const auto& change : params.changes) {
-        auto path = change.uri.getPath();
-        if (path.ends_with(".json")) {
-            needsReload = true;
-            break;
-        }
-        if (path.ends_with(".f")) {
+void SlangServer::registerFileWatchers() {
+    m_fileWatchers = {};
+    m_fileWatchers.addExtensions({".json"},
+                                 [this](const lsp::DidChangeWatchedFilesParams&) {
+                                     reloadWatchedConfig();
+                                     return true;
+                                 },
+                                 {".slang/server.json", ".slang/local/server.json"});
+    m_fileWatchers.addExtensions({".f"}, [this](const lsp::DidChangeWatchedFilesParams& params) {
+        for (const auto& change : params.changes) {
             // Match Slang's canonical metadata keys without requiring the file to still exist.
             std::error_code ec;
-            auto commandFile = fs::weakly_canonical(path, ec);
+            auto commandFile = fs::weakly_canonical(change.uri.getPath(), ec);
             if (ec)
-                commandFile = path;
+                commandFile = change.uri.getPath();
             if (m_driver->driver.getCommandFileMetadata().contains(commandFile)) {
-                needsReload = true;
-                break;
+                reloadWatchedConfig();
+                return true;
             }
         }
-    }
+        return false;
+    });
+    m_fileWatchers.addExtensions({".sv", ".svh", ".v", ".vh"},
+                                 [this](const lsp::DidChangeWatchedFilesParams& params) {
+                                     m_indexer.onWorkspaceDidChangeWatchedFiles(params);
+                                     m_driver->onWorkspaceDidChangeWatchedFiles(params);
+                                     return false;
+                                 });
+}
 
-    if (needsReload) {
-        INFO("Config or build file changed, reloading");
-        auto savedTop = m_topFile;
-        if (loadConfig(/* requireValidConfig */ true)) {
-            if (savedTop)
-                setTopLevel(*savedTop);
-            return;
-        }
-        m_configReloadPending = true;
-        WARN("Keeping the current configuration; retrying on the next file change");
+void SlangServer::reloadWatchedConfig() {
+    INFO("Config or build file changed, reloading");
+    auto savedTop = m_topFile;
+    if (loadConfig(/* requireValidConfig */ true)) {
+        if (savedTop)
+            setTopLevel(*savedTop);
         return;
     }
+    m_configReloadPending = true;
+    WARN("Keeping the current configuration; retrying on the next file change");
+}
 
-    // Handle external source file changes (from git, formatters, etc)
-    m_indexer.onWorkspaceDidChangeWatchedFiles(params);
-    m_driver->onWorkspaceDidChangeWatchedFiles(params);
+void SlangServer::onWorkspaceDidChangeWatchedFiles(const lsp::DidChangeWatchedFilesParams& params) {
+    if (m_configReloadPending) {
+        reloadWatchedConfig();
+        return;
+    }
+    m_fileWatchers.dispatch(params);
 }
 
 static bool fuzzyMatch(std::string_view query, std::string_view candidate) {
