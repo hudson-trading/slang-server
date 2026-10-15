@@ -236,6 +236,7 @@ jobs:
         if: runner.os != 'Windows' && matrix.container == '' && matrix.skip_neovim_tests != true
         uses: nvim-neorocks/nvim-busted-action@v1
         env:
+          HOMEBREW_NO_AUTO_UPDATE: '1'
           SLANG_SERVER_BIN: ../../build/${{ matrix.preset }}/bin/slang-server
         with:
           luarocks_args: 'clients/neovim/slang-server.nvim-scm-1.rockspec --test-type busted -- -C clients/neovim/'
