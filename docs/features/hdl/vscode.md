@@ -11,7 +11,10 @@ hide:
 
 ### Setting a build file
 
-A build pattern can be configured to glob for .f files based on your build system. The default is `**/*.f`. Then you can run the "Select Build File" Command from the hierarchy view or as a general command.
+A build pattern can be configured to glob for `.f` files based on your build system. The default is
+`**/*.f`, which also searches hidden directories such as `.slang`. Then you can run the "Select Build
+File" command from the hierarchy view or as a general command. For other build sources, see the
+[`builds` configuration](../../start/config.md#builds).
 
 ### Setting a top level
 
