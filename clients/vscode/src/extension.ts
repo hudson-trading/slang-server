@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 import * as vscode from 'vscode'
 
-import path from 'path'
 import * as semver from 'semver'
 import * as fs from 'fs'
 
@@ -23,14 +22,8 @@ import {
 import { PathConfigObject } from './lib/pathConfig'
 import { ProjectComponent } from './sidebar/ProjectComponent'
 import * as slang from './SlangInterface'
-import {
-  AnyVerilogLanguages,
-  anyVerilogSelector,
-  getWorkspaceFolder,
-  HDLFiles,
-  toPosix,
-} from './utils'
-import { glob } from 'glob'
+import { AnyVerilogLanguages, anyVerilogSelector, getWorkspaceFolder, HDLFiles } from './utils'
+import { findWorkspaceFiles } from './lib/findWorkspaceFiles'
 import { SlangClientInfoFeature } from './lib/clientInfo'
 import { InactiveRegionsFeature } from './lib/inactiveRegions'
 
@@ -516,20 +509,7 @@ File input is sent to stdin, and formatted output is read from stdout.',
     if (ws === undefined) {
       return []
     }
-
-    const find = async (str: string): Promise<vscode.Uri[]> => {
-      const normalized = toPosix(str)
-      let ret: vscode.Uri[]
-      if (path.isAbsolute(normalized)) {
-        ret = (await glob(normalized)).map((p: string) => vscode.Uri.file(p))
-      } else {
-        ret = (await glob(toPosix(path.join(ws, str)))).map((p: string) => vscode.Uri.file(p))
-      }
-      return ret
-    }
-    let uriList: vscode.Uri[][] = await Promise.all(globs.map(find))
-    let uris = uriList.reduce((acc, curr) => acc.concat(curr), [])
-    return uris
+    return (await findWorkspaceFiles(ws, globs)).map((file) => vscode.Uri.file(file))
   }
 }
 

@@ -1110,7 +1110,7 @@ export class ProjectComponent
 
       if (items.length === 0) {
         vscode.window.showErrorMessage(
-          `No build files found. See [docs](https://hudson-trading.github.io/slang-server/start/config/#buildpattern) for more info.`
+          `No build files found. See [docs](https://hudson-trading.github.io/slang-server/start/config/#builds) for more info.`
         )
         return
       }
