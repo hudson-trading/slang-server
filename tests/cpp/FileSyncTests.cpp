@@ -905,6 +905,8 @@ TEST_CASE("WatchedFiles_ReloadsClosedDependenciesBeforeAnalysis") {
 }
 
 TEST_CASE("WatchedFiles_RetainsConfigWhenCommandFileDisappears") {
+    const bool retryOnSourceChange = GENERATE(false, true);
+    CAPTURE(retryOnSourceChange);
     auto tempDir = std::filesystem::temp_directory_path() / "slang_test_watched_config with spaces";
     std::filesystem::create_directories(tempDir / ".slang");
     auto flagsDir = tempDir / GENERATE("", ".");
@@ -961,8 +963,9 @@ TEST_CASE("WatchedFiles_RetainsConfigWhenCommandFileDisappears") {
     CHECK(server.getDoc(doc.m_uri) == originalDoc);
 
     std::ofstream(flagsFile) << "-DWIDTH=16\n";
+    const auto retryFile = retryOnSourceChange ? tempDir / "top.sv" : flagsFile;
     server.onWorkspaceDidChangeWatchedFiles(
-        {.changes = {{.uri = URI::fromFile(flagsFile), .type = lsp::FileChangeType::Created}}});
+        {.changes = {{.uri = URI::fromFile(retryFile), .type = lsp::FileChangeType::Created}}});
 
     CHECK(server.m_driver.get() != originalDriver);
     CHECK(std::ranges::find(server.m_driver->driver.options.defines, "WIDTH=16") !=
@@ -996,5 +999,42 @@ TEST_CASE("WatchedFiles_ResolvesConfigFlagsFromWorkspace") {
     CHECK(std::ranges::find(server.m_driver->driver.options.defines, "WIDTH=16") !=
           server.m_driver->driver.options.defines.end());
     CHECK(std::filesystem::current_path() == originalDirectory);
+    std::filesystem::remove_all(tempDir);
+}
+
+TEST_CASE("WatchedFiles_RoutesSourceAndConfigChangesSeparately") {
+    const bool notifyUnrelatedJson = GENERATE(false, true);
+    CAPTURE(notifyUnrelatedJson);
+    auto tempDir = std::filesystem::temp_directory_path() / "slang_test_watcher_routing";
+    std::filesystem::create_directories(tempDir / ".slang/local");
+    tempDir = std::filesystem::canonical(tempDir);
+    auto source = tempDir / "top.sv";
+    std::ofstream(source) << "module original; endmodule\n";
+    ServerHarness server(lsp::InitializeParams{
+        .workspaceFolders = {
+            {lsp::WorkspaceFolder{.uri = URI::fromFile(tempDir), .name = "test"}}}});
+    auto* originalDriver = server.m_driver.get();
+
+    auto unrelated = tempDir / GENERATE("unused.f", ".slang/unrelated.txt");
+    std::filesystem::create_directories(unrelated.parent_path());
+    std::ofstream(unrelated) << "module unrelated; endmodule\n";
+    std::ofstream(source) << "module updated; endmodule\n";
+    server.onWorkspaceDidChangeWatchedFiles(
+        {.changes = {{URI::fromFile(unrelated), lsp::FileChangeType::Created},
+                     {URI::fromFile(source), lsp::FileChangeType::Changed}}});
+    CHECK(server.m_driver.get() == originalDriver);
+    CHECK(server.m_indexer.getFilesForSymbol("original").empty());
+    CHECK(server.m_indexer.getFilesForSymbol("updated").size() == 1);
+    CHECK(server.m_indexer.getFilesForSymbol("unrelated").empty());
+
+    auto config = tempDir / GENERATE(".slang/server.json", ".slang/local/server.json");
+    std::ofstream(config) << R"({"flags": "-DNEW_VALUE=2"})";
+    auto changedConfig = notifyUnrelatedJson ? tempDir / "unrelated.json" : config;
+    server.onWorkspaceDidChangeWatchedFiles(
+        {.changes = {{URI::fromFile(source), lsp::FileChangeType::Changed},
+                     {URI::fromFile(changedConfig), lsp::FileChangeType::Created}}});
+    CHECK(server.m_driver.get() != originalDriver);
+    CHECK(std::ranges::find(server.m_driver->driver.options.defines, "NEW_VALUE=2") !=
+          server.m_driver->driver.options.defines.end());
     std::filesystem::remove_all(tempDir);
 }

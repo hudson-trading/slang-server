@@ -15,6 +15,7 @@
 #include "ast/SlangServerWcp.h"
 #include "ast/WcpClient.h"
 #include "document/SlangDoc.h"
+#include "lsp/FileWatchers.h"
 #include "lsp/LspServer.h"
 #include "lsp/LspTypes.h"
 #include <functional>
@@ -75,6 +76,15 @@ protected:
 
     /// Retry a failed automatic reload on the next watched-file notification.
     bool m_configReloadPending = false;
+
+    /// Workspace file patterns and their batch handlers, in dispatch order.
+    lsp::FileWatchers m_fileWatchers;
+
+    /// Pair each watched-file pattern with its handler.
+    void registerFileWatchers();
+
+    /// Reload config and active build files, retaining the current state on failure.
+    void reloadWatchedConfig();
 
     /// Indexes the workspace for top symbols and macros
     Indexer m_indexer;
