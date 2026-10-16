@@ -16,9 +16,35 @@
 #include <rfl/json.hpp>
 #include <rfl/to_generic.hpp>
 
+#include "slang/util/OS.h"
+
 static int CONFIG_READ_FLAGS = YYJSON_READ_ALLOW_COMMENTS | YYJSON_READ_ALLOW_TRAILING_COMMAS;
 
 namespace fs = std::filesystem;
+
+rfl::Result<std::string> Config::expandPathVariables(std::string_view path) {
+    if (path.find('$') == std::string_view::npos)
+        return std::string(path);
+    std::string result;
+    const char* ptr = path.data();
+    const char* end = ptr + path.size();
+    while (ptr != end) {
+        const char* start = ptr++;
+        if (*start == '$' && ptr != end) {
+            auto value = slang::OS::parseEnvVar(ptr, end);
+            if (value.empty()) {
+                const std::string_view reference(start, size_t(ptr - start));
+                return rfl::error(
+                    fmt::format("environment variable {} is unset or empty", reference));
+            }
+            result += value;
+        }
+        else {
+            result += *start;
+        }
+    }
+    return result;
+}
 
 rfl::Result<Config> Config::fromFiles(const std::optional<std::string>& workspaceConf,
                                       const std::optional<std::string>& userConf,
@@ -62,7 +88,14 @@ rfl::Result<Config> Config::fromFiles(const std::optional<std::string>& workspac
         }
 
         for (const auto& [k, v] : *object) {
-            if (auto existingArray = config[k].to_array()) {
+            if (k == "env") {
+                auto env = config[k].to_object().value();
+                const auto newEnv = v.to_object().value();
+                for (const auto& [name, value] : newEnv)
+                    env[name] = value;
+                config[k] = env;
+            }
+            else if (auto existingArray = config[k].to_array()) {
                 auto arr = existingArray.value();
                 auto newArr = v.to_array().value();
                 arr.reserve(arr.size() + newArr.size());

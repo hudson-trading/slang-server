@@ -5,13 +5,20 @@
     "Config": {
       "type": "object",
       "properties": {
+        "env": {
+          "type": "object",
+          "description": "Environment variables set by the editor before starting slang-server. Values are literal strings; local overrides user overrides workspace. Restart the server after changes. Neovim requires the server_cmd helper.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
         "flags": {
           "type": "string",
-          "description": "Flags to pass to slang"
+          "description": "Flags to pass to slang. Environment variables are expanded; unset or empty variables are errors."
         },
         "incdirs": {
           "type": "array",
-          "description": "Include directories, relative to the workspace root. Searched after directories supplied through flags and build files.",
+          "description": "Include directories, relative to the workspace root. Searched after directories supplied through flags and build files. Supports $VAR, ${VAR}, and $(VAR) environment variables.",
           "items": {
             "type": "string"
           }
@@ -46,7 +53,7 @@
           "description": "Thread count to use for indexing"
         },
         "build": {
-          "description": "Build file to use",
+          "description": "Build file to use. Supports $VAR, ${VAR}, and $(VAR) environment variables.",
           "anyOf": [
             {
               "type": "string"
@@ -164,13 +171,13 @@
       "properties": {
         "dirs": {
           "type": "array",
-          "description": "Directories to index",
+          "description": "Directories to index. Supports $VAR, ${VAR}, and $(VAR) environment variables.",
           "items": {
             "type": "string"
           }
         },
         "excludeDirs": {
-          "description": "Exact directory names to exclude at all path levels, or specific workspace-relative paths starting with './' (absolute paths are also supported). Wildcards are not supported.",
+          "description": "Exact directory names to exclude at all path levels, or specific workspace-relative paths starting with './' (absolute paths are also supported). Wildcards are not supported. Supports $VAR, ${VAR}, and $(VAR) environment variables.",
           "anyOf": [
             {
               "type": "array",

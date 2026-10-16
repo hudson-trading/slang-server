@@ -89,7 +89,14 @@ void ServerDiagClient::report(const slang::ReportedDiagnostic& diag) {
     }
 
     if (diag.originalDiagnostic.code == slang::diag::CommandLineError) {
-        m_client.showError(std::string(diag.formattedMessage));
+        auto message = std::string(diag.formattedMessage);
+        if (diag.location && diag.location != SourceLocation::NoLocation) {
+            message = fmt::format("{}:{}:{}: {}",
+                                  m_sourceManager.getFullPath(diag.location.buffer()).string(),
+                                  m_sourceManager.getLineNumber(diag.location),
+                                  m_sourceManager.getColumnNumber(diag.location), message);
+        }
+        m_client.showError(message);
         return;
     }
 

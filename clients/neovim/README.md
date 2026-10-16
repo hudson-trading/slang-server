@@ -56,6 +56,35 @@ sets `lazy = false`; adding another plugin-manager lazy-loading trigger is neith
 required nor recommended. To install without a plugin manager, simply clone and
 place the plugin directory in your Neovim runtimepath.
 
+## Server environment
+
+To load `env` from `server.json` before launching the server, use the plugin's
+`server_cmd` helper. With Neovim 0.11 and nvim-lspconfig:
+
+```lua
+vim.lsp.config("slang_server", {
+  cmd = require("slang-server").server_cmd({ "slang-server" }),
+})
+vim.lsp.enable("slang_server")
+```
+
+For Neovim 0.10, supply the resolved config through nvim-lspconfig:
+
+```lua
+require("lspconfig").slang_server.setup({
+  on_new_config = function(config)
+    config.cmd = require("slang-server").server_cmd(config.cmd, config)
+  end,
+})
+```
+
+The helper reads `${workspace}/.slang/server.json`, `~/.slang/server.json`, and
+`${workspace}/.slang/local/server.json` in that order, merging `env` by variable
+name. JSON comments and trailing commas are supported. Values are literal
+strings and override inherited values and `cmd_env` without modifying Neovim's
+environment. Restart the LSP client after editing `env`; every launch rereads
+the files. Customize the command array to use another executable or arguments.
+
 ## Configuration
 
 The default configuration can be found in [config.lua](./lua/slang-server/_core/config.lua). Override options can be defined in the global `vim.g.slang_server_config`, or passed to `opts = {...}` in the lazy.nvim plugin spec.

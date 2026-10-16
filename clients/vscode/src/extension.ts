@@ -33,6 +33,7 @@ import {
 import { glob } from 'glob'
 import { SlangClientInfoFeature } from './lib/clientInfo'
 import { InactiveRegionsFeature } from './lib/inactiveRegions'
+import { loadServerEnvironment } from './lib/serverEnvironment'
 
 export var ext: SlangExtension
 
@@ -224,9 +225,13 @@ File input is sent to stdin, and formatted output is read from stdout.',
     this.logger.info('Starting language server')
 
     // this.logger.info("using path " + slangServerPath)
+    const env = loadServerEnvironment(getWorkspaceFolder(), process.env.HOME, (message) => {
+      void vscode.window.showErrorMessage(message)
+    })
+    const options = { env: { ...process.env, ...env } }
     const serverOptions: ServerOptions = {
-      run: { command: slangServerPath, args: this.args.getValue() },
-      debug: { command: slangServerPath, args: this.debugArgs.getValue() },
+      run: { command: slangServerPath, args: this.args.getValue(), options },
+      debug: { command: slangServerPath, args: this.debugArgs.getValue(), options },
     }
 
     const clientOptions: LanguageClientOptions = {
