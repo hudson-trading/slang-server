@@ -96,6 +96,12 @@ struct DefinitionInfo {
                                   const Config::HoverConfig& hovers) const;
 
         std::vector<lsp::LocationLink> getDefinition(const slang::SourceManager& sm) const;
+
+        /// Locations of the drivers shown in the hover, plus the parent's connection for input
+        /// ports, optionally following output port connections to the drivers inside the
+        /// instantiated module.
+        std::vector<lsp::Location> getDrivers(const slang::SourceManager& sm,
+                                              bool followPortDriver = true) const;
     };
 
     struct PortConnectionTarget {
@@ -110,6 +116,8 @@ struct DefinitionInfo {
                                   const Config::HoverConfig& hovers) const;
 
         std::vector<lsp::LocationLink> getDefinition(const slang::SourceManager& sm) const;
+
+        std::vector<lsp::Location> getDrivers(const slang::SourceManager& sm) const;
     };
 
     struct CommandLineDefineTarget {
@@ -248,6 +256,9 @@ struct DefinitionInfo {
 
     /// Resolve and deduplicate legacy goto-definition locations.
     std::vector<lsp::Location> getDefinitionLspLocs() const;
+
+    /// Resolve and deduplicate the driver locations of every value target.
+    std::vector<lsp::Location> getDriverLocations() const;
 };
 
 } // namespace server

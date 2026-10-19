@@ -78,6 +78,20 @@ Go-to references are provided for nearly all symbols except for macros. Referenc
 
 ![goto-refs](/assets/images/gotorefs.gif)
 
+### Go-to Drivers
+
+The **slang: Go to Drivers** command in VS Code navigates to the drivers of the signal under the cursor, which are the same drivers listed in its hover. When a signal has more than one driver, a peek view lists them. The command has no default keybinding; to bind one, add an entry for `slang.gotoDrivers` to your `keybindings.json`:
+
+```json
+{ "key": "alt+d", "command": "slang.gotoDrivers", "when": "editorTextFocus" }
+```
+
+Other clients can request the same locations with the `slang.getDriversAt` command, which takes a text document and position and returns a list of locations.
+
+Each result points to the driven expression, for example the left-hand side of an assignment in an `always_ff` block, rather than to the start of the enclosing block. For a signal that is connected to an output port, the results include the port connection and the drivers in the instantiated module.
+
+For an input port, the result is the port connection in the parent instance. When the parent is in another file, this requires an [elaborated design](hdl/hdl.md), and the result follows the [active instance](hdl/hdl.md#active-instances) of the module.
+
 ### Inlay Hints
 
 Inlay hints are text that show up inline in the code to provide useful info. They can be hovered for more info, and some can be double clicked to insert some text.

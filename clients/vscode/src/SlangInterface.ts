@@ -1,4 +1,5 @@
 import * as vscode from 'vscode'
+import type { Location as LspLocation } from 'vscode-languageclient/node'
 
 import { Config } from './config.gen'
 
@@ -196,6 +197,21 @@ export async function getInstances(
     position,
   })
   return instances ?? []
+}
+
+// Get the drivers listed in the hover of the symbol at this editor position
+export async function getDriversAt(
+  document: vscode.TextDocument,
+  position: vscode.Position
+): Promise<LspLocation[]> {
+  const drivers: LspLocation[] | undefined = await vscode.commands.executeCommand(
+    'slang.getDriversAt',
+    {
+      textDocument: { uri: document.uri.toString() },
+      position,
+    }
+  )
+  return drivers ?? []
 }
 
 // Server resolves the path (canonical or port-side alias) and walks up to set active

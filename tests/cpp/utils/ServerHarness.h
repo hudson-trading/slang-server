@@ -221,6 +221,9 @@ public:
     bool hasDefinition();
     std::vector<lsp::LocationLink> getDefinitions();
 
+    // Driver locations from the slang.getDriversAt command
+    std::vector<lsp::Location> getDrivers();
+
     // Get document highlights
     std::vector<lsp::DocumentHighlight> getHighlights();
 
