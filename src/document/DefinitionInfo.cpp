@@ -255,15 +255,16 @@ bool isPortDriver(const analysis::ValueDriver& driver) {
            driver.flags.has(analysis::DriverFlags::ViaIndirectPort);
 }
 
-std::string getDriverInstanceDescription(const DriverGroup& group) {
-    const ast::InstanceSymbol* instance = nullptr;
-    if (group.containingSymbol->kind == ast::SymbolKind::Instance) {
-        instance = &group.containingSymbol->as<ast::InstanceSymbol>();
-    }
-    else if (group.containingSymbol->kind == ast::SymbolKind::InstanceBody) {
-        instance = group.containingSymbol->as<ast::InstanceBodySymbol>().parentInstance;
-    }
+const ast::InstanceSymbol* getDriverInstance(const ast::Symbol& containingSymbol) {
+    if (containingSymbol.kind == ast::SymbolKind::Instance)
+        return &containingSymbol.as<ast::InstanceSymbol>();
+    if (containingSymbol.kind == ast::SymbolKind::InstanceBody)
+        return containingSymbol.as<ast::InstanceBodySymbol>().parentInstance;
+    return nullptr;
+}
 
+std::string getDriverInstanceDescription(const DriverGroup& group) {
+    const auto* instance = getDriverInstance(*group.containingSymbol);
     if (!instance)
         return {};
 
@@ -433,21 +434,22 @@ void appendSyntaxTargets(markup::Document& doc,
     }
 }
 
-void renderDrivers(markup::Document& doc, const ast::Symbol& symbol, ShallowAnalysis& analysis,
-                   const SourceManager& sourceManager, bool renderInputPortDriver,
-                   bool followPortDriver,
-                   SmallVector<const syntax::SyntaxNode*, 4>* renderedGroupSyntaxes = nullptr) {
+/// Visits the driver groups of `symbol` in source order, followed by the driver groups of the
+/// internal port symbols that its output port drivers connect to. Groups whose containing syntax
+/// was already visited are skipped.
+template<typename TVisit>
+void forEachDriverGroup(const ast::Symbol& symbol, ShallowAnalysis& analysis,
+                        const SourceManager& sourceManager, bool includeInputPortDriver,
+                        bool followPortDriver,
+                        SmallVector<const syntax::SyntaxNode*, 4>& visitedGroupSyntaxes,
+                        TVisit&& visit) {
     if (!ast::ValueSymbol::isKind(symbol.kind) || symbol.kind == ast::SymbolKind::EnumValue)
         return;
-
-    SmallVector<const syntax::SyntaxNode*, 4> rootRenderedGroupSyntaxes;
-    if (!renderedGroupSyntaxes)
-        renderedGroupSyntaxes = &rootRenderedGroupSyntaxes;
 
     std::vector<DriverGroup> groups;
     SmallVector<const ast::Symbol*, 2> connectedPortSymbols;
     for (const auto* driver : analysis.getDrivers(symbol.as<ast::ValueSymbol>())) {
-        if (!driver || (driver->isInputPort() && !renderInputPortDriver))
+        if (!driver || (driver->isInputPort() && !includeInputPortDriver))
             continue;
 
         const ast::Symbol* containingSymbol = driver->containingSymbol;
@@ -506,39 +508,120 @@ void renderDrivers(markup::Document& doc, const ast::Symbol& symbol, ShallowAnal
     for (const auto& group : groups) {
         const auto* containingSyntax = group.containingSymbol->getSyntax();
         if (containingSyntax) {
-            if (std::ranges::find(*renderedGroupSyntaxes, containingSyntax) !=
-                renderedGroupSyntaxes->end()) {
+            if (std::ranges::find(visitedGroupSyntaxes, containingSyntax) !=
+                visitedGroupSyntaxes.end()) {
                 continue;
             }
-            renderedGroupSyntaxes->push_back(containingSyntax);
+            visitedGroupSyntaxes.push_back(containingSyntax);
         }
-
-        markup::Paragraph paragraph;
-        paragraph.appendText(getDriverGroupHeader(group));
-
-        auto location = group.containingSymbol->location;
-        if (!group.displayTargets.empty()) {
-            const auto& target = group.displayTargets.front();
-            location = target.macroUsageRange == SourceRange::NoLocation
-                           ? target.nameToken.location()
-                           : target.macroUsageRange.start();
-        }
-        appendSourceLink(paragraph, location, sourceManager);
-        if (group.displayTargets.empty()) {
-            doc.addParagraph(std::move(paragraph));
-            continue;
-        }
-
-        for (const auto& target : group.displayTargets) {
-            target.renderCode(paragraph, sourceManager, true);
-            doc.addParagraph(std::move(paragraph));
-            paragraph = {};
-        }
+        visit(group);
     }
 
     for (const auto* connectedSymbol : connectedPortSymbols)
-        renderDrivers(doc, *connectedSymbol, analysis, sourceManager, false, false,
-                      renderedGroupSyntaxes);
+        forEachDriverGroup(*connectedSymbol, analysis, sourceManager, false, false,
+                           visitedGroupSyntaxes, visit);
+}
+
+void renderDrivers(markup::Document& doc, const ast::Symbol& symbol, ShallowAnalysis& analysis,
+                   const SourceManager& sourceManager, bool renderInputPortDriver,
+                   bool followPortDriver) {
+    SmallVector<const syntax::SyntaxNode*, 4> renderedGroupSyntaxes;
+    forEachDriverGroup(symbol, analysis, sourceManager, renderInputPortDriver, followPortDriver,
+                       renderedGroupSyntaxes, [&](const DriverGroup& group) {
+                           markup::Paragraph paragraph;
+                           paragraph.appendText(getDriverGroupHeader(group));
+
+                           auto location = group.containingSymbol->location;
+                           if (!group.displayTargets.empty()) {
+                               const auto& target = group.displayTargets.front();
+                               location = target.macroUsageRange == SourceRange::NoLocation
+                                              ? target.nameToken.location()
+                                              : target.macroUsageRange.start();
+                           }
+                           appendSourceLink(paragraph, location, sourceManager);
+                           if (group.displayTargets.empty()) {
+                               doc.addParagraph(std::move(paragraph));
+                               return;
+                           }
+
+                           for (const auto& target : group.displayTargets) {
+                               target.renderCode(paragraph, sourceManager, true);
+                               doc.addParagraph(std::move(paragraph));
+                               paragraph = {};
+                           }
+                       });
+}
+
+void appendUniqueLocation(std::vector<lsp::Location>& result, lsp::Location&& location) {
+    auto duplicate = std::ranges::any_of(result, [&](const lsp::Location& existing) {
+        return existing.uri == location.uri && existing.range == location.range;
+    });
+    if (!duplicate)
+        result.push_back(std::move(location));
+}
+
+void appendUniqueLocations(std::vector<lsp::Location>& result,
+                           std::vector<lsp::Location>&& locations) {
+    for (auto& location : locations)
+        appendUniqueLocation(result, std::move(location));
+}
+
+/// Input port drivers are located at the port declaration inside the module; returns the range of
+/// the matching connection on the parent instance instead.
+SourceRange getInputPortConnectionRange(const analysis::ValueDriver& driver) {
+    const auto* instance = getDriverInstance(*driver.containingSymbol);
+    if (!instance)
+        return SourceRange::NoLocation;
+
+    const auto& driven = driver.getSymbol();
+    auto isDrivenPort = [&](const ast::Symbol& port) {
+        if (auto* single = port.as_if<ast::PortSymbol>())
+            return single->internalSymbol == &driven;
+        if (auto* multi = port.as_if<ast::MultiPortSymbol>()) {
+            return std::ranges::any_of(multi->ports,
+                                       [&](auto* p) { return p->internalSymbol == &driven; });
+        }
+        return false;
+    };
+    for (auto* connection : instance->getPortConnections()) {
+        if (!isDrivenPort(connection->port))
+            continue;
+        if (auto* expression = connection->getExpression();
+            expression && expression->sourceRange != SourceRange::NoLocation) {
+            return expression->sourceRange;
+        }
+        break;
+    }
+    return {instance->location, instance->location};
+}
+
+/// Collects the locations of the drivers listed in hovers. Each location is the driven expression
+/// itself rather than the enclosing statement, so procedural drivers point inside their block.
+std::vector<lsp::Location> collectDriverLocations(const ast::Symbol& symbol,
+                                                  ShallowAnalysis& analysis,
+                                                  const SourceManager& sourceManager,
+                                                  bool includeInputPortDriver,
+                                                  bool followPortDriver) {
+    std::vector<lsp::Location> result;
+    SmallVector<const syntax::SyntaxNode*, 4> visitedGroupSyntaxes;
+    forEachDriverGroup(symbol, analysis, sourceManager, includeInputPortDriver, followPortDriver,
+                       visitedGroupSyntaxes, [&](const DriverGroup& group) {
+                           for (const auto* driver : group.drivers) {
+                               auto range = driver->isInputPort()
+                                                ? getInputPortConnectionRange(*driver)
+                                                : driver->getSourceRange();
+                               if (range == SourceRange::NoLocation)
+                                   range = {group.containingSymbol->location,
+                                            group.containingSymbol->location};
+
+                               const auto expanded = sourceManager.getFullyExpandedRange(range);
+                               if (sourceManager.getFullPath(expanded.start().buffer()).empty())
+                                   continue;
+
+                               appendUniqueLocation(result, toLocation(range, sourceManager));
+                           }
+                       });
+    return result;
 }
 
 void renderSymbolValue(markup::Paragraph& infoPg, const ast::Symbol& symbol,
@@ -1026,6 +1109,21 @@ std::vector<lsp::LocationLink> DefinitionInfo::PortConnectionTarget::getDefiniti
     return result;
 }
 
+std::vector<lsp::Location> DefinitionInfo::SymbolTarget::getDrivers(const SourceManager& sm,
+                                                                    bool followPortDriver) const {
+    // Hovers only show input port drivers at the connection site, but jumping from inside the
+    // module should still reach the parent's port connection.
+    return collectDriverLocations(getDriverSymbol(*this), *analysis, sm, true, followPortDriver);
+}
+
+std::vector<lsp::Location> DefinitionInfo::PortConnectionTarget::getDrivers(
+    const SourceManager& sm) const {
+    // Matches the hover, which only follows port drivers on the inner side
+    auto result = outer.getDrivers(sm, false);
+    appendUniqueLocations(result, inner.getDrivers(sm));
+    return result;
+}
+
 std::vector<lsp::LocationLink> DefinitionInfo::MacroTarget::getDefinition(
     const SourceManager& sm) const {
     if (auto* define = commandLineDefine()) {
@@ -1132,6 +1230,18 @@ std::vector<lsp::Location> DefinitionInfo::getDefinitionLspLocs() const {
     result.reserve(links.size());
     for (auto& link : links)
         result.emplace_back(std::move(link.targetUri), link.targetRange);
+    return result;
+}
+
+std::vector<lsp::Location> DefinitionInfo::getDriverLocations() const {
+    const auto& sm = sourceManager.get();
+    std::vector<lsp::Location> result;
+    for (const auto& target : targets) {
+        if (auto* symbol = std::get_if<SymbolTarget>(&target))
+            appendUniqueLocations(result, symbol->getDrivers(sm));
+        else if (auto* port = std::get_if<PortConnectionTarget>(&target))
+            appendUniqueLocations(result, port->getDrivers(sm));
+    }
     return result;
 }
 

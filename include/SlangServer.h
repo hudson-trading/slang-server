@@ -284,6 +284,9 @@ public:
     /// Get a list of RTL paths of instances given a text document position
     std::vector<std::string> getInstances(const lsp::TextDocumentPositionParams&);
 
+    /// Get the locations of the drivers listed in the hover of the symbol at a position.
+    std::vector<lsp::Location> getDriversAt(const lsp::TextDocumentPositionParams&);
+
     /// Add the given variable or scope to the waveform via WCP
     std::monostate addToWaveform(const waves::ItemToWaveform&);
 

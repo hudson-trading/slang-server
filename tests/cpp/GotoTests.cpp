@@ -427,3 +427,108 @@ TEST_CASE("FindReferencesAllTokens_crossfile_module.sv") {
     ReferencesScanner scanner(server);
     scanner.scanDocument(hdl);
 }
+
+TEST_CASE("GotoDrivers_JumpsToDrivers") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+module top(input logic clk);
+    logic a, b, c;
+    assign a = 1'b1;
+    always_comb b = a;
+    always_ff @(posedge clk) c <= b;
+    initial $display(a, b, c);
+endmodule
+)");
+
+    auto checkDriver = [&](const std::string& use, const std::string& driver) {
+        auto drivers = doc.after(use).getDrivers();
+        CAPTURE(use);
+        REQUIRE(drivers.size() == 1);
+        CHECK(drivers[0].uri == doc.m_uri);
+        CHECK(drivers[0].range.start == doc.before(driver).getPosition());
+    };
+    checkDriver("$display(", "a = 1'b1");
+    checkDriver("$display(a, ", "b = a");
+    checkDriver("$display(a, b, ", "c <= b");
+
+    // Not a driven value
+    CHECK(doc.before("top(").getDrivers().empty());
+}
+
+TEST_CASE("GotoDrivers_MultipleDrivers") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+module top(input logic sel);
+    logic [1:0] value;
+    always_comb begin
+        value[0] = sel;
+        value[1] = !sel;
+    end
+    assign value[1] = 1'b0;
+endmodule
+)");
+
+    auto drivers = doc.after("logic [1:0] ").getDrivers();
+    REQUIRE(drivers.size() == 3);
+    CHECK(drivers[0].range.start == doc.before("value[0] =").getPosition());
+    CHECK(drivers[1].range.start == doc.before("value[1] =").getPosition());
+    CHECK(drivers[2].range.start == doc.after("assign ").getPosition());
+}
+
+TEST_CASE("GotoDrivers_FollowsOutputPortDriver") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+module leaf(output logic data);
+    always_comb data = 1'b1;
+endmodule
+
+module top(output logic value);
+    leaf u(.data(value));
+endmodule
+)");
+
+    auto drivers = doc.after("output logic val").getDrivers();
+    REQUIRE(drivers.size() == 2);
+    CHECK(drivers[0].range.start == doc.after(".data(").getPosition());
+    CHECK(drivers[1].range.start == doc.before("data = 1'b1").getPosition());
+}
+
+TEST_CASE("GotoDrivers_InputPortJumpsToParentConnection") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+module leaf(input logic data);
+    logic copy;
+    assign copy = data;
+endmodule
+
+module top(input logic value);
+    leaf u(.data(value));
+endmodule
+)");
+
+    auto drivers = doc.after("assign copy = ").getDrivers();
+    REQUIRE(drivers.size() == 1);
+    CHECK(drivers[0].range.start == doc.after(".data(").getPosition());
+}
+
+TEST_CASE("GotoDrivers_InputPortUsesActiveInstanceAcrossFiles") {
+    ServerHarness server("goto_drivers_input_port");
+    server.setBuildFile("design.f");
+
+    auto leaf = server.openFile("leaf.sv");
+    auto top = server.openFile("top.sv");
+    auto checkConnection = [&](const std::string& instance, const std::string& connection) {
+        REQUIRE(server.setActiveInstance(instance));
+        auto drivers = leaf.after("assign copy = ").getDrivers();
+        CAPTURE(instance);
+        REQUIRE(drivers.size() == 1);
+        CHECK(drivers[0].uri == top.m_uri);
+        CHECK(drivers[0].range.start == top.after(connection).getPosition());
+    };
+    checkConnection("top.u0", "u0(.data(");
+    checkConnection("top.u1", "u1(.data(");
+}
