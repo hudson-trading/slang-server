@@ -171,6 +171,9 @@ public:
                                                 followedByCall, resolvesCompletionEdits(dispatch)));
         }
         InstanceCompletionQuery::addCompletions(results, getIndexer(dispatch), context);
+        for (auto* package : context.analysis->getCompilation()->getPackages())
+            results.push_back(getCompletion(*package, context.scope, doc->getURI().str(),
+                                            followedByCall, resolvesCompletionEdits(dispatch)));
         if (context.scope) {
             addCompletions(results, context.scope, context.kind, context.scope, doc->getURI().str(),
                            followedByCall, resolvesCompletionEdits(dispatch));
@@ -550,6 +553,8 @@ std::unique_ptr<CompletionQuery> MemberCompletionQuery::createScopedAccess(
 
 lsp::CompletionItemKind MemberCompletionQuery::getCompletionKind(const slang::ast::Symbol& symbol) {
     switch (symbol.kind) {
+        case slang::ast::SymbolKind::Package:
+            return lsp::CompletionItemKind::Module;
         case slang::ast::SymbolKind::Variable:
         case slang::ast::SymbolKind::Net:
             return lsp::CompletionItemKind::Variable;
@@ -616,6 +621,9 @@ std::string getMemberCompletionDetail(const slang::ast::Symbol& symbol) {
     if (slang::ast::SubroutineSymbol::isKind(symbol.kind)) {
         auto& subroutine = symbol.as<slang::ast::SubroutineSymbol>();
         detailStr = subroutineString(subroutine.subroutineKind);
+    }
+    else if (symbol.kind == slang::ast::SymbolKind::Package) {
+        detailStr = "Package";
     }
     else if (symbol.kind == slang::ast::SymbolKind::TypeAlias) {
         auto& typeAlias = symbol.as<slang::ast::TypeAliasType>();
@@ -846,6 +854,9 @@ void MemberCompletionQuery::resolve(const slang::ast::Symbol& symbol, lsp::Compl
     else if (symbol.getSyntax()) {
         symSyntax = symbol.getSyntax();
     }
+    else if (symbol.kind == slang::ast::SymbolKind::Package) {
+        docStr = svCodeBlockString(fmt::format("package {};", symbol.name));
+    }
     if (symSyntax) {
         item.documentation = svCodeBlock(*symSyntax);
     }
@@ -883,35 +894,84 @@ void MemberCompletionQuery::addCompletions(std::vector<lsp::CompletionItem>& res
     // Walk up through the compilation unit, but don't include the root's design hierarchy.
     const slang::ast::Scope* currentScope = scope;
     while (currentScope) {
-        // Add members from the current scope
-        for (auto& member : currentScope->members()) {
+        auto addMember = [&](const ast::Symbol& member) {
             const ast::Symbol* symbol = &member;
             if (auto* import = member.as_if<ast::ExplicitImportSymbol>())
                 symbol = import->importedSymbol();
             else if (auto* transparent = member.as_if<ast::TransparentMemberSymbol>())
                 symbol = &transparent->wrapped;
             if (!symbol || symbol->name.empty() || symbol->kind == ast::SymbolKind::Package) {
-                continue;
+                return;
             }
             if (typesOnly && !symbol->isType() &&
                 symbol->kind != ast::SymbolKind::GenericClassDef &&
                 symbol->kind != ast::SymbolKind::TypeParameter) {
-                continue;
+                return;
             }
 
             // ports are in there twice as value symbols and port symbols, so skip the value
             if ((symbol->kind == ast::SymbolKind::Variable ||
                  symbol->kind == ast::SymbolKind::Net) &&
                 results.size() > 0 && results.back().label == symbol->name) {
-                continue;
+                return;
             }
 
             results.push_back(
                 getCompletion(*symbol, originalScope, documentUri, labelOnly, deferCallableEdit));
+        };
+        if (auto* package = currentScope->asSymbol().as_if<ast::PackageSymbol>();
+            package && traversal != ScopeTraversal::Lexical) {
+            SmallVector<const ast::PackageSymbol*> pending;
+            pending.push_back(package);
+            std::unordered_set<const ast::PackageSymbol*> visited;
+            std::unordered_set<std::string_view> names;
+            auto addExported = [&](std::string_view name) {
+                if (!name.empty() && names.insert(name).second) {
+                    if (auto* symbol = package->findForImport(name))
+                        addMember(*symbol);
+                }
+            };
+            while (!pending.empty()) {
+                auto* candidate = pending.back();
+                pending.pop_back();
+                if (!candidate || !visited.insert(candidate).second)
+                    continue;
+                for (auto& member : candidate->members())
+                    addExported(member.name);
+                if (candidate->hasExportAll) {
+                    if (auto* imports = candidate->getWildcardImportData()) {
+                        for (auto* import : imports->wildcardImports)
+                            pending.push_back(import->getPackage());
+                    }
+                }
+                auto* syntax = candidate->getSyntax();
+                auto* declaration = syntax ? syntax->as_if<syntax::ModuleDeclarationSyntax>()
+                                           : nullptr;
+                if (!declaration)
+                    continue;
+                // Export syntax supplies candidate names; slang decides their visibility.
+                for (auto* member : declaration->members) {
+                    if (auto* exports = member->as_if<syntax::PackageExportDeclarationSyntax>()) {
+                        for (auto* item : exports->items) {
+                            if (item->item.kind == parsing::TokenKind::Star)
+                                pending.push_back(candidate->getCompilation().getPackage(
+                                    item->package.valueText()));
+                            else
+                                addExported(item->item.valueText());
+                        }
+                    }
+                }
+            }
+        }
+        else {
+            for (auto& member : currentScope->members())
+                addMember(member);
         }
 
         // Add wildcard imports
-        if (traversal != ScopeTraversal::Imported) {
+        if (traversal != ScopeTraversal::Imported &&
+            (traversal == ScopeTraversal::Lexical ||
+             currentScope->asSymbol().kind != ast::SymbolKind::Package)) {
             if (auto importData = currentScope->getWildcardImportData()) {
                 for (auto import : importData->wildcardImports) {
                     auto package = import->getPackage();

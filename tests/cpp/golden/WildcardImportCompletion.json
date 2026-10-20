@@ -315,6 +315,31 @@
         }
       },
       {
+        "label": "math_pkg",
+        "labelDetails": {
+          "detail": " Package"
+        },
+        "kind": "Module",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\npackage math_pkg;\n````"
+        },
+        "filterText": "math_pkg",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 56,
+              "character": 28
+            },
+            "end": {
+              "line": 56,
+              "character": 28
+            }
+          },
+          "newText": "math_pkg"
+        }
+      },
+      {
         "label": "max_val",
         "labelDetails": {
           "detail": " int"
@@ -569,6 +594,32 @@
         }
       },
       {
+        "label": "std",
+        "labelDetails": {
+          "detail": " Package"
+        },
+        "kind": "Module",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\npackage std;\n````"
+        },
+        "filterText": "std",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 56,
+              "character": 28
+            },
+            "end": {
+              "line": 56,
+              "character": 28
+            }
+          },
+          "newText": "std"
+        },
+        "data": "file://wildcard_test.sv"
+      },
+      {
         "label": "util_pkg",
         "labelDetails": {
           "detail": " Package"
@@ -593,6 +644,31 @@
             }
           },
           "newText": "util_pkg"
+        }
+      },
+      {
+        "label": "utils_pkg",
+        "labelDetails": {
+          "detail": " Package"
+        },
+        "kind": "Module",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\npackage utils_pkg;\n````"
+        },
+        "filterText": "utils_pkg",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 56,
+              "character": 28
+            },
+            "end": {
+              "line": 56,
+              "character": 28
+            }
+          },
+          "newText": "utils_pkg"
         }
       },
       {
@@ -936,6 +1012,31 @@
         }
       },
       {
+        "label": "math_pkg",
+        "labelDetails": {
+          "detail": " Package"
+        },
+        "kind": "Module",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\npackage math_pkg;\n````"
+        },
+        "filterText": "math_pkg",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 59,
+              "character": 12
+            },
+            "end": {
+              "line": 59,
+              "character": 12
+            }
+          },
+          "newText": "math_pkg"
+        }
+      },
+      {
         "label": "max_val",
         "labelDetails": {
           "detail": " int"
@@ -1190,6 +1291,32 @@
         }
       },
       {
+        "label": "std",
+        "labelDetails": {
+          "detail": " Package"
+        },
+        "kind": "Module",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\npackage std;\n````"
+        },
+        "filterText": "std",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 59,
+              "character": 12
+            },
+            "end": {
+              "line": 59,
+              "character": 12
+            }
+          },
+          "newText": "std"
+        },
+        "data": "file://wildcard_test.sv"
+      },
+      {
         "label": "util_pkg",
         "labelDetails": {
           "detail": " Package"
@@ -1214,6 +1341,31 @@
             }
           },
           "newText": "util_pkg"
+        }
+      },
+      {
+        "label": "utils_pkg",
+        "labelDetails": {
+          "detail": " Package"
+        },
+        "kind": "Module",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\npackage utils_pkg;\n````"
+        },
+        "filterText": "utils_pkg",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 59,
+              "character": 12
+            },
+            "end": {
+              "line": 59,
+              "character": 12
+            }
+          },
+          "newText": "utils_pkg"
         }
       },
       {

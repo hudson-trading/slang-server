@@ -98,6 +98,32 @@
         }
       },
       {
+        "label": "std",
+        "labelDetails": {
+          "detail": " Package"
+        },
+        "kind": "Module",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\npackage std;\n````"
+        },
+        "filterText": "std",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 3,
+              "character": 8
+            },
+            "end": {
+              "line": 3,
+              "character": 8
+            }
+          },
+          "newText": "std"
+        },
+        "data": "file://port_list_test.sv"
+      },
+      {
         "label": "test_intf",
         "labelDetails": {
           "detail": " Interface"
