@@ -30,4 +30,15 @@ const SystemTaskDoc* getSystemTaskDoc(slang::parsing::KnownSystemName name);
 /// @returns the complete documentation table, indexed by `KnownSystemName`.
 std::span<const SystemTaskDoc> getSystemTaskDocs();
 
+/// Documentation for a specify-block timing check, which is not a system subroutine.
+struct SystemTimingCheckDoc {
+    /// SystemVerilog name, including the leading `$`.
+    std::string_view name;
+    /// Signature, description, and language reference.
+    SystemTaskDoc doc;
+};
+
+/// All supported system timing checks and their documentation.
+std::span<const SystemTimingCheckDoc> getSystemTimingCheckDocs();
+
 } // namespace server
