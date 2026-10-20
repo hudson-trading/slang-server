@@ -13,7 +13,7 @@ slang-server provides comprehensive SystemVerilog language support for modern ed
 
 - **Real-time diagnostics and linting**
 - **Code completions (IntelliSense)**
-- **Go-to definition and Go-to references**
+- **Go-to definition, Go-to references, and Go-to drivers**
 - **Symbol search and workspace indexing**
 - **Hardware-specific language features via custom editor clients**
 

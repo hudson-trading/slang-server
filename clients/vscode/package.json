@@ -515,6 +515,10 @@
         "icon": "$(open-preview)"
       },
       {
+        "command": "slang.gotoDrivers",
+        "title": "slang: Go to Drivers"
+      },
+      {
         "command": "slang.restartLanguageServer",
         "title": "slang: Restart Language Server"
       },

@@ -106,6 +106,8 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     // WCP Commands
     registerCommand<lsp::TextDocumentPositionParams, std::vector<std::string>,
                     &SlangServer::getInstances>("slang.getInstances");
+    registerCommand<lsp::TextDocumentPositionParams, std::vector<lsp::Location>,
+                    &SlangServer::getDriversAt>("slang.getDriversAt");
 
     registerCommand<std::string, std::vector<std::string>, &SlangServer::getModulesInFile>(
         "slang.getModulesInFile");
@@ -626,6 +628,12 @@ std::vector<std::string> SlangServer::getInstances(const lsp::TextDocumentPositi
         return {};
     }
     return m_driver->comp->getInstances(params);
+}
+
+std::vector<lsp::Location> SlangServer::getDriversAt(
+    const lsp::TextDocumentPositionParams& params) {
+    auto info = m_driver->getDefinitionInfoAt(params.textDocument.uri, params.position);
+    return info ? info->getDriverLocations() : std::vector<lsp::Location>{};
 }
 
 std::vector<std::string> SlangServer::getModulesInFile(const std::string path) {

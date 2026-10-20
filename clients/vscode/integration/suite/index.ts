@@ -71,10 +71,14 @@ export async function run(): Promise<void> {
   const instanceLine = lines.findIndex((line) => line.includes('child u_child'))
   const nestedInstanceLine = lines.findIndex((line) => line.includes('leaf nested_leaf'))
   const generatedInstanceLine = lines.findIndex((line) => line.includes('leaf generated_leaf'))
+  const signalLine = lines.findIndex((line) => line.includes('logic data_signal'))
+  const driverLine = lines.findIndex((line) => line.includes('assign data_signal'))
   assert.notEqual(moduleLine, -1)
   assert.notEqual(instanceLine, -1)
   assert.notEqual(nestedInstanceLine, -1)
   assert.notEqual(generatedInstanceLine, -1)
+  assert.notEqual(signalLine, -1)
+  assert.notEqual(driverLine, -1)
 
   try {
     await vscode.commands.executeCommand('slang.project.setTopLevel', uri)
@@ -185,6 +189,10 @@ export async function run(): Promise<void> {
       uri,
       generatedInstanceLine
     )
+
+    const signalColumn = lines[signalLine].indexOf('data_signal')
+    editor.selection = new vscode.Selection(signalLine, signalColumn, signalLine, signalColumn)
+    await executeAndExpectLocation('slang.gotoDrivers', undefined, uri, driverLine)
 
     const edit = new vscode.WorkspaceEdit()
     edit.insert(

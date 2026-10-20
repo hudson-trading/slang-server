@@ -17,6 +17,7 @@ endmodule
 
 module top;
     logic data_signal;
+    assign data_signal = 1'b0;
     child u_child();
     branch branch_array[1:0]();
 

@@ -174,6 +174,34 @@ File input is sent to stdin, and formatted output is read from stdout.',
     }
   )
 
+  gotoDrivers: CommandNode = new CommandNode(
+    {
+      title: 'Go to Drivers',
+    },
+    async () => {
+      const editor = vscode.window.activeTextEditor
+      const client = this.client
+      if (editor === undefined || client === undefined) {
+        return
+      }
+      const document = editor.document
+      const position = editor.selection.active
+      const drivers = await slang.getDriversAt(document, position)
+      // The client converter maps server file URIs to the workspace's URI scheme
+      const locations = drivers.map((driver) => client.protocol2CodeConverter.asLocation(driver))
+      const wordRange = document.getWordRangeAtPosition(position)
+      const word = wordRange ? document.getText(wordRange) : ''
+      await vscode.commands.executeCommand(
+        'editor.action.goToLocations',
+        document.uri,
+        position,
+        locations,
+        'peek',
+        `No drivers found for '${word}'`
+      )
+    }
+  )
+
   client: LanguageClient | undefined
   private isRestarting: boolean = false
   private readonly serverOutputChannel: vscode.OutputChannel
