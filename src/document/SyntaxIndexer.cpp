@@ -86,6 +86,7 @@ void SyntaxIndexer::visit(const slang::syntax::SyntaxNode& node) {
                     m_currentMacroUsage->sourceRange().contains(
                         m_sourceManager->getFullyExpandedLoc(token->location()))) {
                     m_currentExpansionTokens.push_back(token);
+                    tokenToParent[token] = &node;
                     continue;
                 }
                 else {

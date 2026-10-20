@@ -22,6 +22,7 @@
 
 #include "slang/parsing/Token.h"
 #include "slang/parsing/TokenKind.h"
+#include "slang/syntax/AllSyntax.h"
 
 namespace server {
 
@@ -164,10 +165,23 @@ std::unique_ptr<CompletionQuery> CompletionQuery::fromLocation(
                                                          std::move(site.typedPrefix),
                                                          followedByCall);
     }
+    auto receiverToken = [&]() -> const slang::parsing::Token* {
+        auto* syntax = analysis->syntaxes.getTokenParent(site.tokenBefore);
+        const slang::syntax::SyntaxNode* receiver = nullptr;
+        if (auto* name = syntax ? syntax->as_if<slang::syntax::ScopedNameSyntax>() : nullptr)
+            receiver = name->left;
+        else if (auto* member = syntax
+                                    ? syntax->as_if<slang::syntax::MemberAccessExpressionSyntax>()
+                                    : nullptr)
+            receiver = member->left;
+        // The parsed receiver includes macro expansions omitted from the source token stream.
+        if (receiver)
+            return const_cast<slang::syntax::SyntaxNode*>(receiver)->getLastTokenPtr();
+        return analysis->syntaxes.getTokenBefore(site.tokenBefore->location());
+    };
     if (site.tokenBefore && site.tokenBefore->kind == TokenKind::DoubleColon) {
         return completions::MemberCompletionQuery::createScopedAccess(
-            std::move(site.replacementRange),
-            analysis->syntaxes.getTokenBefore(site.tokenBefore->location()), followedByCall);
+            std::move(site.replacementRange), receiverToken(), followedByCall);
     }
     if (site.tokenBefore && site.tokenBefore->kind == TokenKind::Dot) {
         auto* syntax = analysis->syntaxes.getTokenParent(site.tokenBefore);
@@ -178,8 +192,7 @@ std::unique_ptr<CompletionQuery> CompletionQuery::fromLocation(
                 std::move(site.replacementRange), *syntax);
         }
         return completions::MemberCompletionQuery::createMemberAccess(
-            std::move(site.replacementRange),
-            analysis->syntaxes.getTokenBefore(site.tokenBefore->location()), followedByCall);
+            std::move(site.replacementRange), receiverToken(), followedByCall);
     }
     if (!site.targetToken && site.tokenBefore && site.tokenBefore->kind == TokenKind::Hash) {
         return completions::InstanceCompletionQuery::create(std::move(site.replacementRange),
