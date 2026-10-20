@@ -361,6 +361,7 @@ macromodule m3;
 
         foreach (w[q]) begin end
                  ^ Ref -> **Net** `w` in `m3`  \n\Type: `logic[1:0]`  \n\Width: `2`  \n\\n\\n\---\n\\n\`wor [1:0] w = 1;`\n\\n\---\n\\n\Driven by continuous assignment at [all.sv:81:5](<file:///tests/data/all.sv#L81,5>)  \n\`assign (supply0, weak1) #(1:0:1, 2:1:0) w = 2;`\n\\n\---\n\\n\Driven by initializer at [all.sv:80:5](<file:///tests/data/all.sv#L80,5>)  \n\`wor [1:0] w = 1;`
+                   ^ Sym q : Iterator
 
     end
 
@@ -1591,6 +1592,8 @@ class C3;
 
 
         option.comment = instComment;
+        ^^^^^^ Ref -> **ClassProperty** `option` in `C3`  \n\Type: UnpackedStruct `struct{string name, int weight, int goal, string comment, ...}`  \n\
+               ^^^^^^^ Ref -> **Field** `comment` in `C3`  \n\Type: `string`  \n\
                          ^^^^^^^^^^^ Ref -> **FormalArgument** `instComment` in `C3`  \n\Type: `string`  \n\\n\\n\---\n\\n\`string instComment`
 
 
