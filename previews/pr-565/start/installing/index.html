@@ -1148,15 +1148,14 @@
 <h3 id="vscode">Vscode<a class="headerlink" href="#vscode" title="Permanent link">&para;</a></h3>
 <p>Install the extension <a href="https://marketplace.visualstudio.com/items?itemName=Hudson-River-Trading.vscode-slang">here</a>. Then, it will prompt you to allow the extension to autoinstall the server binary from the <a href="https://github.com/hudson-trading/slang-server/releases">releases</a> page. Alternatively, you can <a href="https://hudson-trading.github.io/slang-server/start/building/">build slang-server</a> and set <code>slang.path</code> to that binary.</p>
 <p>For tool paths such as <code>UVM_HOME</code>, set <a href="../config/#environment-variables"><code>env</code> in <code>server.json</code></a>
-to override the server's environment, including in remote sessions.</p>
+to configure variable expansion in the server, including in remote sessions.</p>
 <h3 id="vscode-forks-cursor-antigravity-vscodium-etc">Vscode Forks (Cursor, Antigravity, VSCodium, etc.)<a class="headerlink" href="#vscode-forks-cursor-antigravity-vscodium-etc" title="Permanent link">&para;</a></h3>
 <p>Install from your editor, or download from the <a href="https://open-vsx.org/extension/Hudson-River-Trading/vscode-slang">OpenVSX Marketplace</a></p>
 <h3 id="neovim">Neovim<a class="headerlink" href="#neovim" title="Permanent link">&para;</a></h3>
 <p><code>slang-server</code> is available in <a href="https://github.com/neovim/nvim-lspconfig">nvim-lspconfig</a> as <code>slang_server</code> (note the underscore) and in the <a href="https://github.com/mason-org/mason.nvim">mason.nvim</a> package registry as <code>slang-server</code>, so no additional configuration is required in most cases. The default configuration shipped with nvim-lspconfig can be found <a href="https://github.com/neovim/nvim-lspconfig/blob/master/lsp/slang_server.lua">here</a>.</p>
 <p>Install the binary via <code>:MasonInstall slang-server</code> (or otherwise place it on <code>PATH</code>), then enable the server with <code>vim.lsp.enable("slang_server")</code>, or follow your own Neovim configuration's convention for enabling servers.</p>
 <p>Restart and run <code>:LspInfo</code> to make sure the LSP was correctly installed.</p>
-<p>For tool paths such as <code>UVM_HOME</code>, set <a href="../config/#neovim"><code>env</code> in <code>server.json</code> and use the
-<code>server_cmd</code> helper</a>.</p>
+<p>For tool paths such as <code>UVM_HOME</code>, set <a href="../config/#environment-variables"><code>env</code> in <code>server.json</code></a>.</p>
 <h4 id="code-lenses">Code lenses<a class="headerlink" href="#code-lenses" title="Permanent link">&para;</a></h4>
 <p>On Neovim 0.10 and 0.11, code lenses must be refreshed explicitly. It is also
 recommended to map <code>vim.lsp.codelens.run()</code> so that the lenses on the current
