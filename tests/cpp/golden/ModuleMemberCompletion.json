@@ -849,7 +849,10 @@
           "description": "std"
         },
         "kind": "Function",
-        "documentation": "int randomize(...)",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nfunction int randomize(...);\n````\n\nRandomizes the supplied scope variables subject to an optional with constraint block. Returns 1 on success or 0 on failure.\n\nIEEE 1800-2023 §18.12"
+        },
         "filterText": "randomize",
         "insertText": "randomize()",
         "insertTextFormat": "Snippet",

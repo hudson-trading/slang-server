@@ -20,6 +20,7 @@
 
 #include "slang/ast/ASTContext.h"
 #include "slang/ast/Compilation.h"
+#include "slang/ast/Expression.h"
 #include "slang/ast/symbols/BlockSymbols.h"
 #include "slang/ast/symbols/CompilationUnitSymbols.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
@@ -328,6 +329,58 @@ const ast::Scope* ShallowAnalysis::getScopeFromSym(const ast::Symbol* symbol) co
     }
 
     return nullptr;
+}
+
+const ast::Type* ShallowAnalysis::getExpressionTypeAtToken(const parsing::Token* token) const {
+    if (!token)
+        return nullptr;
+    const syntax::ExpressionSyntax* expression = nullptr;
+    for (auto* node = syntaxes.getTokenParent(token); node; node = node->parent) {
+        if (node->getLastToken().range().end() != token->range().end())
+            break;
+        if (auto* candidate = node->as_if<syntax::ExpressionSyntax>())
+            expression = candidate;
+    }
+
+    if (!expression || syntax::NameSyntax::isKind(expression->kind)) {
+        if (auto* symbol = getSymbolAtToken(token)) {
+            if (auto* type = getSymbolType(*symbol))
+                return type;
+            if (symbol->kind == ast::SymbolKind::ConstraintBlock)
+                return nullptr;
+        }
+    }
+    // A bare super handle is only meaningful as a class lookup receiver.
+    if (!expression || expression->kind == syntax::SyntaxKind::SuperHandle)
+        return nullptr;
+
+    auto [it, inserted] = m_expressionTypes.try_emplace(expression, nullptr);
+    if (inserted) {
+        if (auto* scope = m_symbolIndexer.getScopeForSyntax(*expression)) {
+            ast::ASTContext context(*scope, ast::LookupLocation::max);
+            auto& bound = ast::Expression::bind(*expression, context);
+            auto& type = unwrapErrorType(*bound.type);
+            if (!type.isError())
+                it->second = &type;
+        }
+    }
+    return it->second;
+}
+
+const ast::SystemSubroutine* ShallowAnalysis::getSystemMethod(const ast::Type* type,
+                                                              const ast::Symbol* receiver,
+                                                              std::string_view name) const {
+    if (receiver) {
+        auto* property = receiver->as_if<ast::ClassPropertySymbol>();
+        if ((property && property->randMode != ast::RandMode::None) ||
+            receiver->kind == ast::SymbolKind::ConstraintBlock) {
+            if (auto* method = getCompilation()->getSystemMethod(receiver->kind, name))
+                return method;
+        }
+    }
+    if (!type)
+        return nullptr;
+    return getCompilation()->getSystemMethod(type->kind, name);
 }
 
 const ast::Symbol* ShallowAnalysis::getAssignmentPatternTargetSymbol(
@@ -719,6 +772,29 @@ slang::SmallVector<const ast::Symbol*, 2> ShallowAnalysis::getSymbolsAtToken(
                 addSymbol(symbol);
         }
         return symbols;
+    }
+
+    if (declTok->kind == parsing::TokenKind::NewKeyword && syntax->parent &&
+        syntax->parent->kind == syntax::SyntaxKind::NewClassExpression) {
+        auto* expression = syntax->parent.get();
+        auto* parent = expression->parent.get();
+        const parsing::Token* target = nullptr;
+        if (auto* assignment = parent ? parent->as_if<syntax::BinaryExpressionSyntax>() : nullptr;
+            assignment && assignment->right == expression &&
+            syntax::SyntaxFacts::isAssignmentOperator(assignment->kind)) {
+            target = syntaxes.getTokenAt(assignment->left->getLastToken().location());
+        }
+        else if (auto* value = parent ? parent->as_if<syntax::EqualsValueClauseSyntax>() : nullptr;
+                 value && value->parent) {
+            if (auto* declarator = value->parent->as_if<syntax::DeclaratorSyntax>())
+                target = &declarator->name;
+        }
+        if (auto* scope = getScopeFromSym(getSymbolAtToken(target))) {
+            if (scope->asSymbol().kind == ast::SymbolKind::ClassType)
+                addSymbol(scope->asSymbol().as<ast::ClassType>().getConstructor());
+        }
+        if (!symbols.empty())
+            return symbols;
     }
 
     auto recoverMembers = [&](const syntax::SyntaxNode& left, std::string_view name) {

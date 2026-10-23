@@ -3,7 +3,71 @@
 
 #include "utils/GoldenTest.h"
 #include "utils/ServerHarness.h"
+#include <catch2/generators/catch_generators.hpp>
 #include <cstdlib>
+
+TEST_CASE("Hover the built-in package without a parent scope", "[scan-crashes]") {
+    ServerHarness server;
+    auto doc = server.openFile("stdlib.sv", R"(
+module top;
+    int value;
+    initial void'(std::randomize(value));
+endmodule
+)");
+    auto cursor = doc.before("std::");
+    auto hover = doc.getHoverAt(cursor.m_offset);
+    REQUIRE(hover);
+    auto content = rfl::get<lsp::MarkupContent>(hover->contents).value;
+    CHECK(content.find("**Package** `std`") != std::string::npos);
+    CHECK(cursor.getDefinitions().empty());
+}
+
+TEST_CASE("Unresolved super receivers do not bind as standalone expressions", "[scan-crashes]") {
+    ServerHarness server;
+    auto source =
+        GENERATE("module top; initial super.absent(); endmodule",
+                 "class Derived; function void run(); super.absent(); endfunction endclass",
+                 "class Base; endclass class Derived extends Base; "
+                 "static function void run(); super.absent(); endfunction endclass");
+    auto doc = server.openFile("invalid_super.sv", source);
+    auto cursor = doc.after("super.");
+    CHECK_FALSE(doc.getHoverAt(cursor.m_offset));
+    CHECK(cursor.getDefinitions().empty());
+    CHECK(cursor.getCompletions(".").empty());
+}
+
+TEST_CASE("Built-in classes and methods have hovers without source targets", "[scan-gaps]") {
+    ServerHarness server;
+    auto doc = server.openFile("builtin_methods.sv", R"(
+module top;
+    mailbox #(int) messages = new();
+    int values[4];
+    int value;
+    initial begin
+        values.shuffle();
+        void'(messages.try_put(1));
+        void'(messages.try_peek(value));
+        void'(messages.try_get(value));
+    end
+endmodule
+)");
+    for (const auto* name : {"mailbox", "shuffle", "try_put", "try_peek", "try_get"}) {
+        CAPTURE(name);
+        auto cursor = doc.before(name);
+        auto hover = doc.getHoverAt(cursor.m_offset);
+        REQUIRE(hover);
+        auto content = rfl::get<lsp::MarkupContent>(hover->contents).value;
+        CHECK(content.find(name) != std::string::npos);
+        CHECK(cursor.getDefinitions().empty());
+        if (name == std::string_view("shuffle"))
+            CHECK(content.find("function void array.shuffle()") != std::string::npos);
+        if (std::string_view(name).starts_with("try_"))
+            CHECK(content.find("function int") != std::string::npos);
+    }
+    auto unknown = server.openFile(
+        "unknown_method.sv", "module top; int values[4]; initial values.nonexistent(); endmodule");
+    CHECK_FALSE(unknown.getHoverAt(unknown.before("nonexistent").m_offset));
+}
 
 static size_t countSubstring(std::string_view text, std::string_view substring) {
     size_t count = 0;

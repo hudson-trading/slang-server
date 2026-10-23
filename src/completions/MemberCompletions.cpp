@@ -7,10 +7,12 @@
 //------------------------------------------------------------------------------
 #include "completions/MemberCompletions.h"
 
+#include "BuiltinMethodDocs.h"
 #include "Indexer.h"
 #include "ServerDriver.h"
 #include "completions/InstanceCompletions.h"
 #include "completions/KeywordCompletions.h"
+#include "completions/SystemTaskCompletions.h"
 #include "document/ShallowAnalysis.h"
 #include "lsp/LspTypes.h"
 #include "lsp/SnippetString.h"
@@ -186,7 +188,10 @@ public:
             return;
         }
 
+        auto* type = context.analysis->getExpressionTypeAtToken(receiverToken);
         auto* symbol = context.analysis->getSymbolAtToken(receiverToken);
+        if (!symbol)
+            symbol = type;
         if (!symbol) {
             WARN("No symbol found for token {}, checking index.", receiverToken->valueText());
             auto symbolLoc = getIndexer(dispatch).getNearestSymbolLoc(receiverToken->valueText(),
@@ -219,9 +224,20 @@ public:
         }
 
         auto* targetScope = context.analysis->getScopeFromSym(symbol);
+        if (!type)
+            type = getSymbolType(*symbol);
+        for (auto name : parsing::KnownSystemName_traits::values) {
+            auto* method = context.analysis->getSystemMethod(type, symbol, parsing::toString(name));
+            if (method && (!targetScope || !targetScope->find(method->name))) {
+                auto item = getSystemSubroutineCompletion(name, *method);
+                item.kind = lsp::CompletionItemKind::Method;
+                results.push_back(std::move(item));
+            }
+        }
         if (!targetScope) {
-            WARN("No scope found for sym {}: {}", symbol->getHierarchicalPath(),
-                 toString(symbol->kind));
+            if (results.empty())
+                WARN("No scope found for sym {}: {}", symbol->getHierarchicalPath(),
+                     toString(symbol->kind));
             return;
         }
 
@@ -609,7 +625,10 @@ void MemberCompletionQuery::resolve(const slang::ast::Symbol& symbol, lsp::Compl
             symSyntax = symbol.getSyntax();
         }
         else {
-            docStr = fmt::format("{} {}(...)", subroutine.getReturnType().toString(), symbol.name);
+            docStr = svCodeBlockString(formatBuiltinMethodSignature(subroutine));
+            if (auto* methodDoc = getBuiltinMethodDoc(subroutine))
+                docStr += fmt::format("\n\n{}\n\nIEEE 1800-2023 §{}", methodDoc->description,
+                                      methodDoc->ieeeSection);
         }
     }
     else if (symbol.kind == slang::ast::SymbolKind::TypeAlias) {
@@ -638,6 +657,9 @@ void MemberCompletionQuery::resolve(const slang::ast::Symbol& symbol, lsp::Compl
     }
     if (symSyntax) {
         item.documentation = svCodeBlock(*symSyntax);
+    }
+    else if (!docStr.empty()) {
+        item.documentation = markdown(docStr);
     }
     else {
         item.documentation = docStr;
