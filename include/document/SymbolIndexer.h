@@ -12,6 +12,7 @@
 #include <string_view>
 #include <type_traits>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "slang/ast/ASTVisitor.h"
 #include "slang/ast/Scope.h"
@@ -91,6 +92,10 @@ public:
     }
     void handle(const slang::ast::TypeParameterSymbol& sym) { sym.getTypeAlias().visit(*this); }
     void handle(const slang::ast::TypeAliasType& sym);
+    /// Index a representative class scope even when no specialization is referenced.
+    void handle(const slang::ast::GenericClassDefSymbol& sym);
+    /// Visit each class scope once, including recursive typedefs of that class.
+    void handle(const slang::ast::ClassType& sym);
     // Anonymous types (no typedef)
     void handle(const slang::ast::TransparentMemberSymbol& sym) { sym.wrapped.visit(*this); }
     // Special case for enum values, since name may not map
@@ -107,6 +112,9 @@ public:
     }
 
 private:
+    /// Class scopes already traversed through declarations or type aliases.
+    std::unordered_set<const slang::ast::ClassType*> visitedClasses;
+
     /// Whether this scope belongs to the document or one of its includers.
     bool shouldVisit(slang::BufferID buffer) const {
         return buffer == m_buffer ||

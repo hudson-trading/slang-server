@@ -292,6 +292,29 @@
         }
       },
       {
+        "label": "mailbox",
+        "labelDetails": {
+          "detail": " ",
+          "description": "std"
+        },
+        "kind": "Class",
+        "documentation": "",
+        "filterText": "mailbox",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 56,
+              "character": 28
+            },
+            "end": {
+              "line": 56,
+              "character": 28
+            }
+          },
+          "newText": "mailbox"
+        }
+      },
+      {
         "label": "max_val",
         "labelDetails": {
           "detail": " int"
@@ -447,6 +470,29 @@
         }
       },
       {
+        "label": "process",
+        "labelDetails": {
+          "detail": " ",
+          "description": "std"
+        },
+        "kind": "Class",
+        "documentation": "",
+        "filterText": "process",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 56,
+              "character": 28
+            },
+            "end": {
+              "line": 56,
+              "character": 28
+            }
+          },
+          "newText": "process"
+        }
+      },
+      {
         "label": "randomize",
         "labelDetails": {
           "detail": " function",
@@ -497,6 +543,29 @@
         }
       },
       {
+        "label": "semaphore",
+        "labelDetails": {
+          "detail": " ",
+          "description": "std"
+        },
+        "kind": "Class",
+        "documentation": "",
+        "filterText": "semaphore",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 56,
+              "character": 28
+            },
+            "end": {
+              "line": 56,
+              "character": 28
+            }
+          },
+          "newText": "semaphore"
+        }
+      },
+      {
         "label": "util_pkg",
         "labelDetails": {
           "detail": " Package"
@@ -521,6 +590,29 @@
             }
           },
           "newText": "util_pkg"
+        }
+      },
+      {
+        "label": "weak_reference",
+        "labelDetails": {
+          "detail": " ",
+          "description": "std"
+        },
+        "kind": "Class",
+        "documentation": "",
+        "filterText": "weak_reference",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 56,
+              "character": 28
+            },
+            "end": {
+              "line": 56,
+              "character": 28
+            }
+          },
+          "newText": "weak_reference"
         }
       }
     ]

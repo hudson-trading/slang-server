@@ -129,6 +129,29 @@
         }
       },
       {
+        "label": "mailbox",
+        "labelDetails": {
+          "detail": " ",
+          "description": "std"
+        },
+        "kind": "Class",
+        "documentation": "",
+        "filterText": "mailbox",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 10,
+              "character": 0
+            },
+            "end": {
+              "line": 10,
+              "character": 0
+            }
+          },
+          "newText": "mailbox"
+        }
+      },
+      {
         "label": "my_wire",
         "labelDetails": {
           "detail": " "
@@ -151,6 +174,29 @@
             }
           },
           "newText": "my_wire"
+        }
+      },
+      {
+        "label": "process",
+        "labelDetails": {
+          "detail": " ",
+          "description": "std"
+        },
+        "kind": "Class",
+        "documentation": "",
+        "filterText": "process",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 10,
+              "character": 0
+            },
+            "end": {
+              "line": 10,
+              "character": 0
+            }
+          },
+          "newText": "process"
         }
       },
       {
@@ -179,6 +225,29 @@
         }
       },
       {
+        "label": "semaphore",
+        "labelDetails": {
+          "detail": " ",
+          "description": "std"
+        },
+        "kind": "Class",
+        "documentation": "",
+        "filterText": "semaphore",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 10,
+              "character": 0
+            },
+            "end": {
+              "line": 10,
+              "character": 0
+            }
+          },
+          "newText": "semaphore"
+        }
+      },
+      {
         "label": "util_pkg",
         "labelDetails": {
           "detail": " Package"
@@ -203,6 +272,29 @@
             }
           },
           "newText": "util_pkg"
+        }
+      },
+      {
+        "label": "weak_reference",
+        "labelDetails": {
+          "detail": " ",
+          "description": "std"
+        },
+        "kind": "Class",
+        "documentation": "",
+        "filterText": "weak_reference",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 10,
+              "character": 0
+            },
+            "end": {
+              "line": 10,
+              "character": 0
+            }
+          },
+          "newText": "weak_reference"
         }
       }
     ]

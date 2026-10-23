@@ -50,11 +50,14 @@ public:
 protected:
     using CompletionQuery::CompletionQuery;
 
+    /// Lexical queries see compilation-unit imports; qualified and imported scopes stop locally.
+    enum class ScopeTraversal { Lexical, Scoped, Imported };
+
     static void addCompletions(std::vector<lsp::CompletionItem>& results,
                                const slang::ast::Scope* scope, CompletionContextKind contextKind,
                                const slang::ast::Scope* originalScope, std::string_view documentUri,
                                bool labelOnly = false, bool deferCallableEdit = false,
-                               bool isOriginalCall = true);
+                               ScopeTraversal traversal = ScopeTraversal::Lexical);
 
     static lsp::CompletionItem getHierarchicalCompletion(const slang::ast::Symbol& parentSymbol,
                                                          const slang::ast::Symbol& symbol,

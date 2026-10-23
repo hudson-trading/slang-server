@@ -375,6 +375,30 @@ void SymbolIndexer::handle(const slang::ast::TypeAliasType& value) {
     unwrapErrorType(value.getDeclaredType()->getType()).visit(*this);
 }
 
+void SymbolIndexer::handle(const slang::ast::GenericClassDefSymbol& sym) {
+    indexSymbolName(sym);
+    if (!shouldVisit(sym.location.buffer()))
+        return;
+
+    // Traversing members can create more specializations and invalidate the map iterator.
+    SmallVector<const slang::ast::Type*> specializations;
+    for (auto& specialization : sym.specializations())
+        specializations.push_back(&specialization);
+    if (specializations.empty()) {
+        auto* specialization = sym.getDefaultSpecialization(*sym.getParentScope());
+        specializations.push_back(specialization ? specialization
+                                                 : &sym.getInvalidSpecialization());
+    }
+    for (auto* specialization : specializations)
+        specialization->visit(*this);
+}
+
+void SymbolIndexer::handle(const slang::ast::ClassType& sym) {
+    indexSymbolName(sym);
+    if (shouldVisit(sym.location.buffer()) && visitedClasses.insert(&sym).second)
+        visitDefault(sym);
+}
+
 // These are not in the buffer, but should be visited
 void SymbolIndexer::handle(const slang::ast::RootSymbol& sym) {
     visitDefault(sym);

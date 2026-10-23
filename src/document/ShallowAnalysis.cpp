@@ -223,13 +223,14 @@ bool ShallowAnalysis::isOverSelector(const parsing::Token* node,
 }
 
 const ast::Symbol* ShallowAnalysis::handleScopedNameLookup(const syntax::NameSyntax* nameSyntax,
-                                                           const ast::ASTContext& context) const {
+                                                           const ast::ASTContext& context,
+                                                           bitmask<ast::LookupFlags> flags) const {
     auto scopedParent = nameSyntax->parent->as_if<syntax::ScopedNameSyntax>();
     if (!scopedParent || nameSyntax->kind != syntax::SyntaxKind::IdentifierName) {
         return nullptr;
     }
     ast::LookupResult result;
-    ast::Lookup::name(*scopedParent, context, ast::LookupFlags::None, result);
+    ast::Lookup::name(*scopedParent, context, flags, result);
     if (!result.found) {
         return nullptr;
     }
@@ -629,8 +630,17 @@ slang::SmallVector<const ast::Symbol*, 2> ShallowAnalysis::getSymbolsAtToken(
     }
 
     auto syntax = syntaxes.getTokenParent(declTok);
-    // Note: SuperHandle nodes can cause issues in symbol lookup
-    if (!syntax || syntax->kind == syntax::SyntaxKind::SuperHandle) {
+    if (!syntax) {
+        return symbols;
+    }
+    if (syntax->kind == syntax::SyntaxKind::SuperHandle) {
+        // Slang only accepts 'super' as part of a qualified lookup, while completion
+        // queries need the receiver alone, including when the member is unfinished.
+        for (auto* scope : m_symbolIndexer.getScopesForSyntax(*syntax)) {
+            auto [classType, inStatic] = ast::Lookup::getContainingClass(*scope);
+            if (classType && !inStatic)
+                addSymbol(classType->getBaseClass());
+        }
         return symbols;
     }
 
@@ -775,9 +785,29 @@ slang::SmallVector<const ast::Symbol*, 2> ShallowAnalysis::getSymbolsAtToken(
         }
 
         ast::ASTContext context(*scope, ast::LookupLocation::max);
+        bitmask<ast::LookupFlags> flags = ast::LookupFlags::None;
+        if (getCompilation()->hasFlag(ast::CompilationFlags::AllowUseBeforeDeclare))
+            flags |= ast::LookupFlags::AllowDeclaredAfter;
+
+        // Match Expression::bindName for every component of a call's receiver and name.
+        const syntax::SyntaxNode* fullName = nameSyntax;
+        while (fullName->parent && fullName->parent->kind == syntax::SyntaxKind::ScopedName)
+            fullName = fullName->parent;
+        if (auto* invocation = fullName->parent
+                                   ? fullName->parent->as_if<syntax::InvocationExpressionSyntax>()
+                                   : nullptr;
+            invocation && invocation->left == fullName && invocation->arguments) {
+            flags |= ast::LookupFlags::AllowDeclaredAfter | ast::LookupFlags::AlwaysAllowUpward;
+        }
+
         ast::LookupResult result;
-        ast::Lookup::name(*nameSyntax, context, ast::LookupFlags::None, result);
+        ast::Lookup::name(*nameSyntax, context, flags, result);
         if (result.found) {
+            if (syntax->kind == syntax::SyntaxKind::NamedParamAssignment &&
+                syntax->as<syntax::NamedParamAssignmentSyntax>().name == *declTok) {
+                auto* parameterScope = getScopeFromSym(result.found);
+                return parameterScope ? parameterScope->find(declTok->valueText()) : nullptr;
+            }
             if (isOverSelector(declTok, result)) {
                 const slang::ast::Symbol* cur = result.found;
                 size_t remainingInterfaceDimensions = 0;
@@ -876,7 +906,7 @@ slang::SmallVector<const ast::Symbol*, 2> ShallowAnalysis::getSymbolsAtToken(
         }
 
         // Try scoped name lookup with the same flags
-        if (auto scopedResult = handleScopedNameLookup(nameSyntax, context)) {
+        if (auto scopedResult = handleScopedNameLookup(nameSyntax, context, flags)) {
             return scopedResult;
         }
 
