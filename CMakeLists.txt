@@ -321,6 +321,7 @@ add_library(
   src/completions/MacroCompletions.cpp
   src/completions/MemberCompletions.cpp
   src/completions/SystemTaskCompletions.cpp
+  src/lsp/FilePoller.cpp
   src/lsp/FileWatchers.cpp
   src/lsp/URI.cpp
   src/util/Converters.cpp

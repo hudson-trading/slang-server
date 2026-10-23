@@ -15,18 +15,21 @@
 #include "ast/SlangServerWcp.h"
 #include "ast/WcpClient.h"
 #include "document/SlangDoc.h"
+#include "lsp/FilePoller.h"
 #include "lsp/FileWatchers.h"
 #ifdef SLANG_SERVER_DEBUG
 #    include "debug/DocumentScan.h"
 #endif
 #include "lsp/LspServer.h"
 #include "lsp/LspTypes.h"
+#include <chrono>
 #include <functional>
 #include <memory>
 #include <rfl.hpp>
 #include <rfl/Generic.hpp>
 #include <rfl/Variant.hpp>
 #include <rfl/json.hpp>
+#include <thread>
 #include <variant>
 #include <vector>
 
@@ -89,6 +92,15 @@ protected:
     /// Reload config and active build files, retaining the current state on failure.
     void reloadWatchedConfig();
 
+    /// Interval for polling watched files when the client cannot watch them; zero disables it.
+    std::chrono::milliseconds m_watchPollInterval{0};
+
+    /// Snapshots of the config and build files polled for clients without file watching.
+    lsp::FilePoller m_filePoller;
+
+    /// The config and command files whose changes trigger a reload.
+    std::vector<std::filesystem::path> getPolledFiles() const;
+
     /// Indexes the workspace for top symbols and macros
     Indexer m_indexer;
 
@@ -113,6 +125,16 @@ public:
                     bool requireValidConfig = false);
 
     const Config& getConfig() const { return m_config; }
+
+    /// Poll config and build files from a background thread after initialization when the
+    /// client does not support watched-file registration. Call before running the server.
+    void setWatchPollInterval(std::chrono::milliseconds interval) {
+        m_watchPollInterval = interval;
+    }
+
+    /// Dispatch changes to polled config and build files since the previous poll.
+    /// Requires the server state lock when the server is running.
+    void pollWatchedFiles();
 
 #ifdef SLANG_SERVER_DEBUG
     /// Scan an open document and publish language-feature coverage findings as diagnostics.
@@ -313,5 +335,9 @@ public:
 
     /// Get the mutex that serializes access to shared server state.
     std::mutex& getServerStateMutex() final { return serverStateMutex; };
+
+private:
+    /// Polls watched files; declared last so it stops before the state it reads is destroyed.
+    std::jthread m_watchPollThread;
 };
 } // namespace server
