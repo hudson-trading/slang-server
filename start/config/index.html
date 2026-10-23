@@ -530,6 +530,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      Environment variables
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#flags-precedence" class="md-nav__link">
     <span class="md-ellipsis">
       Flags precedence
@@ -1171,6 +1180,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      Environment variables
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#flags-precedence" class="md-nav__link">
     <span class="md-ellipsis">
       Flags precedence
@@ -1361,7 +1379,59 @@
 <li><code>~/.slang/server.json</code> — user config (personal defaults across all projects)</li>
 <li><code>${workspaceFolder}/.slang/local/server.json</code> — local config (<code>.slang/local</code> should be ignored by source control)</li>
 </ol>
-<p>Later files override earlier ones for scalar values. Lists (like <code>index</code> and <code>incdirs</code>) are appended across all files.</p>
+<p>Later files override earlier ones for scalar values. Lists (like <code>index</code> and <code>incdirs</code>) are appended across all files. <code>env</code> objects merge by variable name.</p>
+<h3 id="environment-variables">Environment variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h3>
+<p><code>build</code>, <code>index[].dirs</code>, <code>index[].excludeDirs</code>, and <code>incdirs</code> accept <code>$VAR</code>, <code>${VAR}</code>, and
+<code>$(VAR)</code> references to variables configured in <code>env</code> or inherited by the server process. For example:</p>
+<div class="language-json highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;index&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;dirs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;hw&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;build&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;${UVM_HOME}/src&quot;</span><span class="p">]}],</span>
+<span class="w">  </span><span class="nt">&quot;incdirs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;${UVM_HOME}/src&quot;</span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Expansion happens before resolving relative paths against the workspace root.
+Values containing spaces stay in one path, and variable values are not expanded
+recursively. Unset or empty variables produce an editor error naming the variable
+and config field, with a link to this section for configuration instructions.
+An unresolved <code>build</code> path leaves the server in exploration mode.
+Unresolved include paths and index roots are skipped; an
+unresolved exclusion skips its entire index entry. An unresolved index root or
+exclusion also disables the implicit workspace scan. Auto-configure preserves
+variable references in saved paths, including when it narrows a workspace root
+such as <code>${PROJECT_ROOT}</code> to <code>${PROJECT_ROOT}/hw</code>.</p>
+<p><code>flags</code> and <code>.f</code> file contents also expand these variable forms, including nested
+<code>-f</code>, <code>-F</code>, and <code>-C</code> file lists. Unset or empty variables produce an editor error;
+file-list errors include the file, line, and column. The affected flag string or
+file list is rejected before its arguments are applied. Comments, single-quoted
+text, and escaped dollar signs outside quotes remain literal. Use double quotes
+around variable references whose values contain spaces, such as
+<code>-f "${BUILD_ROOT}/design.f"</code>. Variable values are expanded only once.</p>
+<p>Set variable overrides in the <code>env</code> field of any <code>server.json</code> config:</p>
+<div class="language-json highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;env&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;UVM_HOME&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/tools/uvm&quot;</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;incdirs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;${UVM_HOME}/src&quot;</span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Variables merge by name in workspace, user, then local order. Later values
+replace earlier values for the same name, while unrelated variables are kept.
+Use <code>~/.slang/server.json</code> for personal defaults across projects, or
+<code>.slang/local/server.json</code> for machine-specific project paths. Paths must exist
+on the machine running the server.</p>
+<p>The server reads <code>env</code> when loading configuration and uses it to expand config
+paths, flags, file lists, and library maps. Configured values take precedence
+over its inherited environment; other inherited variables remain available.
+Values are literal strings: shell expressions and <code>${VAR}</code> references inside
+<code>env</code> are not expanded. Empty values override inherited values and produce an
+error when referenced in a config path, flag, or file list.</p>
+<p>Changes to <code>env</code>, including removing overrides, reload automatically when the
+config is saved. If a reload fails, the server retains its last working
+configuration. The server does not modify the process environment.</p>
+<p>This works with every LSP client, including VS Code and plain nvim-lspconfig;
+no client helper or restart is needed. With remote SSH, WSL, or containers,
+configuration and paths are read on the machine running the server. Variables
+exported in an existing editor's terminal do not update the server's inherited
+environment; use <code>env</code> for changes that should reload.</p>
 <h3 id="flags-precedence">Flags precedence<a class="headerlink" href="#flags-precedence" title="Permanent link">&para;</a></h3>
 <p>The <code>flags</code> field has special merging behavior. Workspace flags override user flags (only one is used as the base), and local flags are always appended on top. This means you can set shared flags in <code>.slang/server.json</code>, and add personal flags (like extra <code>-D</code> defines) in <code>.slang/local/server.json</code> without overriding the shared ones.</p>
 <p>The server watches these config files, .f files that are passed in via flags and <code>.f</code> build files for changes, automatically reloading when they are saved.</p>
@@ -1426,7 +1496,8 @@
 <dl>
 <dd>
 <p><strong>Type:</strong> <code>string</code></p>
-<p>Build file to automatically open on start.</p>
+<p>Build file to automatically open on start. Supports environment variables,
+for example <code>"${BUILD_ROOT}/compile.f"</code>.</p>
 <p><strong>Example:</strong> <code>"./build/compile.f"</code></p>
 </dd>
 </dl>
