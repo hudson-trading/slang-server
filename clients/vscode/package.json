@@ -515,6 +515,11 @@
         "icon": "$(open-preview)"
       },
       {
+        "command": "slang.debugScanDocument",
+        "title": "slang: Debug: Scan Current Document",
+        "enablement": "slang.debugScanAvailable && editorLangId =~ /^(verilog|systemverilog)(header)?$/"
+      },
+      {
         "command": "slang.restartLanguageServer",
         "title": "slang: Restart Language Server"
       },
@@ -556,6 +561,12 @@
       }
     ],
     "menus": {
+      "commandPalette": [
+        {
+          "command": "slang.debugScanDocument",
+          "when": "slang.debugScanAvailable"
+        }
+      ],
       "view/title": [
         {
           "command": "slang.project.clearTopLevel",

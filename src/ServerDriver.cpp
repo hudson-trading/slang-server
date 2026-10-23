@@ -50,11 +50,8 @@
 namespace server {
 using namespace slang;
 
-bool ServerDriver::s_debugHoversEnabled =
-#ifdef SLANG_DEBUG
-    true;
-#else
-    false;
+#ifdef SLANG_SERVER_DEBUG
+bool ServerDriver::s_debugHoversEnabled = true;
 #endif
 
 ServerDriver::ServerDriver(Indexer& indexer, SlangLspClient& client, const Config& config,
@@ -411,6 +408,9 @@ void ServerDriver::onDocDidChange(const lsp::DidChangeTextDocumentParams& params
 }
 
 void ServerDriver::closeDocument(const URI& uri) {
+#ifdef SLANG_SERVER_DEBUG
+    diagClient->setDebugDiagnostics(uri, {});
+#endif
     // Remove from open docs set
     m_openDocs.erase(uri);
     if (!comp) {
@@ -1281,7 +1281,8 @@ std::optional<std::string> ServerDriver::getDesignInstancePathAt(const URI& uri,
     return analysis->getDesignInstancePathAtToken(analysis->syntaxes.getWordTokenAt(*loc));
 }
 
-std::optional<lsp::Hover> ServerDriver::getDocHover(const URI& uri, const lsp::Position& position) {
+std::optional<lsp::Hover> ServerDriver::getDocHover(const URI& uri, const lsp::Position& position,
+                                                    bool allowDebug) {
     const auto doc = getDocument(uri);
     if (!doc) {
         return {};
@@ -1292,13 +1293,17 @@ std::optional<lsp::Hover> ServerDriver::getDocHover(const URI& uri, const lsp::P
     }
     auto maybeInfo = getDefinitionInfoAt(uri, position);
     if (!maybeInfo) {
-        if (s_debugHoversEnabled) {
+#ifdef SLANG_SERVER_DEBUG
+        if (allowDebug && s_debugHoversEnabled) {
             // Shows debug info for the token under cursor when debugging.
             auto analysis = doc->getAnalysis();
             markup::Document markup;
             markup.addParagraph(analysis->getDebugHover(loc.value()));
             return lsp::Hover{.contents = markup.build()};
         }
+#else
+        (void)allowDebug;
+#endif
         return {};
     }
     const auto& info = *maybeInfo;

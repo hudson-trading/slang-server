@@ -30,6 +30,9 @@ optional `vcpkg` submodule; slang-server uses its bundled JSON support with
 
 The binary will be at `build/bin/slang-server`.
 
+For developer hovers and document/repository coverage scans, enable
+`-DSLANG_SERVER_DEBUG=ON`. See [Debug hovers and feature scans](../development/debug-scans.md).
+
 ### Nix Development Shell
 
 If you use Nix with flakes enabled, the repository provides a development shell for x86-64 Linux, ARM64 Linux, and Apple Silicon macOS. It includes the compiler, CMake, Ninja, Python, `uv`, and build and test dependencies.

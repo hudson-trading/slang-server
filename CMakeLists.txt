@@ -100,6 +100,8 @@ option(SLANG_SERVER_INCLUDE_INSTALL "Include installation targets"
 option(SLANG_SERVER_STATIC_LINK_STDLIB
        "Statically link C++ standard library (libstdc++/libc++) and libgcc" OFF)
 option(SLANG_CI_BUILD "Enable stricter warnings for CI builds" OFF)
+option(SLANG_SERVER_DEBUG "Enable developer hovers and language-feature scans"
+       OFF)
 
 # Always require C++20 or later, no extensions.
 set(CMAKE_CXX_STANDARD 20)
@@ -333,6 +335,11 @@ add_library(
   src/ServerDiagClient.cpp)
 
 target_include_directories(slang_server_obj_lib PUBLIC include)
+if(SLANG_SERVER_DEBUG)
+  target_compile_definitions(slang_server_obj_lib PUBLIC SLANG_SERVER_DEBUG)
+  target_sources(slang_server_obj_lib PRIVATE src/debug/DocumentScan.cpp
+                                              src/debug/WorkspaceScan.cpp)
+endif()
 target_include_directories(slang_server_obj_lib SYSTEM
                            PRIVATE external/reflect-cpp/include)
 
