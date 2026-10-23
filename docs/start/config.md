@@ -6,7 +6,72 @@ The server uses a hierarchical configuration system with three config files:
 2. `~/.slang/server.json` — user config (personal defaults across all projects)
 3. `${workspaceFolder}/.slang/local/server.json` — local config (`.slang/local` should be ignored by source control)
 
-Later files override earlier ones for scalar values. Lists (like `index` and `incdirs`) are appended across all files.
+Later files override earlier ones for scalar values. Lists (like `index` and `incdirs`) are appended across all files. `env` objects merge by variable name.
+
+### Environment variables
+
+`build`, `index[].dirs`, `index[].excludeDirs`, and `incdirs` accept `$VAR`, `${VAR}`, and
+`$(VAR)` references to variables configured in `env` or inherited by the server process. For example:
+
+```json
+{
+  "index": [{"dirs": ["hw", "build", "${UVM_HOME}/src"]}],
+  "incdirs": ["${UVM_HOME}/src"]
+}
+```
+
+Expansion happens before resolving relative paths against the workspace root.
+Values containing spaces stay in one path, and variable values are not expanded
+recursively. Unset or empty variables produce an editor error naming the variable
+and config field, with a link to this section for configuration instructions.
+An unresolved `build` path leaves the server in exploration mode.
+Unresolved include paths and index roots are skipped; an
+unresolved exclusion skips its entire index entry. An unresolved index root or
+exclusion also disables the implicit workspace scan. Auto-configure preserves
+variable references in saved paths, including when it narrows a workspace root
+such as `${PROJECT_ROOT}` to `${PROJECT_ROOT}/hw`.
+
+`flags` and `.f` file contents also expand these variable forms, including nested
+`-f`, `-F`, and `-C` file lists. Unset or empty variables produce an editor error;
+file-list errors include the file, line, and column. The affected flag string or
+file list is rejected before its arguments are applied. Comments, single-quoted
+text, and escaped dollar signs outside quotes remain literal. Use double quotes
+around variable references whose values contain spaces, such as
+`-f "${BUILD_ROOT}/design.f"`. Variable values are expanded only once.
+
+Set variable overrides in the `env` field of any `server.json` config:
+
+```json
+{
+  "env": {
+    "UVM_HOME": "/tools/uvm"
+  },
+  "incdirs": ["${UVM_HOME}/src"]
+}
+```
+
+Variables merge by name in workspace, user, then local order. Later values
+replace earlier values for the same name, while unrelated variables are kept.
+Use `~/.slang/server.json` for personal defaults across projects, or
+`.slang/local/server.json` for machine-specific project paths. Paths must exist
+on the machine running the server.
+
+The server reads `env` when loading configuration and uses it to expand config
+paths, flags, file lists, and library maps. Configured values take precedence
+over its inherited environment; other inherited variables remain available.
+Values are literal strings: shell expressions and `${VAR}` references inside
+`env` are not expanded. Empty values override inherited values and produce an
+error when referenced in a config path, flag, or file list.
+
+Changes to `env`, including removing overrides, reload automatically when the
+config is saved. If a reload fails, the server retains its last working
+configuration. The server does not modify the process environment.
+
+This works with every LSP client, including VS Code and plain nvim-lspconfig;
+no client helper or restart is needed. With remote SSH, WSL, or containers,
+configuration and paths are read on the machine running the server. Variables
+exported in an existing editor's terminal do not update the server's inherited
+environment; use `env` for changes that should reload.
 
 ### Flags precedence
 
@@ -95,7 +160,8 @@ All configuration options are optional and have sensible defaults. In VSCode, th
 
 :   **Type:** `string`
 
-    Build file to automatically open on start.
+    Build file to automatically open on start. Supports environment variables,
+    for example `"${BUILD_ROOT}/compile.f"`.
 
     **Example:** `"./build/compile.f"`
 
