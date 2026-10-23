@@ -114,6 +114,29 @@ endclass
     }
 }
 
+TEST_CASE("Opening repeated recursive includes reports the depth limit and recovers") {
+    auto root = fs::weakly_canonical(fs::temp_directory_path()) /
+                fmt::format("slang_recursive_includes_{}", slang::OS::getpid());
+    fs::create_directories(root);
+    slang::ScopeGuard cleanup([&] { fs::remove_all(root); });
+    const std::string text = "`include \"self.sv\"\n`include \"self.sv\"\n";
+    auto path = root / "self.sv";
+    std::ofstream(path) << text;
+    ServerHarness server(lsp::InitializeParams{
+        .workspaceFolders = {{lsp::WorkspaceFolder{URI::fromFile(root), "recursive_includes"}}}});
+    CHECK(server.m_indexer.getFilesIncluding(path) == std::vector<fs::path>{path});
+
+    auto doc = server.openFile("self.sv", text);
+    auto diagnostics = doc.getDiagnostics();
+    REQUIRE(diagnostics.size() == 1);
+    CHECK(diagnostics.front().message == "exceeded max include depth");
+
+    doc.replaceAll("module top; endmodule\n");
+    doc.publishChanges();
+    CHECK(doc.getDiagnostics().empty());
+    CHECK(doc.getSymbolTree().size() == 1);
+}
+
 TEST_CASE("Expand macros preserves the selected file and uses its include context") {
     auto crlf = GENERATE(false, true);
     CAPTURE(crlf);
