@@ -25,6 +25,9 @@ class ClientHarness : public SlangLspClient {
 public:
     std::vector<URI> diagnosticPublications;
 
+    /// Dynamic capability registrations requested by the server.
+    std::vector<lsp::Registration> registrations;
+
     ~ClientHarness() {
         for (const auto& error : errors) {
             FAIL_CHECK("Unhandled client error: " << error);
@@ -39,7 +42,9 @@ public:
 
     void setConfig(const Config&) override {}
 
-    std::monostate getClientRegisterCapability(const lsp::RegistrationParams&) override {
+    std::monostate getClientRegisterCapability(const lsp::RegistrationParams& params) override {
+        registrations.insert(registrations.end(), params.registrations.begin(),
+                             params.registrations.end());
         return std::monostate{};
     }
 
