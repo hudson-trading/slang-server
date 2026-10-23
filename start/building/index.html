@@ -280,7 +280,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../development/versioning/" class="md-tabs__link">
+        <a href="../../development/debug-scans/" class="md-tabs__link">
           
   
   
@@ -601,6 +601,29 @@
             Development
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/debug-scans/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Debug hovers and feature scans
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -1080,6 +1103,8 @@ cmake<span class="w"> </span>--build<span class="w"> </span>build<span class="w"
 optional <code>vcpkg</code> submodule; slang-server uses its bundled JSON support with
 <code>REFLECTCPP_USE_VCPKG=OFF</code> by default.</p>
 <p>The binary will be at <code>build/bin/slang-server</code>.</p>
+<p>For developer hovers and document/repository coverage scans, enable
+<code>-DSLANG_SERVER_DEBUG=ON</code>. See <a href="../../development/debug-scans/">Debug hovers and feature scans</a>.</p>
 <h3 id="nix-development-shell">Nix Development Shell<a class="headerlink" href="#nix-development-shell" title="Permanent link">&para;</a></h3>
 <p>If you use Nix with flakes enabled, the repository provides a development shell for x86-64 Linux, ARM64 Linux, and Apple Silicon macOS. It includes the compiler, CMake, Ninja, Python, <code>uv</code>, and build and test dependencies.</p>
 <p>After cloning the repository and initializing its submodules, run from the repository root:</p>

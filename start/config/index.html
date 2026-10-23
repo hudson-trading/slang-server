@@ -18,7 +18,7 @@
         <link rel="prev" href="../installing/">
       
       
-        <link rel="next" href="../../development/versioning/">
+        <link rel="next" href="../../development/debug-scans/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -280,7 +280,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../development/versioning/" class="md-tabs__link">
+        <a href="../../development/debug-scans/" class="md-tabs__link">
           
   
   
@@ -761,6 +761,29 @@
             Development
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/debug-scans/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Debug hovers and feature scans
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -1506,8 +1529,8 @@ for example <code>"${BUILD_ROOT}/compile.f"</code>.</p>
 <dl>
 <dd>
 <p><strong>Type:</strong> <code>string</code> (glob pattern)</p>
-<p>Build file pattern used to find a <code>.f</code> file given the name of a waveform file. For example, <code>/tmp/{}.fst</code> with <code>builds/{}.f</code> looks for <code>build/foo.f</code> to load the compilation.</p>
-<p>If omitted and no other build source is configured, it defaults to matching all <code>.f</code> files in the workspace.</p>
+<p>Build file pattern used by <strong>Select build file</strong> in VSCode. It also finds a <code>.f</code> file given the name of a waveform file: for example, <code>/tmp/foo.fst</code> with <code>builds/{}.f</code> looks for <code>builds/foo.f</code> to load the compilation.</p>
+<p>If omitted and no other build source is configured, it defaults to <code>**/*.f</code>, matching all <code>.f</code> files in the workspace, including hidden directories such as <code>.slang/</code>.</p>
 <p><strong>Example:</strong> <code>"builds/{}.f"</code></p>
 </dd>
 </dl>
@@ -1525,7 +1548,7 @@ for example <code>"${BUILD_ROOT}/compile.f"</code>.</p>
 <span class="w">  </span><span class="nx">command?</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>Provides additional build-file sources in the VSCode client. Each entry matches files with <code>glob</code>.</p>
+<p>Provides additional sources for <strong>Select build file</strong> in the VSCode client. Each entry matches files with <code>glob</code>, including hidden directories such as <code>.slang/</code>.</p>
 <p>If <code>command</code> is omitted, the matched files are treated as existing <code>.f</code> files and can be selected directly.</p>
 <p>If <code>command</code> is provided, VSCode parses it as an executable plus fixed arguments, without invoking a shell. The matched file path is appended as the final argument, and the command should write <code>.f</code> content to stdout. Quote paths or arguments with spaces as needed. Relative executables are resolved from the workspace root, and the command runs with the workspace root as its working directory. The generated <code>.f</code> file is written under <code>.slang/local/builds/</code> using a stable path-based filename that keeps as much of the source path as will fit. If <code>name</code> is set, it is used as the readable prefix for the generated filename and the selection UI.</p>
 <p>When a command-backed source file changes, the command is automatically re-run and the compilation is reloaded.</p>
