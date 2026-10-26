@@ -265,6 +265,14 @@ const ast::Symbol* ShallowAnalysis::handleInterfacePortHeader(const parsing::Tok
 }
 
 const ast::Scope* ShallowAnalysis::getScopeFromSym(const ast::Symbol* symbol) const {
+    while (auto* array = symbol ? symbol->as_if<ast::InstanceArraySymbol>() : nullptr) {
+        if (!array->elements.empty())
+            symbol = array->elements.front();
+        else {
+            auto members = array->members();
+            symbol = members.begin() == members.end() ? nullptr : &*members.begin();
+        }
+    }
     if (!symbol) {
         return nullptr;
     }
@@ -290,8 +298,7 @@ const ast::Scope* ShallowAnalysis::getScopeFromSym(const ast::Symbol* symbol) co
         auto [connSym, modport] = port.getConnection();
         auto scope = getScopeFromSym(connSym);
 
-        auto instanceArray = connSym ? connSym->as_if<ast::InstanceArraySymbol>() : nullptr;
-        if ((!connSym || (instanceArray && instanceArray->elements.empty())) && port.interfaceDef) {
+        if (!scope && port.interfaceDef) {
             auto parentScope = port.getParentScope();
             if (!parentScope)
                 return nullptr;
@@ -377,7 +384,12 @@ const ast::SystemSubroutine* ShallowAnalysis::getSystemMethod(const ast::Type* t
     }
     if (!type)
         return nullptr;
-    return getCompilation()->getSystemMethod(type->kind, name);
+    auto kind = type->kind;
+    if (auto* error = type->as_if<ast::ErrorType>();
+        error && error->arrayDimension && !error->arrayDimension->isPacked) {
+        kind = ast::SymbolKind::FixedSizeUnpackedArrayType;
+    }
+    return getCompilation()->getSystemMethod(kind, name);
 }
 
 const ast::Symbol* ShallowAnalysis::getAssignmentPatternTargetSymbol(
@@ -904,6 +916,37 @@ slang::SmallVector<const ast::Symbol*, 2> ShallowAnalysis::getSymbolsAtToken(
 
         ast::LookupResult result;
         ast::Lookup::name(*nameSyntax, context, flags, result);
+        if (!result.found) {
+            if (auto* selected = nameSyntax->as_if<syntax::IdentifierSelectNameSyntax>()) {
+                auto* symbol = ast::Lookup::unqualified(*scope, selected->identifier.valueText(),
+                                                        flags);
+                if (symbol && symbol->kind == ast::SymbolKind::InstanceArray) {
+                    if (selected->identifier == *declTok)
+                        return symbol;
+                    for (auto* selector : selected->selectors) {
+                        auto* array = symbol->as_if<ast::InstanceArraySymbol>();
+                        if (!array || !selector->selector ||
+                            selector->selector->kind != syntax::SyntaxKind::BitSelect)
+                            return nullptr;
+                        if (array->elements.empty()) {
+                            // Slang retains uninstantiated members separately from real elements.
+                            auto members = array->members();
+                            if (members.begin() == members.end())
+                                return nullptr;
+                            symbol = &*members.begin();
+                        }
+                        else {
+                            ast::LookupResult selection;
+                            symbol = ast::Lookup::selectChild(*array, {&selector, 1}, context,
+                                                              selection);
+                            if (!symbol)
+                                return nullptr;
+                        }
+                    }
+                    return symbol->kind == ast::SymbolKind::InstanceArray ? nullptr : symbol;
+                }
+            }
+        }
         if (result.found) {
             if (syntax->kind == syntax::SyntaxKind::NamedParamAssignment &&
                 syntax->as<syntax::NamedParamAssignmentSyntax>().name == *declTok) {
@@ -966,20 +1009,14 @@ slang::SmallVector<const ast::Symbol*, 2> ShallowAnalysis::getSymbolsAtToken(
                             continue;
                         }
 
-                        const ast::Type* type = nullptr;
-                        if (cur->isType()) {
-                            type = &cur->as<ast::Type>();
+                        const auto* type = getSymbolType(*cur);
+                        if (type && type->isError()) {
+                            auto* select = std::get<const syntax::ElementSelectSyntax*>(sel);
+                            if (!select->selector ||
+                                select->selector->kind != syntax::SyntaxKind::BitSelect)
+                                return nullptr;
                         }
-                        else if (cur->isValue()) {
-                            type = &cur->as<ast::ValueSymbol>().getType();
-                        }
-
-                        if (type && type->isArray()) {
-                            cur = type->getArrayElementType();
-                        }
-                        else {
-                            return nullptr;
-                        }
+                        cur = type ? type->getArrayElementType(/* allowError */ true) : nullptr;
                         hasInterfaceDimensions = false;
                     }
                     if (!cur) {
@@ -995,14 +1032,20 @@ slang::SmallVector<const ast::Symbol*, 2> ShallowAnalysis::getSymbolsAtToken(
             // with IdentifierSelectNameSyntax (instance arrays) result.found will be the final
             // element, when we may want the array. In the case of the selectors being the token, we
             // do want the element for completions
-            if (syntax->kind == syntax::SyntaxKind::IdentifierSelectName &&
-                (result.found->kind == slang::ast::SymbolKind::Instance ||
-                 result.found->kind == slang::ast::SymbolKind::GenerateBlock)) {
-                auto& idSelect = syntax->as<syntax::IdentifierSelectNameSyntax>();
-                if (idSelect.identifier == *declTok) {
-                    return result.path.at(result.path.size() - 1 - idSelect.selectors.size())
+            auto* selectedSyntax = syntax;
+            while (selectedSyntax != nameSyntax &&
+                   selectedSyntax->kind != syntax::SyntaxKind::IdentifierSelectName)
+                selectedSyntax = selectedSyntax->parent;
+            if (auto* idSelect = selectedSyntax->as_if<syntax::IdentifierSelectNameSyntax>();
+                idSelect && (result.found->kind == slang::ast::SymbolKind::Instance ||
+                             result.found->kind == slang::ast::SymbolKind::InstanceArray ||
+                             result.found->kind == slang::ast::SymbolKind::GenerateBlock)) {
+                if (idSelect->identifier == *declTok) {
+                    return result.path.at(result.path.size() - 1 - idSelect->selectors.size())
                         .symbol.get();
                 }
+                if (result.found->kind == ast::SymbolKind::InstanceArray)
+                    return nullptr;
             }
             return result.found;
         }

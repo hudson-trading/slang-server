@@ -243,6 +243,7 @@ public:
 
         INFO("Getting hierarchical completions for symbol {} in scope {}", symbol->name,
              symbol->getHierarchicalPath());
+        auto* instance = targetScope->getContainingInstance();
         std::string_view previousLabel;
         for (auto& member : targetScope->members()) {
             if (member.name.empty() || member.name == previousLabel)
@@ -251,8 +252,9 @@ public:
             auto item = getHierarchicalCompletion(*symbol, member, doc->getURI().str(),
                                                   followedByCall,
                                                   resolvesCompletionEdits(dispatch));
-            // Virtual instances are not scope members, so their paths cannot be looked up later.
-            if (type && type->kind == ast::SymbolKind::VirtualInterfaceType) {
+            // These instance scopes cannot be recovered by a later hierarchical lookup.
+            if ((type && type->kind == ast::SymbolKind::VirtualInterfaceType) ||
+                (instance && instance->flags.has(ast::InstanceFlags::Uninstantiated))) {
                 resolve(member, item, true);
                 item.data.reset();
             }
