@@ -273,19 +273,16 @@ const ast::Scope* ShallowAnalysis::getScopeFromSym(const ast::Symbol* symbol) co
         return &symbol->as<ast::Scope>();
     }
 
-    if (symbol->isType()) {
-        auto& type = unwrapErrorType(symbol->as<ast::Type>());
-        if (type.isScope()) {
-            return &type.as<ast::Scope>();
+    if (auto* type = getSymbolType(*symbol)) {
+        if (auto* virtualInterface = type->as_if<ast::VirtualInterfaceType>()) {
+            if (virtualInterface->modport)
+                return virtualInterface->modport;
+            return &virtualInterface->iface.body;
         }
+        if (type->isScope())
+            return &type->as<ast::Scope>();
     }
-    else if (ast::ValueSymbol::isKind(symbol->kind)) {
-        auto& type = unwrapErrorType(symbol->as<ast::ValueSymbol>().getType());
-        if (type.isScope()) {
-            return &type.as<ast::Scope>();
-        }
-    }
-    else if (ast::InstanceSymbol::isKind(symbol->kind)) {
+    if (ast::InstanceSymbol::isKind(symbol->kind)) {
         return &symbol->as<ast::InstanceSymbol>().body.as<ast::Scope>();
     }
     else if (ast::InterfacePortSymbol::isKind(symbol->kind)) {
@@ -693,6 +690,35 @@ slang::SmallVector<const ast::Symbol*, 2> ShallowAnalysis::getSymbolsAtToken(
             auto [classType, inStatic] = ast::Lookup::getContainingClass(*scope);
             if (classType && !inStatic)
                 addSymbol(classType->getBaseClass());
+        }
+        return symbols;
+    }
+
+    auto* virtualType = syntax->as_if<syntax::VirtualInterfaceTypeSyntax>();
+    if (!virtualType && syntax->kind == syntax::SyntaxKind::DotMemberClause && syntax->parent)
+        virtualType = syntax->parent->as_if<syntax::VirtualInterfaceTypeSyntax>();
+    if (!virtualType && syntax->kind == syntax::SyntaxKind::NamedParamAssignment &&
+        syntax->parent && syntax->parent->parent)
+        virtualType = syntax->parent->parent->as_if<syntax::VirtualInterfaceTypeSyntax>();
+    if (virtualType) {
+        // Type arguments belong to the interface, not the enclosing parameterized class name.
+        for (auto* scope : m_symbolIndexer.getScopesForSyntax(*virtualType)) {
+            auto* definition = getCompilation()
+                                   ->tryGetDefinition(virtualType->name.valueText(), *scope)
+                                   .definition;
+            if (!definition || definition->kind != ast::SymbolKind::Definition ||
+                definition->as<ast::DefinitionSymbol>().definitionKind !=
+                    ast::DefinitionKind::Interface)
+                continue;
+            if (syntax == virtualType) {
+                addSymbol(definition);
+            }
+            else {
+                ast::ASTContext context(*scope, ast::LookupLocation::max);
+                auto& type = ast::VirtualInterfaceType::fromSyntax(context, *virtualType);
+                if (auto* iface = type.as_if<ast::VirtualInterfaceType>())
+                    addSymbol(iface->iface.body.find(declTok->valueText()));
+            }
         }
         return symbols;
     }
