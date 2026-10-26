@@ -178,6 +178,14 @@ public:
     /// @return Pointer to the scope, or nullptr if the symbol doesn't have an accessible scope
     const slang::ast::Scope* getScopeFromSym(const slang::ast::Symbol* symbol) const;
 
+    /// Gets the type of the expression ending at a token, including call results.
+    const slang::ast::Type* getExpressionTypeAtToken(const slang::parsing::Token* token) const;
+
+    /// Looks up built-in methods by receiver kind and result type.
+    const slang::ast::SystemSubroutine* getSystemMethod(const slang::ast::Type* type,
+                                                        const slang::ast::Symbol* receiver,
+                                                        std::string_view name) const;
+
     /// Gets the target struct scope when the location is an assignment pattern key.
     const slang::ast::Scope* getAssignmentPatternKeyScope(slang::SourceLocation loc) const;
 
@@ -227,6 +235,10 @@ private:
 
     mutable slang::flat_hash_map<const slang::ast::DefinitionSymbol*, const slang::ast::Scope*>
         m_interfaceFallbackScopes;
+
+    /// Cached receiver types for expressions that require binding beyond a symbol lookup.
+    mutable slang::flat_hash_map<const slang::syntax::ExpressionSyntax*, const slang::ast::Type*>
+        m_expressionTypes;
 
     const GenvarElaboration* getGenvarElaborationAtToken(const slang::parsing::Token* node) const;
 

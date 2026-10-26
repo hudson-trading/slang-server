@@ -21,6 +21,7 @@
 #include "util/Formatting.h"
 #include "util/Logging.h"
 #include "util/Markdown.h"
+#include "util/SlangExtensions.h"
 #include <algorithm>
 #include <filesystem>
 #include <memory>
@@ -923,6 +924,11 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
     }
     const parsing::Token* declTok = analysis->syntaxes.getWordTokenAt(loc.value());
     if (!declTok) {
+        auto* token = analysis->syntaxes.getTokenAt(*loc);
+        if (token && token->kind == parsing::TokenKind::NewKeyword)
+            declTok = token;
+    }
+    if (!declTok) {
         return {};
     }
     const syntax::SyntaxNode* declSyntax = analysis->syntaxes.getTokenParent(declTok);
@@ -1025,6 +1031,21 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
     };
 
     auto localSymbols = analysis->getSymbolsAtToken(declTok);
+    if (localSymbols.empty()) {
+        auto* previous = analysis->syntaxes.getTokenBefore(declTok->location());
+        if (previous && previous->kind == parsing::TokenKind::Dot) {
+            auto* receiver = analysis->syntaxes.getTokenBefore(previous->location());
+            auto* type = analysis->getExpressionTypeAtToken(receiver);
+            auto* method = analysis->getSystemMethod(type, analysis->getSymbolAtToken(receiver),
+                                                     declTok->valueText());
+            auto* methodDoc = method ? getSystemTaskDoc(method->knownNameId) : nullptr;
+            if (methodDoc) {
+                return DefinitionInfo{sm, DefinitionInfo::SystemSubroutineTarget{
+                                              *declTok, methodDoc,
+                                              method->kind == ast::SubroutineKind::Task}};
+            }
+        }
+    }
     for (auto* symbol : localSymbols) {
         addSymbol(symbol, analysis);
         if (auto* port = symbol->as_if<ast::InterfacePortSymbol>()) {
@@ -1146,8 +1167,9 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
                 symSyntax = typeParam->getTypeAlias().getSyntax();
         }
         if (!symSyntax) {
-            ERROR("Failed to get syntax for symbol {} of kind {}", symbol->name,
-                  toString(symbol->kind));
+            if (symbol->location != SourceLocation::NoLocation)
+                ERROR("Failed to get syntax for symbol {} of kind {}", symbol->name,
+                      toString(symbol->kind));
             return {};
         }
 
@@ -1179,11 +1201,12 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
         if (!symbol)
             return {};
         auto syntaxTarget = makeSyntaxTarget(symbol);
-        if (!syntaxTarget)
+        if (!syntaxTarget && symbol->location != SourceLocation::NoLocation)
             return {};
 
         std::vector<DefinitionInfo::SyntaxTarget> syntaxes;
-        syntaxes.push_back(std::move(*syntaxTarget));
+        if (syntaxTarget)
+            syntaxes.push_back(std::move(*syntaxTarget));
         if (auto* modportPort = symbol->as_if<ast::ModportPortSymbol>()) {
             if (modportPort->internalSymbol) {
                 if (auto internalSyntax = makeSyntaxTarget(modportPort->internalSymbol))
@@ -1191,12 +1214,15 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
             }
         }
         auto* designSymbol = symbolAnalysis->getDesignSymbol(*symbol);
-        return DefinitionInfo::SymbolTarget{.syntaxes = std::move(syntaxes),
-                                            .symbol = designSymbol ? designSymbol : symbol,
-                                            .analysis = symbolAnalysis,
-                                            .renderInterfaceConnection = renderInterfaceConnection,
-                                            .generatedSignalCount = getGeneratedSignalCount(
-                                                symbol)};
+        return DefinitionInfo::SymbolTarget{
+            .syntaxes = std::move(syntaxes),
+            .symbol = designSymbol ? designSymbol : symbol,
+            .analysis = symbolAnalysis,
+            .renderInterfaceConnection = renderInterfaceConnection,
+            .generatedSignalCount = getGeneratedSignalCount(symbol),
+            .builtinName = syntaxTarget ? parsing::Token{}
+                                        : declTok->withLocation(*symbolAnalysis->getCompilation(),
+                                                                SourceLocation::NoLocation)};
     };
 
     if (declSyntax && declSyntax->kind == syntax::SyntaxKind::NamedPortConnection &&
@@ -1441,7 +1467,7 @@ std::optional<std::vector<lsp::Location>> ServerDriver::getDocReferences(
     auto addTargetSymbol = [&](const ast::Symbol* symbol,
                                const std::shared_ptr<ShallowAnalysis>& symbolAnalysis,
                                BufferID symbolAnalysisBuffer) {
-        if (!symbol)
+        if (!symbol || !symbol->location || symbol->location == SourceLocation::NoLocation)
             return;
 
         // A top level of a shallow compilation is an instance body; get the definition instead

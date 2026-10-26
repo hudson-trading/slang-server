@@ -1182,16 +1182,20 @@ module m5;
 
             wait( abc.triggered || de.triggered );
                   ^^^ Ref -> **Sequence** `abc` in `m5`  \n\\n\\n\---\n\\n\`sequence abc;\n\    @(posedge clk) a ##1 b ##1 c;\n\endsequence`
+                      ^^^^^^^^^ Sym triggered : SystemName
                                    ^^ Ref -> **Sequence** `de` in `m5`  \n\\n\\n\---\n\\n\`sequence de;\n\    @(negedge clk) d ##[2:5] e;\n\endsequence`
+                                      ^^^^^^^^^ Sym triggered : SystemName
 
             if( abc.triggered )
                 ^^^ Ref -> **Sequence** `abc` in `m5`  \n\\n\\n\---\n\\n\`sequence abc;\n\    @(posedge clk) a ##1 b ##1 c;\n\endsequence`
+                    ^^^^^^^^^ Sym triggered : SystemName
 
                 $display( "abc succeeded" );
                 ^^^^^^^^ Sym $display : SystemName
 
             if( de.triggered )
                 ^^ Ref -> **Sequence** `de` in `m5`  \n\\n\\n\---\n\\n\`sequence de;\n\    @(negedge clk) d ##[2:5] e;\n\endsequence`
+                   ^^^^^^^^^ Sym triggered : SystemName
 
                 $display( "de succeeded" );
                 ^^^^^^^^ Sym $display : SystemName
@@ -1596,6 +1600,8 @@ class C3;
                              ^^^ Ref -> **ClassProperty** `clk` in `C3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic clk, x, y, c;`
 
             option.weight = 2;
+            ^^^^^^ Ref -> **ClassProperty** `option` in `C3.e`  \n\Type: UnpackedStruct `struct{int weight, int goal, string comment, int at_least, ...}`  \n\
+                   ^^^^^^ Ref -> **Field** `weight` in `C3.e`  \n\Type: `int`  \n\Width: `32`  \n\
 
             wildcard bins a = { [0:63],65 };
                           ^ Sym a : CoverageBin
@@ -1632,6 +1638,8 @@ class C3;
               ^ Ref -> **Coverpoint** `e` in `C3`  \n\\n\\n\---\n\\n\`e: coverpoint x iff (clk) {\n\    option.weight = 2;\n\    wildcard bins a = { [0:63],65 };\n\    bins b[] = { [127:150],[148:191] }; // note overlapping values\n\    bins c[] = { 200,201,202 };\n\    bins d = { [1000:$] };\n\    bins others[] = default;\n\    bins sa = (4 => 5 => 6), ([7:9],10 => 11,12);\n\    bins sb[] = (12 => 3 [* 1]);\n\    bins sc = (12 => 3 [-> 1]);\n\    bins sd = (12 => 3 [= 1:2]);\n\}`
 
             option.weight = c;
+            ^^^^^^ Ref -> **ClassProperty** `option` in `C3`  \n\Type: UnpackedStruct `struct{int weight, int goal, string comment, int at_least, ...}`  \n\
+                   ^^^^^^ Ref -> **Field** `weight` in `C3`  \n\Type: `int`  \n\Width: `32`  \n\
                             ^ Ref -> **ClassProperty** `c` in `C3`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`logic clk, x, y, c;`
 
             bins one = '{ '{1,2}, '{3,4}, '{5,6} };
@@ -1689,12 +1697,14 @@ module m10;
                    ^ Sym G : ConstraintBlock
                        ^^^ Ref -> **ClassProperty** `len` in `m10.Packet`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int len;`
                                 ^^^^^^^ Ref -> **ClassProperty** `payload` in `m10.Packet`  \n\Type: `byte$[]`  \n\\n\\n\---\n\\n\`byte payload[];`
+                                        ^^^^ Sym size : SystemName
                                                 ^^^ Ref -> **ClassProperty** `len` in `m10.Packet`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int len;`
 
         function void post_randomize; crc = payload.sum; endfunction
                       ^^^^^^^^^^^^^^ Sym post_randomize : Subroutine
                                       ^^^ Ref -> **ClassProperty** `crc` in `m10.Packet`  \n\Type: `int`  \n\Width: `32`  \n\\n\\n\---\n\\n\`int crc;`
                                             ^^^^^^^ Ref -> **ClassProperty** `payload` in `m10.Packet`  \n\Type: `byte$[]`  \n\\n\\n\---\n\\n\`byte payload[];`
+                                                    ^^^ Sym sum : SystemName
 
     endclass
 

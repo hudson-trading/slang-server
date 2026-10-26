@@ -296,6 +296,7 @@ add_library(
   slang_server_obj_lib OBJECT
   ${CMAKE_CURRENT_BINARY_DIR}/VersionInfo.cpp
   src/SystemTaskDocs.cpp
+  src/BuiltinMethodDocs.cpp
   src/ast/ActiveDesignContext.cpp
   src/ast/ConeResult.cpp
   src/ast/ServerCompilation.cpp
