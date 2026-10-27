@@ -67,6 +67,9 @@ public:
         /// stay byte-based, which only differs on lines with non-ASCII comments.
         bool utf8Positions = false;
 
+        /// [`workspace.didChangeWatchedFiles.dynamicRegistration`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#didChangeWatchedFilesClientCapabilities)
+        bool watchedFilesRegistrationSupported = false;
+
         Capabilities() = default;
 
         explicit Capabilities(const lsp::ClientCapabilities& capabilities) {
@@ -91,6 +94,11 @@ public:
                 const auto& encs = *capabilities.general->positionEncodings;
                 utf8Positions = std::ranges::find(encs, "utf-8") != encs.end();
             }
+
+            const auto& workspace = capabilities.workspace;
+            watchedFilesRegistrationSupported =
+                workspace && workspace->didChangeWatchedFiles &&
+                workspace->didChangeWatchedFiles->dynamicRegistration.value_or(false);
 
             if (!capabilities.experimental)
                 return;

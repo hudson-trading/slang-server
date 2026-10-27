@@ -284,6 +284,61 @@ TEST_CASE("Config reload retains working state when environment variables are mi
           std::vector<std::string>{"WIDTH=16"});
 }
 
+TEST_CASE("Clients without file watching reload config and build edits by polling") {
+    ConfigWorkspace workspace;
+    for (const std::string name : {"a", "b", "c"})
+        workspace.write(name + ".sv", "module tb_" + name + "; endmodule\n");
+    workspace.write("a.f", "a.sv\n");
+    workspace.write("b.f", "b.sv\n");
+    workspace.write(".slang/server.json", R"({"build":"a.f"})");
+    auto server = workspace.server();
+    CHECK(server.client.registrations.empty());
+    auto loaded = [&](const std::string& name) {
+        return server.getActiveInstance("tb_" + name).has_value();
+    };
+    CHECK(loaded("a"));
+
+    auto* originalDriver = server.m_driver.get();
+    server.pollWatchedFiles();
+    CHECK(server.m_driver.get() == originalDriver);
+
+    // Selecting a build in the local config overrides the shared one.
+    workspace.write(".slang/local/server.json", R"({"build":"b.f"})");
+    server.pollWatchedFiles();
+    CHECK(server.getConfig().build.value() == "b.f");
+    CHECK(loaded("b"));
+    CHECK_FALSE(loaded("a"));
+
+    // Files listed by the newly loaded build are watched too.
+    server.pollWatchedFiles();
+    workspace.write("b.f", "b.sv\nc.sv\n");
+    server.pollWatchedFiles();
+    CHECK(loaded("b"));
+    CHECK(loaded("c"));
+
+    fs::remove(workspace.root / ".slang/local/server.json");
+    server.pollWatchedFiles();
+    CHECK(server.getConfig().build.value() == "a.f");
+    CHECK(loaded("a"));
+    CHECK_FALSE(loaded("b"));
+}
+
+TEST_CASE("Clients with file watching receive watcher registrations instead of polling") {
+    ConfigWorkspace workspace;
+    workspace.write("a.sv", "module tb_a; endmodule\n");
+    workspace.write("a.f", "a.sv\n");
+    workspace.write(".slang/server.json", R"({"build":"a.f"})");
+    ServerHarness server(lsp::InitializeParams{
+        .capabilities = {.workspace =
+                             lsp::WorkspaceClientCapabilities{
+                                 .didChangeWatchedFiles =
+                                     lsp::DidChangeWatchedFilesClientCapabilities{
+                                         .dynamicRegistration = true}}},
+        .workspaceFolders = {{lsp::WorkspaceFolder{URI::fromFile(workspace.root), "config"}}}});
+    REQUIRE(server.client.registrations.size() == 1);
+    CHECK(server.client.registrations[0].method == "workspace/didChangeWatchedFiles");
+}
+
 TEST_CASE("Unset flag and file-list variables notify the client before applying arguments") {
     ConfigEnvironment environment;
     environment.set(GENERATE(static_cast<const char*>(nullptr), ""));
