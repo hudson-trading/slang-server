@@ -34,6 +34,7 @@
 #include "slang/ast/symbols/CompilationUnitSymbols.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
 #include "slang/ast/symbols/ParameterSymbols.h"
+#include "slang/ast/symbols/SubroutineSymbols.h"
 #include "slang/ast/symbols/ValueSymbol.h"
 #include "slang/ast/types/AllTypes.h"
 #include "slang/ast/types/Type.h"
@@ -1171,6 +1172,11 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
         if (!symSyntax) {
             if (auto* typeParam = symbol->as_if<ast::TypeParameterSymbol>())
                 symSyntax = typeParam->getTypeAlias().getSyntax();
+            if (auto* scope = symbol->getParentScope()) {
+                auto* subroutine = scope->asSymbol().as_if<ast::SubroutineSymbol>();
+                if (subroutine && subroutine->returnValVar == symbol)
+                    symSyntax = subroutine->getSyntax();
+            }
         }
         if (!symSyntax) {
             if (symbol->location != SourceLocation::NoLocation)
