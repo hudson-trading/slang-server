@@ -53,6 +53,144 @@ lsp::InitializeParams makeCompletionResolveParams(std::vector<std::string> prope
 
 } // namespace
 
+TEST_CASE("Macro completions follow definitions at the cursor", "[scan-gaps][macro]") {
+    ServerHarness server;
+    auto header = server.openFile("macro_values.svh", "`define VALUE(first) first\n");
+    auto doc = server.openFile("macro_state.sv", R"(
+`include "macro_values.svh"
+module sample;
+    int first_use = `VALUE(1);
+`undef VALUE
+    int after_undef = `__LINE__;
+`define VALUE(second, third) second + third
+    int second_use = `VALUE(2, 3);
+`undef VALUE
+    int after_last_undef = `__LINE__;
+`ifdef NEVER_DEFINED
+`define HIDDEN 0
+`endif
+`define FUTURE 1
+endmodule
+)");
+    for (auto [marker, argument] :
+         {std::pair{"first_use = `", "first"}, std::pair{"second_use = `", "second"}}) {
+        auto items = doc.after(marker).getCompletions("`");
+        auto it = std::ranges::find_if(items, [](const CompletionHandle& item) {
+            return item.m_item.label == "`VALUE";
+        });
+        REQUIRE(it != items.end());
+        it->resolve();
+        REQUIRE(it->m_item.documentation);
+        CHECK(rfl::get<lsp::MarkupContent>(*it->m_item.documentation).value.find(argument) !=
+              std::string::npos);
+        CHECK(std::ranges::none_of(items, [](const CompletionHandle& item) {
+            return item.m_item.label == "`FUTURE" || item.m_item.label == "`HIDDEN";
+        }));
+    }
+    for (auto marker : {"after_undef", "after_last_undef"}) {
+        auto items = doc.after(std::string(marker) + " = `").getCompletions("`");
+        CHECK(std::ranges::none_of(items, [](const CompletionHandle& item) {
+            return item.m_item.label == "`VALUE" || item.m_item.label == "`FUTURE" ||
+                   item.m_item.label == "`HIDDEN";
+        }));
+    }
+}
+
+TEST_CASE("Macro completions restore unused and repeated definitions", "[macro]") {
+    ServerHarness server;
+    auto doc = server.openFile("macro_redefinitions.sv", R"(
+module sample;
+    int before_definition = `__LINE__;
+`define VALUE(first, second) first + second
+    int before_redefinition = `__LINE__;
+`define VALUE(third, fourth) third + fourth
+    int after_redefinition = `VALUE(1, 2);
+`define VALUE(third, fourth) third + fourth
+    int after_identical = `VALUE(3, 4);
+`undef VALUE
+    int after_undef = `__LINE__;
+`define VALUE(fifth, sixth) fifth + sixth
+`undef VALUE
+endmodule
+)");
+    for (auto [marker, arguments] : {std::pair{"before_redefinition", "VALUE(first, second)"},
+                                     std::pair{"after_redefinition", "VALUE(third, fourth)"},
+                                     std::pair{"after_identical", "VALUE(third, fourth)"}}) {
+        auto items = doc.after(std::string(marker) + " = `").getCompletions("`");
+        auto it = std::ranges::find_if(items, [](const CompletionHandle& item) {
+            return item.m_item.label == "`VALUE";
+        });
+        REQUIRE(it != items.end());
+        it->resolve();
+        REQUIRE(it->m_item.documentation);
+        CHECK(rfl::get<lsp::MarkupContent>(*it->m_item.documentation).value.find(arguments) !=
+              std::string::npos);
+    }
+    for (auto marker : {"before_definition", "after_undef"}) {
+        auto items = doc.after(std::string(marker) + " = `").getCompletions("`");
+        CHECK(std::ranges::none_of(items, [](const CompletionHandle& item) {
+            return item.m_item.label == "`VALUE";
+        }));
+    }
+}
+
+TEST_CASE("Macro completions preserve command-line definitions", "[macro]") {
+    ServerHarness server;
+    Config config;
+    config.flagsByFile.value().push_back(
+        {"macro_config", "-D'VALUE(command_arg,other_arg)=command_arg+other_arg'"});
+    REQUIRE(server.loadConfig(config));
+    auto doc = server.openFile("macro_predefined.sv", R"(
+`define VALUE(source_arg, other_source) source_arg + other_source
+module sample;
+    int value = `VALUE(1, 2);
+endmodule
+)");
+    auto items = doc.after("value = `").getCompletions("`");
+    auto it = std::ranges::find_if(items, [](const CompletionHandle& item) {
+        return item.m_item.label == "`VALUE";
+    });
+    REQUIRE(it != items.end());
+    it->resolve();
+    REQUIRE(it->m_item.documentation);
+    CHECK(rfl::get<lsp::MarkupContent>(*it->m_item.documentation)
+              .value.find("VALUE(command_arg,other_arg)") != std::string::npos);
+}
+
+TEST_CASE("Macro completions use the cursor's include context", "[macro]") {
+    ServerHarness server("repo1");
+    auto header = server.openFile("macro_state_body.svh", R"(
+    int in_header = `VALUE(1, 2);
+`undef VALUE
+    int after_undef = `__LINE__;
+)");
+    auto definitions = server.openFile("macro_state_defs.svh",
+                                       "`define VALUE(first, second) first + second\n");
+    definitions.save();
+    auto doc = server.openFile("macro_state_parent.sv", R"(
+`include "macro_state_defs.svh"
+module sample;
+`include "macro_state_body.svh"
+`define VALUE(third, fourth) third + fourth
+    int in_parent = `VALUE(3, 4);
+endmodule
+)");
+    doc.doc->getAnalysis();
+    auto items = header.after("in_header = `").getCompletions("`");
+    auto it = std::ranges::find_if(items, [](const CompletionHandle& item) {
+        return item.m_item.label == "`VALUE";
+    });
+    REQUIRE(it != items.end());
+    it->resolve();
+    REQUIRE(it->m_item.documentation);
+    CHECK(rfl::get<lsp::MarkupContent>(*it->m_item.documentation)
+              .value.find("VALUE(first, second)") != std::string::npos);
+    items = header.after("after_undef = `").getCompletions("`");
+    CHECK(std::ranges::none_of(items, [](const CompletionHandle& item) {
+        return item.m_item.label == "`VALUE";
+    }));
+}
+
 TEST_CASE("Package lexical completions include compilation-unit imports", "[scan-gaps]") {
     ServerHarness server;
     auto header = server.openFile("imports.svh", "import library_pkg::*;\n");
@@ -206,8 +344,11 @@ TEST_CASE("MacroCompletion") {
         $display("arg1: %s, arg2: %s", arg1, arg2);
     `
     )");
-    // For simplicity we add all defines in the current file.
-    CHECK(doc.before("define").getCompletions("`").size() == 2);
+    auto beforeDefinition = doc.before("define").getCompletions("`");
+    CHECK(beforeDefinition.size() == 1);
+    CHECK(std::ranges::none_of(beforeDefinition, [](const CompletionHandle& item) {
+        return item.m_item.label == "`TEST_MACRO";
+    }));
     CHECK(doc.after(";\n    `").getCompletions("`").size() == 2);
 
     // Only return the indexed one

@@ -9,12 +9,12 @@
 #include "completions/MacroCompletions.h"
 
 #include "Indexer.h"
+#include "document/ShallowAnalysis.h"
 #include "document/SlangDoc.h"
 #include "lsp/SnippetString.h"
 #include "util/Formatting.h"
 #include "util/Logging.h"
 #include <cctype>
-#include <unordered_set>
 
 #include "slang/syntax/AllSyntax.h"
 #include "slang/syntax/SyntaxTree.h"
@@ -96,17 +96,26 @@ public:
 
     void getCompletions(std::vector<lsp::CompletionItem>& results, CompletionDispatch& dispatch,
                         const std::shared_ptr<SlangDoc>& doc,
-                        const CompletionContext&) const final {
-        std::unordered_set<std::string> seenLabels;
+                        const CompletionContext& context) const final {
+        auto cursor = doc->getLocation(replacementRange.start);
+        if (!cursor)
+            return;
+        auto& sm = doc->getSourceManager();
+        auto active = context.analysis->macros;
+        auto references = doc->getSyntaxTree()->getMacroRefs();
+        for (auto it = references.rbegin(); it != references.rend(); ++it) {
+            if (sm.isBeforeInCompilationUnit(it->syntax->getLastToken().range().end(), *cursor)
+                    .value_or(false))
+                break;
+            active[it->definition->name.valueText()] = it->definition;
+        }
         // Filter before building rich items because compilations can contain thousands of macros.
-        for (auto& macro : doc->getSyntaxTree()->getDefinedMacros()) {
-            if (macro->name.location() == SourceLocation::NoLocation)
-                continue;
-            auto name = macro->name.valueText();
+        for (const auto& [name, macro] : active) {
             if (!matchesPrefix(name, typedPrefix))
                 continue;
-            auto label = "`" + std::string(name);
-            if (!seenLabels.insert(label).second)
+            if (macro->name.location() == SourceLocation::NoLocation ||
+                sm.isBeforeInCompilationUnit(*cursor, macro->getLastToken().range().end())
+                    .value_or(false))
                 continue;
             results.push_back(getCompletion(*macro));
         }
@@ -114,10 +123,9 @@ public:
         for (auto& name : getIndexer(dispatch).getAllMacroNames()) {
             if (!matchesPrefix(name, typedPrefix))
                 continue;
-            auto item = getCompletion(std::move(name));
-            if (!seenLabels.insert(item.label).second)
+            if (context.analysis->macroNames.contains(name))
                 continue;
-            results.push_back(std::move(item));
+            results.push_back(getCompletion(std::move(name)));
         }
     }
 
@@ -135,6 +143,8 @@ std::unique_ptr<CompletionQuery> MacroCompletionQuery::create(lsp::Range replace
 }
 
 void MacroCompletionQuery::resolve(CompletionDispatch& dispatch, lsp::CompletionItem& item) {
+    if (item.documentation)
+        return;
     auto paths = getIndexer(dispatch).getFilesForMacro(item.label.substr(1));
     if (paths.empty()) {
         WARN("No macro files found for {}", item.label);

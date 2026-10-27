@@ -165,7 +165,10 @@ public:
     /// Map from macro name to macro definition (last active definition)
     slang::flat_hash_map<std::string_view, const slang::syntax::DefineDirectiveSyntax*> macros;
 
-    /// Map from macro usage syntax to the definition that was active at expansion time
+    /// Names known to this tree, including removed definitions, for filtering indexed completions.
+    slang::flat_hash_set<std::string_view> macroNames;
+
+    /// Map from macro reference syntax to the definition that was expanded, removed, or replaced.
     slang::flat_hash_map<const slang::syntax::SyntaxNode*,
                          const slang::syntax::DefineDirectiveSyntax*>
         macroUsageDefinitions;
