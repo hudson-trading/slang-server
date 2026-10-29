@@ -144,6 +144,38 @@ TEST_CASE("EditingActiveInstancePreservesParentLocalType") {
           &designType->as<slang::ast::Type>().getCanonicalType());
 }
 
+TEST_CASE("ActiveInstanceDiagnosticsUseOverriddenStructType") {
+    ServerHarness server("active_instance_member_access");
+    SECTION("Source file") {
+        server.setBuildFile("design.f");
+    }
+    SECTION("Library file") {
+        server.setBuildFile("library.f");
+    }
+
+    auto doc = server.openFile("child.sv");
+    REQUIRE(server.setActiveInstance("top.selected"));
+    CHECK(doc.doc->getAnalysis()->getSemanticDiagnostics().empty());
+    doc.append("\n");
+    doc.publishChanges();
+    CHECK(doc.getDiagnostics().empty());
+
+    // A real member error must still be diagnosed in the selected struct type.
+    doc.after("item.valid").write("_missing");
+    doc.publishChanges();
+    auto diagnostics = doc.getDiagnostics();
+    REQUIRE(diagnostics.size() == 1);
+    CHECK(diagnostics.front().message.find("valid_missing") != std::string::npos);
+}
+
+TEST_CASE("StandaloneDiagnosticsStillCheckDefaultType") {
+    ServerHarness server("active_instance_member_access");
+    auto doc = server.openFile("child.sv");
+    auto diagnostics = doc.getDiagnostics();
+    REQUIRE(diagnostics.size() == 1);
+    CHECK(diagnostics.front().message == "invalid member access for type 'T' (aka 'logic')");
+}
+
 TEST_CASE("GotoDefinitionSelectsReferencedActiveInstance") {
     ServerHarness server("active_interface_port_hover");
     server.setBuildFile("design.f");

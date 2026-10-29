@@ -306,24 +306,12 @@ module TestModule #(
 
     bus_if.master bus_master,
     ^^^^^^ Ref -> **Interface** `bus_if`  \n\\n\\n\---\n\\n\`interface bus_if #(\n\    parameter type data_t,\n\    parameter int ADDR_WIDTH = 32\n\)(\n\    input logic clk,\n\    input logic rst\n\);`
-           ^ Ref -> **Modport** `master` in `bus_if`  \n\\n\\n\---\n\\n\Modport for master  \n\  \n\\n\\n\---\n\\n\`modport master (\n\    input clk, rst, ready,\n\    output valid, addr, data, write_enable\n\);`
-            ^ Ref -> **Modport** `master` in `bus_if`  \n\\n\\n\---\n\\n\Modport for master  \n\  \n\\n\\n\---\n\\n\`modport master (\n\    input clk, rst, ready,\n\    output valid, addr, data, write_enable\n\);`
-             ^ Ref -> **Modport** `master` in `bus_if`  \n\\n\\n\---\n\\n\Modport for master  \n\  \n\\n\\n\---\n\\n\`modport master (\n\    input clk, rst, ready,\n\    output valid, addr, data, write_enable\n\);`
-              ^ Ref -> **Modport** `master` in `bus_if`  \n\\n\\n\---\n\\n\Modport for master  \n\  \n\\n\\n\---\n\\n\`modport master (\n\    input clk, rst, ready,\n\    output valid, addr, data, write_enable\n\);`
-               ^ Ref -> **Modport** `master` in `bus_if`  \n\\n\\n\---\n\\n\Modport for master  \n\  \n\\n\\n\---\n\\n\`modport master (\n\    input clk, rst, ready,\n\    output valid, addr, data, write_enable\n\);`
-                ^ Ref -> **Modport** `master` in `bus_if`  \n\\n\\n\---\n\\n\Modport for master  \n\  \n\\n\\n\---\n\\n\`modport master (\n\    input clk, rst, ready,\n\    output valid, addr, data, write_enable\n\);`
+           ^^^^^^ Ref -> **Modport** `master` in `bus_if`  \n\\n\\n\---\n\\n\Modport for master  \n\  \n\\n\\n\---\n\\n\`modport master (\n\    input clk, rst, ready,\n\    output valid, addr, data, write_enable\n\);`
                   ^^^^^^^^^^ Sym bus_master : InterfacePort
 
     bus_if.follower bus_follower
     ^^^^^^ Ref -> **Interface** `bus_if`  \n\\n\\n\---\n\\n\`interface bus_if #(\n\    parameter type data_t,\n\    parameter int ADDR_WIDTH = 32\n\)(\n\    input logic clk,\n\    input logic rst\n\);`
-           ^ Ref -> **Modport** `follower` in `bus_if`  \n\\n\\n\---\n\\n\Modport for follower  \n\  \n\\n\\n\---\n\\n\`modport follower (\n\    input clk, rst, valid, addr, data, write_enable,\n\    output ready\n\);`
-            ^ Ref -> **Modport** `follower` in `bus_if`  \n\\n\\n\---\n\\n\Modport for follower  \n\  \n\\n\\n\---\n\\n\`modport follower (\n\    input clk, rst, valid, addr, data, write_enable,\n\    output ready\n\);`
-             ^ Ref -> **Modport** `follower` in `bus_if`  \n\\n\\n\---\n\\n\Modport for follower  \n\  \n\\n\\n\---\n\\n\`modport follower (\n\    input clk, rst, valid, addr, data, write_enable,\n\    output ready\n\);`
-              ^ Ref -> **Modport** `follower` in `bus_if`  \n\\n\\n\---\n\\n\Modport for follower  \n\  \n\\n\\n\---\n\\n\`modport follower (\n\    input clk, rst, valid, addr, data, write_enable,\n\    output ready\n\);`
-               ^ Ref -> **Modport** `follower` in `bus_if`  \n\\n\\n\---\n\\n\Modport for follower  \n\  \n\\n\\n\---\n\\n\`modport follower (\n\    input clk, rst, valid, addr, data, write_enable,\n\    output ready\n\);`
-                ^ Ref -> **Modport** `follower` in `bus_if`  \n\\n\\n\---\n\\n\Modport for follower  \n\  \n\\n\\n\---\n\\n\`modport follower (\n\    input clk, rst, valid, addr, data, write_enable,\n\    output ready\n\);`
-                 ^ Ref -> **Modport** `follower` in `bus_if`  \n\\n\\n\---\n\\n\Modport for follower  \n\  \n\\n\\n\---\n\\n\`modport follower (\n\    input clk, rst, valid, addr, data, write_enable,\n\    output ready\n\);`
-                  ^ Ref -> **Modport** `follower` in `bus_if`  \n\\n\\n\---\n\\n\Modport for follower  \n\  \n\\n\\n\---\n\\n\`modport follower (\n\    input clk, rst, valid, addr, data, write_enable,\n\    output ready\n\);`
+           ^^^^^^^^ Ref -> **Modport** `follower` in `bus_if`  \n\\n\\n\---\n\\n\Modport for follower  \n\  \n\\n\\n\---\n\\n\`modport follower (\n\    input clk, rst, valid, addr, data, write_enable,\n\    output ready\n\);`
                     ^^^^^^^^^^^^ Sym bus_follower : InterfacePort
 
 );
