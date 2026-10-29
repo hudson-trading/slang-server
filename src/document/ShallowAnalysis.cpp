@@ -117,8 +117,7 @@ ShallowAnalysis::ShallowAnalysis(BufferID buffer, std::shared_ptr<ShallowCompila
     for (auto* definition : unindexedDefinitions) {
         if (m_symbolIndexer.getSymbol(definition->getSyntax()))
             continue;
-        auto& instance = ast::InstanceSymbol::createDefault(*getCompilation(), *definition);
-        instance.setParent(getCompilation()->getRoot());
+        auto& instance = m_shallowCompilation->getDefinitionInstance(*definition);
         instance.visit(m_symbolIndexer);
     }
 }
@@ -265,10 +264,7 @@ const ast::Symbol* ShallowAnalysis::handleInterfacePortHeader(const parsing::Tok
     }
 
     auto& idef = iface.definition->as<ast::DefinitionSymbol>();
-    auto& inst = ast::InstanceSymbol::createDefault(*getCompilation(), idef);
-    inst.setParent(getCompilation()->getRoot());
-
-    // TODO: avoid creating a default instance each time
+    auto& inst = m_shallowCompilation->getDefinitionInstance(idef);
     return inst.body.lookupName(header.modport->member.valueText());
 }
 

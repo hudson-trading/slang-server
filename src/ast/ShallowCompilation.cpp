@@ -47,6 +47,16 @@ ShallowCompilation::ShallowCompilation(
         }
         m_activeDesign = design->createActiveDesignContext(definitionNames);
         m_activeDesign->applyOverrides(*m_compilation);
+
+        // Keep overrides available for synthetic instances after getRoot finalizes the
+        // compilation. createDefault does not consult the compilation's override tree.
+        for (auto* symbol : m_compilation->getDefinitions()) {
+            auto* definition = symbol->as_if<ast::DefinitionSymbol>();
+            if (definition && m_activeDesign->getDesignSymbol(*definition)) {
+                m_definitionInstances[definition].overrides =
+                    m_compilation->getOrAddTopLevelHierarchyOverride(*definition->getSyntax());
+            }
+        }
     }
 }
 
@@ -58,16 +68,26 @@ bool ShallowCompilation::hasValidBuffers() const {
     return true;
 }
 
+ast::InstanceSymbol& ShallowCompilation::getDefinitionInstance(
+    const ast::DefinitionSymbol& definition) {
+    auto& entry = m_definitionInstances[&definition];
+    if (!entry.instance) {
+        auto& root = m_compilation->getRoot();
+        entry.instance = &ast::InstanceSymbol::createDefault(*m_compilation, definition,
+                                                             &entry.overrides);
+        entry.instance->setParent(root);
+    }
+    return *entry.instance;
+}
+
 const Diagnostics& ShallowCompilation::getSemanticDiagnostics() {
     if (!m_editedDefinitionsElaborated) {
-        auto& root = m_compilation->getRoot();
         for (auto* symbol : m_compilation->getDefinitions()) {
             auto* definition = symbol->as_if<ast::DefinitionSymbol>();
             if (!definition || definition->syntaxTree != m_tree.get())
                 continue;
 
-            auto& instance = ast::InstanceSymbol::createDefault(*m_compilation, *definition);
-            instance.setParent(root);
+            auto& instance = getDefinitionInstance(*definition);
             m_compilation->forceElaborate(instance.body);
         }
         m_editedDefinitionsElaborated = true;
