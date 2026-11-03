@@ -79,6 +79,21 @@ endmodule
     scanner.scanDocument(hdl);
 }
 
+TEST_CASE("InlayHintsMacroRedefinitions") {
+    ServerHarness server;
+    auto doc = server.openFile("inlay_macro_redefinitions.sv", R"(
+`define VALUE(first, second) first + second
+module sample;
+    int first_use = `VALUE(1, 2);
+`define VALUE(third, fourth) third + fourth
+    int second_use = `VALUE(3, 4);
+`undef VALUE
+endmodule
+)");
+    InlayHintScanner scanner;
+    scanner.scanDocument(doc);
+}
+
 TEST_CASE("InlayHintsModuleOrdered") {
     /// Test inlay hints for module instantiation with ordered ports
     ServerHarness server("");

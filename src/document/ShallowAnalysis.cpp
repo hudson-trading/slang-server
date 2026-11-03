@@ -69,10 +69,14 @@ ShallowAnalysis::ShallowAnalysis(BufferID buffer, std::shared_ptr<ShallowCompila
         ERROR("No syntaxes found in document {}", m_sourceManager.getFullPath(m_buffer).string());
 
     const auto& tree = m_shallowCompilation->getSyntaxTree();
-    for (auto& macro : tree->getDefinedMacros())
+    for (auto& macro : tree->getDefinedMacros()) {
         macros[macro->name.valueText()] = macro;
-    for (auto& ref : tree->getPreprocessorMetadata().macroRefs)
+        macroNames.insert(macro->name.valueText());
+    }
+    for (auto& ref : tree->getPreprocessorMetadata().macroRefs) {
         macroUsageDefinitions[ref.syntax] = ref.definition;
+        macroNames.insert(ref.definition->name.valueText());
+    }
 
     for (auto loc = m_sourceManager.getIncludedFrom(buffer); loc;
          loc = m_sourceManager.getIncludedFrom(loc.buffer())) {
