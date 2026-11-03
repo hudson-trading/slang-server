@@ -422,10 +422,22 @@ const ast::Symbol* ShallowAnalysis::getAssignmentPatternTargetSymbol(
             return getSymbolAtToken(&declarator->name);
     }
 
-    if (auto* item = parent->as_if<syntax::AssignmentPatternItemSyntax>();
-        item && item->expr.get() == &pattern && item->parent && item->parent->parent) {
-        auto* outerPattern =
-            item->parent->parent->as_if<syntax::AssignmentPatternExpressionSyntax>();
+    if (auto* statement = parent->as_if<syntax::ReturnStatementSyntax>();
+        statement && statement->returnValue == &pattern) {
+        for (auto* scope : m_symbolIndexer.getScopesForSyntax(*statement)) {
+            for (; scope; scope = scope->asSymbol().getParentScope()) {
+                if (auto* subroutine = scope->asSymbol().as_if<ast::SubroutineSymbol>())
+                    return &subroutine->getReturnType();
+            }
+        }
+        return nullptr;
+    }
+
+    auto* item = parent->as_if<syntax::AssignmentPatternItemSyntax>();
+    auto* container = item ? item->parent.get() : parent;
+    if (container && syntax::AssignmentPatternSyntax::isKind(container->kind) &&
+        container->parent) {
+        auto* outerPattern = container->parent->as_if<syntax::AssignmentPatternExpressionSyntax>();
         if (!outerPattern)
             return nullptr;
 
@@ -433,18 +445,12 @@ const ast::Symbol* ShallowAnalysis::getAssignmentPatternTargetSymbol(
         if (!outerTarget)
             return nullptr;
 
-        const ast::Type* outerType = nullptr;
-        if (outerTarget->isType())
-            outerType = &outerTarget->as<ast::Type>();
-        else if (ast::ValueSymbol::isKind(outerTarget->kind))
-            outerType = &outerTarget->as<ast::ValueSymbol>().getType();
-
-        if (outerType) {
-            if (auto* elementType = unwrapErrorType(*outerType).getArrayElementType())
+        if (auto* outerType = getSymbolType(*outerTarget)) {
+            if (auto* elementType = outerType->getArrayElementType())
                 return elementType;
         }
 
-        auto* key = item->key->as_if<syntax::IdentifierNameSyntax>();
+        auto* key = item ? item->key->as_if<syntax::IdentifierNameSyntax>() : nullptr;
         if (!key)
             return nullptr;
         auto* outerScope = getScopeFromSym(outerTarget);
@@ -459,6 +465,30 @@ const ast::Symbol* ShallowAnalysis::getAssignmentPatternTargetSymbol(
     if (auto* property = node ? node->as_if<syntax::SimplePropertyExprSyntax>() : nullptr;
         property && property->expr.get() == parent) {
         node = property->parent.get();
+    }
+
+    if (auto* named = node ? node->as_if<syntax::NamedPortConnectionSyntax>() : nullptr)
+        return getSymbolAtToken(&named->name);
+    if (auto* ordered = node ? node->as_if<syntax::OrderedPortConnectionSyntax>() : nullptr) {
+        auto* instanceSyntax = ordered->parent
+                                   ? ordered->parent->as_if<syntax::HierarchicalInstanceSyntax>()
+                                   : nullptr;
+        auto* symbol = instanceSyntax ? m_symbolIndexer.getSymbol(instanceSyntax) : nullptr;
+        while (auto* array = symbol ? symbol->as_if<ast::InstanceArraySymbol>() : nullptr)
+            symbol = array->elements.empty() ? nullptr : array->elements.front();
+        auto* instance = symbol ? symbol->as_if<ast::InstanceSymbol>() : nullptr;
+        if (!instance)
+            return nullptr;
+        auto ports = instance->body.getPortList();
+        for (size_t index = 0; index < instanceSyntax->connections.size(); ++index) {
+            if (instanceSyntax->connections[index] == ordered) {
+                if (index >= ports.size())
+                    return nullptr;
+                auto* port = ports[index]->as_if<ast::PortSymbol>();
+                return port && port->internalSymbol ? port->internalSymbol : ports[index];
+            }
+        }
+        return nullptr;
     }
 
     auto* argument = node ? node->as_if<syntax::ArgumentSyntax>() : nullptr;
@@ -543,7 +573,12 @@ const ast::Scope* ShallowAnalysis::getAssignmentPatternScopeAt(SourceLocation lo
                              previous->kind == parsing::TokenKind::Comma);
 
         if (!isKey && pattern->kind == syntax::SyntaxKind::SimpleAssignmentPattern) {
-            for (auto* node = syntax; node && node != pattern; node = node->parent) {
+            auto* keySyntax = syntax;
+            if (previous && previous->kind == parsing::TokenKind::Identifier &&
+                previous->range().end() == loc) {
+                keySyntax = syntaxes.getTokenParent(previous);
+            }
+            for (auto* node = keySyntax; node && node != pattern; node = node->parent) {
                 if (node->parent.get() == pattern && syntax::ExpressionSyntax::isKind(node->kind)) {
                     isKey = true;
                     break;

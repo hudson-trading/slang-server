@@ -76,21 +76,20 @@ public:
 
         // Preserve delimiters absorbed by the parser while the pattern is incomplete.
         auto needsComma = [&]() {
-            auto* item =
-                patternExpression->parent
-                    ? patternExpression->parent->as_if<syntax::AssignmentPatternItemSyntax>()
-                    : nullptr;
-            auto* outerPattern =
-                item && item->parent
-                    ? item->parent->as_if<syntax::StructuredAssignmentPatternSyntax>()
-                    : nullptr;
-            return item && item->expr.get() == patternExpression && outerPattern &&
-                   outerPattern->closeBrace.isMissing();
+            auto* parent = patternExpression->parent.get();
+            if (auto* item = parent ? parent->as_if<syntax::AssignmentPatternItemSyntax>()
+                                    : nullptr) {
+                parent = item->parent.get();
+            }
+            return parent && syntax::AssignmentPatternSyntax::isKind(parent->kind) &&
+                   parent->getLastToken().isMissing();
         }();
         auto needsSemicolon = [&]() {
             auto* parent = patternExpression->parent.get();
             if (!parent)
                 return false;
+            if (auto* statement = parent->as_if<syntax::ReturnStatementSyntax>())
+                return statement->semi.isMissing();
             if (auto* assignment = parent->as_if<syntax::BinaryExpressionSyntax>();
                 assignment && assignment->right.get() == patternExpression &&
                 syntax::SyntaxFacts::isAssignmentOperator(assignment->kind)) {
