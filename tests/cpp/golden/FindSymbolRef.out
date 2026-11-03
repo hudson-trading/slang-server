@@ -1346,6 +1346,7 @@ class A;
                      ^ Sym f : Subroutine
 
         f = i;
+        ^ Ref -> **Variable** `f` in `A::f`  \n\Type: `integer`  \n\Width: `32`  \n\\n\\n\---\n\\n\`function integer f();\n\    f = i;\n\endfunction`
             ^ Ref -> **ClassProperty** `i` in `A`  \n\Type: `integer`  \n\Width: `32`  \n\\n\\n\---\n\\n\`integer i = 1;`
 
     endfunction
