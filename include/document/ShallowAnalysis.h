@@ -181,7 +181,8 @@ public:
     /// Gets the type of the expression ending at a token, including call results.
     const slang::ast::Type* getExpressionTypeAtToken(const slang::parsing::Token* token) const;
 
-    /// Looks up built-in methods by receiver kind and result type.
+    /// Looks up built-in methods by receiver kind and result type, retaining arrays with invalid
+    /// bounds.
     const slang::ast::SystemSubroutine* getSystemMethod(const slang::ast::Type* type,
                                                         const slang::ast::Symbol* receiver,
                                                         std::string_view name) const;

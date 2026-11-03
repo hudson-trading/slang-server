@@ -6,6 +6,51 @@
 
 using namespace slang;
 
+TEST_CASE("Array members retain their types with unknown shallow bounds", "[scan-gaps]") {
+    for (auto parameter : {"parameter int COUNT, parameter int WIDTH = 3",
+                           "parameter int COUNT = 2, parameter int WIDTH = 3",
+                           "parameter int COUNT, parameter int WIDTH",
+                           "parameter int COUNT = 2, parameter int WIDTH"}) {
+        CAPTURE(parameter);
+        ServerHarness server;
+        auto doc = server.openFile("array_members.sv", fmt::format(R"(
+module sample #({});
+    typedef struct packed {{ logic [WIDTH-1:0] payload; int field; }} item_t;
+    item_t unpacked_items[COUNT];
+    item_t [COUNT-1:0] packed_items;
+    item_t nested_items[COUNT][COUNT];
+    typedef struct packed {{ item_t [COUNT-1:0] items; }} holder_t;
+    holder_t holder;
+    int index_value, result;
+    always_comb begin
+        result = unpacked_items[index_value].field;
+        result = packed_items[index_value].field;
+        result = nested_items[index_value][0].field;
+        result = holder.items[index_value].field;
+    end
+endmodule
+)",
+                                                                   parameter));
+        for (auto expression : {"unpacked_items[index_value].", "packed_items[index_value].",
+                                "nested_items[index_value][0].", "holder.items[index_value]."}) {
+            CAPTURE(expression);
+            auto cursor = doc.after(std::string("result = ") + expression);
+            auto definitions = cursor.getDefinitions();
+            REQUIRE(definitions.size() == 1);
+            CHECK(definitions.front().targetSelectionRange.start ==
+                  doc.before("field;").getPosition());
+            auto hover = doc.getHoverAt(cursor.m_offset);
+            REQUIRE(hover);
+            CHECK(rfl::get<lsp::MarkupContent>(hover->contents).value.find("field") !=
+                  std::string::npos);
+            auto items = cursor.getCompletions();
+            CHECK(std::ranges::any_of(items, [](const CompletionHandle& item) {
+                return item.m_item.label == "field";
+            }));
+        }
+    }
+}
+
 TEST_CASE("Class methods resolve before their declarations in nested statements", "[scan-gaps]") {
     ServerHarness server;
     auto doc = server.openFile("forward_methods.sv", R"(

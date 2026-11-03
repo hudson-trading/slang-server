@@ -96,6 +96,40 @@ endmodule
     CHECK(doc.getDiagnostics().size() == diagnostics.size());
 }
 
+TEST_CASE("Built-in methods retain unpacked arrays with unknown bounds", "[builtin-methods]") {
+    ServerHarness server;
+    auto doc = server.openFile("array_methods.sv", R"(
+package sample_pkg;
+    class Worker #(int COUNT);
+        byte values[COUNT];
+        bit [COUNT-1:0] packed_value;
+        function void run();
+            values.shuffle();
+            packed_value.nonexistent();
+        endfunction
+    endclass
+endpackage
+)");
+    auto diagnostics = doc.getDiagnostics();
+    auto cursor = doc.after("values.");
+    auto definition = doc.getDefinitionInfoAt(cursor.m_offset);
+    REQUIRE(definition);
+    REQUIRE(definition->systemSubroutine());
+    auto hover = doc.getHoverAt(cursor.m_offset);
+    REQUIRE(hover);
+    CHECK(rfl::get<lsp::MarkupContent>(hover->contents).value.find("shuffle") != std::string::npos);
+    CHECK(cursor.getDefinitions().empty());
+    auto items = cursor.getCompletions(".");
+    auto item = std::ranges::find(items, "shuffle",
+                                  [](const auto& item) { return item.m_item.label; });
+    REQUIRE(item != items.end());
+    REQUIRE(item->m_item.documentation);
+    auto packed = doc.after("packed_value.").getCompletions(".");
+    CHECK(std::ranges::none_of(packed,
+                               [](const auto& item) { return item.m_item.label == "shuffle"; }));
+    CHECK(doc.getDiagnostics().size() == diagnostics.size());
+}
+
 TEST_CASE("BuiltinClassMethods", "[builtin-methods]") {
     const std::map<std::string, std::map<std::string, std::string>> calls{
         {"process",

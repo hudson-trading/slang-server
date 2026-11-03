@@ -5,6 +5,84 @@
 
 #include "slang/ast/symbols/InstanceSymbols.h"
 
+TEST_CASE("Interface arrays retain member features with unknown bounds", "[interface-array]") {
+    for (auto count : {"parameter int COUNT", "parameter int COUNT = 2"}) {
+        CAPTURE(count);
+        ServerHarness server;
+        auto doc = server.openFile("interface_arrays.sv", std::string(R"(
+typedef struct packed { bit enabled; int tag; } payload_t;
+interface channel_if #(parameter type T = logic);
+    T data;
+    bit valid;
+    bit hidden;
+    modport sink(input data, valid);
+endinterface
+module sample #(
+)") + count + R"(
+)(channel_if.sink requests[COUNT], channel_if.sink matrix[COUNT][2]);
+    $static_assert(type(requests[0].T) == type(payload_t));
+    $static_assert(type(matrix[0][1].T) == type(payload_t));
+    channel_if #(payload_t) local_channels[COUNT]();
+    channel_if #(payload_t) local_matrix[2][COUNT]();
+    localparam int i = 0;
+        wire flag = requests[i].data.enabled;
+        wire flag2 = matrix[i][1].data.enabled;
+        assign local_channels[i].valid = requests[i].valid;
+        assign local_channels[i].data = requests[i].data;
+        wire flag3 = local_channels[i].data.enabled;
+        wire flag4 = local_matrix[1][i].data.enabled;
+        wire bad1 = local_channels[i][i].valid;
+        wire bad2 = local_channels[i:i].valid;
+        wire bad3 = local_matrix[0].valid;
+        wire bad4 = local_matrix[3][i].valid;
+endmodule
+)");
+        for (auto prefix : {"requests[i].data.", "matrix[i][1].data.", "local_channels[i].data.",
+                            "local_matrix[1][i].data."}) {
+            CAPTURE(prefix);
+            auto cursor = doc.after(prefix);
+            auto definitions = cursor.getDefinitions();
+            REQUIRE(definitions.size() == 1);
+            CHECK(definitions.front().targetSelectionRange.start ==
+                  doc.before("enabled;").getPosition());
+            auto hover = doc.getHoverAt(cursor.m_offset);
+            REQUIRE(hover);
+            CHECK(rfl::get<lsp::MarkupContent>(hover->contents).value.find("enabled") !=
+                  std::string::npos);
+            auto items = cursor.getCompletions(".");
+            CHECK(std::ranges::any_of(items, [](const CompletionHandle& item) {
+                return item.m_item.label == "enabled";
+            }));
+        }
+        auto local = doc.after("assign ");
+        auto definitions = local.getDefinitions();
+        REQUIRE(definitions.size() == 1);
+        CHECK(definitions.front().targetSelectionRange.start ==
+              doc.before("local_channels[COUNT]").getPosition());
+        REQUIRE(doc.getHoverAt(local.m_offset));
+        auto member = doc.after("assign local_channels[i].");
+        auto memberDefinitions = member.getDefinitions();
+        REQUIRE(memberDefinitions.size() == 1);
+        CHECK(memberDefinitions.front().targetSelectionRange.start ==
+              doc.before("valid;").getPosition());
+        REQUIRE(doc.getHoverAt(member.m_offset));
+        auto items = doc.after("requests[i].").getCompletions(".");
+        CHECK(std::ranges::none_of(items, [](const CompletionHandle& item) {
+            return item.m_item.label == "hidden";
+        }));
+        for (auto prefix : {"local_channels[i][i].", "local_channels[i:i].", "local_matrix[0].",
+                            "local_matrix[3][i]."}) {
+            CAPTURE(prefix);
+            auto invalid = doc.after(prefix);
+            CHECK(invalid.getDefinitions().empty());
+            auto invalidItems = invalid.getCompletions(".");
+            CHECK(std::ranges::none_of(invalidItems, [](const CompletionHandle& item) {
+                return item.m_item.label == "valid";
+            }));
+        }
+    }
+}
+
 TEST_CASE("Virtual interface type arguments navigate to the interface", "[virtual-interface]") {
     ServerHarness server("virtual_interface");
     auto doc = server.openFile("src/client.svh", R"(
