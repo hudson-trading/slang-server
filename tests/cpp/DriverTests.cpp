@@ -137,6 +137,50 @@ TEST_CASE("Opening repeated recursive includes reports the depth limit and recov
     CHECK(doc.getSymbolTree().size() == 1);
 }
 
+TEST_CASE("Included dependencies can refer back to the compilation being analyzed") {
+    auto firstOpened = GENERATE("first.sv", "second.sv", "first_if.svh", "second_if.svh");
+    CAPTURE(firstOpened);
+    auto root = fs::weakly_canonical(fs::temp_directory_path()) /
+                fmt::format("slang_dependency_cycle_{}", slang::OS::getpid());
+    fs::create_directories(root);
+    slang::ScopeGuard cleanup([&] { fs::remove_all(root); });
+    std::ofstream(root / "first_if.svh")
+        << "interface first_if; logic [`WIDTH-1:0] value; endinterface\n";
+    std::ofstream(root / "second_if.svh")
+        << "interface second_if; logic [`WIDTH-1:0] value; endinterface\n";
+    std::ofstream(root / "first.sv") << "`define WIDTH 4\n`include \"first_if.svh\"\n"
+                                        "module first(second_if bus); endmodule\n";
+    std::ofstream(root / "second.sv") << "`define WIDTH 8\n`include \"second_if.svh\"\n"
+                                         "module second(first_if bus); endmodule\n";
+    ServerHarness server(lsp::InitializeParams{
+        .workspaceFolders = {{lsp::WorkspaceFolder{URI::fromFile(root), "dependency_cycle"}}}});
+
+    server.openFile(firstOpened);
+    auto first = server.openFile("first.sv");
+    auto second = server.openFile("second.sv");
+    CHECK(first.getDiagnostics().empty());
+    CHECK(second.getDiagnostics().empty());
+    auto firstHeader = server.openFile("first_if.svh");
+    auto secondHeader = server.openFile("second_if.svh");
+    CHECK(firstHeader.doc->getCompilation() == first.doc->getCompilation());
+    CHECK(secondHeader.doc->getCompilation() == second.doc->getCompilation());
+    auto definitions = first.before("second_if bus").getDefinitions();
+    REQUIRE(definitions.size() == 1);
+    CHECK(definitions.front().targetUri == secondHeader.m_uri);
+    definitions = second.before("first_if bus").getDefinitions();
+    REQUIRE(definitions.size() == 1);
+    CHECK(definitions.front().targetUri == firstHeader.m_uri);
+
+    auto originalCompilation = first.doc->getAnalysis()->getShallowCompilation();
+    secondHeader.replaceAll("interface second_if; logic [`WIDTH:0] value; endinterface\n");
+    secondHeader.publishChanges();
+    CHECK(first.getDiagnostics().empty());
+    CHECK(second.getDiagnostics().empty());
+    CHECK(first.doc->getAnalysis()->getShallowCompilation() != originalCompilation);
+    CHECK(firstHeader.doc->getCompilation() == first.doc->getCompilation());
+    CHECK(secondHeader.doc->getCompilation() == second.doc->getCompilation());
+}
+
 TEST_CASE("Expand macros preserves the selected file and uses its include context") {
     auto crlf = GENERATE(false, true);
     CAPTURE(crlf);

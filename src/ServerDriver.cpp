@@ -715,10 +715,14 @@ std::vector<std::shared_ptr<syntax::SyntaxTree>> ServerDriver::getDependentTrees
                 return;
             knownNames.emplace(name);
             // An included file may declare this name only under different preprocessor flags.
-            // Reloading it would discard that context and can re-enter this compilation's analysis.
+            // Reloading it would discard that context.
             if (processedFiles.contains(std::filesystem::weakly_canonical(*symbolLoc->uri)))
                 return;
-            auto newdoc = getDocument(URI::fromFile(*symbolLoc->uri));
+            // Read the enclosing source's syntax without starting an included file's analysis,
+            // which could recursively discover this same dependency graph.
+            auto contexts = getIncludeContexts(*symbolLoc->uri, true);
+            auto newdoc = contexts.empty() ? getDocument(URI::fromFile(*symbolLoc->uri))
+                                           : contexts.front().source;
             if (newdoc) {
                 auto dependencyTree = newdoc->getSyntaxTree();
                 if (!processedTrees.insert(dependencyTree.get()).second)
