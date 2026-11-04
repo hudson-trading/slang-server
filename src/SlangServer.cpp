@@ -21,11 +21,13 @@
 #include <algorithm>
 #include <cctype>
 #include <charconv>
+#include <condition_variable>
 #include <filesystem>
 #include <fmt/base.h>
 #include <fmt/ranges.h>
 #include <fstream>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <ranges>
 #include <rfl/DefaultIfMissing.hpp>
@@ -319,16 +321,43 @@ void SlangServer::onInitialized(const lsp::InitializedParams&) {
     INFO("Server initialized at {}", m_workspaceFolder ? m_workspaceFolder->uri.getPath() : "none");
     m_client.setConfig(m_config);
 
-    if (m_workspaceFolder) {
-        auto options = m_fileWatchers.registrationOptions(m_workspaceFolder->uri);
+    if (m_client.capabilities.watchedFilesRegistrationSupported) {
+        if (m_workspaceFolder) {
+            auto options = m_fileWatchers.registrationOptions(m_workspaceFolder->uri);
 
-        m_client.getClientRegisterCapability(
-            lsp::RegistrationParams{.registrations{lsp::Registration{
-                .id = "slang-server-file-watcher",
-                .method = "workspace/didChangeWatchedFiles",
-                .registerOptions = rfl::to_generic<rfl::UnderlyingEnums>(options),
-            }}});
+            m_client.getClientRegisterCapability(
+                lsp::RegistrationParams{.registrations{lsp::Registration{
+                    .id = "slang-server-file-watcher",
+                    .method = "workspace/didChangeWatchedFiles",
+                    .registerOptions = rfl::to_generic<rfl::UnderlyingEnums>(options),
+                }}});
+        }
+        return;
     }
+
+    // Clients without file watching still reload config and build file edits by polling.
+    pollWatchedFiles();
+    if (m_watchPollInterval <= std::chrono::milliseconds::zero())
+        return;
+    INFO("Client does not watch files; polling config and build files every {}ms",
+         m_watchPollInterval.count());
+    m_watchPollThread = std::jthread(
+        [this, logOutput = logging::getOutput()](std::stop_token stop) {
+            logging::setOutput(logOutput);
+            std::mutex mutex;
+            std::condition_variable_any wakeup;
+            std::unique_lock lock(mutex);
+            while (!wakeup.wait_for(lock, stop, m_watchPollInterval, [] { return false; }) &&
+                   !stop.stop_requested()) {
+                std::lock_guard state(serverStateMutex);
+                try {
+                    pollWatchedFiles();
+                }
+                catch (const std::exception& e) {
+                    ERROR("Polling watched files failed: {}", e.what());
+                }
+            }
+        });
 }
 
 void SlangServer::setExplore() {
@@ -1399,6 +1428,27 @@ void SlangServer::reloadWatchedConfig() {
     }
     m_configReloadPending = true;
     WARN("Keeping the current configuration; retrying on the next file change");
+}
+
+std::vector<fs::path> SlangServer::getPolledFiles() const {
+    std::vector<fs::path> files;
+    if (m_driver) {
+        for (const auto& [file, _] : m_driver->driver.getCommandFileMetadata())
+            files.push_back(file);
+        std::ranges::sort(files);
+    }
+    if (m_workspaceFolder) {
+        auto root = fs::path(m_workspaceFolder->uri.getPath());
+        files.insert(files.begin(),
+                     {root / ".slang" / "server.json", root / ".slang" / "local" / "server.json"});
+    }
+    return files;
+}
+
+void SlangServer::pollWatchedFiles() {
+    auto changes = m_filePoller.poll(getPolledFiles());
+    if (!changes.empty())
+        onWorkspaceDidChangeWatchedFiles({.changes = std::move(changes)});
 }
 
 void SlangServer::onWorkspaceDidChangeWatchedFiles(const lsp::DidChangeWatchedFilesParams& params) {

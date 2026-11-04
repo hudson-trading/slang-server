@@ -1,10 +1,13 @@
 // SPDX-FileCopyrightText: Hudson River Trading
 // SPDX-License-Identifier: MIT
 
+#include "lsp/FilePoller.h"
 #include "lsp/FileWatchers.h"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
+#include <chrono>
 #include <filesystem>
+#include <fstream>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -132,4 +135,49 @@ TEST_CASE("File watchers accept absolute source paths without a workspace") {
         {.changes = {{URI::fromFile(std::filesystem::temp_directory_path() / "top.sv"),
                       lsp::FileChangeType::Changed}}});
     CHECK(calls == 1);
+}
+
+TEST_CASE("File poller reports created changed and deleted files after the first poll") {
+    namespace fs = std::filesystem;
+    const auto root = fs::temp_directory_path() / "slang_file_poller";
+    fs::remove_all(root);
+    fs::create_directories(root);
+    const auto config = root / "server.json";
+    const auto build = root / "build.f";
+    const auto missing = root / "missing.f";
+    auto write = [](const fs::path& path, std::string_view text) { std::ofstream(path) << text; };
+    write(config, "{}");
+    write(build, "a.sv\n");
+
+    lsp::FilePoller poller;
+    const std::vector<fs::path> paths{config, build, missing, config};
+    CHECK(poller.poll(paths).empty());
+    CHECK(poller.poll(paths).empty());
+
+    write(config, R"({"build":"build.f"})");
+    // Same-size edits are detected by their timestamp.
+    write(build, "b.sv\n");
+    fs::last_write_time(build, fs::last_write_time(build) + std::chrono::seconds(1));
+    write(missing, "c.sv\n");
+    auto events = poller.poll(paths);
+    REQUIRE(events.size() == 3);
+    CHECK(events[0].uri == URI::fromFile(config));
+    CHECK(events[0].type == lsp::FileChangeType::Changed);
+    CHECK(events[1].uri == URI::fromFile(build));
+    CHECK(events[1].type == lsp::FileChangeType::Changed);
+    CHECK(events[2].uri == URI::fromFile(missing));
+    CHECK(events[2].type == lsp::FileChangeType::Created);
+
+    fs::remove(build);
+    events = poller.poll(paths);
+    REQUIRE(events.size() == 1);
+    CHECK(events[0].uri == URI::fromFile(build));
+    CHECK(events[0].type == lsp::FileChangeType::Deleted);
+
+    // Paths dropped from a poll start over from a fresh snapshot.
+    CHECK(poller.poll({config}).empty());
+    write(missing, "changed contents\n");
+    CHECK(poller.poll(paths).empty());
+
+    fs::remove_all(root);
 }

@@ -122,6 +122,7 @@ int main(int argc, char** argv) {
 #endif
     SlangLspClient client;
     SlangServer server(client);
+    server.setWatchPollInterval(std::chrono::seconds(1));
     server.run();
 
     return 0;

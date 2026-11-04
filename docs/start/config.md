@@ -79,6 +79,8 @@ The `flags` field has special merging behavior. Workspace flags override user fl
 
 The server watches these config files, .f files that are passed in via flags and `.f` build files for changes, automatically reloading when they are saved.
 
+Clients that support watched-file registration, like VS Code, report these changes to the server. For other clients, such as Claude Code, the server polls the workspace and local config files and the loaded `.f` files every second. Editing `build` in `.slang/local/server.json` therefore switches the build without restarting the server.
+
 ## Auto-configure
 
 Run **slang: Auto-configure** in VS Code to discover index and include directories and save them in `.slang/server.json`. Neovim and other LSP clients can invoke `slang.autoConfigure` through `workspace/executeCommand` with no arguments; no custom client handler is needed.
