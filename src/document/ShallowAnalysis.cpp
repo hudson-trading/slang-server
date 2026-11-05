@@ -8,7 +8,6 @@
 
 #include "document/ShallowAnalysis.h"
 
-#include "ast/ServerCompilation.h"
 #include "document/InlayHintCollector.h"
 #include "lsp/LspTypes.h"
 #include "util/Converters.h"
@@ -19,9 +18,9 @@
 #include <memory>
 #include <string_view>
 
-#include "slang/analysis/AnalysisManager.h"
 #include "slang/ast/ASTContext.h"
 #include "slang/ast/Compilation.h"
+#include "slang/ast/Expression.h"
 #include "slang/ast/symbols/BlockSymbols.h"
 #include "slang/ast/symbols/CompilationUnitSymbols.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
@@ -32,8 +31,6 @@
 #include "slang/ast/symbols/ValueSymbol.h"
 #include "slang/ast/types/AllTypes.h"
 #include "slang/ast/types/Type.h"
-#include "slang/diagnostics/AnalysisDiags.h"
-#include "slang/driver/Driver.h"
 #include "slang/parsing/Token.h"
 #include "slang/parsing/TokenKind.h"
 #include "slang/syntax/AllSyntax.h"
@@ -63,97 +60,69 @@ static bool symbolsMatch(const ast::Symbol* a, const ast::Symbol* b) {
     }
     return false;
 }
-ShallowAnalysis::ShallowAnalysis(SourceManager& sourceManager, slang::BufferID buffer,
-                                 std::shared_ptr<syntax::SyntaxTree> tree, slang::Bag options,
-                                 const std::vector<std::shared_ptr<syntax::SyntaxTree>>& allTrees,
-                                 const ServerCompilation* design) :
-    syntaxes(*tree), m_sourceManager(sourceManager), m_buffer(buffer), m_tree(tree),
-    m_allTrees(allTrees), m_analysisOptions(options.getOrDefault<analysis::AnalysisOptions>()),
-    m_symbolTreeVisitor(m_sourceManager), m_symbolIndexer(buffer) {
+ShallowAnalysis::ShallowAnalysis(BufferID buffer, std::shared_ptr<ShallowCompilation> compilation) :
+    syntaxes(*compilation->getSyntaxTree(), buffer),
+    m_sourceManager(compilation->getSourceManager()), m_buffer(buffer),
+    m_shallowCompilation(std::move(compilation)), m_symbolTreeVisitor(m_sourceManager),
+    m_symbolIndexer(buffer) {
+    if (syntaxes.collected.empty())
+        ERROR("No syntaxes found in document {}", m_sourceManager.getFullPath(m_buffer).string());
 
-    if (!m_tree) {
-        ERROR("DocumentAnalysis initialized with null syntax tree");
-        return;
-    }
-
-    // Syntaxes are already indexed in the constructor
-
-    auto path = m_sourceManager.getFullPath(m_buffer).string();
-
-    if (syntaxes.collected.size() == 0) {
-        ERROR("No syntaxes found in document {}", path);
-    }
-
-    // Index macros — last active definition for each name
-    for (auto& macro : m_tree->getDefinedMacros()) {
+    const auto& tree = m_shallowCompilation->getSyntaxTree();
+    for (auto& macro : tree->getDefinedMacros()) {
         macros[macro->name.valueText()] = macro;
+        macroNames.insert(macro->name.valueText());
     }
-
-    // Index macro references (usages and undefs) with their active definitions
-    for (auto& ref : m_tree->getPreprocessorMetadata().macroRefs) {
+    for (auto& ref : tree->getPreprocessorMetadata().macroRefs) {
         macroUsageDefinitions[ref.syntax] = ref.definition;
+        macroNames.insert(ref.definition->name.valueText());
     }
 
-    // Set up options for shallow compilation
-    auto cOptions = options.getOrDefault<ast::CompilationOptions>();
-    cOptions.flags |= ast::CompilationFlags::AllowTopLevelIfacePorts;
-    cOptions.flags |= ast::CompilationFlags::CheckUninstantiated;
-    cOptions.flags |= ast::CompilationFlags::AllowInvalidTop;
-    // Check the edited module and two levels of instantiated children.
-    cOptions.maxInstanceDepth = 3;
-
-    // Add definitions from this tree (even if they aren't valid tops)
-    cOptions.topModules.clear();
-    m_compilation = std::make_unique<ast::Compilation>(cOptions);
-    for (auto& depTree : m_allTrees) {
-        m_compilation->addSyntaxTree(depTree);
+    for (auto loc = m_sourceManager.getIncludedFrom(buffer); loc;
+         loc = m_sourceManager.getIncludedFrom(loc.buffer())) {
+        m_symbolIndexer.enclosingBuffers.push_back(loc.buffer());
     }
-    if (design) {
-        std::vector<std::string_view> definitionNames;
-        for (auto* symbol : m_compilation->getDefinitions()) {
-            if (auto* definition = symbol->as_if<ast::DefinitionSymbol>())
-                definitionNames.push_back(definition->name);
-        }
-        m_activeDesign = design->createActiveDesignContext(definitionNames);
-        m_activeDesign->applyOverrides(*m_compilation);
+    getCompilation()->getRoot().visit(m_symbolIndexer);
+    SmallVector<const ast::DefinitionSymbol*> unindexedDefinitions;
+    for (auto* symbol : getCompilation()->getDefinitions()) {
+        auto* definition = symbol->as_if<ast::DefinitionSymbol>();
+        if (!definition ||
+            m_sourceManager.getFullyExpandedLoc(definition->location).buffer() != m_buffer ||
+            m_symbolIndexer.getSymbol(definition->getSyntax()))
+            continue;
+        unindexedDefinitions.push_back(definition);
     }
-
-    // Elaborate and index
-    // - token -> symbol defs
-    // - syntax -> scopes
-    m_compilation->getRoot().visit(m_symbolIndexer);
-}
-
-const Diagnostics& ShallowAnalysis::getSemanticDiagnostics() {
-    if (!m_editedDefinitionsElaborated) {
-        auto& root = m_compilation->getRoot();
-        for (auto* symbol : m_compilation->getDefinitions()) {
-            auto* definition = symbol->as_if<ast::DefinitionSymbol>();
-            if (!definition || definition->syntaxTree != m_tree.get())
-                continue;
-
-            auto& instance = ast::InstanceSymbol::createDefault(*m_compilation, *definition);
-            instance.setParent(root);
-            m_compilation->forceElaborate(instance.body);
-        }
-        m_editedDefinitionsElaborated = true;
+    // Module declarations can be reached through instances in sibling includes and arrays.
+    if (!unindexedDefinitions.empty()) {
+        auto visitor = ast::makeVisitor([&](auto& visitor, const auto& symbol) {
+            using T = std::decay_t<decltype(symbol)>;
+            if constexpr (std::is_same_v<T, ast::InstanceSymbol>) {
+                const auto& body = symbol.getCanonicalBody() ? *symbol.getCanonicalBody()
+                                                             : symbol.body;
+                if (std::ranges::find(unindexedDefinitions, &symbol.getDefinition()) !=
+                    unindexedDefinitions.end())
+                    body.visit(m_symbolIndexer);
+                body.visit(visitor);
+            }
+            else if constexpr (std::is_base_of_v<ast::Scope, T>) {
+                visitor.visitDefault(symbol);
+            }
+        });
+        getCompilation()->getRoot().visit(visitor);
     }
-
-    return m_compilation->getSemanticDiagnostics();
-}
-
-const InterfaceConnection* ShallowAnalysis::getActiveInterfaceConnection(
-    const ast::InterfacePortSymbol& port) const {
-    return m_activeDesign ? m_activeDesign->getInterfaceConnection(port) : nullptr;
-}
-
-const ast::Symbol* ShallowAnalysis::getDesignSymbol(const ast::Symbol& shallowSymbol) const {
-    return m_activeDesign ? m_activeDesign->getDesignSymbol(shallowSymbol) : nullptr;
+    // A declaration beyond the shallow hierarchy still needs a scope for local navigation.
+    for (auto* definition : unindexedDefinitions) {
+        if (m_symbolIndexer.getSymbol(definition->getSyntax()))
+            continue;
+        auto& instance = ast::InstanceSymbol::createDefault(*getCompilation(), *definition);
+        instance.setParent(getCompilation()->getRoot());
+        instance.visit(m_symbolIndexer);
+    }
 }
 
 std::optional<std::string> ShallowAnalysis::getDesignInstancePathAtToken(
     const parsing::Token* token) const {
-    if (!m_activeDesign || !token)
+    if (!m_shallowCompilation->hasActiveDesign() || !token)
         return {};
 
     auto* syntax = syntaxes.getTokenParent(token);
@@ -210,10 +179,7 @@ std::optional<std::string> ShallowAnalysis::getDesignInstancePathAtToken(
 }
 
 std::vector<lsp::DocumentSymbol> ShallowAnalysis::getDocSymbols() {
-    if (!m_tree) {
-        return {};
-    }
-    return m_symbolTreeVisitor.getSymbols(m_tree, true);
+    return m_symbolTreeVisitor.getSymbols(m_shallowCompilation->getSyntaxTree(), true, m_buffer);
 }
 
 const parsing::Token* ShallowAnalysis::getTokenAt(SourceLocation loc) const {
@@ -262,13 +228,14 @@ bool ShallowAnalysis::isOverSelector(const parsing::Token* node,
 }
 
 const ast::Symbol* ShallowAnalysis::handleScopedNameLookup(const syntax::NameSyntax* nameSyntax,
-                                                           const ast::ASTContext& context) const {
+                                                           const ast::ASTContext& context,
+                                                           bitmask<ast::LookupFlags> flags) const {
     auto scopedParent = nameSyntax->parent->as_if<syntax::ScopedNameSyntax>();
     if (!scopedParent || nameSyntax->kind != syntax::SyntaxKind::IdentifierName) {
         return nullptr;
     }
     ast::LookupResult result;
-    ast::Lookup::name(*scopedParent, context, ast::LookupFlags::None, result);
+    ast::Lookup::name(*scopedParent, context, flags, result);
     if (!result.found) {
         return nullptr;
     }
@@ -284,7 +251,7 @@ const ast::Symbol* ShallowAnalysis::handleInterfacePortHeader(const parsing::Tok
                                                               const ast::Scope* scope) const {
 
     auto& header = syntax->parent->as<syntax::InterfacePortHeaderSyntax>();
-    auto iface = m_compilation->tryGetDefinition(header.nameOrKeyword.valueText(), *scope);
+    auto iface = getCompilation()->tryGetDefinition(header.nameOrKeyword.valueText(), *scope);
 
     if (node == &header.nameOrKeyword) {
         return iface.definition;
@@ -295,13 +262,21 @@ const ast::Symbol* ShallowAnalysis::handleInterfacePortHeader(const parsing::Tok
     }
 
     auto& idef = iface.definition->as<ast::DefinitionSymbol>();
-    auto& inst = ast::InstanceSymbol::createDefault(*m_compilation, idef);
+    auto& inst = ast::InstanceSymbol::createDefault(*getCompilation(), idef);
 
     // TODO: avoid creating a default instance each time
     return inst.body.lookupName(header.modport->member.valueText());
 }
 
 const ast::Scope* ShallowAnalysis::getScopeFromSym(const ast::Symbol* symbol) const {
+    while (auto* array = symbol ? symbol->as_if<ast::InstanceArraySymbol>() : nullptr) {
+        if (!array->elements.empty())
+            symbol = array->elements.front();
+        else {
+            auto members = array->members();
+            symbol = members.begin() == members.end() ? nullptr : &*members.begin();
+        }
+    }
     if (!symbol) {
         return nullptr;
     }
@@ -310,19 +285,16 @@ const ast::Scope* ShallowAnalysis::getScopeFromSym(const ast::Symbol* symbol) co
         return &symbol->as<ast::Scope>();
     }
 
-    if (symbol->isType()) {
-        auto& type = unwrapErrorType(symbol->as<ast::Type>());
-        if (type.isScope()) {
-            return &type.as<ast::Scope>();
+    if (auto* type = getSymbolType(*symbol)) {
+        if (auto* virtualInterface = type->as_if<ast::VirtualInterfaceType>()) {
+            if (virtualInterface->modport)
+                return virtualInterface->modport;
+            return &virtualInterface->iface.body;
         }
+        if (type->isScope())
+            return &type->as<ast::Scope>();
     }
-    else if (ast::ValueSymbol::isKind(symbol->kind)) {
-        auto& type = unwrapErrorType(symbol->as<ast::ValueSymbol>().getType());
-        if (type.isScope()) {
-            return &type.as<ast::Scope>();
-        }
-    }
-    else if (ast::InstanceSymbol::isKind(symbol->kind)) {
+    if (ast::InstanceSymbol::isKind(symbol->kind)) {
         return &symbol->as<ast::InstanceSymbol>().body.as<ast::Scope>();
     }
     else if (ast::InterfacePortSymbol::isKind(symbol->kind)) {
@@ -330,8 +302,7 @@ const ast::Scope* ShallowAnalysis::getScopeFromSym(const ast::Symbol* symbol) co
         auto [connSym, modport] = port.getConnection();
         auto scope = getScopeFromSym(connSym);
 
-        auto instanceArray = connSym ? connSym->as_if<ast::InstanceArraySymbol>() : nullptr;
-        if ((!connSym || (instanceArray && instanceArray->elements.empty())) && port.interfaceDef) {
+        if (!scope && port.interfaceDef) {
             auto parentScope = port.getParentScope();
             if (!parentScope)
                 return nullptr;
@@ -368,6 +339,63 @@ const ast::Scope* ShallowAnalysis::getScopeFromSym(const ast::Symbol* symbol) co
     return nullptr;
 }
 
+const ast::Type* ShallowAnalysis::getExpressionTypeAtToken(const parsing::Token* token) const {
+    if (!token)
+        return nullptr;
+    const syntax::ExpressionSyntax* expression = nullptr;
+    for (auto* node = syntaxes.getTokenParent(token); node; node = node->parent) {
+        if (node->getLastToken().range().end() != token->range().end())
+            break;
+        if (auto* candidate = node->as_if<syntax::ExpressionSyntax>())
+            expression = candidate;
+    }
+
+    if (!expression || syntax::NameSyntax::isKind(expression->kind)) {
+        if (auto* symbol = getSymbolAtToken(token)) {
+            if (auto* type = getSymbolType(*symbol))
+                return type;
+            if (symbol->kind == ast::SymbolKind::ConstraintBlock)
+                return nullptr;
+        }
+    }
+    // A bare super handle is only meaningful as a class lookup receiver.
+    if (!expression || expression->kind == syntax::SyntaxKind::SuperHandle)
+        return nullptr;
+
+    auto [it, inserted] = m_expressionTypes.try_emplace(expression, nullptr);
+    if (inserted) {
+        if (auto* scope = m_symbolIndexer.getScopeForSyntax(*expression)) {
+            ast::ASTContext context(*scope, ast::LookupLocation::max);
+            auto& bound = ast::Expression::bind(*expression, context);
+            auto& type = unwrapErrorType(*bound.type);
+            if (!type.isError())
+                it->second = &type;
+        }
+    }
+    return it->second;
+}
+
+const ast::SystemSubroutine* ShallowAnalysis::getSystemMethod(const ast::Type* type,
+                                                              const ast::Symbol* receiver,
+                                                              std::string_view name) const {
+    if (receiver) {
+        auto* property = receiver->as_if<ast::ClassPropertySymbol>();
+        if ((property && property->randMode != ast::RandMode::None) ||
+            receiver->kind == ast::SymbolKind::ConstraintBlock) {
+            if (auto* method = getCompilation()->getSystemMethod(receiver->kind, name))
+                return method;
+        }
+    }
+    if (!type)
+        return nullptr;
+    auto kind = type->kind;
+    if (auto* error = type->as_if<ast::ErrorType>();
+        error && error->arrayDimension && !error->arrayDimension->isPacked) {
+        kind = ast::SymbolKind::FixedSizeUnpackedArrayType;
+    }
+    return getCompilation()->getSystemMethod(kind, name);
+}
+
 const ast::Symbol* ShallowAnalysis::getAssignmentPatternTargetSymbol(
     const syntax::AssignmentPatternExpressionSyntax& pattern) const {
     auto getSymbolFromSyntax = [&](const syntax::SyntaxNode& target) {
@@ -394,10 +422,22 @@ const ast::Symbol* ShallowAnalysis::getAssignmentPatternTargetSymbol(
             return getSymbolAtToken(&declarator->name);
     }
 
-    if (auto* item = parent->as_if<syntax::AssignmentPatternItemSyntax>();
-        item && item->expr.get() == &pattern && item->parent && item->parent->parent) {
-        auto* outerPattern =
-            item->parent->parent->as_if<syntax::AssignmentPatternExpressionSyntax>();
+    if (auto* statement = parent->as_if<syntax::ReturnStatementSyntax>();
+        statement && statement->returnValue == &pattern) {
+        for (auto* scope : m_symbolIndexer.getScopesForSyntax(*statement)) {
+            for (; scope; scope = scope->asSymbol().getParentScope()) {
+                if (auto* subroutine = scope->asSymbol().as_if<ast::SubroutineSymbol>())
+                    return &subroutine->getReturnType();
+            }
+        }
+        return nullptr;
+    }
+
+    auto* item = parent->as_if<syntax::AssignmentPatternItemSyntax>();
+    auto* container = item ? item->parent.get() : parent;
+    if (container && syntax::AssignmentPatternSyntax::isKind(container->kind) &&
+        container->parent) {
+        auto* outerPattern = container->parent->as_if<syntax::AssignmentPatternExpressionSyntax>();
         if (!outerPattern)
             return nullptr;
 
@@ -405,18 +445,12 @@ const ast::Symbol* ShallowAnalysis::getAssignmentPatternTargetSymbol(
         if (!outerTarget)
             return nullptr;
 
-        const ast::Type* outerType = nullptr;
-        if (outerTarget->isType())
-            outerType = &outerTarget->as<ast::Type>();
-        else if (ast::ValueSymbol::isKind(outerTarget->kind))
-            outerType = &outerTarget->as<ast::ValueSymbol>().getType();
-
-        if (outerType) {
-            if (auto* elementType = unwrapErrorType(*outerType).getArrayElementType())
+        if (auto* outerType = getSymbolType(*outerTarget)) {
+            if (auto* elementType = outerType->getArrayElementType())
                 return elementType;
         }
 
-        auto* key = item->key->as_if<syntax::IdentifierNameSyntax>();
+        auto* key = item ? item->key->as_if<syntax::IdentifierNameSyntax>() : nullptr;
         if (!key)
             return nullptr;
         auto* outerScope = getScopeFromSym(outerTarget);
@@ -431,6 +465,30 @@ const ast::Symbol* ShallowAnalysis::getAssignmentPatternTargetSymbol(
     if (auto* property = node ? node->as_if<syntax::SimplePropertyExprSyntax>() : nullptr;
         property && property->expr.get() == parent) {
         node = property->parent.get();
+    }
+
+    if (auto* named = node ? node->as_if<syntax::NamedPortConnectionSyntax>() : nullptr)
+        return getSymbolAtToken(&named->name);
+    if (auto* ordered = node ? node->as_if<syntax::OrderedPortConnectionSyntax>() : nullptr) {
+        auto* instanceSyntax = ordered->parent
+                                   ? ordered->parent->as_if<syntax::HierarchicalInstanceSyntax>()
+                                   : nullptr;
+        auto* symbol = instanceSyntax ? m_symbolIndexer.getSymbol(instanceSyntax) : nullptr;
+        while (auto* array = symbol ? symbol->as_if<ast::InstanceArraySymbol>() : nullptr)
+            symbol = array->elements.empty() ? nullptr : array->elements.front();
+        auto* instance = symbol ? symbol->as_if<ast::InstanceSymbol>() : nullptr;
+        if (!instance)
+            return nullptr;
+        auto ports = instance->body.getPortList();
+        for (size_t index = 0; index < instanceSyntax->connections.size(); ++index) {
+            if (instanceSyntax->connections[index] == ordered) {
+                if (index >= ports.size())
+                    return nullptr;
+                auto* port = ports[index]->as_if<ast::PortSymbol>();
+                return port && port->internalSymbol ? port->internalSymbol : ports[index];
+            }
+        }
+        return nullptr;
     }
 
     auto* argument = node ? node->as_if<syntax::ArgumentSyntax>() : nullptr;
@@ -515,7 +573,12 @@ const ast::Scope* ShallowAnalysis::getAssignmentPatternScopeAt(SourceLocation lo
                              previous->kind == parsing::TokenKind::Comma);
 
         if (!isKey && pattern->kind == syntax::SyntaxKind::SimpleAssignmentPattern) {
-            for (auto* node = syntax; node && node != pattern; node = node->parent) {
+            auto* keySyntax = syntax;
+            if (previous && previous->kind == parsing::TokenKind::Identifier &&
+                previous->range().end() == loc) {
+                keySyntax = syntaxes.getTokenParent(previous);
+            }
+            for (auto* node = keySyntax; node && node != pattern; node = node->parent) {
                 if (node->parent.get() == pattern && syntax::ExpressionSyntax::isKind(node->kind)) {
                     isKey = true;
                     break;
@@ -668,8 +731,46 @@ slang::SmallVector<const ast::Symbol*, 2> ShallowAnalysis::getSymbolsAtToken(
     }
 
     auto syntax = syntaxes.getTokenParent(declTok);
-    // Note: SuperHandle nodes can cause issues in symbol lookup
-    if (!syntax || syntax->kind == syntax::SyntaxKind::SuperHandle) {
+    if (!syntax) {
+        return symbols;
+    }
+    if (syntax->kind == syntax::SyntaxKind::SuperHandle) {
+        // Slang only accepts 'super' as part of a qualified lookup, while completion
+        // queries need the receiver alone, including when the member is unfinished.
+        for (auto* scope : m_symbolIndexer.getScopesForSyntax(*syntax)) {
+            auto [classType, inStatic] = ast::Lookup::getContainingClass(*scope);
+            if (classType && !inStatic)
+                addSymbol(classType->getBaseClass());
+        }
+        return symbols;
+    }
+
+    auto* virtualType = syntax->as_if<syntax::VirtualInterfaceTypeSyntax>();
+    if (!virtualType && syntax->kind == syntax::SyntaxKind::DotMemberClause && syntax->parent)
+        virtualType = syntax->parent->as_if<syntax::VirtualInterfaceTypeSyntax>();
+    if (!virtualType && syntax->kind == syntax::SyntaxKind::NamedParamAssignment &&
+        syntax->parent && syntax->parent->parent)
+        virtualType = syntax->parent->parent->as_if<syntax::VirtualInterfaceTypeSyntax>();
+    if (virtualType) {
+        // Type arguments belong to the interface, not the enclosing parameterized class name.
+        for (auto* scope : m_symbolIndexer.getScopesForSyntax(*virtualType)) {
+            auto* definition = getCompilation()
+                                   ->tryGetDefinition(virtualType->name.valueText(), *scope)
+                                   .definition;
+            if (!definition || definition->kind != ast::SymbolKind::Definition ||
+                definition->as<ast::DefinitionSymbol>().definitionKind !=
+                    ast::DefinitionKind::Interface)
+                continue;
+            if (syntax == virtualType) {
+                addSymbol(definition);
+            }
+            else {
+                ast::ASTContext context(*scope, ast::LookupLocation::max);
+                auto& type = ast::VirtualInterfaceType::fromSyntax(context, *virtualType);
+                if (auto* iface = type.as_if<ast::VirtualInterfaceType>())
+                    addSymbol(iface->iface.body.find(declTok->valueText()));
+            }
+        }
         return symbols;
     }
 
@@ -708,7 +809,7 @@ slang::SmallVector<const ast::Symbol*, 2> ShallowAnalysis::getSymbolsAtToken(
     }
     else if (syntax->kind == syntax::SyntaxKind::PackageExportDeclaration ||
              syntax->kind == syntax::SyntaxKind::PackageImportItem) {
-        auto pkg = m_compilation->getPackage(syntax->getFirstToken().valueText());
+        auto pkg = getCompilation()->getPackage(syntax->getFirstToken().valueText());
         if (!pkg) {
             return symbols;
         }
@@ -750,6 +851,29 @@ slang::SmallVector<const ast::Symbol*, 2> ShallowAnalysis::getSymbolsAtToken(
         return symbols;
     }
 
+    if (declTok->kind == parsing::TokenKind::NewKeyword && syntax->parent &&
+        syntax->parent->kind == syntax::SyntaxKind::NewClassExpression) {
+        auto* expression = syntax->parent.get();
+        auto* parent = expression->parent.get();
+        const parsing::Token* target = nullptr;
+        if (auto* assignment = parent ? parent->as_if<syntax::BinaryExpressionSyntax>() : nullptr;
+            assignment && assignment->right == expression &&
+            syntax::SyntaxFacts::isAssignmentOperator(assignment->kind)) {
+            target = syntaxes.getTokenAt(assignment->left->getLastToken().location());
+        }
+        else if (auto* value = parent ? parent->as_if<syntax::EqualsValueClauseSyntax>() : nullptr;
+                 value && value->parent) {
+            if (auto* declarator = value->parent->as_if<syntax::DeclaratorSyntax>())
+                target = &declarator->name;
+        }
+        if (auto* scope = getScopeFromSym(getSymbolAtToken(target))) {
+            if (scope->asSymbol().kind == ast::SymbolKind::ClassType)
+                addSymbol(scope->asSymbol().as<ast::ClassType>().getConstructor());
+        }
+        if (!symbols.empty())
+            return symbols;
+    }
+
     auto recoverMembers = [&](const syntax::SyntaxNode& left, std::string_view name) {
         auto leftToken = syntaxes.getTokenAt(left.getLastToken().location());
         for (auto* receiver : getSymbolsAtToken(leftToken)) {
@@ -788,7 +912,7 @@ slang::SmallVector<const ast::Symbol*, 2> ShallowAnalysis::getSymbolsAtToken(
 
     if (scopes.empty()) {
         INFO("No scope found for syntax {}, using root scope", syntax->toString());
-        scopes.push_back(&m_compilation->getRoot().as<ast::Scope>());
+        scopes.push_back(&getCompilation()->getRoot().as<ast::Scope>());
     }
 
     auto resolveInScope = [&](const ast::Scope* scope) -> const ast::Symbol* {
@@ -801,11 +925,11 @@ slang::SmallVector<const ast::Symbol*, 2> ShallowAnalysis::getSymbolsAtToken(
             }
             if (syntax->kind == syntax::SyntaxKind::DotMemberClause)
                 return handleInterfacePortHeader(declTok, syntax, scope);
-            if (auto def = m_compilation->tryGetDefinition(declTok->valueText(), *scope);
+            if (auto def = getCompilation()->tryGetDefinition(declTok->valueText(), *scope);
                 def.definition) {
                 return def.definition;
             }
-            return m_compilation->getPackage(declTok->valueText());
+            return getCompilation()->getPackage(declTok->valueText());
         }
 
         auto scopedName = nameSyntax->as_if<slang::syntax::ScopedNameSyntax>();
@@ -814,9 +938,60 @@ slang::SmallVector<const ast::Symbol*, 2> ShallowAnalysis::getSymbolsAtToken(
         }
 
         ast::ASTContext context(*scope, ast::LookupLocation::max);
+        bitmask<ast::LookupFlags> flags = ast::LookupFlags::None;
+        if (getCompilation()->hasFlag(ast::CompilationFlags::AllowUseBeforeDeclare))
+            flags |= ast::LookupFlags::AllowDeclaredAfter;
+
+        // Match Expression::bindName for every component of a call's receiver and name.
+        const syntax::SyntaxNode* fullName = nameSyntax;
+        while (fullName->parent && fullName->parent->kind == syntax::SyntaxKind::ScopedName)
+            fullName = fullName->parent;
+        if (auto* invocation = fullName->parent
+                                   ? fullName->parent->as_if<syntax::InvocationExpressionSyntax>()
+                                   : nullptr;
+            invocation && invocation->left == fullName && invocation->arguments) {
+            flags |= ast::LookupFlags::AllowDeclaredAfter | ast::LookupFlags::AlwaysAllowUpward;
+        }
+
         ast::LookupResult result;
-        ast::Lookup::name(*nameSyntax, context, ast::LookupFlags::None, result);
+        ast::Lookup::name(*nameSyntax, context, flags, result);
+        if (!result.found) {
+            if (auto* selected = nameSyntax->as_if<syntax::IdentifierSelectNameSyntax>()) {
+                auto* symbol = ast::Lookup::unqualified(*scope, selected->identifier.valueText(),
+                                                        flags);
+                if (symbol && symbol->kind == ast::SymbolKind::InstanceArray) {
+                    if (selected->identifier == *declTok)
+                        return symbol;
+                    for (auto* selector : selected->selectors) {
+                        auto* array = symbol->as_if<ast::InstanceArraySymbol>();
+                        if (!array || !selector->selector ||
+                            selector->selector->kind != syntax::SyntaxKind::BitSelect)
+                            return nullptr;
+                        if (array->elements.empty()) {
+                            // Slang retains uninstantiated members separately from real elements.
+                            auto members = array->members();
+                            if (members.begin() == members.end())
+                                return nullptr;
+                            symbol = &*members.begin();
+                        }
+                        else {
+                            ast::LookupResult selection;
+                            symbol = ast::Lookup::selectChild(*array, {&selector, 1}, context,
+                                                              selection);
+                            if (!symbol)
+                                return nullptr;
+                        }
+                    }
+                    return symbol->kind == ast::SymbolKind::InstanceArray ? nullptr : symbol;
+                }
+            }
+        }
         if (result.found) {
+            if (syntax->kind == syntax::SyntaxKind::NamedParamAssignment &&
+                syntax->as<syntax::NamedParamAssignmentSyntax>().name == *declTok) {
+                auto* parameterScope = getScopeFromSym(result.found);
+                return parameterScope ? parameterScope->find(declTok->valueText()) : nullptr;
+            }
             if (isOverSelector(declTok, result)) {
                 const slang::ast::Symbol* cur = result.found;
                 size_t remainingInterfaceDimensions = 0;
@@ -873,20 +1048,14 @@ slang::SmallVector<const ast::Symbol*, 2> ShallowAnalysis::getSymbolsAtToken(
                             continue;
                         }
 
-                        const ast::Type* type = nullptr;
-                        if (cur->isType()) {
-                            type = &cur->as<ast::Type>();
+                        const auto* type = getSymbolType(*cur);
+                        if (type && type->isError()) {
+                            auto* select = std::get<const syntax::ElementSelectSyntax*>(sel);
+                            if (!select->selector ||
+                                select->selector->kind != syntax::SyntaxKind::BitSelect)
+                                return nullptr;
                         }
-                        else if (cur->isValue()) {
-                            type = &cur->as<ast::ValueSymbol>().getType();
-                        }
-
-                        if (type && type->isArray()) {
-                            cur = type->getArrayElementType();
-                        }
-                        else {
-                            return nullptr;
-                        }
+                        cur = type ? type->getArrayElementType(/* allowError */ true) : nullptr;
                         hasInterfaceDimensions = false;
                     }
                     if (!cur) {
@@ -902,20 +1071,26 @@ slang::SmallVector<const ast::Symbol*, 2> ShallowAnalysis::getSymbolsAtToken(
             // with IdentifierSelectNameSyntax (instance arrays) result.found will be the final
             // element, when we may want the array. In the case of the selectors being the token, we
             // do want the element for completions
-            if (syntax->kind == syntax::SyntaxKind::IdentifierSelectName &&
-                (result.found->kind == slang::ast::SymbolKind::Instance ||
-                 result.found->kind == slang::ast::SymbolKind::GenerateBlock)) {
-                auto& idSelect = syntax->as<syntax::IdentifierSelectNameSyntax>();
-                if (idSelect.identifier == *declTok) {
-                    return result.path.at(result.path.size() - 1 - idSelect.selectors.size())
+            auto* selectedSyntax = syntax;
+            while (selectedSyntax != nameSyntax &&
+                   selectedSyntax->kind != syntax::SyntaxKind::IdentifierSelectName)
+                selectedSyntax = selectedSyntax->parent;
+            if (auto* idSelect = selectedSyntax->as_if<syntax::IdentifierSelectNameSyntax>();
+                idSelect && (result.found->kind == slang::ast::SymbolKind::Instance ||
+                             result.found->kind == slang::ast::SymbolKind::InstanceArray ||
+                             result.found->kind == slang::ast::SymbolKind::GenerateBlock)) {
+                if (idSelect->identifier == *declTok) {
+                    return result.path.at(result.path.size() - 1 - idSelect->selectors.size())
                         .symbol.get();
                 }
+                if (result.found->kind == ast::SymbolKind::InstanceArray)
+                    return nullptr;
             }
             return result.found;
         }
 
         // Try scoped name lookup with the same flags
-        if (auto scopedResult = handleScopedNameLookup(nameSyntax, context)) {
+        if (auto scopedResult = handleScopedNameLookup(nameSyntax, context, flags)) {
             return scopedResult;
         }
 
@@ -928,12 +1103,12 @@ slang::SmallVector<const ast::Symbol*, 2> ShallowAnalysis::getSymbolsAtToken(
             return handleInterfacePortHeader(declTok, syntax, scope);
         }
         // Try getting a definition as a last resort.
-        auto def = m_compilation->tryGetDefinition(declTok->valueText(), *scope);
+        auto def = getCompilation()->tryGetDefinition(declTok->valueText(), *scope);
         if (def.definition) {
             return def.definition;
         }
 
-        return m_compilation->getPackage(declTok->valueText());
+        return getCompilation()->getPackage(declTok->valueText());
     };
 
     for (auto* scope : scopes)
@@ -963,7 +1138,7 @@ const ast::Symbol* ShallowAnalysis::getSymbolAtToken(const parsing::Token* declT
 }
 
 const ast::Symbol* ShallowAnalysis::getDefinition(std::string_view name) const {
-    auto def = m_compilation->tryGetDefinition(name, m_compilation->getRoot());
+    auto def = getCompilation()->tryGetDefinition(name, getCompilation()->getRoot());
     return def.definition;
 }
 
@@ -1046,9 +1221,8 @@ void ShallowAnalysis::addLocalReferences(std::vector<lsp::Location>& references,
 
 std::vector<lsp::DocumentLink> ShallowAnalysis::getDocLinks() const {
     std::vector<lsp::DocumentLink> links;
-    for (auto& inc : m_tree->getIncludeDirectives()) {
-        // check buffer is in ours
-        if (inc.syntax->fileName.location().buffer() != m_buffer) {
+    for (auto& inc : m_shallowCompilation->getSyntaxTree()->getIncludeDirectives()) {
+        if (!inc.buffer || inc.syntax->fileName.location().buffer() != m_buffer) {
             continue;
         }
         links.push_back(lsp::DocumentLink{
@@ -1061,22 +1235,19 @@ std::vector<lsp::DocumentLink> ShallowAnalysis::getDocLinks() const {
 
 std::optional<BufferID> ShallowAnalysis::getIncludedBuffer(
     const syntax::IncludeDirectiveSyntax& syntax) const {
-    for (auto& inc : m_tree->getIncludeDirectives()) {
-        if (inc.syntax == &syntax)
-            return inc.buffer.id;
+    for (auto& inc : m_shallowCompilation->getSyntaxTree()->getIncludeDirectives()) {
+        if (inc.syntax != &syntax) {
+            continue;
+        }
+        if (!inc.buffer) {
+            return std::nullopt;
+        }
+        return inc.buffer.id;
     }
     return std::nullopt;
 }
 
-bool ShallowAnalysis::hasValidBuffers() {
-    for (auto& tree : m_allTrees) {
-        if (!server::hasValidBuffers(m_sourceManager, tree)) {
-            return false;
-        }
-    }
-    return true;
-}
-
+#ifdef SLANG_SERVER_DEBUG
 markup::Paragraph ShallowAnalysis::getDebugHover(const SourceLocation& loc) const {
     markup::Paragraph para;
     auto tok = syntaxes.getTokenAt(loc);
@@ -1130,59 +1301,6 @@ markup::Paragraph ShallowAnalysis::getDebugHover(const SourceLocation& loc) cons
 
     return para;
 }
-
-Diagnostics ShallowAnalysis::getAnalysisDiags() {
-    getAnalysisManager();
-
-    if (!m_cachedAnalysisDiags) {
-        return {};
-    }
-
-    return *m_cachedAnalysisDiags;
-}
-
-const slang::analysis::AnalysisManager* ShallowAnalysis::getAnalysisManager() {
-    if (m_driverAnalysis) {
-        return m_driverAnalysis.get();
-    }
-
-    (void)getSemanticDiagnostics();
-
-    if (!m_compilation || m_compilation->getRoot().topInstances.empty()) {
-        m_cachedAnalysisDiags = Diagnostics{};
-        return nullptr;
-    }
-
-    auto manager = std::make_unique<slang::analysis::AnalysisManager>(m_analysisOptions);
-
-    m_compilation->freeze();
-    manager->analyze(*m_compilation);
-    m_compilation->unfreeze();
-
-    // filter out unused def/decl diags, since shallow analysis will likely not have all references.
-    m_cachedAnalysisDiags = manager->getDiagnostics().filter(
-        {diag::UnusedDefinition, diag::UnusedPackageParameter, diag::UnusedPackageSubroutine,
-         diag::UnusedPackageTypedef, diag::UnusedPackageVar});
-
-    m_driverAnalysis = std::move(manager);
-
-    return m_driverAnalysis.get();
-}
-
-std::vector<const slang::analysis::ValueDriver*> ShallowAnalysis::getDrivers(
-    const slang::ast::ValueSymbol& symbol) {
-    if (m_activeDesign) {
-        auto* designSymbol = getDesignSymbol(symbol);
-        if (auto* designValue = designSymbol ? designSymbol->as_if<ast::ValueSymbol>() : nullptr)
-            return m_activeDesign->getAnalysis().getDrivers(*designValue);
-    }
-
-    auto* manager = getAnalysisManager();
-    if (!manager) {
-        return {};
-    }
-
-    return manager->getDrivers(symbol);
-}
+#endif
 
 } // namespace server

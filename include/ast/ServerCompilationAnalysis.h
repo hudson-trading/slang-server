@@ -12,12 +12,14 @@
 #include "ReferenceIndexer.h"
 #include "document/SlangDoc.h"
 #include <memory>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 #include "slang/analysis/AnalysisManager.h"
 #include "slang/analysis/AnalysisOptions.h"
+#include "slang/analysis/AnalysisQueries.h"
 #include "slang/util/Bag.h"
 
 namespace server {
@@ -45,42 +47,17 @@ public:
     std::vector<const slang::analysis::ValueDriver*> getDrivers(
         const slang::ast::ValueSymbol& symbol);
 
-    template<bool isDrivers>
-    struct ConeSelector;
+    /// Get driver cone leaves for a given RTL path.
+    std::set<ConeLeaf> getDriverCone(const std::string& path);
 
-    /// Get cone leaves (drivers or loads depending on template parameter) for a given RTL path
-    template<bool isDrivers>
-    std::set<ConeLeaf> getCone(const std::string& path) {
-        using ConeSelector_t = typename ConeSelector<isDrivers>::type;
-        slang::ast::LookupResult result;
-        slang::ast::ASTContext context(compilation.getRoot(), slang::ast::LookupLocation::max);
-        slang::ast::Lookup::name(compilation.parseName(path), context,
-                                 slang::ast::LookupFlags::None, result);
-        if (!result.found) {
-            throw std::runtime_error(
-                fmt::format("Could not find path in compiled design: {}", path));
-        }
-
-        if (!m_references) {
-            m_references.emplace();
-            m_references->reset(&compilation.getRoot());
-        }
-
-        auto it = m_references->symbolToUses.find(
-            ConeLeaf::concreteSymbol(result.found)->as_if<slang::ast::ValueSymbol>());
-        if (it == m_references->symbolToUses.end()) {
-            throw std::runtime_error(fmt::format("Could not find reference to: {}", path));
-        }
-
-        ConeSelector_t coneTracer(result.found);
-        for (const auto symbol : it->second) {
-            symbol->visit(coneTracer);
-        }
-
-        return coneTracer.getLeaves();
-    }
+    /// Get load cone leaves for a given RTL path.
+    std::set<ConeLeaf> getLoadCone(const std::string& path);
 
 private:
+    /// Resolve an RTL path for cone tracing, throwing if it is not in the compiled design.
+    const slang::ast::Symbol& lookupConeSymbol(const std::string& path);
+
+    /// Lazily creates and runs the full-design analysis manager.
     slang::analysis::AnalysisManager& getAnalysisManager();
 
     /// Retained buffer data to prevent deallocation while this compilation exists
@@ -89,20 +66,14 @@ private:
     /// Analysis options from the bag, used for driver analysis
     slang::analysis::AnalysisOptions m_analysisOptions;
 
+    /// Lazily created analysis manager used for diagnostics and driver queries.
     std::unique_ptr<slang::analysis::AnalysisManager> m_driverAnalysis;
+
+    /// Instance-aware driver queries that can elaborate the unfrozen compilation.
+    std::unique_ptr<slang::analysis::AnalysisQueries> m_analysisQueries;
 
     /// Index of value symbol -> uses (e.g. processes or continuous assignments)
     std::optional<ReferenceIndexer> m_references = std::nullopt;
-};
-
-template<>
-struct ServerCompilationAnalysis::ConeSelector<true> {
-    using type = DriversTracer;
-};
-
-template<>
-struct ServerCompilationAnalysis::ConeSelector<false> {
-    using type = LoadsTracer;
 };
 
 } // namespace server

@@ -7,6 +7,7 @@ import { ext } from '../extension'
 import {
   CommandNode,
   EditorButton,
+  ServerCommandNode,
   TreeItemButton,
   ViewButton,
   ViewComponent,
@@ -481,6 +482,8 @@ export class ProjectComponent
       await this.refreshSlangCompilation({ preserveFocusedPath: false })
     }
   )
+
+  autoConfigure = new ServerCommandNode('slang.autoConfigure', 'slang: Auto-configure')
 
   selectTopLevel: CommandNode = new CommandNode(
     {
@@ -1107,7 +1110,7 @@ export class ProjectComponent
 
       if (items.length === 0) {
         vscode.window.showErrorMessage(
-          `No build files found. See [docs](https://hudson-trading.github.io/slang-server/start/config/#buildpattern) for more info.`
+          `No build files found. See [docs](https://hudson-trading.github.io/slang-server/start/config/#builds) for more info.`
         )
         return
       }

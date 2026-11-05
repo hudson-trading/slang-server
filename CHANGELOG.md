@@ -12,6 +12,24 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 <!-- new-release-here -->
+
+## v0.3.0 Major Changes
+
+- Active instances in VS Code and Neovim: select module/interface instances and generate-loop iterations through CodeLens or hierarchy views. Hovers and parameter-value inlays use the selected instance's values, types, and connections.
+- Search the elaborated hierarchy by name or path, including signals and interface ports. Neovim supports FzfLua, Telescope, Snacks Picker, and a `vim.ui` fallback.
+- Interface ports and their members are visible in the hierarchy, alongside resolved type parameters.
+- Struct assignment patterns have field hovers and navigation, whole-struct and field completions, and inferred-type inlay hints.
+- Completions include nested struct paths, global typedefs and classes, and more results for incomplete types and interface and instance arrays.
+- Hovers show driver source snippets, macro-generated driver context, linked type declarations, and resolved interface type parameters. Hovers and navigation support multiple symbols, including both sides of implicit port connections.
+- Shallow analysis infers interface port value and type parameters from `$static_assert` equality constraints.
+- Driver/load tracing commands return hierarchical paths with source locations. Incoming call hierarchy supports drivers; outgoing call hierarchy no longer supports loads.
+- Expanded document outlines and improved ranges for sticky scroll.
+- Saving a dependency refreshes diagnostics in dependent open files. Single-unit builds preserve full-design diagnostics when build files are opened; per-file macro inheritance remains limited.
+- Nix development shell with build and test dependencies.
+- Client/server major and minor version compatibility warnings and coordinated minor releases.
+
+This summary includes features added in the preceding 0.2.x patch releases. See the [git history](https://github.com/hudson-trading/slang-server/compare/v0.2.2...v0.3.0) for the full changes since the previous entry.
+
 ## v0.2.2 Major Changes
 * Neovim Cells/Modules view when design is set
 * Vscode client installs server from releases page (thanks @evanwporter!)

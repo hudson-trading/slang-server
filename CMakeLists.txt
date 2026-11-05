@@ -100,6 +100,8 @@ option(SLANG_SERVER_INCLUDE_INSTALL "Include installation targets"
 option(SLANG_SERVER_STATIC_LINK_STDLIB
        "Statically link C++ standard library (libstdc++/libc++) and libgcc" OFF)
 option(SLANG_CI_BUILD "Enable stricter warnings for CI builds" OFF)
+option(SLANG_SERVER_DEBUG "Enable developer hovers and language-feature scans"
+       OFF)
 
 # Always require C++20 or later, no extensions.
 set(CMAKE_CXX_STANDARD 20)
@@ -156,6 +158,9 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   # Warn about missing includes that might work on some platforms but not others
   add_compile_options(-Wmissing-include-dirs)
 endif()
+
+add_compile_options(
+  "$<$<COMPILE_LANG_AND_ID:CXX,Clang,AppleClang>:-Werror=reorder-init-list>")
 
 # Configure static linking of C++ standard library if requested Note: macOS uses
 # system libc++ which can't be statically linked and is generally compatible
@@ -291,9 +296,12 @@ add_library(
   slang_server_obj_lib OBJECT
   ${CMAKE_CURRENT_BINARY_DIR}/VersionInfo.cpp
   src/SystemTaskDocs.cpp
+  src/BuiltinMethodDocs.cpp
   src/ast/ActiveDesignContext.cpp
+  src/ast/ConeResult.cpp
   src/ast/ServerCompilation.cpp
   src/ast/ServerCompilationAnalysis.cpp
+  src/ast/ShallowCompilation.cpp
   src/ast/WcpClient.cpp
   src/document/DefinitionInfo.cpp
   src/document/ShallowAnalysis.cpp
@@ -303,6 +311,7 @@ add_library(
   src/document/SymbolTreeVisitor.cpp
   src/document/SyntaxIndexer.cpp
   src/codeactions/AddDefine.cpp
+  src/codeactions/AddInclude.cpp
   src/codeactions/CodeActionDispatch.cpp
   src/codeactions/ExpandMacro.cpp
   src/completions/AssignmentPatternCompletions.cpp
@@ -313,11 +322,13 @@ add_library(
   src/completions/MacroCompletions.cpp
   src/completions/MemberCompletions.cpp
   src/completions/SystemTaskCompletions.cpp
+  src/lsp/FileWatchers.cpp
   src/lsp/URI.cpp
   src/util/Converters.cpp
   src/util/Formatting.cpp
   src/util/SlangExtensions.cpp
   src/util/Markdown.cpp
+  src/util/Process.cpp
   src/Config.cpp
   src/Indexer.cpp
   src/ServerDriver.cpp
@@ -325,6 +336,11 @@ add_library(
   src/ServerDiagClient.cpp)
 
 target_include_directories(slang_server_obj_lib PUBLIC include)
+if(SLANG_SERVER_DEBUG)
+  target_compile_definitions(slang_server_obj_lib PUBLIC SLANG_SERVER_DEBUG)
+  target_sources(slang_server_obj_lib PRIVATE src/debug/DocumentScan.cpp
+                                              src/debug/WorkspaceScan.cpp)
+endif()
 target_include_directories(slang_server_obj_lib SYSTEM
                            PRIVATE external/reflect-cpp/include)
 

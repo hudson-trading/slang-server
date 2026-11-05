@@ -5,6 +5,9 @@ import * as semver from 'semver'
 import * as stream from 'stream'
 import { pipeline } from 'stream/promises'
 import { getPlatform, Platform, PlatformMap } from './platform'
+import type { Logger } from './logger'
+
+type InstallLogger = Pick<Logger, 'info'>
 
 export function isUpdateAvailable(latest: string, installed: string): boolean {
   console.log(`Comparing installed version '${installed}' to latest version '${latest}'`)
@@ -63,8 +66,12 @@ function getConfigPlatform(config: GithubInstallerConfig): Platform {
   return config.platform ?? getPlatform()
 }
 
-export async function latestRelease(config: GithubInstallerConfig): Promise<GithubRelease> {
+export async function latestRelease(
+  config: GithubInstallerConfig,
+  logger?: InstallLogger
+): Promise<GithubRelease> {
   const url = `https://api.github.com/repos/${config.githubRepo}/releases/latest`
+  logger?.info(`Fetching release metadata from ${url}`)
 
   const timeoutController = new AbortController()
   const timeout = setTimeout(() => {
@@ -74,9 +81,9 @@ export async function latestRelease(config: GithubInstallerConfig): Promise<Gith
     const response = await fetch(url, {
       signal: timeoutController.signal,
     })
+    logger?.info(`Release metadata response: HTTP ${response.status} ${response.statusText}`)
     if (!response.ok) {
-      console.error(response.url, response.status, response.statusText)
-      throw new Error(`Can't fetch release: ${response.statusText}`)
+      throw new Error(`Can't fetch release: HTTP ${response.status} ${response.statusText}`)
     }
     return (await response.json()) as GithubRelease
   } finally {
@@ -123,10 +130,17 @@ export function chooseReleaseAsset(
   throw new Error(`No compatible release asset '${assetName}' found for ${platform}`)
 }
 
-async function download(url: string, dest: string, abort?: AbortController) {
+async function download(
+  url: string,
+  dest: string,
+  logger?: InstallLogger,
+  abort?: AbortController
+) {
+  logger?.info(`Downloading ${url} to ${dest}`)
   const res = await fetch(url, { signal: abort?.signal })
+  logger?.info(`Download response: HTTP ${res.status} ${res.statusText}`)
   if (!res.ok || !res.body) {
-    throw new Error(`Failed to download ${url}`)
+    throw new Error(`Failed to download ${url}: HTTP ${res.status} ${res.statusText}`)
   }
 
   await fs.mkdir(path.dirname(dest), { recursive: true })
@@ -143,46 +157,61 @@ async function download(url: string, dest: string, abort?: AbortController) {
   }
 }
 
-async function extractArchive(archive: string, dest: string) {
-  await fs.mkdir(dest, { recursive: true })
-
-  await decompress(archive, dest, {
-    strip: 0, // keep directory structure
-  })
-}
-
-async function ensureExecutable(binPath: string, platform: Platform) {
-  if (platform !== 'windows') {
-    await fs.chmod(binPath, 0o755)
-  }
-}
-
 export async function installFromGithub(
   storagePath: string,
   config: GithubInstallerConfig,
-  binaryNames: PlatformMap
+  binaryNames: PlatformMap,
+  logger?: InstallLogger
 ): Promise<string> {
   const platform = getConfigPlatform(config)
-  const release = await latestRelease(config)
+  logger?.info(`Installing ${config.githubRepo} for ${platform}/${process.arch} in ${storagePath}`)
+  const release = await latestRelease(config, logger)
+  logger?.info(
+    `Latest release: ${release.tag_name}; requested asset: ${config.assetNames[platform]}`
+  )
   const asset = chooseReleaseAsset(release, config)
-
-  const downloadDir = path.join(storagePath, 'download')
-  const installDir = path.join(storagePath, 'install', release.tag_name)
-  const archivePath = path.join(downloadDir, asset.name)
-
-  await download(asset.browser_download_url, archivePath)
-
-  await extractArchive(archivePath, installDir)
+  logger?.info(`Selected release asset: ${asset.name}`)
 
   const binaryName = binaryNames[platform]
   if (!binaryName) {
     throw new Error(`No binary name configured for platform ${platform}`)
   }
-  const binaryPath = path.join(installDir, binaryName)
 
-  await ensureExecutable(binaryPath, platform)
+  const downloadDir = path.join(storagePath, 'download')
+  await fs.mkdir(downloadDir, { recursive: true })
+  const stagingDir = await fs.mkdtemp(path.join(downloadDir, 'install-'))
+  try {
+    const archivePath = path.join(stagingDir, asset.name)
+    const extractDir = path.join(stagingDir, 'extracted')
+    await download(asset.browser_download_url, archivePath, logger)
+    logger?.info(`Extracting ${archivePath} to ${extractDir}`)
+    await decompress(archivePath, extractDir)
 
-  await fs.rm(archivePath, { force: true })
+    const stagedBinaryPath = path.join(extractDir, binaryName)
+    logger?.info(`Checking extracted binary: ${stagedBinaryPath}`)
+    if (!(await fs.stat(stagedBinaryPath)).isFile()) {
+      throw new Error(`Release asset '${asset.name}' does not contain binary '${binaryName}'`)
+    }
+    if (platform !== 'windows') {
+      await fs.chmod(stagedBinaryPath, 0o755)
+    }
 
-  return binaryPath
+    const installDir = path.join(storagePath, 'install', release.tag_name)
+    logger?.info(`Installing extracted files to ${installDir}`)
+    await fs.mkdir(installDir, { recursive: true })
+    for (const entry of await fs.readdir(extractDir)) {
+      if (entry !== binaryName) {
+        await fs.rename(path.join(extractDir, entry), path.join(installDir, entry))
+      }
+    }
+
+    // Rename replaces the directory entry without writing to the running executable's inode.
+    const binaryPath = path.join(installDir, binaryName)
+    logger?.info(`Replacing ${binaryPath} with ${stagedBinaryPath}`)
+    await fs.rename(stagedBinaryPath, binaryPath)
+    return binaryPath
+  } finally {
+    logger?.info(`Removing temporary installation directory: ${stagingDir}`)
+    await fs.rm(stagingDir, { recursive: true, force: true })
+  }
 }

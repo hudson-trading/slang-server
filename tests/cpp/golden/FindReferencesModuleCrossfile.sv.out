@@ -27,23 +27,23 @@ module macro_user;
 
 
     macro_test dut (
-    ^^^^^^^^^^ Refs[1]
+    ^^^^^^^^^^ Refs[2]
                ^^^ Refs[1]
 
         .clk(clk),
-         ^^^ Refs[1]
+         ^^^ Refs[4]
              ^^^ Refs[2]
 
         .rst(rst),
-         ^^^ Refs[1]
+         ^^^ Refs[4]
              ^^^ Refs[2]
 
         .din(data_in),
-         ^^^ Refs[1]
+         ^^^ Refs[3]
              ^^^^^^^ Refs[2]
 
         .dout(data_out)
-         ^^^^ Refs[1]
+         ^^^^ Refs[3]
               ^^^^^^^^ Refs[3]
 
     );

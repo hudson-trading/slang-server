@@ -7,6 +7,7 @@
 //------------------------------------------------------------------------------
 #include "document/DefinitionInfo.h"
 
+#include "BuiltinMethodDocs.h"
 #include "SystemTaskDocs.h"
 #include "document/ShallowAnalysis.h"
 #include "lsp/URI.h"
@@ -25,6 +26,7 @@
 #include "slang/ast/symbols/InstanceSymbols.h"
 #include "slang/ast/symbols/ParameterSymbols.h"
 #include "slang/ast/symbols/PortSymbols.h"
+#include "slang/ast/symbols/SubroutineSymbols.h"
 #include "slang/ast/symbols/ValueSymbol.h"
 #include "slang/ast/types/AllTypes.h"
 #include "slang/ast/types/Type.h"
@@ -602,21 +604,23 @@ void renderSymbolHeader(markup::Paragraph& infoPg, const ast::Symbol& symbol,
     // <Kind/Type> <Name> in <Scope>
     renderSymbolHeaderName(infoPg, symbol, kindOverride);
 
-    auto& parentSym = symbol.getParentScope()->asSymbol();
-    auto lexicalPath = parentSym.getLexicalPath();
+    if (auto* parent = symbol.getParentScope()) {
+        auto& parentSym = parent->asSymbol();
+        auto lexicalPath = parentSym.getLexicalPath();
 
-    // The typedef name needs to be appended; it's not attached to the type
-    auto parentSyntax = parentSym.getSyntax();
-    if (parentSyntax && parentSyntax->parent &&
-        parentSyntax->parent->kind == syntax::SyntaxKind::TypedefDeclaration &&
-        parentSym.kind != ast::SymbolKind::EnumType) {
-        lexicalPath += "::";
-        lexicalPath +=
-            parentSyntax->parent->as<syntax::TypedefDeclarationSyntax>().name.valueText();
+        // The typedef name needs to be appended; it's not attached to the type
+        auto parentSyntax = parentSym.getSyntax();
+        if (parentSyntax && parentSyntax->parent &&
+            parentSyntax->parent->kind == syntax::SyntaxKind::TypedefDeclaration &&
+            parentSym.kind != ast::SymbolKind::EnumType) {
+            lexicalPath += "::";
+            lexicalPath +=
+                parentSyntax->parent->as<syntax::TypedefDeclarationSyntax>().name.valueText();
+        }
+
+        if (!lexicalPath.empty())
+            infoPg.appendText(" in ").appendCode(lexicalPath);
     }
-
-    if (!lexicalPath.empty())
-        infoPg.appendText(" in ").appendCode(lexicalPath);
     infoPg.newLine();
 }
 
@@ -630,6 +634,17 @@ const ast::Symbol& getDriverSymbol(const DefinitionInfo::SymbolTarget& target) {
 
 void renderSymbolSyntaxes(markup::Document& doc, const DefinitionInfo::SymbolTarget& target,
                           const SourceManager& sm, const Config::HoverConfig& hovers) {
+    if (target.syntaxes.empty()) {
+        if (auto* subroutine = target.symbol->as_if<ast::SubroutineSymbol>()) {
+            doc.addParagraph().appendCodeBlock(formatBuiltinMethodSignature(*subroutine));
+            if (auto* methodDoc = getBuiltinMethodDoc(*subroutine)) {
+                doc.addParagraph().appendText(methodDoc->description);
+                doc.addParagraph().appendText(
+                    fmt::format("IEEE 1800-2023 §{}", methodDoc->ieeeSection));
+            }
+        }
+        return;
+    }
     appendSyntaxTargets(doc, target.syntaxes, sm, hovers.docCommentFormat.value());
 }
 
@@ -967,7 +982,9 @@ markup::Document DefinitionInfo::SystemSubroutineTarget::getHover(
     markup::Document md;
 
     auto& head = md.addParagraph();
-    head.appendBold(isTask ? "System task" : "System function")
+    head.appendBold(token.kind != parsing::TokenKind::SystemIdentifier ? "Built-in method"
+                    : isTask                                           ? "System task"
+                                                                       : "System function")
         .appendText(" ")
         .appendCode(token.valueText());
     if (!doc->ieeeSection.empty()) {

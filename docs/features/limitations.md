@@ -15,7 +15,7 @@ Shallow compilations only load the directly referenced syntax trees, and only lo
 
 **Single Unit Compilations**
 
-Designs that use slang's [`--single-unit`](https://sv-lang.com/command-line-ref.html) are not be supported. The main effect of using this flag is that macros are not inherited, so with the server those macros will show as missing. The `--single-unit` flag means that all files are essentially concatenated before being sent to tools. Even if `slang-server` grabbed these dependencies, it would make file and compilation updates take much longer, so it's generally preferred to switch away from using this flag.
+Selected builds using slang's [`--single-unit`](https://sv-lang.com/command-line-ref.html) provide full-design diagnostics, which are preserved when unchanged build files are opened. Per-file shallow analysis still lacks macros inherited from earlier files in the compilation unit, so editing a file or opening it without the build can show missing-macro errors. Prefer explicit includes or configured defines for reliable per-file features. See [Single Unit](design/shallow.md#single-unit) for details.
 
 **Some UVM Code**
 

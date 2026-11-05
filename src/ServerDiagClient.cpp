@@ -89,7 +89,14 @@ void ServerDiagClient::report(const slang::ReportedDiagnostic& diag) {
     }
 
     if (diag.originalDiagnostic.code == slang::diag::CommandLineError) {
-        m_client.showError(std::string(diag.formattedMessage));
+        auto message = std::string(diag.formattedMessage);
+        if (diag.location && diag.location != SourceLocation::NoLocation) {
+            message = fmt::format("{}:{}:{}: {}",
+                                  m_sourceManager.getFullPath(diag.location.buffer()).string(),
+                                  m_sourceManager.getLineNumber(diag.location),
+                                  m_sourceManager.getColumnNumber(diag.location), message);
+        }
+        m_client.showError(message);
         return;
     }
 
@@ -235,6 +242,19 @@ void ServerDiagClient::report(const slang::ReportedDiagnostic& diag) {
         }
     }
 }
+
+#ifdef SLANG_SERVER_DEBUG
+void ServerDiagClient::setDebugDiagnostics(const URI& uri,
+                                           std::vector<lsp::Diagnostic> diagnostics) {
+    auto& current = m_diagnostics[uri];
+    std::erase_if(current,
+                  [](const lsp::Diagnostic& diag) { return diag.source == "slang-server-debug"; });
+    current.insert(current.end(), std::make_move_iterator(diagnostics.begin()),
+                   std::make_move_iterator(diagnostics.end()));
+    m_dirtyUris.emplace(uri);
+    pushDiags(uri);
+}
+#endif
 
 void ServerDiagClient::clear(URI uri) {
     auto it = m_diagnostics.find(uri);

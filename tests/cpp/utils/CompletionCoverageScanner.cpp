@@ -24,13 +24,8 @@ std::optional<std::string> triggerForTokenKind(slang::parsing::TokenKind kind) {
             return "#";
         case slang::parsing::TokenKind::Dot:
             return ".";
-        case slang::parsing::TokenKind::OpenParenthesis:
-            return "(";
-        case slang::parsing::TokenKind::Colon:
         case slang::parsing::TokenKind::DoubleColon:
             return ":";
-        case slang::parsing::TokenKind::OpenBracket:
-            return "[";
         case slang::parsing::TokenKind::Dollar:
             return "$";
         case slang::parsing::TokenKind::ApostropheOpenBrace:

@@ -567,8 +567,6 @@ std::string getTypeString(const ast::ValueSymbol& value, TypeStringMode mode) {
     return getTypeString(decl, mode);
 }
 
-namespace {
-
 size_t validUtf8SequenceLength(std::string_view s) {
     if (s.empty())
         return 0;
@@ -587,6 +585,8 @@ size_t validUtf8SequenceLength(std::string_view s) {
     utf8Decode(bytes, &codePoint, &error, decodedLength);
     return error ? 0 : static_cast<size_t>(decodedLength);
 }
+
+namespace {
 
 // Escape invalid UTF-8 bytes as \xNN, preserving valid ASCII/UTF-8
 std::string escapeInvalidUtf8(std::string_view s) {

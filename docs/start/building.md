@@ -16,12 +16,33 @@
 git clone https://github.com/hudson-trading/slang-server.git
 cd slang-server
 
-# Pull dependencies (slang and reflect-cpp)
-git submodule update --init --recursive
+# Pull direct dependencies (slang, reflect-cpp, and ctre)
+git submodule update --init
 
 # Build with cmake using a C++20 compliant compiler
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j --target slang_server
 ```
 
+Only direct submodules are needed. Leave out `--recursive` to skip reflect-cpp's
+optional `vcpkg` submodule; slang-server uses its bundled JSON support with
+`REFLECTCPP_USE_VCPKG=OFF` by default.
+
 The binary will be at `build/bin/slang-server`.
+
+For developer hovers and document/repository coverage scans, enable
+`-DSLANG_SERVER_DEBUG=ON`. See [Debug hovers and feature scans](../development/debug-scans.md).
+
+### Nix Development Shell
+
+If you use Nix with flakes enabled, the repository provides a development shell for x86-64 Linux, ARM64 Linux, and Apple Silicon macOS. It includes the compiler, CMake, Ninja, Python, `uv`, and build and test dependencies.
+
+After cloning the repository and initializing its submodules, run from the repository root:
+
+```bash
+nix develop
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j8 --target slang_server
+```
+
+The shell supplies the tools; the CMake commands build `build/bin/slang-server`. Use a separate build directory if an existing one was configured with a different compiler.

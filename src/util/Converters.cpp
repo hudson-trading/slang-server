@@ -7,8 +7,12 @@
 //------------------------------------------------------------------------------
 #include "util/Converters.h"
 
+#include "util/Formatting.h"
+#include <algorithm>
+#include <cstdint>
 #include <fmt/format.h>
 
+#include "slang/text/CharInfo.h"
 #include "slang/text/SourceLocation.h"
 
 namespace server {
@@ -50,6 +54,27 @@ lsp::Position toPosition(const SourceLocation& loc, const SourceManager& sourceM
 std::optional<SourceLocation> toSourceLocation(BufferID buffer, const lsp::Position& position,
                                                const SourceManager& sourceManager) {
     return sourceManager.getSourceLocation(buffer, position.line + 1, position.character + 1);
+}
+
+size_t utf16ColumnToByte(std::string_view line, uint32_t character) {
+    constexpr size_t supplementaryUtf8Length = 4;
+    constexpr size_t surrogatePairUtf16Length = 2;
+    size_t byteOffset = 0;
+    size_t utf16Column = 0;
+    while (byteOffset < line.size() && utf16Column < character) {
+        char c = line[byteOffset];
+        if (isNewline(c) || c == '\0')
+            break;
+        if (isASCII(c)) {
+            byteOffset++;
+            utf16Column++;
+            continue;
+        }
+        auto byteLength = std::max(size_t(1), validUtf8SequenceLength(line.substr(byteOffset)));
+        utf16Column += byteLength == supplementaryUtf8Length ? surrogatePairUtf16Length : 1;
+        byteOffset += byteLength;
+    }
+    return byteOffset;
 }
 
 lsp::Range toRange(const SourceRange& range, const SourceManager& sourceManager) {

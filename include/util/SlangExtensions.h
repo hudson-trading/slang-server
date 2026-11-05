@@ -15,7 +15,8 @@
 
 namespace slang::ast {
 class Type;
-}
+class Symbol;
+} // namespace slang::ast
 
 namespace server {
 
@@ -28,6 +29,9 @@ bool hasValidBuffers(const slang::SourceManager& sm,
 
 /// Return the canonical type, unwrapping a recoverable error type when available.
 const slang::ast::Type& unwrapErrorType(const slang::ast::Type& type);
+
+/// Return the canonical type represented by a type or value symbol, if it has one.
+const slang::ast::Type* getSymbolType(const slang::ast::Symbol& symbol);
 
 /// Return the resolved target of an alias introduced by a type parameter.
 const slang::ast::Type* getTypeParameterTargetType(const slang::ast::Type& type);

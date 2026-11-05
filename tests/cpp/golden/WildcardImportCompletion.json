@@ -292,6 +292,29 @@
         }
       },
       {
+        "label": "mailbox",
+        "labelDetails": {
+          "detail": " ",
+          "description": "std"
+        },
+        "kind": "Class",
+        "documentation": "",
+        "filterText": "mailbox",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 56,
+              "character": 28
+            },
+            "end": {
+              "line": 56,
+              "character": 28
+            }
+          },
+          "newText": "mailbox"
+        }
+      },
+      {
         "label": "max_val",
         "labelDetails": {
           "detail": " int"
@@ -447,13 +470,39 @@
         }
       },
       {
+        "label": "process",
+        "labelDetails": {
+          "detail": " ",
+          "description": "std"
+        },
+        "kind": "Class",
+        "documentation": "",
+        "filterText": "process",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 56,
+              "character": 28
+            },
+            "end": {
+              "line": 56,
+              "character": 28
+            }
+          },
+          "newText": "process"
+        }
+      },
+      {
         "label": "randomize",
         "labelDetails": {
           "detail": " function",
           "description": "std"
         },
         "kind": "Function",
-        "documentation": "int randomize(...)",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nfunction int randomize(...);\n````\n\nRandomizes the supplied scope variables subject to an optional with constraint block. Returns 1 on success or 0 on failure.\n\nIEEE 1800-2023 §18.12"
+        },
         "filterText": "randomize",
         "insertText": "randomize()",
         "insertTextFormat": "Snippet",
@@ -497,6 +546,29 @@
         }
       },
       {
+        "label": "semaphore",
+        "labelDetails": {
+          "detail": " ",
+          "description": "std"
+        },
+        "kind": "Class",
+        "documentation": "",
+        "filterText": "semaphore",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 56,
+              "character": 28
+            },
+            "end": {
+              "line": 56,
+              "character": 28
+            }
+          },
+          "newText": "semaphore"
+        }
+      },
+      {
         "label": "util_pkg",
         "labelDetails": {
           "detail": " Package"
@@ -521,6 +593,29 @@
             }
           },
           "newText": "util_pkg"
+        }
+      },
+      {
+        "label": "weak_reference",
+        "labelDetails": {
+          "detail": " ",
+          "description": "std"
+        },
+        "kind": "Class",
+        "documentation": "",
+        "filterText": "weak_reference",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 56,
+              "character": 28
+            },
+            "end": {
+              "line": 56,
+              "character": 28
+            }
+          },
+          "newText": "weak_reference"
         }
       }
     ]
@@ -1025,7 +1120,10 @@
           "description": "std"
         },
         "kind": "Function",
-        "documentation": "int randomize(...)",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nfunction int randomize(...);\n````\n\nRandomizes the supplied scope variables subject to an optional with constraint block. Returns 1 on success or 0 on failure.\n\nIEEE 1800-2023 §18.12"
+        },
         "filterText": "randomize",
         "insertText": "randomize()",
         "insertTextFormat": "Snippet",

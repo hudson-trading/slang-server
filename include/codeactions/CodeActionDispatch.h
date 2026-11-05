@@ -17,6 +17,8 @@ namespace slang {
 class SourceManager;
 }
 
+struct Indexer;
+
 namespace server {
 
 class ServerDriver;
@@ -27,6 +29,11 @@ struct CodeActionContext {
     SlangDoc& doc;
     ShallowAnalysis& analysis;
     const slang::SourceManager& sourceManager;
+    /// Workspace declarations and include candidates.
+    const Indexer& indexer;
+
+    /// Configured preprocessing options used to choose resolvable include spellings.
+    const slang::Bag& configuredOptions;
 
     /// Token at cursor (may be null)
     const slang::parsing::Token* token;
@@ -39,9 +46,11 @@ struct CodeActionContext {
 class CodeActionDispatch {
     ServerDriver& m_driver;
     slang::SourceManager& m_sourceManager;
+    /// Workspace index used to find headers for unresolved names.
+    const Indexer& m_indexer;
 
 public:
-    CodeActionDispatch(ServerDriver& driver, slang::SourceManager& sm);
+    CodeActionDispatch(ServerDriver& driver, slang::SourceManager& sm, const Indexer& indexer);
 
     std::vector<rfl::Variant<lsp::Command, lsp::CodeAction>> getCodeActions(
         const lsp::CodeActionParams& params);

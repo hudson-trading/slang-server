@@ -129,6 +129,26 @@ CompletionContext CompletionContext::fromLocation(SlangDoc& doc, SourceLocation 
     for (auto* node = ctx.syntax; node; node = node->parent) {
         auto kind = node->kind;
 
+        if (auto* instance = node->as_if<HierarchyInstantiationSyntax>();
+            instance && instance->type.range().start() <= loc &&
+            loc <= instance->type.range().end()) {
+            ctx.kind = CompletionContextKind::ModuleMember;
+            return ctx;
+        }
+
+        if (auto* reference = node->as_if<TypeReferenceSyntax>();
+            reference && reference->openParen.range().end() <= loc &&
+            loc <= reference->closeParen.location()) {
+            ctx.kind = CompletionContextKind::Expression;
+            return ctx;
+        }
+
+        if (DataTypeSyntax::isKind(kind) || kind == SyntaxKind::ClassName ||
+            kind == SyntaxKind::ExtendsClause || kind == SyntaxKind::ImplementsClause) {
+            ctx.kind = CompletionContextKind::PortList;
+            return ctx;
+        }
+
         // Check for expression contexts
         if (SyntaxFacts::isAssignmentOperator(kind) || isExpressionContext(kind)) {
             ctx.kind = CompletionContextKind::Expression;

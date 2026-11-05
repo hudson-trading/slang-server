@@ -2,7 +2,7 @@
   "name": "vscode-slang",
   "displayName": "slang-server: Verilog/SystemVerilog LSP",
   "description": "Verilog and SystemVerilog support via the slang language server.",
-  "version": "0.3.1",
+  "version": "0.3.3",
   "publisher": "Hudson-River-Trading",
   "keywords": [
     "verilog",
@@ -139,7 +139,7 @@
         "extensions": [
           ".ucf"
         ],
-        "configuration": "./languages/ucf/constraints.configuration.json"
+        "configuration": "./languages/ucf/ucfconstraints.configuration.json"
       },
       {
         "id": "sdc",
@@ -172,7 +172,7 @@
         "extensions": [
           ".xdc"
         ],
-        "configuration": "./languages/xdc/sdc.configuration.json"
+        "configuration": "./languages/sdc/sdc.configuration.json"
       },
       {
         "id": "dotf",
@@ -363,13 +363,13 @@
           "type": "string"
         },
         "slang.path": {
-          "description": "Path to slang-server (not slang)",
+          "description": "Path to slang-server (not slang). Run \"slang: Restart Language Server\" to apply changes.",
           "default": "",
           "type": "string"
         },
         "slang.args": {
           "default": [],
-          "description": "Arguments to pass to the slang-server. These are different from slang flags; for those open `.slang/server.json`",
+          "description": "Arguments to pass to the slang-server. These are different from slang flags; for those open `.slang/server.json`. Run \"slang: Restart Language Server\" to apply changes.",
           "type": "array",
           "items": {
             "type": "string"
@@ -377,7 +377,7 @@
         },
         "slang.debugArgs": {
           "default": [],
-          "description": "Arguments to pass to slang-server when debugging",
+          "description": "Arguments to pass to slang-server when debugging. Run \"slang: Restart Language Server\" to apply changes.",
           "type": "array",
           "items": {
             "type": "string"
@@ -386,6 +386,10 @@
       }
     },
     "commands": [
+      {
+        "command": "slang.autoConfigure",
+        "title": "slang: Auto-configure"
+      },
       {
         "command": "slang.project.setTopLevel",
         "title": "Set Top Level",
@@ -511,6 +515,11 @@
         "icon": "$(open-preview)"
       },
       {
+        "command": "slang.debugScanDocument",
+        "title": "slang: Debug: Scan Current Document",
+        "enablement": "slang.debugScanAvailable && editorLangId =~ /^(verilog|systemverilog)(header)?$/"
+      },
+      {
         "command": "slang.restartLanguageServer",
         "title": "slang: Restart Language Server"
       },
@@ -552,6 +561,12 @@
       }
     ],
     "menus": {
+      "commandPalette": [
+        {
+          "command": "slang.debugScanDocument",
+          "when": "slang.debugScanAvailable"
+        }
+      ],
       "view/title": [
         {
           "command": "slang.project.clearTopLevel",

@@ -14,16 +14,8 @@ namespace {
 
 constexpr std::size_t kNumKsn = slang::parsing::KnownSystemName_traits::values.size();
 
-// `KnownSystemName` covers two distinct categories of names:
-//   - $-prefixed system tasks/functions ($display, $bits, $fopen, ...) —
-//     reachable from `getDefinitionInfoAt` today via SystemIdentifier tokens
-//     carrying a `KnownSystemName`.
-//   - Built-in *method* names on queues, strings, enums, dynamic/associative
-//     arrays (pop_back, len, name, find, ...) — invoked as `q.pop_back()`,
-//     not as `$pop_back`. The current resolver path doesn't reach these, so
-//     their entries here are forward-compatible: when method-call hover
-//     resolution lands, the docs are already populated. Keeping them in the
-//     same table is what lets the static_assert below cover *every* enum value.
+// System subroutines and type-specific methods share KnownSystemName values,
+// allowing the coverage assertion to check the whole documentation table.
 constexpr std::array<SystemTaskDoc, kNumKsn> buildDocs() {
     std::array<SystemTaskDoc, kNumKsn> d{};
 

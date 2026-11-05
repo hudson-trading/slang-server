@@ -695,12 +695,12 @@ endmodule : m3
 
 
 extern program p(a, b);
-               ^ Refs[4]
+               ^ Refs[3]
 
 
 
 program p(a, b);
-        ^ Refs[4]
+        ^ Refs[3]
           ^ Refs[2]
              ^ Refs[2]
 
@@ -709,7 +709,7 @@ program p(a, b);
              ^ Refs[2]
 
 endprogram : p
-             ^ Refs[4]
+             ^ Refs[3]
 
 
 
@@ -1256,14 +1256,19 @@ endfunction
 
 class G #(type T);
       ^ Refs[3]
+               ^ Refs[3]
 
     extern function T foo;
+                    ^ Refs[3]
+                      ^^^ Refs[1]
 
 endclass
 
 
 
 function G::T G::foo;
+            ^ Refs[3]
+                 ^^^ Refs[2]
 
     return 0;
 
@@ -1273,15 +1278,17 @@ endfunction
 
 class H #(int p);
       ^ Refs[1]
-              ^ Refs[4]
+              ^ Refs[1]
 
     extern function int foo;
+                        ^^^ Refs[1]
 
 endclass
 
 
 
 function int H::foo;
+                ^^^ Refs[1]
 
 endfunction
 
@@ -1303,7 +1310,7 @@ module m7;
     int i = g2.foo();
         ^ Refs[1]
             ^^ Refs[2]
-               ^^^ Refs[1]
+               ^^^ Refs[2]
 
     real r = D::foo();
          ^ Refs[1]
@@ -1584,8 +1591,6 @@ class C3;
                              ^^^ Refs[3]
 
             option.weight = 2;
-            ^^^^^^Exception occurred
-                   ^^^^^^Exception occurred
 
             wildcard bins a = { [0:63],65 };
                           ^ Refs[2]
@@ -1623,8 +1628,6 @@ class C3;
                  ^ Refs[3]
 
             option.weight = c;
-            ^^^^^^Exception occurred
-                   ^^^^^^Exception occurred
                             ^ Refs[2]
 
             bins one = '{ '{1,2}, '{3,4}, '{5,6} };

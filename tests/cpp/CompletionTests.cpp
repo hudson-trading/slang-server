@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "completions/CompletionContext.h"
+#include "completions/CompletionDispatch.h"
 #include "completions/InstanceCompletions.h"
 #include "completions/SystemTaskCompletions.h"
 #include "lsp/LspTypes.h"
@@ -10,6 +11,7 @@
 #include "utils/GoldenTest.h"
 #include "utils/ServerHarness.h"
 #include <algorithm>
+#include <catch2/generators/catch_generators.hpp>
 #include <filesystem>
 #include <optional>
 #include <rfl/Variant.hpp>
@@ -51,6 +53,289 @@ lsp::InitializeParams makeCompletionResolveParams(std::vector<std::string> prope
 
 } // namespace
 
+TEST_CASE("Macro completions follow definitions at the cursor", "[scan-gaps][macro]") {
+    ServerHarness server;
+    auto header = server.openFile("macro_values.svh", "`define VALUE(first) first\n");
+    auto doc = server.openFile("macro_state.sv", R"(
+`include "macro_values.svh"
+module sample;
+    int first_use = `VALUE(1);
+`undef VALUE
+    int after_undef = `__LINE__;
+`define VALUE(second, third) second + third
+    int second_use = `VALUE(2, 3);
+`undef VALUE
+    int after_last_undef = `__LINE__;
+`ifdef NEVER_DEFINED
+`define HIDDEN 0
+`endif
+`define FUTURE 1
+endmodule
+)");
+    for (auto [marker, argument] :
+         {std::pair{"first_use = `", "first"}, std::pair{"second_use = `", "second"}}) {
+        auto items = doc.after(marker).getCompletions("`");
+        auto it = std::ranges::find_if(items, [](const CompletionHandle& item) {
+            return item.m_item.label == "`VALUE";
+        });
+        REQUIRE(it != items.end());
+        it->resolve();
+        REQUIRE(it->m_item.documentation);
+        CHECK(rfl::get<lsp::MarkupContent>(*it->m_item.documentation).value.find(argument) !=
+              std::string::npos);
+        CHECK(std::ranges::none_of(items, [](const CompletionHandle& item) {
+            return item.m_item.label == "`FUTURE" || item.m_item.label == "`HIDDEN";
+        }));
+    }
+    for (auto marker : {"after_undef", "after_last_undef"}) {
+        auto items = doc.after(std::string(marker) + " = `").getCompletions("`");
+        CHECK(std::ranges::none_of(items, [](const CompletionHandle& item) {
+            return item.m_item.label == "`VALUE" || item.m_item.label == "`FUTURE" ||
+                   item.m_item.label == "`HIDDEN";
+        }));
+    }
+}
+
+TEST_CASE("Macro completions restore unused and repeated definitions", "[macro]") {
+    ServerHarness server;
+    auto doc = server.openFile("macro_redefinitions.sv", R"(
+module sample;
+    int before_definition = `__LINE__;
+`define VALUE(first, second) first + second
+    int before_redefinition = `__LINE__;
+`define VALUE(third, fourth) third + fourth
+    int after_redefinition = `VALUE(1, 2);
+`define VALUE(third, fourth) third + fourth
+    int after_identical = `VALUE(3, 4);
+`undef VALUE
+    int after_undef = `__LINE__;
+`define VALUE(fifth, sixth) fifth + sixth
+`undef VALUE
+endmodule
+)");
+    for (auto [marker, arguments] : {std::pair{"before_redefinition", "VALUE(first, second)"},
+                                     std::pair{"after_redefinition", "VALUE(third, fourth)"},
+                                     std::pair{"after_identical", "VALUE(third, fourth)"}}) {
+        auto items = doc.after(std::string(marker) + " = `").getCompletions("`");
+        auto it = std::ranges::find_if(items, [](const CompletionHandle& item) {
+            return item.m_item.label == "`VALUE";
+        });
+        REQUIRE(it != items.end());
+        it->resolve();
+        REQUIRE(it->m_item.documentation);
+        CHECK(rfl::get<lsp::MarkupContent>(*it->m_item.documentation).value.find(arguments) !=
+              std::string::npos);
+    }
+    for (auto marker : {"before_definition", "after_undef"}) {
+        auto items = doc.after(std::string(marker) + " = `").getCompletions("`");
+        CHECK(std::ranges::none_of(items, [](const CompletionHandle& item) {
+            return item.m_item.label == "`VALUE";
+        }));
+    }
+}
+
+TEST_CASE("Macro completions preserve command-line definitions", "[macro]") {
+    ServerHarness server;
+    Config config;
+    config.flagsByFile.value().push_back(
+        {"macro_config", "-D'VALUE(command_arg,other_arg)=command_arg+other_arg'"});
+    REQUIRE(server.loadConfig(config));
+    auto doc = server.openFile("macro_predefined.sv", R"(
+`define VALUE(source_arg, other_source) source_arg + other_source
+module sample;
+    int value = `VALUE(1, 2);
+endmodule
+)");
+    auto items = doc.after("value = `").getCompletions("`");
+    auto it = std::ranges::find_if(items, [](const CompletionHandle& item) {
+        return item.m_item.label == "`VALUE";
+    });
+    REQUIRE(it != items.end());
+    it->resolve();
+    REQUIRE(it->m_item.documentation);
+    CHECK(rfl::get<lsp::MarkupContent>(*it->m_item.documentation)
+              .value.find("VALUE(command_arg,other_arg)") != std::string::npos);
+}
+
+TEST_CASE("Macro completions use the cursor's include context", "[macro]") {
+    ServerHarness server("repo1");
+    auto header = server.openFile("macro_state_body.svh", R"(
+    int in_header = `VALUE(1, 2);
+`undef VALUE
+    int after_undef = `__LINE__;
+)");
+    auto definitions = server.openFile("macro_state_defs.svh",
+                                       "`define VALUE(first, second) first + second\n");
+    definitions.save();
+    auto doc = server.openFile("macro_state_parent.sv", R"(
+`include "macro_state_defs.svh"
+module sample;
+`include "macro_state_body.svh"
+`define VALUE(third, fourth) third + fourth
+    int in_parent = `VALUE(3, 4);
+endmodule
+)");
+    doc.doc->getAnalysis();
+    auto items = header.after("in_header = `").getCompletions("`");
+    auto it = std::ranges::find_if(items, [](const CompletionHandle& item) {
+        return item.m_item.label == "`VALUE";
+    });
+    REQUIRE(it != items.end());
+    it->resolve();
+    REQUIRE(it->m_item.documentation);
+    CHECK(rfl::get<lsp::MarkupContent>(*it->m_item.documentation)
+              .value.find("VALUE(first, second)") != std::string::npos);
+    items = header.after("after_undef = `").getCompletions("`");
+    CHECK(std::ranges::none_of(items, [](const CompletionHandle& item) {
+        return item.m_item.label == "`VALUE";
+    }));
+}
+
+TEST_CASE("Package lexical completions include compilation-unit imports", "[scan-gaps]") {
+    ServerHarness server;
+    auto header = server.openFile("imports.svh", "import library_pkg::*;\n");
+    auto doc = server.openFile("unit_import.sv", R"(
+package library_pkg;
+    class Phase; endclass
+endpackage
+`include "imports.svh"
+int unit_only;
+package user_pkg;
+    class Worker;
+        mailbox #(int) messages;
+        function void run(Phase phase); endfunction
+    endclass
+endpackage
+module top;
+    user_pkg::Worker worker;
+endmodule
+)");
+    for (auto cursor : {doc.before("mailbox"), doc.after("run(")}) {
+        auto items = cursor.getCompletions();
+        for (auto* name : {"mailbox", "Phase"}) {
+            CAPTURE(name);
+            CHECK(std::ranges::any_of(items, [&](const CompletionHandle& item) {
+                return item.m_item.label == name;
+            }));
+        }
+    }
+    auto scoped = doc.after("user_pkg::").getCompletions(":");
+    CHECK(std::ranges::none_of(scoped, [](const CompletionHandle& item) {
+        return item.m_item.label == "Phase" || item.m_item.label == "unit_only";
+    }));
+}
+
+TEST_CASE("Superclass member completions use the base class", "[scan-gaps]") {
+    ServerHarness server;
+    auto doc = server.openFile("super_completion.sv", R"(
+class Base;
+    virtual function void build(); endfunction
+endclass
+class Derived extends Base;
+    function void derived_only(); endfunction
+    virtual function void build(); super.build(); endfunction
+endclass
+)");
+    auto cursor = doc.after("super.");
+    auto items = cursor.getCompletions(".");
+    CHECK(std::ranges::any_of(items, [](const CompletionHandle& item) {
+        return item.m_item.label == "build";
+    }));
+    CHECK(std::ranges::none_of(items, [](const CompletionHandle& item) {
+        return item.m_item.label == "derived_only";
+    }));
+    auto definitions = cursor.getDefinitions();
+    REQUIRE(definitions.size() == 1);
+    CHECK(definitions.front().targetSelectionRange.start ==
+          doc.after("virtual function void ").getPosition());
+}
+
+TEST_CASE("Built-in methods complete for their receiver types", "[scan-gaps]") {
+    ServerHarness server;
+    auto doc = server.openFile("array_methods.sv", R"(
+module top;
+    int values[4];
+    int queue_values[$];
+    int associative_values[int];
+    int scalar;
+    initial begin
+        values.shuffle();
+        queue_values.shuffle();
+        associative_values.first(scalar);
+        scalar.nonexistent();
+    end
+endmodule
+)");
+    for (auto cursor : {doc.after("values."), doc.after("queue_values.")}) {
+        auto items = cursor.getCompletions(".");
+        auto item = std::ranges::find_if(items, [](const CompletionHandle& item) {
+            return item.m_item.label == "shuffle";
+        });
+        REQUIRE(item != items.end());
+        CHECK(item->m_item.kind == lsp::CompletionItemKind::Method);
+        REQUIRE(item->m_item.documentation);
+        CHECK(rfl::get<lsp::MarkupContent>(*item->m_item.documentation).value.find("shuffle") !=
+              std::string::npos);
+        CHECK(getCompletionTextEdit(item->m_item).newText == "shuffle");
+    }
+    for (auto cursor : {doc.after("associative_values."), doc.after("scalar.")}) {
+        auto items = cursor.getCompletions(".");
+        CHECK(std::ranges::none_of(items, [](const CompletionHandle& item) {
+            return item.m_item.label == "shuffle";
+        }));
+    }
+}
+
+TEST_CASE("Unmatched completion triggers do not fall back to lexical suggestions") {
+    ServerHarness server("repo1");
+
+    for (const auto& trigger : completions::completionTriggerCharacters()) {
+        CAPTURE(trigger);
+        for (const auto& source : {
+                 "module top; // " + trigger + "\nendmodule",
+                 "module top; /* " + trigger + " */ endmodule",
+                 "module top; string text = \"" + trigger + "\"; endmodule",
+             }) {
+            CAPTURE(source);
+            auto doc = server.openFile("unmatched_trigger.sv", source);
+            auto cursor = doc.after(trigger);
+            CHECK(cursor.getCompletions(trigger).empty());
+            CHECK_FALSE(cursor.getCompletions().empty());
+            doc.close();
+        }
+    }
+}
+
+TEST_CASE("Expression delimiters require an explicit scope completion request") {
+    ServerHarness server("repo1");
+    auto doc = server.openFile("expression_trigger.sv", R"(
+    module top;
+        int source_value;
+        int values[4];
+        function void consume(int arg);
+        endfunction
+        initial begin
+            consume(0);
+            source_value = values[0];
+            source_value = values[3:0];
+        end
+    endmodule
+    )");
+    for (const auto& [text, trigger] : {
+             std::pair{"initial begin\n            consume(", "("},
+             std::pair{"source_value = values[", "["},
+             std::pair{"values[3:", ":"},
+         }) {
+        CAPTURE(text);
+        auto cursor = doc.after(text);
+        CHECK(cursor.getCompletions(trigger).empty());
+        auto items = cursor.getCompletions();
+        CHECK(std::ranges::any_of(items, [](const CompletionHandle& item) {
+            return item.m_item.label == "source_value";
+        }));
+    }
+}
+
 TEST_CASE("MacroCompletion") {
     ServerHarness server("repo1");
 
@@ -59,8 +344,11 @@ TEST_CASE("MacroCompletion") {
         $display("arg1: %s, arg2: %s", arg1, arg2);
     `
     )");
-    // For simplicity we add all defines in the current file.
-    CHECK(doc.before("define").getCompletions("`").size() == 2);
+    auto beforeDefinition = doc.before("define").getCompletions("`");
+    CHECK(beforeDefinition.size() == 1);
+    CHECK(std::ranges::none_of(beforeDefinition, [](const CompletionHandle& item) {
+        return item.m_item.label == "`TEST_MACRO";
+    }));
     CHECK(doc.after(";\n    `").getCompletions("`").size() == 2);
 
     // Only return the indexed one
@@ -351,6 +639,47 @@ TEST_CASE("ModuleCompletionInvalidUtf8") {
     CHECK_NOTHROW(rfl::json::write(item));
 }
 
+TEST_CASE("Indexed completions use the nearest declaration to the requesting document") {
+    ServerHarness server("nearest_symbols");
+    auto directory = GENERATE("a", "b", ".");
+    auto chosenDirectory = directory == std::string_view(".") ? "a" : directory;
+    auto doc = server.openFile(std::string(directory) + "/top.sv", R"(module top;
+    shared_
+endmodule
+)");
+    auto other = server.openFile(std::string(chosenDirectory == std::string_view("a") ? "b" : "a") +
+                                     "/other.sv",
+                                 "module other;\nshared_\nendmodule\n");
+
+    SECTION("deferred module snippets retain the original request context") {
+        auto items = doc.after("shared_").getCompletions();
+        auto item = std::ranges::find(items, "shared_mod",
+                                      [](const auto& item) { return item.m_item.label; });
+        REQUIRE(item != items.end());
+        other.after("shared_").getCompletions();
+        item->resolve();
+        REQUIRE(item->m_item.insertText);
+        CHECK(item->m_item.insertText->find(std::string(".from_") + chosenDirectory + "(") !=
+              std::string::npos);
+    }
+
+    SECTION("instantiation suffixes use the local module") {
+        doc.replaceAll("module top;\nshared_mod #\nendmodule\n");
+        auto items = doc.after("shared_mod #").getCompletions("#");
+        REQUIRE(items.size() == 1);
+        REQUIRE(items.front().m_item.insertText);
+        CHECK(items.front().m_item.insertText->find(std::string(".from_") + chosenDirectory +
+                                                    "(") != std::string::npos);
+    }
+
+    SECTION("interface member fallback uses the local interface") {
+        doc.replaceAll("module top(shared_bus.); endmodule\n");
+        auto items = doc.after("shared_bus.").getCompletions(".");
+        REQUIRE(items.size() == 1);
+        CHECK(items.front().m_item.label == std::string("view_") + chosenDirectory);
+    }
+}
+
 TEST_CASE("PackageCompletion") {
     ServerHarness server("repo1");
     JsonGoldenTest golden;
@@ -583,6 +912,81 @@ TEST_CASE("MidIdentifierCompletion") {
     }
 }
 
+TEST_CASE("Class names complete in scoped types and static expressions", "[generic-class]") {
+    ServerHarness server;
+    auto doc = server.openFile("class_completion.sv", R"(
+package sample_pkg;
+    class Generic #(parameter int WIDTH = 4);
+        static function int read(); return WIDTH; endfunction
+    endclass
+    class Plain;
+    endclass
+endpackage
+module top;
+    import sample_pkg::*;
+    typedef sample_pkg::Generic#(2) value_t;
+    function void consume(Plain item); endfunction
+    initial $display(Generic#(2)::read());
+endmodule
+)");
+    for (const auto& cursor :
+         {doc.after("typedef sample_pkg::"), doc.after("consume("), doc.after("$display(")}) {
+        auto position = cursor;
+        auto items = position.getCompletions();
+        for (const auto& name : {"Generic", "Plain"}) {
+            CAPTURE(name, cursor.m_offset);
+            CHECK(std::ranges::any_of(items, [&](const CompletionHandle& item) {
+                return item.m_item.label == name &&
+                       item.m_item.kind == lsp::CompletionItemKind::Class;
+            }));
+        }
+    }
+}
+
+TEST_CASE("Lexical completions retain enclosing scopes and imported types", "[scan-gaps]") {
+    ServerHarness server("comp_repo");
+    auto doc = server.openFile("lexical_types.sv", R"(
+package types_pkg;
+    typedef byte unsigned octet_t;
+endpackage
+package model_pkg;
+    import types_pkg::octet_t;
+    typedef enum octet_t { Idle, Busy } state_t;
+    class Holder #(type T = int); endclass
+    class Node;
+        Node next;
+        Holder#(Node) holder;
+        static function int count(); return 1; endfunction
+        function int read(); return Node::count(); endfunction
+    endclass
+endpackage
+module top;
+    (* keep = 1 *) simple_counter instance_name();
+    for (genvar i = 0; i < 2; i++) begin : stages
+        wire value;
+        if (i > 0) assign value = stages[i-1].value;
+    end
+endmodule
+)");
+    for (auto [prefix, expected] : {
+             std::pair{"typedef enum ", "octet_t"},
+             std::pair{"        Node", "Node"},
+             std::pair{"Holder#(", "Node"},
+             std::pair{"function int read(); return ", "Node"},
+             std::pair{"(* keep = 1 *) ", "simple_counter"},
+             std::pair{"assign value = ", "stages"},
+         }) {
+        CAPTURE(prefix, expected);
+        auto cursor = doc.after(prefix);
+        auto items = cursor.getCompletions();
+        auto item = std::ranges::find(items, expected,
+                                      [](const auto& item) { return item.m_item.label; });
+        REQUIRE(item != items.end());
+        item->resolve();
+        REQUIRE(item->m_item.documentation);
+    }
+}
+
 TEST_CASE("DeferredMemberCompletionResolution") {
     ServerHarness server(
         makeCompletionResolveParams({"documentation", "detail", "additionalTextEdits"}));
@@ -690,7 +1094,7 @@ TEST_CASE("MultidimensionalInstanceArrayCompletion") {
     endmodule
     )");
 
-    auto items = doc.after("int result = array_data[").getCompletions("[");
+    auto items = doc.after("int result = array_data[").getCompletions();
     auto instance = std::ranges::find(items, "instances", [](const CompletionHandle& item) {
         return item.m_item.label;
     });
@@ -1839,7 +2243,7 @@ TEST_CASE("NonProceduralSignalCompletion") {
     CHECK(findByLabel("my_wire") != comps.end());
     CHECK(findByLabel("a") != comps.end());
     CHECK(findByLabel("b") != comps.end());
-    CHECK(findByLabel("mailbox") == comps.end());
+    CHECK(findByLabel("mailbox") != comps.end());
 }
 
 TEST_CASE("ProceduralBlockSignalCompletion") {

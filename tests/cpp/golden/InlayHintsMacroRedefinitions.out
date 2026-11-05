@@ -1,0 +1,8 @@
+
+`define VALUE(first, second) first + second
+module sample;
+    int first_use = `VALUE(/*first:*/ 1, /*second:*/ 2);
+`define VALUE(third, fourth) third + fourth
+    int second_use = `VALUE(/*third:*/ 3, /*fourth:*/ 4);
+`undef VALUE
+endmodule

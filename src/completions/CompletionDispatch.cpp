@@ -245,8 +245,12 @@ void CompletionDispatch::getCompletions(std::vector<lsp::CompletionItem>& result
 
     context.query->getCompletions(results, *this, doc, context);
 
-    for (auto& item : results)
+    for (auto& item : results) {
+        // Resolution is a separate request and must retain the requesting file's context.
+        if (item.kind == lsp::CompletionItemKind::Module)
+            item.data = std::string(doc->getURI().str());
         context.query->setCompletionEdit(item);
+    }
 
     INFO("Returning {} completions for {} query in {} context", results.size(),
          toString(context.query->kind()), toString(context.kind));

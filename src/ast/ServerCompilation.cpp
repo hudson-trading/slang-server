@@ -1105,4 +1105,12 @@ void ServerCompilation::issueDiagnosticsTo(slang::DiagnosticEngine& diagEngine) 
     m_analysis->issueDiagnosticsTo(diagEngine);
 }
 
+ConeResult ServerCompilation::getDriverCone(const std::string& path) {
+    return {m_analysis->getDriverCone(path), m_sourceManager};
+}
+
+ConeResult ServerCompilation::getLoadCone(const std::string& path) {
+    return {m_analysis->getLoadCone(path), m_sourceManager};
+}
+
 } // namespace server

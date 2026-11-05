@@ -42,7 +42,7 @@ Clicking a symbol opens its source location and makes its enclosing module or in
 **Hierarchy Buttons (left to right):**
 
 - Clear top level
-- Select Instance
+- Find in Hierarchy
 - Open selected build file
 - Select build file (from glob)
 - Toggle data signals
@@ -112,14 +112,18 @@ The appearance is controlled by `slang.inactiveRegions.style`:
 
 ## Setting an Instance
 
-### `slang: Select Instance` Command
+### Find in Hierarchy
 
 <div class="grid" markdown>
   <div class="grid-item" markdown>
 
-  This command pulls up a fuzzy finder where you can enter the hierarchical path of a scope/instance.
+  With a build file or top level selected, run **Find in Hierarchy** from the Command Palette, click the search icon in the Hierarchy view, or press `Cmd+F` (`Ctrl+F` on Windows/Linux) while the sidebar is focused. **slang: Select Instance** opens the same search when invoked without a path.
 
-  It's also available via the magnifying glass icon in the Hierachy view, or by pressing `cmd+f` while the sidebar is in focus.
+  Search covers the compiled design, including instances, generate scopes, signals, parameters, and interface ports and their members. Enter a name such as `ready` or a path fragment such as `top.worker.ready`; you do not need to expand the tree first.
+
+  Matching is case-insensitive and accepts fuzzy path matches, with exact names and prefixes ranked first. Results show their hierarchical path and available type or value information. Up to 100 matches are displayed; refine the query if the picker reports more results.
+
+  Selecting a result opens its source, reveals it in the hierarchy, and updates the active instance for its enclosing module or interface.
 
   </div>
   <div class="grid-item" markdown>

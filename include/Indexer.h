@@ -13,7 +13,9 @@
 #include <concepts>
 #include <condition_variable>
 #include <mutex>
+#include <optional>
 #include <shared_mutex>
+#include <span>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -41,13 +43,23 @@ struct Indexer {
     // Updating interface
     //////////////////////////////////////////
 
-    // Primary indexing function, called on startup
+    /// External-only roots supplement the default workspace scan. An explicit workspace scope
+    /// or an empty dirs entry disables that default.
+    static bool usesDefaultWorkspaceIndex(std::span<const Config::IndexConfig> indexConfigs,
+                                          const std::filesystem::path& workspace,
+                                          const std::map<std::string, std::string>& env = {});
+
+    /// Index the workspace; only auto-configure requests directory suggestions.
     void startIndexing(const std::vector<Config::IndexConfig>& indexConfigs,
-                       std::optional<std::string_view> workspaceFolder);
+                       std::optional<std::string_view> workspaceFolder,
+                       bool inferIncludeDirectories = false,
+                       const std::map<std::string, std::string>& env = {});
 
     // Legacy glob-based indexing, slower
     void startIndexing(const std::vector<std::string>& globs,
-                       const std::vector<std::string>& excludeDirs);
+                       const std::vector<std::string>& excludeDirs,
+                       bool inferIncludeDirectories = false,
+                       const std::map<std::string, std::string>& env = {});
 
     // For workspace changes
     void addDocuments(const std::vector<std::filesystem::path>& paths);
@@ -56,6 +68,9 @@ struct Indexer {
     // For open document lifecycle
     void updateDocument(const std::filesystem::path& uri, const slang::syntax::SyntaxTree& tree);
 
+    /// Refresh direct include relationships from parsed buffers without changing search roots.
+    void updateIncludes(const slang::syntax::SyntaxTree& tree);
+
     //////////////////////////////////////////
     // Querying interface
     //////////////////////////////////////////
@@ -63,12 +78,71 @@ struct Indexer {
     std::vector<std::filesystem::path> getFilesForMacro(std::string_view name) const;
     std::vector<std::filesystem::path> getFilesReferencingSymbol(std::string_view name) const;
 
+    /// Find files from the last full index whose path ends with the relative include path.
+    std::vector<std::filesystem::path> getFilesForInclude(std::string_view path) const;
+
+    /// Find the nearest indexed include match by directory distance, breaking ties by canonical
+    /// path. Retain the indexed path spelling so callers can derive its include directory.
+    std::optional<std::filesystem::path> getNearestFileForInclude(
+        std::string_view path, const std::filesystem::path& source) const;
+
+    /// Suggestions from explicitly requested inference; empty after ordinary full indexing.
+    std::vector<std::filesystem::path> getIncludeDirectories() const;
+
+    /// Choose roots covering indexed files inside the workspace, balancing crawl size and root
+    /// count. Requires explicit directory discovery; sources directly in the workspace prevent
+    /// narrowing. External index roots do not affect suggestions.
+    std::vector<std::filesystem::path> getSuggestedIndexDirectories(
+        const std::filesystem::path& workspace) const;
+
+    /// Indexed files and safe directory exclusions matched by one Git ignore rule.
+    struct GitIgnoreMatch {
+        /// Ignore file, line number, and pattern as reported by Git.
+        std::string rule;
+        /// Matching indexed files, relative to the workspace.
+        std::vector<std::filesystem::path> files;
+        /// Ignored folders without tracked or re-included sources, relative to the workspace.
+        std::vector<std::filesystem::path> directories;
+        /// Directory basenames that can be excluded without hiding tracked or re-included files.
+        std::vector<std::string> names;
+    };
+
+    /// Ask Git about indexed files and crawled directories, excluding tracked files, submodules,
+    /// and external roots. Include existing exact exclusions to compact into directory names.
+    /// Return no matches if Git is unavailable or the workspace is not in a repository.
+    std::vector<GitIgnoreMatch> getGitIgnoreMatches(
+        const std::filesystem::path& workspace,
+        std::span<const Config::IndexConfig> indexConfigs = {},
+        const std::map<std::string, std::string>& env = {}) const;
+
+    /// Apply newly configured absolute directory exclusions to cached index data and suggestions.
+    void excludeDirectories(std::span<const std::filesystem::path> directories);
+
+    /// Find suggested directories that conflict with each other or existing configured headers.
+    std::vector<std::filesystem::path> getConflictingIncludeDirectories(
+        std::span<const std::filesystem::path> configuredDirectories = {}) const;
+
+    /// Find headers that declare a name at their outermost scope.
+    std::vector<std::filesystem::path> getHeadersForSymbol(std::string_view name) const;
+
+    /// Check gathered filenames and parsed relationships without resolving paths.
+    bool hasPotentialIncluders(const std::filesystem::path& canonicalPath) const;
+
+    /// Resolve matching gathered include filenames on demand, preferring parsed relationships.
+    std::vector<std::filesystem::path> getFilesIncluding(const std::filesystem::path& path);
+
     struct GlobalSymbolLoc {
         const std::filesystem::path* uri;
         slang::syntax::SyntaxKind kind;
     };
-    // Get first symbol location for a name (for instance completions, etc.)
-    std::optional<GlobalSymbolLoc> getFirstSymbolLoc(std::string_view name) const;
+    /// Find the nearest indexed declaration by directory distance, breaking ties by canonical path.
+    std::optional<GlobalSymbolLoc> getNearestSymbolLoc(std::string_view name,
+                                                       const std::filesystem::path& source) const;
+
+    /// Find all indexed declarations tied at the minimum directory distance, in canonical path
+    /// order. Multiple spellings of the same file produce one result.
+    std::vector<GlobalSymbolLoc> getNearestSymbolLocs(std::string_view name,
+                                                      const std::filesystem::path& source) const;
 
     // Get all macro names (for macro completions)
     std::vector<std::string> getAllMacroNames() const;
@@ -95,6 +169,10 @@ private:
         slang::SmallVector<GlobalSymbol> symbols;
         slang::SmallVector<std::string> macros;
         slang::SmallVector<std::string> referencedSymbols;
+        /// Declarations available by including this header in the enclosing scope.
+        slang::SmallVector<std::string> headerSymbols;
+        /// Quoted include spellings encountered without expanding other files.
+        slang::SmallVector<std::string> includes;
     };
 
     // Index storage
@@ -105,13 +183,53 @@ private:
     // Top level references; References tend to have more entries
     std::unordered_map<std::string, std::vector<const std::filesystem::path*>> symbolReferences_;
 
+    /// Filename snapshot rebuilt only by full indexing, independent of document updates.
+    std::unordered_map<std::string, slang::SmallVector<const std::filesystem::path*, 2>>
+        includeToFiles_;
+
+    /// Files containing each include filename, gathered without resolving include paths.
+    std::unordered_map<std::string, slang::SmallVector<const std::filesystem::path*, 2>>
+        includeReferences_;
+
+    /// Reverse relationships from parsed buffers, keyed by canonical paths.
+    std::unordered_map<std::filesystem::path, std::vector<std::filesystem::path>> includers_;
+
+    /// Parsed outgoing relationships; an empty entry suppresses speculative include matches.
+    std::unordered_map<std::filesystem::path, std::vector<std::filesystem::path>> includedFiles_;
+
+    /// Results of requested includer lookups, invalidated by index and parsed-buffer updates.
+    std::unordered_map<std::filesystem::path, std::vector<std::filesystem::path>>
+        resolvedIncluders_;
+
+    /// Search-root suggestions populated only when auto-configure requests inference.
+    std::vector<std::filesystem::path> includeDirectories_;
+
+    /// Number of filesystem entries encountered immediately inside each crawled directory.
+    using DirectoryEntryCounts = std::unordered_map<std::filesystem::path, size_t>;
+
+    /// Crawl counts collected only for auto-configure, replaced by every full index.
+    DirectoryEntryCounts directoryEntryCounts_;
+
+    /// Header declarations for include quick fixes, updated along with symbols and macros.
+    std::unordered_map<std::string, slang::SmallVector<const std::filesystem::path*, 2>>
+        headerSymbolToFiles_;
+
     // Storage for unique URIs (all pointers in the index point here)
     std::unordered_set<std::filesystem::path> uniqueUris_;
 
     void indexPath(const std::filesystem::path& path, IndexedPath& indexedFile);
-    void indexAndReport(std::vector<std::filesystem::path> pathsToIndex);
+    /// Build symbols and include filename indexes, optionally inferring search directories.
+    void indexAndReport(std::vector<std::filesystem::path> pathsToIndex,
+                        bool inferIncludeDirectories, DirectoryEntryCounts directoryEntries = {});
 
-    // Remove all index entries for a path without needing the file contents
+    /// Replace parsed edges and their reverse entries; all paths must already be canonical.
+    void replaceIncludes(const std::filesystem::path& path,
+                         std::vector<std::filesystem::path> targets);
+
+    /// Resolve gathered includes across the workspace only for explicit auto-configuration.
+    void inferIncludeSearchDirectories(std::span<const std::filesystem::path> paths);
+
+    /// Remove declarations and gathered includes, and invalidate parsed relationships for a file.
     void removePathFromIndex(const std::filesystem::path* pathPtr);
 
     // Intern a URI to get a stable pointer
@@ -120,17 +238,27 @@ private:
     // Storage for all indexed files (for efficient removal)
     std::unordered_map<const std::filesystem::path*, IndexedPath> indexedFiles;
 
-    // Extracts symbols and referenced symbols
+    /// Extract declarations from the primary buffer and references from the parsed tree.
     static void extractFromRoot(const slang::syntax::CompilationUnitSyntax& root,
-                                const slang::parsing::ParserMetadata& meta, IndexedPath& dest);
+                                const slang::parsing::ParserMetadata& meta,
+                                const slang::SourceManager& sourceManager,
+                                slang::BufferID primaryBuffer, IndexedPath& dest);
 
-    // Extracts macros
+    /// Extract macros defined in the primary buffer.
     template<typename MacroRange>
-    static void extractMacros(const MacroRange& macros, IndexedPath& dest);
+    static void extractMacros(const MacroRange& macros, const slang::SourceManager& sourceManager,
+                              slang::BufferID primaryBuffer, IndexedPath& dest);
+
+    /// Extract outermost declarations from headers and files with top-level classes.
+    static void extractHeaderSymbols(const slang::syntax::CompilationUnitSyntax& root,
+                                     slang::BufferID buffer, const std::filesystem::path& path,
+                                     IndexedPath& dest);
 
     static void collectFilesFromDirectory(const std::filesystem::path& dir,
                                           const std::vector<std::string>& excludeDirs,
-                                          std::vector<std::filesystem::path>& outFiles);
+                                          std::vector<std::filesystem::path>& outFiles,
+                                          DirectoryEntryCounts* directoryEntries = nullptr,
+                                          std::span<const std::string> excludedPaths = {});
 
     // Core indexing function that splits work across threads
     std::vector<IndexedPath> indexPaths(const std::vector<std::filesystem::path>& paths) const;

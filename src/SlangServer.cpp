@@ -24,9 +24,11 @@
 #include <filesystem>
 #include <fmt/base.h>
 #include <fmt/ranges.h>
+#include <fstream>
 #include <memory>
 #include <optional>
 #include <ranges>
+#include <rfl/DefaultIfMissing.hpp>
 #include <rfl/Variant.hpp>
 #include <rfl/from_generic.hpp>
 #include <string>
@@ -36,11 +38,11 @@
 #include <vector>
 
 #include "slang/syntax/AllSyntax.h"
-#include "slang/syntax/SyntaxPrinter.h"
 #include "slang/syntax/SyntaxVisitor.h"
 #include "slang/text/SourceLocation.h"
 #include "slang/text/SourceManager.h"
 #include "slang/util/OS.h"
+#include "slang/util/ScopeGuard.h"
 #include "slang/util/TimeTrace.h"
 #include "slang/util/VersionInfo.h"
 
@@ -89,6 +91,7 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     registerWorkspaceExecuteCommand();
     registerWorkspaceSymbol();
     registerWorkspaceDidChangeWatchedFiles();
+    registerFileWatchers();
 
     // LSP Lifecycle
     registerInitialized();
@@ -112,11 +115,11 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
 
     registerDesignCommand<std::string, std::vector<server::ConeEntry>>(
         "slang.getDriversWithLocation", [](ServerCompilation& comp, const std::string& hierPath) {
-            return comp.getConeLocations<true>(hierPath);
+            return comp.getDriverCone(hierPath).getLocations();
         });
     registerDesignCommand<std::string, std::vector<server::ConeEntry>>(
         "slang.getLoadsWithLocation", [](ServerCompilation& comp, const std::string& hierPath) {
-            return comp.getConeLocations<false>(hierPath);
+            return comp.getLoadCone(hierPath).getLocations();
         });
 
     // Hierarchy View (sidebar)
@@ -149,9 +152,23 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
                     &SlangServer::getActiveInstance>("slang.getActiveInstance");
     // File features
     registerCommand<ExpandMacroArgs, bool, &SlangServer::expandMacros>("slang.expandMacros");
+    registerCommand<lsp::Location, std::monostate, &SlangServer::showLocation>(
+        "slang.showLocation");
+
+    registerCommand<ServerDriver::IncludeContextSelection, bool>(
+        "slang.setIncludeContext", [this](const ServerDriver::IncludeContextSelection& selection) {
+            return m_driver->setIncludeContext(selection);
+        });
 
     // Config modification
     registerCommand<std::string, std::monostate, &SlangServer::addDefine>("slang.addDefine");
+    registerCommand<std::nullopt_t, bool>("slang.autoConfigure",
+                                          [this](std::monostate) { return autoConfigure({}); });
+
+#ifdef SLANG_SERVER_DEBUG
+    registerCommand<lsp::TextDocumentIdentifier, DebugScanResult, &SlangServer::debugScanDocument>(
+        "slang.debug.scanDocument");
+#endif
 
     if (params.workspaceFolders.has_value() && !params.workspaceFolders->empty()) {
         auto folders = params.workspaceFolders.value();
@@ -238,6 +255,9 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
     auto result = lsp::InitializeResult{
         .capabilities =
             lsp::ServerCapabilities{
+                .positionEncoding = m_client.capabilities.utf8Positions
+                                        ? std::optional<lsp::PositionEncodingKind>("utf-8")
+                                        : std::nullopt,
                 .textDocumentSync =
                     lsp::TextDocumentSyncOptions{
                         .openClose = true,
@@ -300,25 +320,7 @@ void SlangServer::onInitialized(const lsp::InitializedParams&) {
     m_client.setConfig(m_config);
 
     if (m_workspaceFolder) {
-        auto options = lsp::DidChangeWatchedFilesRegistrationOptions{
-            .watchers{
-                // SystemVerilog/Verilog source files
-                lsp::FileSystemWatcher{.globPattern =
-                                           lsp::RelativePattern{.baseUri = m_workspaceFolder->uri,
-                                                                .pattern = "**/*.{sv,svh,v,vh}"},
-                                       .kind = lsp::WatchKind::Change},
-                // Config files
-                lsp::FileSystemWatcher{.globPattern =
-                                           lsp::RelativePattern{.baseUri = m_workspaceFolder->uri,
-                                                                .pattern = ".slang/**/*.json"},
-                                       .kind = lsp::WatchKind::Change},
-                // Build/flag files
-                lsp::FileSystemWatcher{.globPattern =
-                                           lsp::RelativePattern{.baseUri = m_workspaceFolder->uri,
-                                                                .pattern = "**/*.f"},
-                                       .kind = lsp::WatchKind::Change},
-            },
-        };
+        auto options = m_fileWatchers.registrationOptions(m_workspaceFolder->uri);
 
         m_client.getClientRegisterCapability(
             lsp::RegistrationParams{.registrations{lsp::Registration{
@@ -369,6 +371,7 @@ std::monostate SlangServer::setTopLevel(const std::string& path) {
     }
 
     INFO("Setting top level to {}", topPath.string());
+    m_buildfile = std::nullopt;
     m_topFile = topPath.string();
 
     m_driver = ServerDriver::createFromTop(m_indexer, m_client, m_config, URI::fromFile(topPath),
@@ -382,6 +385,7 @@ std::monostate SlangServer::setBuildFile(const std::string& path) {
         setExplore();
         return std::monostate{};
     }
+    m_topFile = std::nullopt;
     m_buildfile = path;
 
     const auto workspacePath = m_workspaceFolder ? std::optional<std::string_view>(
@@ -427,11 +431,36 @@ bool SlangServer::expandMacros(ExpandMacroArgs args) {
         return false;
     }
 
-    syntax::SyntaxPrinter printer(doc->getSyntaxTree()->sourceManager());
-    printer.setSquashNewlines(false);
-    printer.setIncludeDirectives(true);
-    printer.setExpandMacros(true);
-    OS::writeFile(args.dst, printer.print(*doc->getSyntaxTree()).str());
+    auto analysis = doc->getAnalysis();
+    const auto& expansions = analysis->syntaxes.macroExpansions;
+    std::vector<const syntax::SyntaxNode*> usages;
+    for (const auto& [usage, _] : expansions)
+        usages.push_back(usage);
+    std::ranges::sort(usages, [](const auto* left, const auto* right) {
+        auto a = left->sourceRange();
+        auto b = right->sourceRange();
+        return a.start() != b.start() ? a.start() < b.start() : a.end() > b.end();
+    });
+
+    auto text = doc->getText();
+    text.remove_suffix(1);
+    std::string expanded;
+    size_t offset = 0;
+    for (const auto* usage : usages) {
+        auto range = usage->sourceRange();
+        // An outer expansion already contains the expansions of its macro arguments.
+        if (range.start().offset() < offset)
+            continue;
+        expanded.append(text.substr(offset, range.start().offset() - offset));
+        expanded.append(expansions.at(usage).getText());
+        offset = range.end().offset();
+    }
+    expanded.append(text.substr(offset));
+    // Preserve source line endings without Windows text-mode translation.
+    std::ofstream file(args.dst, std::ios::binary);
+    file.exceptions(std::ios::failbit | std::ios::badbit);
+    file.write(expanded.data(), static_cast<std::streamsize>(expanded.size()));
+    file.flush();
     return true;
 }
 
@@ -545,6 +574,15 @@ std::monostate SlangServer::showHierLocation(const ShowHierLocationArgs& args) {
         .uri = location->uri,
         .takeFocus = args.takeFocus,
         .selection = location->range,
+    });
+    return {};
+}
+
+std::monostate SlangServer::showLocation(const lsp::Location& location) {
+    m_client.onShowDocument(lsp::ShowDocumentParams{
+        .uri = location.uri,
+        .takeFocus = true,
+        .selection = location.range,
     });
     return {};
 }
@@ -668,7 +706,7 @@ std::optional<std::vector<lsp::CallHierarchyIncomingCall>> SlangServer::
     }
     // Drivers are presented as "incoming calls" in the call hierarchy view.
     std::vector<lsp::CallHierarchyIncomingCall> result;
-    for (const auto& entry : m_driver->comp->getConeLocations<true>(params.item.name)) {
+    for (const auto& entry : m_driver->comp->getDriverCone(params.item.name).getLocations()) {
         result.push_back({
             .from =
                 {
@@ -704,7 +742,7 @@ std::vector<std::string> SlangServer::getDrivers(const std::string& path) {
         ERROR("No compilation available, cannot trace cones");
         return {};
     }
-    return m_driver->comp->getConePaths<true>(path);
+    return m_driver->comp->getDriverCone(path).getPaths();
 }
 
 std::vector<std::string> SlangServer::getLoads(const std::string& path) {
@@ -712,20 +750,90 @@ std::vector<std::string> SlangServer::getLoads(const std::string& path) {
         ERROR("No compilation available, cannot trace cones");
         return {};
     }
-    return m_driver->comp->getConePaths<false>(path);
+    return m_driver->comp->getLoadCone(path).getPaths();
 }
 
-void SlangServer::loadConfig(const Config& config, bool forceIndexing) {
-    auto old_config = m_config;
-    m_config = Config(config);
+bool SlangServer::loadConfig(const Config& config, bool forceIndexing, bool requireValidConfig) {
+    bool validPaths = true;
+    auto validatePaths = [&](const std::vector<std::string>& paths, std::string_view field) {
+        for (const auto& path : paths) {
+            if (auto expanded = Config::expandPathVariables(path, config.env.value()); !expanded) {
+                validPaths = false;
+                auto message =
+                    fmt::format("Invalid {} path '{}': {}. See [Environment setup]("
+                                "https://hudson-trading.github.io/slang-server/start/config/"
+                                "#environment-variables) for configuration instructions.",
+                                field, path, expanded.error().what());
+                if (requireValidConfig) {
+                    WARN("{}", message);
+                }
+                else {
+                    m_client.showError(message);
+                }
+            }
+        }
+    };
+    if (config.build.value())
+        validatePaths({*config.build.value()}, "build");
+    validatePaths(config.incdirs.value(), "incdirs");
+    for (size_t i = 0; i < config.index.value().size(); ++i) {
+        const auto& entry = config.index.value()[i];
+        validatePaths(entry.dirs.value(), fmt::format("index[{}].dirs", i));
+        if (entry.excludeDirs.value())
+            validatePaths(*entry.excludeDirs.value(), fmt::format("index[{}].excludeDirs", i));
+    }
+    if (!validPaths && requireValidConfig)
+        return false;
 
-    if (m_config.build.value().has_value()) {
-        m_client.showInfo("Using build file: " + *m_config.build.value());
-        setBuildFile(*m_config.build.value());
+    const auto workspacePath = m_workspaceFolder ? std::optional<std::string_view>(
+                                                       m_workspaceFolder->uri.getPath())
+                                                 : std::nullopt;
+    std::optional<std::string> buildfile;
+    if (requireValidConfig && m_buildfile) {
+        buildfile = m_buildfile;
+        if (m_config.build.value()) {
+            if (auto previous = Config::expandPathVariables(*m_config.build.value(),
+                                                            m_config.env.value())) {
+                auto path = fs::path(*previous);
+                if (path.is_relative() && workspacePath)
+                    path = fs::path(*workspacePath) / path;
+                // Re-resolve configured builds while retaining builds selected by the client.
+                if (path.lexically_normal() == fs::path(*buildfile).lexically_normal())
+                    buildfile.reset();
+            }
+        }
+    }
+    if (!buildfile && config.build.value()) {
+        if (auto expanded = Config::expandPathVariables(*config.build.value(),
+                                                        config.env.value())) {
+            auto path = fs::path(*expanded);
+            if (!path.empty() && path.is_relative() && m_workspaceFolder)
+                path = fs::path(m_workspaceFolder->uri.getPath()) / path;
+            buildfile = path.string();
+            if (!requireValidConfig)
+                m_client.showInfo("Using build file: " + *buildfile);
+        }
+    }
+    std::unique_ptr<ServerDriver> newDriver;
+    if (buildfile) {
+        newDriver = ServerDriver::createFromFileLists(m_indexer, m_client, config, {*buildfile},
+                                                      workspacePath, m_driver.get(),
+                                                      requireValidConfig);
     }
     else {
-        setExplore();
+        newDriver = ServerDriver::createForExplore(m_indexer, m_client, config, workspacePath,
+                                                   m_driver.get(), requireValidConfig);
     }
+    if (!newDriver)
+        return false;
+
+    auto old_config = m_config;
+    m_config = config;
+    m_driver = std::move(newDriver);
+    m_buildfile = std::move(buildfile);
+    m_topFile.reset();
+    m_configReloadPending = false;
+    m_driver->diagClient->pushDiags();
 
     if (!m_config.indexGlobs.get().empty() || !m_config.excludeDirs.get().empty()) {
         // Deprecated config globs
@@ -746,7 +854,8 @@ void SlangServer::loadConfig(const Config& config, bool forceIndexing) {
             }
             INFO("Indexing with globs: {}", fmt::join(indexGlobs, ", "));
             m_indexer.setNumThreads(m_config.indexingThreads.value());
-            m_indexer.startIndexing(indexGlobs, m_config.excludeDirs.value());
+            m_indexer.startIndexing(indexGlobs, m_config.excludeDirs.value(), false,
+                                    m_config.env.value());
         }
     }
     else if (forceIndexing) {
@@ -755,14 +864,15 @@ void SlangServer::loadConfig(const Config& config, bool forceIndexing) {
                              : std::nullopt;
 
         m_indexer.setNumThreads(m_config.indexingThreads.value());
-        m_indexer.startIndexing(m_config.index.value(), maybePath);
+        m_indexer.startIndexing(m_config.index.value(), maybePath, false, m_config.env.value());
     }
 
     // Send config to editor client if it needs to parse general configs
     m_client.setConfig(m_config);
+    return true;
 }
 
-void SlangServer::loadConfig() {
+bool SlangServer::loadConfig(bool requireValidConfig) {
     std::optional<std::string> workspaceConf, userConf, localConf;
 
     if (m_workspaceFolder) {
@@ -778,7 +888,16 @@ void SlangServer::loadConfig() {
     if (home && !std::getenv("SLANG_SERVER_TESTS"))
         userConf = (fs::path(home) / ".slang" / "server.json").string();
 
-    loadConfig(Config::fromFiles(workspaceConf, userConf, localConf, m_client), true);
+    auto config = Config::fromFiles(workspaceConf, userConf, localConf);
+    if (!config) {
+        if (requireValidConfig) {
+            WARN("Config reload failed: {}", config.error().what());
+            return false;
+        }
+        m_client.showError(config.error().what());
+        return m_driver ? false : loadConfig(Config{}, true);
+    }
+    return loadConfig(*config, true, requireValidConfig);
 }
 
 std::monostate SlangServer::addDefine(const std::string& macroName) {
@@ -832,6 +951,312 @@ std::monostate SlangServer::addDefine(const std::string& macroName) {
         setBuildFile(*savedBuildfile);
 
     return {};
+}
+
+bool SlangServer::autoConfigure(const std::monostate&) {
+    if (!m_workspaceFolder) {
+        m_client.showError("Cannot auto-configure: no workspace folder");
+        return false;
+    }
+
+    const auto root = fs::path(m_workspaceFolder->uri.getPath());
+    const auto configPath = root / ".slang/server.json";
+    try {
+        rfl::Generic::Object obj;
+        std::vector<std::string> incdirs;
+        if (fs::exists(configPath)) {
+            auto file = std::ifstream(configPath);
+            if (!file)
+                throw std::runtime_error("cannot read " + configPath.string());
+            auto text = std::string(std::istreambuf_iterator<char>(file), {});
+            auto json = rfl::json::read<rfl::Generic>(text, YYJSON_READ_ALLOW_COMMENTS |
+                                                                YYJSON_READ_ALLOW_TRAILING_COMMAS);
+            if (!json || !json->to_object())
+                throw std::runtime_error("invalid JSON object in " + configPath.string());
+            obj = *json->to_object();
+            if (obj.count("incdirs")) {
+                auto parsed = rfl::from_generic<std::vector<std::string>>(obj["incdirs"]);
+                if (!parsed)
+                    throw std::runtime_error("incdirs must be a list of strings in " +
+                                             configPath.string());
+                incdirs = *parsed;
+            }
+        }
+
+        std::vector<Config::IndexConfig> workspaceIndex;
+        if (obj.count("index")) {
+            auto parsed =
+                rfl::from_generic<std::vector<Config::IndexConfig>, rfl::DefaultIfMissing>(
+                    obj["index"]);
+            if (!parsed)
+                throw std::runtime_error("invalid index configuration in " + configPath.string());
+            workspaceIndex = *parsed;
+        }
+        const bool legacyIndex = !m_config.indexGlobs.value().empty() ||
+                                 !m_config.excludeDirs.value().empty();
+        bool exclusionsChanged = false;
+        if (!legacyIndex) {
+            for (auto& entry : workspaceIndex) {
+                if (auto& exclusions = entry.excludeDirs.value(); exclusions) {
+                    exclusionsChanged |= std::erase_if(*exclusions, [](const auto& path) {
+                                             return (path.starts_with("./") ||
+                                                     fs::path(path).is_absolute()) &&
+                                                    path.find_first_of("*?") != std::string::npos;
+                                         }) != 0;
+                }
+            }
+        }
+        m_indexer.setNumThreads(m_config.indexingThreads.value());
+        if (legacyIndex)
+            m_indexer.startIndexing(m_config.getIndexGlobs(), m_config.excludeDirs.value(), true,
+                                    m_config.env.value());
+        else
+            m_indexer.startIndexing(m_config.index.value(), root.string(), true,
+                                    m_config.env.value());
+
+        auto ignored = m_indexer.getGitIgnoreMatches(root, workspaceIndex, m_config.env.value());
+        auto within = [](const fs::path& path, const fs::path& directory) {
+            auto relative = path.lexically_normal().lexically_relative(
+                directory.lexically_normal());
+            return !relative.empty() && !relative.is_absolute() && *relative.begin() != "..";
+        };
+        const auto workspaceEntries = workspaceIndex.size();
+        if (!legacyIndex &&
+            Indexer::usesDefaultWorkspaceIndex(m_config.index.value(), root, m_config.env.value()))
+            workspaceIndex.push_back({.dirs = std::vector<std::string>{"."}});
+        auto indexesDirectory = [&](const Config::IndexConfig& entry, const fs::path& directory) {
+            return std::ranges::any_of(entry.dirs.value(), [&](const auto& indexRoot) {
+                auto expanded = Config::expandPathVariables(indexRoot, m_config.env.value());
+                if (!expanded)
+                    return false;
+                auto path = root / *expanded;
+                return within(directory, path) || within(path, directory);
+            });
+        };
+        struct InferredExclusion {
+            fs::path directory;
+            std::string path;
+            std::string rule;
+            bool useName;
+        };
+        std::vector<InferredExclusion> inferredExclusions;
+        std::vector<fs::path> excludedDirectories;
+        bool refreshExclusions = false;
+        for (const auto& match : ignored) {
+            if (!match.files.empty())
+                INFO("Auto-configure: {} indexed files match Git ignore rule {} (example: {})",
+                     match.files.size(), match.rule, match.files.front().generic_string());
+            if (legacyIndex)
+                continue;
+            for (const auto& directory : match.directories) {
+                const auto absolute = (root / directory).lexically_normal();
+                const auto name = directory.filename().string();
+                const bool useName = std::ranges::find(match.names, name) != match.names.end();
+                const auto path = useName ? name : "./" + directory.generic_string();
+                bool inherited = false;
+                for (size_t i = workspaceEntries; i < m_config.index.value().size(); ++i)
+                    inherited |= indexesDirectory(m_config.index.value()[i], absolute);
+                if (inherited)
+                    continue;
+                bool coveredExclusion = false;
+                for (const auto& entry : workspaceIndex) {
+                    if (!indexesDirectory(entry, absolute))
+                        continue;
+                    const auto& exclusions = entry.excludeDirs.value();
+                    refreshExclusions |= !exclusions ||
+                                         std::ranges::find(*exclusions, path) == exclusions->end();
+                    coveredExclusion = true;
+                }
+                if (coveredExclusion) {
+                    excludedDirectories.push_back(absolute);
+                    inferredExclusions.push_back({absolute, path, match.rule, useName});
+                }
+            }
+        }
+        // Ignored generated sources must not widen the suggested roots. Persist exclusions only
+        // after those roots are known, so unrelated folders from the initial crawl are omitted.
+        if (refreshExclusions)
+            m_indexer.excludeDirectories(excludedDirectories);
+        size_t ignoredFiles = 0;
+        std::vector<std::string> ignoredExamples;
+        for (const auto& match : ignored) {
+            for (const auto& file : match.files) {
+                if (std::ranges::any_of(excludedDirectories, [&](const auto& directory) {
+                        return within(root / file, directory);
+                    }))
+                    continue;
+                ++ignoredFiles;
+                if (ignoredExamples.size() < 5)
+                    ignoredExamples.push_back(file.generic_string());
+            }
+        }
+        if (ignoredFiles) {
+            m_client.showWarning(fmt::format(
+                "Auto-configure found {} indexed {} matched by Git ignore rules that could not "
+                "be excluded as whole directories, including {}. See the server log for matching "
+                "rules.",
+                ignoredFiles, ignoredFiles == 1 ? "file" : "files",
+                fmt::join(ignoredExamples, ", ")));
+        }
+        auto isWorkspaceRoot = [&](const std::string& directory) {
+            auto expanded = Config::expandPathVariables(directory, m_config.env.value());
+            return expanded &&
+                   (root / *expanded).lexically_normal().lexically_relative(root) == ".";
+        };
+        bool inferIndex = !legacyIndex &&
+                          std::ranges::any_of(workspaceIndex, [&](const auto& entry) {
+                              return std::ranges::any_of(entry.dirs.value(), isWorkspaceRoot);
+                          });
+        for (const auto* field : {"indexGlobs", "excludeDirs"}) {
+            if (obj.count(field)) {
+                auto entries = obj[field].to_array();
+                inferIndex &= entries && entries->empty();
+            }
+        }
+        std::vector<std::string> indexDirectories;
+        if (inferIndex) {
+            for (const auto& directory : m_indexer.getSuggestedIndexDirectories(root))
+                indexDirectories.push_back(directory.generic_string());
+        }
+        if (!indexDirectories.empty()) {
+            for (auto& entry : workspaceIndex) {
+                std::vector<std::string> directories;
+                for (const auto& directory : entry.dirs.value()) {
+                    if (isWorkspaceRoot(directory)) {
+                        auto prefix = directory.find('$') == std::string::npos
+                                          ? fs::path()
+                                          : fs::path(directory);
+                        for (const auto& suggested : indexDirectories)
+                            directories.push_back((prefix / suggested).generic_string());
+                    }
+                    else
+                        directories.push_back(directory);
+                }
+                entry.dirs.value() = std::move(directories);
+            }
+        }
+        for (const auto& inferred : inferredExclusions) {
+            bool changed = false;
+            for (auto& entry : workspaceIndex) {
+                if (!indexesDirectory(entry, inferred.directory))
+                    continue;
+                auto& exclusions = entry.excludeDirs.value();
+                if (!exclusions)
+                    exclusions.emplace();
+                if (inferred.useName) {
+                    changed |= std::erase_if(*exclusions, [&](const auto& existing) {
+                                   return existing != inferred.path &&
+                                          (existing.starts_with("./") ||
+                                           fs::path(existing).is_absolute()) &&
+                                          existing.find_first_of("*?") == std::string::npos &&
+                                          within(root / existing, inferred.directory);
+                               }) != 0;
+                }
+                if (std::ranges::find(*exclusions, inferred.path) == exclusions->end()) {
+                    exclusions->push_back(inferred.path);
+                    changed = true;
+                }
+            }
+            exclusionsChanged |= changed;
+            if (changed)
+                INFO("Auto-configure: excluding {} from index ({})", inferred.path, inferred.rule);
+        }
+
+        std::unordered_set<fs::path> configured;
+        for (const auto& path : m_config.incdirs.value()) {
+            if (auto expanded = Config::expandPathVariables(path, m_config.env.value()))
+                configured.insert(fs::weakly_canonical(root / *expanded));
+        }
+        for (const auto& path : incdirs) {
+            if (auto expanded = Config::expandPathVariables(path, m_config.env.value()))
+                configured.insert(fs::weakly_canonical(root / *expanded));
+        }
+
+        const std::vector<fs::path> configuredDirectories(configured.begin(), configured.end());
+        const auto conflicts = m_indexer.getConflictingIncludeDirectories(configuredDirectories);
+        std::vector<std::string> skipped;
+        size_t added = 0;
+        for (const auto& path : m_indexer.getIncludeDirectories()) {
+            if (configured.contains(path))
+                continue;
+            if (std::ranges::find(conflicts, path) != conflicts.end()) {
+                skipped.push_back(path.lexically_relative(root).generic_string());
+                continue;
+            }
+            auto relative = path.lexically_relative(root);
+            incdirs.push_back((relative.empty() ? path : relative).generic_string());
+            configured.insert(path);
+            added++;
+        }
+        if (!skipped.empty()) {
+            m_client.showWarning(fmt::format(
+                "Auto-configure skipped include directories with conflicting headers: {}. "
+                "Set their order in incdirs manually if needed.",
+                fmt::join(skipped, ", ")));
+        }
+        if (added == 0 && indexDirectories.empty() && !exclusionsChanged) {
+            m_client.showInfo("Auto-configure: no configuration changes found");
+            return true;
+        }
+
+        if (added)
+            obj["incdirs"] = rfl::to_generic(incdirs);
+        if (!indexDirectories.empty() || exclusionsChanged) {
+            auto entries = obj.count("index") ? *obj["index"].to_array() : rfl::Generic::Array{};
+            for (size_t i = 0; i < workspaceIndex.size(); ++i) {
+                auto entry = i < workspaceEntries ? *entries[i].to_object()
+                                                  : *rfl::to_generic(workspaceIndex[i]).to_object();
+                if (!indexDirectories.empty())
+                    entry["dirs"] = rfl::to_generic(workspaceIndex[i].dirs.value());
+                if (exclusionsChanged && workspaceIndex[i].excludeDirs.value())
+                    entry["excludeDirs"] = rfl::to_generic(*workspaceIndex[i].excludeDirs.value());
+                if (i < workspaceEntries)
+                    entries[i] = entry;
+                else
+                    entries.push_back(entry);
+            }
+            obj["index"] = entries;
+        }
+        fs::create_directories(configPath.parent_path());
+        const auto outputPath = fs::exists(configPath) ? fs::canonical(configPath) : configPath;
+        const auto temporaryPath = outputPath.string() +
+                                   fmt::format(".auto-configure-{}.tmp", slang::OS::getpid());
+        slang::ScopeGuard cleanup([&] {
+            std::error_code ec;
+            fs::remove(temporaryPath, ec);
+        });
+        {
+            auto file = std::ofstream(temporaryPath);
+            file << rfl::json::write(rfl::Generic(obj), YYJSON_WRITE_PRETTY_TWO_SPACES) << '\n';
+            file.close();
+            if (!file)
+                throw std::runtime_error("cannot write " + configPath.string());
+        }
+        fs::rename(temporaryPath, outputPath);
+
+        auto savedBuild = m_buildfile;
+        auto savedTop = m_topFile;
+        loadConfig();
+        if (savedBuild)
+            setBuildFile(*savedBuild);
+        if (savedTop)
+            setTopLevel(*savedTop);
+        std::vector<std::string> changes;
+        if (added)
+            changes.push_back(fmt::format("added {} include directories", added));
+        if (exclusionsChanged)
+            changes.push_back("updated index exclusions");
+        if (!indexDirectories.empty())
+            changes.push_back(
+                fmt::format("set index directories to {}", fmt::join(indexDirectories, ", ")));
+        m_client.showInfo(fmt::format("Auto-configure {} in {}", fmt::join(changes, " and "),
+                                      configPath.string()));
+        return true;
+    }
+    catch (const std::exception& error) {
+        m_client.showError(fmt::format("Cannot auto-configure: {}", error.what()));
+        return false;
+    }
 }
 
 rfl::Variant<lsp::Definition, std::vector<lsp::DefinitionLink>, std::monostate> SlangServer::
@@ -934,34 +1359,54 @@ void SlangServer::onDocDidClose(const lsp::DidCloseTextDocumentParams& params) {
     m_driver->closeDocument(params.textDocument.uri);
 }
 
-void SlangServer::onWorkspaceDidChangeWatchedFiles(const lsp::DidChangeWatchedFilesParams& params) {
-    // Check if any config or active build files changed
-    bool needsReload = false;
-    for (const auto& change : params.changes) {
-        auto path = change.uri.getPath();
-        if (path.ends_with(".json")) {
-            needsReload = true;
-            break;
+void SlangServer::registerFileWatchers() {
+    m_fileWatchers = {};
+    m_fileWatchers.addExtensions({".json"},
+                                 [this](const lsp::DidChangeWatchedFilesParams&) {
+                                     reloadWatchedConfig();
+                                     return true;
+                                 },
+                                 {".slang/server.json", ".slang/local/server.json"});
+    m_fileWatchers.addExtensions({".f"}, [this](const lsp::DidChangeWatchedFilesParams& params) {
+        for (const auto& change : params.changes) {
+            // Match Slang's canonical metadata keys without requiring the file to still exist.
+            std::error_code ec;
+            auto commandFile = fs::weakly_canonical(change.uri.getPath(), ec);
+            if (ec)
+                commandFile = change.uri.getPath();
+            if (m_driver->driver.getCommandFileMetadata().contains(commandFile)) {
+                reloadWatchedConfig();
+                return true;
+            }
         }
-        if (path.ends_with(".f") &&
-            m_driver->driver.getCommandFileMetadata().contains(std::filesystem::path(path))) {
-            needsReload = true;
-            break;
-        }
-    }
+        return false;
+    });
+    m_fileWatchers.addExtensions({".sv", ".svh", ".v", ".vh"},
+                                 [this](const lsp::DidChangeWatchedFilesParams& params) {
+                                     m_indexer.onWorkspaceDidChangeWatchedFiles(params);
+                                     m_driver->onWorkspaceDidChangeWatchedFiles(params);
+                                     return false;
+                                 });
+}
 
-    if (needsReload) {
-        INFO("Config or build file changed, reloading");
-        auto savedBuildfile = m_buildfile;
-        loadConfig();
-        if (savedBuildfile)
-            setBuildFile(*savedBuildfile);
+void SlangServer::reloadWatchedConfig() {
+    INFO("Config or build file changed, reloading");
+    auto savedTop = m_topFile;
+    if (loadConfig(/* requireValidConfig */ true)) {
+        if (savedTop)
+            setTopLevel(*savedTop);
         return;
     }
+    m_configReloadPending = true;
+    WARN("Keeping the current configuration; retrying on the next file change");
+}
 
-    // Handle external source file changes (from git, formatters, etc)
-    m_driver->onWorkspaceDidChangeWatchedFiles(params);
-    m_indexer.onWorkspaceDidChangeWatchedFiles(params);
+void SlangServer::onWorkspaceDidChangeWatchedFiles(const lsp::DidChangeWatchedFilesParams& params) {
+    if (m_configReloadPending) {
+        reloadWatchedConfig();
+        return;
+    }
+    m_fileWatchers.dispatch(params);
 }
 
 static bool fuzzyMatch(std::string_view query, std::string_view candidate) {
@@ -1055,22 +1500,78 @@ std::optional<std::vector<lsp::InlayHint>> SlangServer::getDocInlayHint(
 
 std::optional<std::vector<lsp::CodeLens>> SlangServer::getDocCodeLens(
     const lsp::CodeLensParams& params) {
-    if (!m_driver->comp) {
-        return std::nullopt;
-    }
     auto doc = m_driver->getDocument(params.textDocument.uri);
     if (!doc) {
         return std::nullopt;
     }
 
     std::vector<lsp::CodeLens> lenses;
-    auto& meta = doc->getSyntaxTree()->getMetadata();
+    auto tree = doc->getSyntaxTree();
+    auto path = m_driver->sm.getFullPath(doc->getBuffer());
+    auto contexts = m_driver->getIncludeContexts(path);
+    if (!contexts.empty()) {
+        const auto& active = contexts.front();
+        const auto& location = active.location;
+        lenses.push_back(lsp::CodeLens{
+            .range = {{0, 0}, {0, 0}},
+            .command =
+                lsp::Command{
+                    .title = fmt::format("Included by {}:{}",
+                                         fs::path(location.uri.getPath()).filename().string(),
+                                         location.range.start.line + 1),
+                    .command = "slang.showLocation",
+                    .arguments = std::vector<lsp::LSPAny>{rfl::to_generic(location)},
+                },
+        });
+        if (contexts.size() > 1) {
+            std::vector<SlangLspClient::QuickPickItem> items;
+            for (const auto& context : contexts) {
+                auto source = context.source->getWsRelativePath();
+                auto include = context.location.uri.getPath();
+                include.remove_prefix(m_driver->getWsRelativePathOffset(include));
+                auto description = std::string(source);
+                if (&context == &active)
+                    description += " (current)";
+                items.push_back({
+                    .label = fmt::format("{}:{}", include, context.location.range.start.line + 1),
+                    .description = std::move(description),
+                    .value = rfl::to_generic(ServerDriver::IncludeContextSelection{
+                        .uri = params.textDocument.uri,
+                        .source = context.source->getURI(),
+                        .occurrence = context.occurrence,
+                    }),
+                });
+            }
+            lenses.push_back(lsp::CodeLens{
+                .range = {{0, 0}, {0, 0}},
+                .command =
+                    lsp::Command{
+                        .title = fmt::format("And {} other{}", contexts.size() - 1,
+                                             contexts.size() == 2 ? "" : "s"),
+                        .tooltip = "Select include context",
+                        .command = "slang.quickPick",
+                        .arguments = std::vector<lsp::LSPAny>{rfl::to_generic(
+                            SlangLspClient::QuickPickParams{
+                                .placeholder = "Select include context",
+                                .items = std::move(items),
+                                .onSelectCommand = "slang.setIncludeContext",
+                            })},
+                    },
+            });
+        }
+    }
+    if (!m_driver->comp)
+        return lenses.empty() ? std::nullopt : std::optional(std::move(lenses));
+
+    auto& meta = tree->getMetadata();
     for (const auto& [decl, _] : meta.nodeMeta) {
         if (!decl || !decl->header) {
             continue;
         }
 
         const auto& nameToken = decl->header->name;
+        if (nameToken.location().buffer() != doc->getBuffer())
+            continue;
         auto moduleName = std::string(nameToken.valueText());
         if (moduleName.empty()) {
             continue;

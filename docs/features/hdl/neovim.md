@@ -51,6 +51,8 @@ The active instance supplies the context for resolved parameter values, dependen
 
 This opens an interactive search over the compiled design and reveals the selected object in the hierarchy. FzfLua, Telescope, and Snacks Picker are supported when installed, with a two-step `vim.ui.input` and `vim.ui.select` fallback.
 
+Search includes instances, generate scopes, signals, parameters, and interface port members, even in unexpanded parts of the tree. Enter a name or hierarchical path fragment. Matching is case-insensitive, supports fuzzy path matches, and returns up to 100 results; refine the query to narrow a larger result set.
+
 ### Select active instance
 
 ```
@@ -64,14 +66,9 @@ This runs an active-instance or active-generate-iteration code lens on the curre
 ```
 :lua vim.lsp.buf.incoming_calls()
 ```
-```
-:lua vim.lsp.buf.outgoing_calls()
-```
 
-This allows for drivers/loads tracing over the [call hierarchy lsp route](https://neovim.io/doc/user/lsp.html#vim.lsp.buf.incoming_calls()), since it's an analogous concept.  Tracing incoming calls yields drivers of a given signal and outgoing calls yields loads or things the signal drives.
-Calling one of these functions will trace the signal currently under the cursor.
-If there is more than one instance of the signal then first a list of instances will be presented.
-After an instance is selected (or if there is only one instance) a list of drivers or loads will be presented.
+With a build file or top level selected, place the cursor on a signal and run this command to trace its drivers through the [incoming call hierarchy](https://neovim.io/doc/user/lsp.html#vim.lsp.buf.incoming_calls()). If the signal has multiple instances, choose an instance first, then select a driver to navigate to its source.
+
 
 ## Waveform Integration (experimental)
 

@@ -42,6 +42,11 @@ public:
     // Add all uris to dirty so they get republished after new diags are added.
     void clear();
 
+#ifdef SLANG_SERVER_DEBUG
+    /// Replace scan findings while preserving compiler diagnostics for this document.
+    void setDebugDiagnostics(const URI& uri, std::vector<lsp::Diagnostic> diagnostics);
+#endif
+
 private:
     std::unordered_map<URI, std::vector<lsp::Diagnostic>> m_diagnostics;
     // Uris that have modified diags yet to be pushed to the client

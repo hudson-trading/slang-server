@@ -58,6 +58,42 @@ endmodule
     scanner.scanDocument(hdl);
 }
 
+TEST_CASE("InlayHintsMacroUndefRedefine") {
+    /// Test macro argument hints use the definition active at the usage, so they survive a later
+    /// `undef and follow redefinitions with different argument names
+    ServerHarness server("");
+    auto hdl = server.openFile("inlay_macro_undef_redefine.sv", R"(
+module test;
+    `define ADD(a, b) ((a) + (b))
+    wire [3:0] x = `ADD(4'd1, 4'd2);
+    `undef ADD
+
+    `define PAIR(lhs, rhs) {lhs, rhs}
+    wire [1:0] y = `PAIR(1'b0, 1'b1);
+    `define PAIR(first, second) {second, first}
+    wire [1:0] z = `PAIR(1'b0, 1'b1);
+endmodule
+)");
+
+    InlayHintScanner scanner;
+    scanner.scanDocument(hdl);
+}
+
+TEST_CASE("InlayHintsMacroRedefinitions") {
+    ServerHarness server;
+    auto doc = server.openFile("inlay_macro_redefinitions.sv", R"(
+`define VALUE(first, second) first + second
+module sample;
+    int first_use = `VALUE(1, 2);
+`define VALUE(third, fourth) third + fourth
+    int second_use = `VALUE(3, 4);
+`undef VALUE
+endmodule
+)");
+    InlayHintScanner scanner;
+    scanner.scanDocument(doc);
+}
+
 TEST_CASE("InlayHintsModuleOrdered") {
     /// Test inlay hints for module instantiation with ordered ports
     ServerHarness server("");
@@ -106,6 +142,42 @@ endmodule
 
     InlayHintScanner scanner;
     scanner.scanDocument(hdl);
+}
+
+TEST_CASE("InlayHintsMixedNamedPortsDoNotAbortLaterInstances") {
+    ServerHarness server("");
+    auto hdl = server.openFile("inlay_mixed_named_ports.sv", R"(
+module child(input logic clk, input logic rst, input logic [7:0] a, output logic [7:0] b);
+endmodule
+module top;
+    logic clk, rst;
+    logic [7:0] a, b, c, d;
+    child u0(.clk(clk), .rst(rst),
+             .a(a),
+             .b(b)),
+          u1(.clk(clk),
+             .rst(rst),
+             .a(c),
+             .b(d));
+endmodule
+)");
+
+    auto doc = hdl.doc;
+    REQUIRE(doc);
+    auto start = hdl.getLocation(0);
+    auto end = hdl.getLocation(doc->getText().size() - 1);
+    REQUIRE(start);
+    REQUIRE(end);
+    Config::InlayHints config{.portTypes = true};
+    auto hints = doc->getAnalysis()->getInlayHints(
+        server::toRange(slang::SourceRange{*start, *end}, doc->getSourceManager()), config);
+
+    CHECK(hints.size() == 6);
+    CHECK(std::ranges::all_of(hints, [&](const auto& candidate) {
+        return std::ranges::count_if(hints, [&](const auto& hint) {
+                   return hint.position.line == candidate.position.line;
+               }) == 1;
+    }));
 }
 
 TEST_CASE("InlayHintsWildcard") {

@@ -397,7 +397,7 @@ module TestModule #(
                              ^^^^^^^^ Ref -> `Sub[4]` `sub_inst` in `TestModule`  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(16)) sub_inst [NUM_SUBS] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(sub_data_in),\n\    .data_out(sub_data_out)\n\);`
                                          ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`\n\\n\---\n\\n\Driven by always_ff at [hdl_test.sv:79:5](<file:///tests/data/hdl_test.sv#L79,5>)  \n\`always_ff @(posedge clk or posedge rst) begin\n\    if (rst) begin\n\        data_out <= '0;\n\    end else begin\n\        data_out <= data_in;\n\    end\n\end`
                                                     ^^^^^^^^ Ref -> `Sub[4]` `sub_inst` in `TestModule`  \n\\n\\n\---\n\\n\`Sub #(.WIDTH(16)) sub_inst [NUM_SUBS] (\n\    .clk(clk),\n\    .rst(rst),\n\    .data_in(sub_data_in),\n\    .data_out(sub_data_out)\n\);`
-                                                                ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`
+                                                                ^^^^^^^^ Ref -> **Output Variable** `data_out` in `Sub`  \n\Type: `logic[15:0]`  \n\Width: `16`  \n\\n\\n\---\n\\n\`output logic [WIDTH-1:0] data_out`\n\\n\---\n\\n\Driven by always_ff at [hdl_test.sv:79:5](<file:///tests/data/hdl_test.sv#L79,5>)  \n\`always_ff @(posedge clk or posedge rst) begin\n\    if (rst) begin\n\        data_out <= '0;\n\    end else begin\n\        data_out <= data_in;\n\    end\n\end`
 
 
 
@@ -693,15 +693,15 @@ module NoDefaults #(
                              ^^^^^^^^^^^^^ Sym gen_sub_array : InstanceArray
 
             .clk(clk),
-             ^^^ Ref -> **Input Net** `clk` in `Sub`  \n\Type: `logic`  \n\Generated signals: `3`  \n\\n\\n\---\n\\n\`input logic clk`
+             ^^^ Ref -> **Input Net** `clk` in `Sub`  \n\Type: `logic`  \n\Generated signals: `3`  \n\\n\\n\---\n\\n\`input logic clk`\n\\n\---\n\\n\Driven via port from `Sub gen_sub_array` at [hdl_test.sv:73:5](<file:///tests/data/hdl_test.sv#L73,5>)  \n\`input logic clk`
                  ^^^ Ref -> **Input Net** `clk` in `NoDefaults`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
 
             .rst(rst),
-             ^^^ Ref -> **Input Net** `rst` in `Sub`  \n\Type: `logic`  \n\Generated signals: `3`  \n\\n\\n\---\n\\n\`input logic rst`
+             ^^^ Ref -> **Input Net** `rst` in `Sub`  \n\Type: `logic`  \n\Generated signals: `3`  \n\\n\\n\---\n\\n\`input logic rst`\n\\n\---\n\\n\Driven via port from `Sub gen_sub_array` at [hdl_test.sv:74:5](<file:///tests/data/hdl_test.sv#L74,5>)  \n\`input logic rst`
                  ^^^ Ref -> **Input Net** `rst` in `NoDefaults`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
 
             .data_in(data_in),
-             ^^^^^^^ Ref -> **Input Net** `data_in` in `Sub`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\Generated signals: `3`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+             ^^^^^^^ Ref -> **Input Net** `data_in` in `Sub`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\Generated signals: `3`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`\n\\n\---\n\\n\Driven via port from `Sub gen_sub_array` at [hdl_test.sv:75:5](<file:///tests/data/hdl_test.sv#L75,5>)  \n\`input logic [WIDTH-1:0] data_in`
                      ^^^^^^^ Ref -> **Input Net** `data_in` in `NoDefaults`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
 
             .data_out()
@@ -815,15 +815,15 @@ module NoDefaults #(
           ^^^^^^^^^^^^^ Sym sub_no_branch : Instance
 
             .clk(clk),
-             ^^^ Ref -> **Input Net** `clk` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
+             ^^^ Ref -> **Input Net** `clk` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`\n\\n\---\n\\n\Driven via port from `Sub sub_no_branch` at [hdl_test.sv:73:5](<file:///tests/data/hdl_test.sv#L73,5>)  \n\`input logic clk`
                  ^^^ Ref -> **Input Net** `clk` in `NoDefaults`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic clk`
 
             .rst(rst),
-             ^^^ Ref -> **Input Net** `rst` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
+             ^^^ Ref -> **Input Net** `rst` in `Sub`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`\n\\n\---\n\\n\Driven via port from `Sub sub_no_branch` at [hdl_test.sv:74:5](<file:///tests/data/hdl_test.sv#L74,5>)  \n\`input logic rst`
                  ^^^ Ref -> **Input Net** `rst` in `NoDefaults`  \n\Type: `logic`  \n\\n\\n\---\n\\n\`input logic rst`
 
             .data_in(data_in),
-             ^^^^^^^ Ref -> **Input Net** `data_in` in `Sub`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
+             ^^^^^^^ Ref -> **Input Net** `data_in` in `Sub`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`\n\\n\---\n\\n\Driven via port from `Sub sub_no_branch` at [hdl_test.sv:75:5](<file:///tests/data/hdl_test.sv#L75,5>)  \n\`input logic [WIDTH-1:0] data_in`
                      ^^^^^^^ Ref -> **Input Net** `data_in` in `NoDefaults`  \n\Declared Type: `logic [WIDTH-1:0]`  \n\\n\\n\---\n\\n\`input logic [WIDTH-1:0] data_in`
 
             .data_out(data_out)

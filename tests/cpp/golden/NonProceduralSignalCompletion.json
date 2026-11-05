@@ -129,6 +129,29 @@
         }
       },
       {
+        "label": "mailbox",
+        "labelDetails": {
+          "detail": " ",
+          "description": "std"
+        },
+        "kind": "Class",
+        "documentation": "",
+        "filterText": "mailbox",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 10,
+              "character": 0
+            },
+            "end": {
+              "line": 10,
+              "character": 0
+            }
+          },
+          "newText": "mailbox"
+        }
+      },
+      {
         "label": "my_wire",
         "labelDetails": {
           "detail": " "
@@ -154,13 +177,39 @@
         }
       },
       {
+        "label": "process",
+        "labelDetails": {
+          "detail": " ",
+          "description": "std"
+        },
+        "kind": "Class",
+        "documentation": "",
+        "filterText": "process",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 10,
+              "character": 0
+            },
+            "end": {
+              "line": 10,
+              "character": 0
+            }
+          },
+          "newText": "process"
+        }
+      },
+      {
         "label": "randomize",
         "labelDetails": {
           "detail": " function",
           "description": "std"
         },
         "kind": "Function",
-        "documentation": "int randomize(...)",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\nfunction int randomize(...);\n````\n\nRandomizes the supplied scope variables subject to an optional with constraint block. Returns 1 on success or 0 on failure.\n\nIEEE 1800-2023 §18.12"
+        },
         "filterText": "randomize",
         "insertText": "randomize()",
         "insertTextFormat": "Snippet",
@@ -176,6 +225,29 @@
             }
           },
           "newText": "randomize()"
+        }
+      },
+      {
+        "label": "semaphore",
+        "labelDetails": {
+          "detail": " ",
+          "description": "std"
+        },
+        "kind": "Class",
+        "documentation": "",
+        "filterText": "semaphore",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 10,
+              "character": 0
+            },
+            "end": {
+              "line": 10,
+              "character": 0
+            }
+          },
+          "newText": "semaphore"
         }
       },
       {
@@ -203,6 +275,29 @@
             }
           },
           "newText": "util_pkg"
+        }
+      },
+      {
+        "label": "weak_reference",
+        "labelDetails": {
+          "detail": " ",
+          "description": "std"
+        },
+        "kind": "Class",
+        "documentation": "",
+        "filterText": "weak_reference",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 10,
+              "character": 0
+            },
+            "end": {
+              "line": 10,
+              "character": 0
+            }
+          },
+          "newText": "weak_reference"
         }
       }
     ]

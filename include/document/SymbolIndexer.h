@@ -12,6 +12,7 @@
 #include <string_view>
 #include <type_traits>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "slang/ast/ASTVisitor.h"
 #include "slang/ast/Scope.h"
@@ -43,6 +44,9 @@ public:
 
     slang::BufferID m_buffer;
 
+    /// Buffers enclosing this header, whose scopes must be traversed to reach its declarations.
+    slang::SmallVector<slang::BufferID> enclosingBuffers;
+
     SymbolIndexer(slang::BufferID buffer);
 
     const slang::ast::Symbol* getSymbol(const slang::parsing::Token* node) const;
@@ -65,7 +69,7 @@ public:
     void handle(const slang::ast::PackageSymbol& sym) {
         // For packages, only recurse if it's in our buffer
         indexSymbolName(sym);
-        if (sym.location.buffer() == m_buffer) {
+        if (shouldVisit(sym.location.buffer())) {
             visitDefault(sym);
         }
     }
@@ -88,6 +92,10 @@ public:
     }
     void handle(const slang::ast::TypeParameterSymbol& sym) { sym.getTypeAlias().visit(*this); }
     void handle(const slang::ast::TypeAliasType& sym);
+    /// Index a representative class scope even when no specialization is referenced.
+    void handle(const slang::ast::GenericClassDefSymbol& sym);
+    /// Visit each class scope once, including recursive typedefs of that class.
+    void handle(const slang::ast::ClassType& sym);
     // Anonymous types (no typedef)
     void handle(const slang::ast::TransparentMemberSymbol& sym) { sym.wrapped.visit(*this); }
     // Special case for enum values, since name may not map
@@ -98,12 +106,21 @@ public:
         requires std::is_base_of_v<slang::ast::Symbol, T>
     void handle(const T& astNode) {
         indexSymbolName(astNode);
-        if (astNode.location.buffer() == m_buffer) {
+        if (shouldVisit(astNode.location.buffer())) {
             visitDefault(astNode);
         }
     }
 
 private:
+    /// Class scopes already traversed through declarations or type aliases.
+    std::unordered_set<const slang::ast::ClassType*> visitedClasses;
+
+    /// Whether this scope belongs to the document or one of its includers.
+    bool shouldVisit(slang::BufferID buffer) const {
+        return buffer == m_buffer ||
+               std::ranges::find(enclosingBuffers, buffer) != enclosingBuffers.end();
+    }
+
     static const uint32_t MAX_INSTANCE_DEPTH = 8;
     /// Helper to index instance syntax (shared by InstanceSymbol and InstanceArraySymbol)
     void indexInstanceSyntax(const slang::syntax::HierarchicalInstanceSyntax& instSyntax,

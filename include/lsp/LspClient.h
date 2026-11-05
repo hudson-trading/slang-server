@@ -131,7 +131,7 @@ public:
 
     /// The show message notification is sent from a server to a client to ask
     /// the client to display a particular message in the user interface.
-    void onWindowShowMessage(const ShowMessageParams& params) {
+    virtual void onWindowShowMessage(const ShowMessageParams& params) {
         sendNotification("window/showMessage", rfl::to_generic<rfl::UnderlyingEnums>(params));
     };
 

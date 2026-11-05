@@ -62,6 +62,11 @@ public:
         /// [`textDocument.completion.completionItem.resolveSupport`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#completionClientCapabilities)
         bool completionEditResolveSupported = false;
 
+        /// client offered "utf-8" in `general.positionEncodings`, which matches slang's byte
+        /// columns. Otherwise only didChange ranges are converted from utf-16; other positions
+        /// stay byte-based, which only differs on lines with non-ASCII comments.
+        bool utf8Positions = false;
+
         Capabilities() = default;
 
         explicit Capabilities(const lsp::ClientCapabilities& capabilities) {
@@ -80,6 +85,11 @@ public:
                 completionEditResolveSupported = supports("insertText") &&
                                                  supports("insertTextFormat") &&
                                                  supports("textEdit");
+            }
+
+            if (capabilities.general && capabilities.general->positionEncodings) {
+                const auto& encs = *capabilities.general->positionEncodings;
+                utf8Positions = std::ranges::find(encs, "utf-8") != encs.end();
             }
 
             if (!capabilities.experimental)

@@ -138,9 +138,7 @@ void InlayHintCollector::handle(const HierarchyInstantiationSyntax& syntax) {
 
         // Collect named port hints for alignment
         std::vector<lsp::InlayHint> namedPortHints;
-        size_t maxLabelLen = 0;
         size_t portIndex = 0;
-        size_t lastPortLine = -1;
         for (auto portSyntax : hierInstSyntax.connections) {
             switch (portSyntax->kind) {
                 case SyntaxKind::OrderedPortConnection: {
@@ -186,8 +184,6 @@ void InlayHintCollector::handle(const HierarchyInstantiationSyntax& syntax) {
                             continue;
                     }
 
-                    // Track max lengths to preserve alignment
-                    maxLabelLen = std::max(maxLabelLen, label.size());
                     auto pos = toPosition(connection.name.location() +
                                               connection.name.rawText().size(),
                                           m_analysis.m_sourceManager);
@@ -198,12 +194,6 @@ void InlayHintCollector::handle(const HierarchyInstantiationSyntax& syntax) {
                         .paddingLeft = true,
                         .paddingRight = true,
                     });
-
-                    // Don't show ports if types if theyr'e all on the same line
-                    if (pos.line == lastPortLine) {
-                        return;
-                    }
-                    lastPortLine = pos.line;
                 } break;
                 case SyntaxKind::WildcardPortConnection: {
                     if (!m_wildcardNames) {
@@ -271,7 +261,20 @@ void InlayHintCollector::handle(const HierarchyInstantiationSyntax& syntax) {
             }
         }
 
+        // Port type hints are intended to annotate vertically aligned connections. Discard
+        // individual hints that share a line instead of suppressing hints on later lines or
+        // instances.
+        std::erase_if(namedPortHints, [&](const auto& candidate) {
+            return std::ranges::count_if(namedPortHints, [&](const auto& hint) {
+                       return hint.position.line == candidate.position.line;
+                   }) > 1;
+        });
+
         // align named port hints
+        size_t maxLabelLen = 0;
+        for (const auto& hint : namedPortHints) {
+            maxLabelLen = std::max(maxLabelLen, rfl::get<std::string>(hint.label).size());
+        }
         for (auto& hint : namedPortHints) {
             auto labelStr = rfl::get<std::string>(hint.label);
             hint.label = labelStr + std::string(maxLabelLen - labelStr.size(), ' ');
@@ -286,12 +289,12 @@ void InlayHintCollector::handle(const MacroUsageSyntax& syntax) {
         return;
     }
 
-    // TODO: maybe we should also use the index for these?
-    auto defInfo = m_analysis.macros.find(syntax.directive.valueText().substr(1));
-    if (defInfo == m_analysis.macros.end()) {
+    auto defInfo = m_analysis.macroUsageDefinitions.find(&syntax);
+    if (defInfo == m_analysis.macroUsageDefinitions.end()) {
         return;
     }
-    if (!defInfo->second->formalArguments) {
+    const auto* def = defInfo->second;
+    if (!def->formalArguments) {
         return;
     }
     // Check if we should show hints based on arg count
@@ -300,14 +303,13 @@ void InlayHintCollector::handle(const MacroUsageSyntax& syntax) {
     }
 
     // Iterate through minimum of actual and formal arguments
-    size_t numArgs = std::min(syntax.args->args.size(),
-                              defInfo->second->formalArguments->args.size());
+    size_t numArgs = std::min(syntax.args->args.size(), def->formalArguments->args.size());
     for (size_t i = 0; i < numArgs; i++) {
         auto argLoc = m_analysis.m_sourceManager.getFullyOriginalLoc(
             syntax.args->args[i]->getFirstToken().location());
         result.push_back(lsp::InlayHint{
             .position = toPosition(argLoc, m_analysis.m_sourceManager),
-            .label = fmt::format("{}:", defInfo->second->formalArguments->args[i]->name.rawText()),
+            .label = fmt::format("{}:", def->formalArguments->args[i]->name.rawText()),
             .kind = lsp::InlayHintKind::Parameter,
             .paddingRight = true,
         });

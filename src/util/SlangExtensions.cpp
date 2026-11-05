@@ -55,4 +55,12 @@ const ast::Type* getTypeParameterTargetType(const ast::Type& type) {
     return targetType.isError() ? nullptr : &targetType;
 }
 
+const ast::Type* getSymbolType(const ast::Symbol& symbol) {
+    if (symbol.isType())
+        return &unwrapErrorType(symbol.as<ast::Type>());
+    if (auto* declaredType = symbol.getDeclaredType())
+        return &unwrapErrorType(declaredType->getType());
+    return nullptr;
+}
+
 } // namespace server

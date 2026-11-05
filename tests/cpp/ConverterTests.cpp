@@ -29,6 +29,40 @@ TEST_CASE("LSP positions use raw source lines") {
     CHECK(range.end.character == 4);
 }
 
+TEST_CASE("utf16ColumnToByte maps code-unit columns to byte offsets") {
+    using server::utf16ColumnToByte;
+    // "// ä€𐍈x" - ä is 2 bytes/1 unit, € is 3/1, 𐍈 is 4/2
+    std::string_view line = "// \xC3\xA4\xE2\x82\xAC\xF0\x90\x8D\x88x";
+    CHECK(utf16ColumnToByte(line, 0) == 0);
+    CHECK(utf16ColumnToByte(line, 3) == 3);  // before ä
+    CHECK(utf16ColumnToByte(line, 4) == 5);  // after ä
+    CHECK(utf16ColumnToByte(line, 5) == 8);  // after €
+    CHECK(utf16ColumnToByte(line, 6) == 12); // inside the surrogate pair rounds up
+    CHECK(utf16ColumnToByte(line, 7) == 12); // after the surrogate pair
+    CHECK(utf16ColumnToByte(line, 8) == 13); // after x
+    CHECK(utf16ColumnToByte(line, 99) == line.size());
+    CHECK(utf16ColumnToByte("plain\nnext", 20) == 5); // stops at newline
+}
+
+TEST_CASE("utf16ColumnToByte clamps to the source line") {
+    using server::utf16ColumnToByte;
+    CHECK(utf16ColumnToByte("", 1) == 0);
+    CHECK(utf16ColumnToByte("plain\r\nnext", 20) == 5);
+    CHECK(utf16ColumnToByte("plain\rnext", 20) == 5);
+    CHECK(utf16ColumnToByte(std::string_view("plain\0", 6), 20) == 5);
+}
+
+TEST_CASE("utf16ColumnToByte consumes invalid UTF-8 one byte at a time") {
+    using server::utf16ColumnToByte;
+    for (std::string_view line : {"\x80x", "\xFFx", "\xC2", "\xE2\x82", "\xF0\x90\x8D", "\xE2x",
+                                  "\xC0\xAF", "\xED\xA0\x80", "\xF4\x90\x80\x80"}) {
+        CAPTURE(line);
+        CHECK(utf16ColumnToByte(line, 1) == 1);
+        CHECK(utf16ColumnToByte(line, 99) == line.size());
+    }
+    CHECK(utf16ColumnToByte("\xE2\nnext", 99) == 1);
+}
+
 TEST_CASE("LSP positions resolve macro locations") {
     slang::SourceManager sourceManager;
     auto buffer = sourceManager.assignText("source.sv", "first\nmacro(D)\n");

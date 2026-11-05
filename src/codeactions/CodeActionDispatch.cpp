@@ -10,6 +10,7 @@
 
 #include "ServerDriver.h"
 #include "codeactions/AddDefine.h"
+#include "codeactions/AddInclude.h"
 #include "codeactions/ExpandMacro.h"
 #include "util/Converters.h"
 #include <rfl/Variant.hpp>
@@ -17,8 +18,9 @@
 namespace server {
 using namespace slang;
 
-CodeActionDispatch::CodeActionDispatch(ServerDriver& driver, SourceManager& sm) :
-    m_driver(driver), m_sourceManager(sm) {
+CodeActionDispatch::CodeActionDispatch(ServerDriver& driver, SourceManager& sm,
+                                       const Indexer& indexer) :
+    m_driver(driver), m_sourceManager(sm), m_indexer(indexer) {
 }
 
 std::vector<rfl::Variant<lsp::Command, lsp::CodeAction>> CodeActionDispatch::getCodeActions(
@@ -45,12 +47,15 @@ std::vector<rfl::Variant<lsp::Command, lsp::CodeAction>> CodeActionDispatch::get
         .doc = *doc,
         .analysis = *analysis,
         .sourceManager = m_sourceManager,
+        .indexer = m_indexer,
+        .configuredOptions = m_driver.options,
         .token = token,
         .syntax = syntax,
         .diagnostics = params.context.diagnostics,
     };
 
     std::vector<rfl::Variant<lsp::Command, lsp::CodeAction>> results;
+    codeactions::addIncludeActions(results, ctx);
 
     // Syntax-based actions
     if (syntax) {

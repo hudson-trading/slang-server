@@ -6,13 +6,90 @@ The server uses a hierarchical configuration system with three config files:
 2. `~/.slang/server.json` — user config (personal defaults across all projects)
 3. `${workspaceFolder}/.slang/local/server.json` — local config (`.slang/local` should be ignored by source control)
 
-Later files override earlier ones for scalar values. Lists (like `index`) are appended across all files.
+Later files override earlier ones for scalar values. Lists (like `index` and `incdirs`) are appended across all files. `env` objects merge by variable name.
+
+### Environment variables
+
+`build`, `index[].dirs`, `index[].excludeDirs`, and `incdirs` accept `$VAR`, `${VAR}`, and
+`$(VAR)` references to variables configured in `env` or inherited by the server process. For example:
+
+```json
+{
+  "index": [{"dirs": ["hw", "build", "${UVM_HOME}/src"]}],
+  "incdirs": ["${UVM_HOME}/src"]
+}
+```
+
+Expansion happens before resolving relative paths against the workspace root.
+Values containing spaces stay in one path, and variable values are not expanded
+recursively. Unset or empty variables produce an editor error naming the variable
+and config field, with a link to this section for configuration instructions.
+An unresolved `build` path leaves the server in exploration mode.
+Unresolved include paths and index roots are skipped; an
+unresolved exclusion skips its entire index entry. An unresolved index root or
+exclusion also disables the implicit workspace scan. Auto-configure preserves
+variable references in saved paths, including when it narrows a workspace root
+such as `${PROJECT_ROOT}` to `${PROJECT_ROOT}/hw`.
+
+`flags` and `.f` file contents also expand these variable forms, including nested
+`-f`, `-F`, and `-C` file lists. Unset or empty variables produce an editor error;
+file-list errors include the file, line, and column. The affected flag string or
+file list is rejected before its arguments are applied. Comments, single-quoted
+text, and escaped dollar signs outside quotes remain literal. Use double quotes
+around variable references whose values contain spaces, such as
+`-f "${BUILD_ROOT}/design.f"`. Variable values are expanded only once.
+
+Set variable overrides in the `env` field of any `server.json` config:
+
+```json
+{
+  "env": {
+    "UVM_HOME": "/tools/uvm"
+  },
+  "incdirs": ["${UVM_HOME}/src"]
+}
+```
+
+Variables merge by name in workspace, user, then local order. Later values
+replace earlier values for the same name, while unrelated variables are kept.
+Use `~/.slang/server.json` for personal defaults across projects, or
+`.slang/local/server.json` for machine-specific project paths. Paths must exist
+on the machine running the server.
+
+The server reads `env` when loading configuration and uses it to expand config
+paths, flags, file lists, and library maps. Configured values take precedence
+over its inherited environment; other inherited variables remain available.
+Values are literal strings: shell expressions and `${VAR}` references inside
+`env` are not expanded. Empty values override inherited values and produce an
+error when referenced in a config path, flag, or file list.
+
+Changes to `env`, including removing overrides, reload automatically when the
+config is saved. If a reload fails, the server retains its last working
+configuration. The server does not modify the process environment.
+
+This works with every LSP client, including VS Code and plain nvim-lspconfig;
+no client helper or restart is needed. With remote SSH, WSL, or containers,
+configuration and paths are read on the machine running the server. Variables
+exported in an existing editor's terminal do not update the server's inherited
+environment; use `env` for changes that should reload.
 
 ### Flags precedence
 
 The `flags` field has special merging behavior. Workspace flags override user flags (only one is used as the base), and local flags are always appended on top. This means you can set shared flags in `.slang/server.json`, and add personal flags (like extra `-D` defines) in `.slang/local/server.json` without overriding the shared ones.
 
 The server watches these config files, .f files that are passed in via flags and `.f` build files for changes, automatically reloading when they are saved.
+
+## Auto-configure
+
+Run **slang: Auto-configure** in VS Code to discover index and include directories and save them in `.slang/server.json`. Neovim and other LSP clients can invoke `slang.autoConfigure` through `workspace/executeCommand` with no arguments; no custom client handler is needed.
+
+When indexing uses the default workspace scan, or a workspace `index` entry lists `.` as a directory, the command chooses directories covering all indexed `.sv`, `.svh`, `.v`, and `.vh` files within the workspace. Separate source trees under `a/b` and `c/d` produce `"index": [{"dirs": ["a/b", "c/d"]}]`. Dense branches stay grouped under a shared parent, while branches with substantial unrelated content split into narrower directories. Each branch can use a different depth. The command reuses its directory crawl, requiring each additional directory to save roughly 5% of the workspace's filesystem entries (at least 32 entries for small workspaces). This favors a short config when dozens of deeper paths would save little overall. Empty workspaces and source files directly in the workspace root prevent narrowing. With only external library roots configured, the command adds a separate workspace entry. Replacing `.` preserves that entry's exclusions and all other index roots, including external library directories. Index settings inherited from user or local configuration and legacy `indexGlobs` / `excludeDirs` settings are preserved.
+
+The command scans the configured workspace index, uses existing quoted includes to identify missing search roots, and saves paths relative to the workspace. It preserves existing settings and include order, skips directories already in `incdirs`, and reports directories with conflicting header names instead of choosing an order for them. Suggestions are checked against each other and against existing configured directories, including user and local `incdirs` and headers outside the workspace index. The server reloads the configuration after saving it. Running the command again adds only newly discovered directories.
+
+Workspace include-directory suggestions are computed, logged, and saved only when the command runs. Editor analysis can add paths to an individual syntax tree using the nearest indexed matches for its unresolved includes. Those paths do not change `incdirs`, other documents, or global include lookup. Equally close matches are resolved in canonical path order. Files supplied through build files continue to use configured include lookup.
+
+When Git is available, auto-configure adds ignored folders to the matching workspace `index[].excludeDirs` entries as plain directory names, such as `"output_files"` and `".Xil"`. Repeated names are saved once. Git interprets nested ignore files, wildcards, and negations during discovery; the saved names use exact comparisons during indexing. Distinct names matched by a Git wildcard, such as `output_files` and `output_files_debug`, become separate entries. Ignored folders found during the crawl are considered even if they contain only non-HDL files. If a name would hide tracked files or re-included indexed sources elsewhere, safe specific paths are retained instead. Existing specific exclusions can be compacted into names, and obsolete wildcard exclusions in the workspace config are replaced on the next run. Ignored files are removed from discovery before choosing index and include directories. New exclusions are then limited to each entry's final index roots: narrowing `.` to `fpga` omits ignored folders found only outside `fpga`. Existing configured exclusions are preserved. File-only matches and folders covered by inherited or legacy index settings are reported for manual review. The server log records matching ignore files, lines, and patterns. Submodules and external index roots are outside this check.
 
 ## Config Options
 
@@ -28,12 +105,16 @@ All configuration options are optional and have sensible defaults. In VSCode, th
     interface IndexConfig {
       /** Directories to index */
       dirs?: string[]
-      /** Directories to exclude; only supports single directory names and applies to all path levels */
+      /** Exact directory names at all path levels, or specific paths starting with './' */
       excludeDirs?: string[] | null
     }
     ```
 
-    Which directories to index; By default it indexes the entire workspace. It's **highly** recommended to configure this for your repo, especially if there are generated build directories and non-hardware directories that can be skipped.
+    Which directories to index; by default it indexes the entire workspace. External library roots supplement this default: listing only directories outside the workspace still indexes the workspace. A configured directory inside the workspace, or an ancestor covering it, replaces the default scan. To index only external libraries, add a separate `{"dirs": []}` entry to disable the implicit workspace scan. Exclusions apply only to the directories in their own entry.
+
+    It's **highly** recommended to configure workspace roots for your repo, especially if there are generated build directories and non-hardware directories that can be skipped.
+
+    Bare `excludeDirs` entries match exact directory names at every level. For example, `"build"` skips folders named `build`, while retaining `build_extra` and source files named `build.sv`. Entries beginning with `./` identify an exact directory relative to the workspace; absolute paths are also supported. For example, `"./fpga/build"` excludes that folder and its descendants, while retaining `tools/build`. Wildcards are not supported.
 
 ---
 
@@ -53,6 +134,18 @@ All configuration options are optional and have sensible defaults. In VSCode, th
 
 ---
 
+### `incdirs`
+
+:   **Type:** `list[string]`
+
+    Ordered include search directories. Relative paths resolve from the workspace root, including entries in user and local configuration. Absolute paths are also accepted.
+
+    Directories from `flags` and build files are searched before this list. File-local lookup follows slang's normal rules, including `--incdir-first`. Lists from workspace, user, and local configuration are appended in that order. System includes (`<...>`) continue to use system include directories.
+
+    **Example:** `"incdirs": ["rtl/include", "verification/include"]`
+
+---
+
 ### `indexingThreads`
 
 :   **Type:** `integer`
@@ -67,7 +160,8 @@ All configuration options are optional and have sensible defaults. In VSCode, th
 
 :   **Type:** `string`
 
-    Build file to automatically open on start.
+    Build file to automatically open on start. Supports environment variables,
+    for example `"${BUILD_ROOT}/compile.f"`.
 
     **Example:** `"./build/compile.f"`
 
@@ -77,9 +171,9 @@ All configuration options are optional and have sensible defaults. In VSCode, th
 
 :   **Type:** `string` (glob pattern)
 
-    Build file pattern used to find a `.f` file given the name of a waveform file. For example, `/tmp/{}.fst` with `builds/{}.f` looks for `build/foo.f` to load the compilation.
+    Build file pattern used by **Select build file** in VSCode. It also finds a `.f` file given the name of a waveform file: for example, `/tmp/foo.fst` with `builds/{}.f` looks for `builds/foo.f` to load the compilation.
 
-    If omitted and no other build source is configured, it defaults to matching all `.f` files in the workspace.
+    If omitted and no other build source is configured, it defaults to `**/*.f`, matching all `.f` files in the workspace, including hidden directories such as `.slang/`.
 
     **Example:** `"builds/{}.f"`
 
@@ -100,7 +194,7 @@ All configuration options are optional and have sensible defaults. In VSCode, th
     }
     ```
 
-    Provides additional build-file sources in the VSCode client. Each entry matches files with `glob`.
+    Provides additional sources for **Select build file** in the VSCode client. Each entry matches files with `glob`, including hidden directories such as `.slang/`.
 
     If `command` is omitted, the matched files are treated as existing `.f` files and can be selected directly.
 

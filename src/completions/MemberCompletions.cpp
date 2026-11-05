@@ -7,10 +7,12 @@
 //------------------------------------------------------------------------------
 #include "completions/MemberCompletions.h"
 
+#include "BuiltinMethodDocs.h"
 #include "Indexer.h"
 #include "ServerDriver.h"
 #include "completions/InstanceCompletions.h"
 #include "completions/KeywordCompletions.h"
+#include "completions/SystemTaskCompletions.h"
 #include "document/ShallowAnalysis.h"
 #include "lsp/LspTypes.h"
 #include "lsp/SnippetString.h"
@@ -157,6 +159,9 @@ public:
     void getCompletions(std::vector<lsp::CompletionItem>& results, CompletionDispatch& dispatch,
                         const std::shared_ptr<SlangDoc>& doc,
                         const CompletionContext& context) const final {
+        if (context.lspContext.triggerKind == lsp::CompletionTriggerKind::TriggerCharacter)
+            return;
+
         INFO("General completions with context: {}", toString(context.kind));
         InstanceCompletionQuery::addCompletions(results, getIndexer(dispatch), context);
         if (context.scope) {
@@ -183,10 +188,14 @@ public:
             return;
         }
 
+        auto* type = context.analysis->getExpressionTypeAtToken(receiverToken);
         auto* symbol = context.analysis->getSymbolAtToken(receiverToken);
+        if (!symbol)
+            symbol = type;
         if (!symbol) {
             WARN("No symbol found for token {}, checking index.", receiverToken->valueText());
-            auto symbolLoc = getIndexer(dispatch).getFirstSymbolLoc(receiverToken->valueText());
+            auto symbolLoc = getIndexer(dispatch).getNearestSymbolLoc(receiverToken->valueText(),
+                                                                      doc->getURI().getPath());
             if (!symbolLoc) {
                 WARN("No symbol found in index for {}", receiverToken->valueText());
                 return;
@@ -215,22 +224,41 @@ public:
         }
 
         auto* targetScope = context.analysis->getScopeFromSym(symbol);
+        if (!type)
+            type = getSymbolType(*symbol);
+        for (auto name : parsing::KnownSystemName_traits::values) {
+            auto* method = context.analysis->getSystemMethod(type, symbol, parsing::toString(name));
+            if (method && (!targetScope || !targetScope->find(method->name))) {
+                auto item = getSystemSubroutineCompletion(name, *method);
+                item.kind = lsp::CompletionItemKind::Method;
+                results.push_back(std::move(item));
+            }
+        }
         if (!targetScope) {
-            WARN("No scope found for sym {}: {}", symbol->getHierarchicalPath(),
-                 toString(symbol->kind));
+            if (results.empty())
+                WARN("No scope found for sym {}: {}", symbol->getHierarchicalPath(),
+                     toString(symbol->kind));
             return;
         }
 
         INFO("Getting hierarchical completions for symbol {} in scope {}", symbol->name,
              symbol->getHierarchicalPath());
+        auto* instance = targetScope->getContainingInstance();
         std::string_view previousLabel;
         for (auto& member : targetScope->members()) {
             if (member.name.empty() || member.name == previousLabel)
                 continue;
             previousLabel = member.name;
-            results.push_back(getHierarchicalCompletion(*symbol, member, doc->getURI().str(),
-                                                        followedByCall,
-                                                        resolvesCompletionEdits(dispatch)));
+            auto item = getHierarchicalCompletion(*symbol, member, doc->getURI().str(),
+                                                  followedByCall,
+                                                  resolvesCompletionEdits(dispatch));
+            // These instance scopes cannot be recovered by a later hierarchical lookup.
+            if ((type && type->kind == ast::SymbolKind::VirtualInterfaceType) ||
+                (instance && instance->flags.has(ast::InstanceFlags::Uninstantiated))) {
+                resolve(member, item, true);
+                item.data.reset();
+            }
+            results.push_back(std::move(item));
         }
 
         auto* targetType = targetScope->asSymbol().as_if<ast::Type>();
@@ -304,8 +332,10 @@ public:
         }
 
         INFO("Looking for scoped members in {}", targetScope->asSymbol().getHierarchicalPath());
-        addCompletions(results, targetScope, CompletionContextKind::Expression, context.scope,
-                       doc->getURI().str(), followedByCall, resolvesCompletionEdits(dispatch));
+        // Classes can introduce both types and static member accesses after '::'.
+        addCompletions(results, targetScope, CompletionContextKind::Unknown, context.scope,
+                       doc->getURI().str(), followedByCall, resolvesCompletionEdits(dispatch),
+                       ScopeTraversal::Scoped);
     }
 
 private:
@@ -603,7 +633,10 @@ void MemberCompletionQuery::resolve(const slang::ast::Symbol& symbol, lsp::Compl
             symSyntax = symbol.getSyntax();
         }
         else {
-            docStr = fmt::format("{} {}(...)", subroutine.getReturnType().toString(), symbol.name);
+            docStr = svCodeBlockString(formatBuiltinMethodSignature(subroutine));
+            if (auto* methodDoc = getBuiltinMethodDoc(subroutine))
+                docStr += fmt::format("\n\n{}\n\nIEEE 1800-2023 §{}", methodDoc->description,
+                                      methodDoc->ieeeSection);
         }
     }
     else if (symbol.kind == slang::ast::SymbolKind::TypeAlias) {
@@ -633,6 +666,9 @@ void MemberCompletionQuery::resolve(const slang::ast::Symbol& symbol, lsp::Compl
     if (symSyntax) {
         item.documentation = svCodeBlock(*symSyntax);
     }
+    else if (!docStr.empty()) {
+        item.documentation = markdown(docStr);
+    }
     else {
         item.documentation = docStr;
     }
@@ -644,9 +680,10 @@ void MemberCompletionQuery::addCompletions(std::vector<lsp::CompletionItem>& res
                                            CompletionContextKind contextKind,
                                            const slang::ast::Scope* originalScope,
                                            std::string_view documentUri, bool labelOnly,
-                                           bool deferCallableEdit, bool isOriginalCall) {
+                                           bool deferCallableEdit, ScopeTraversal traversal) {
 
-    if (isOriginalCall && contextKind == CompletionContextKind::ModuleMember) {
+    if (traversal == ScopeTraversal::Lexical &&
+        contextKind == CompletionContextKind::ModuleMember) {
         addKeywordCompletions(results);
     }
 
@@ -662,77 +699,56 @@ void MemberCompletionQuery::addCompletions(std::vector<lsp::CompletionItem>& res
 
     // Walk up through the compilation unit, but don't include the root's design hierarchy.
     const slang::ast::Scope* currentScope = scope;
-    const slang::ast::Symbol* prevSym = nullptr;
     while (currentScope) {
         // Add members from the current scope
         for (auto& member : currentScope->members()) {
-            if (&member == prevSym) {
-                // Skip the previous scope, as we should have no reason to reference it
+            const ast::Symbol* symbol = &member;
+            if (auto* import = member.as_if<ast::ExplicitImportSymbol>())
+                symbol = import->importedSymbol();
+            else if (auto* transparent = member.as_if<ast::TransparentMemberSymbol>())
+                symbol = &transparent->wrapped;
+            if (!symbol || symbol->name.empty() || symbol->kind == ast::SymbolKind::Package) {
                 continue;
             }
-            if (member.name.empty() || member.kind == slang::ast::SymbolKind::Package) {
-                continue;
-            }
-            if (contextKind == CompletionContextKind::Expression &&
-                (member.kind == slang::ast::SymbolKind::ClassType ||
-                 member.kind == slang::ast::SymbolKind::GenericClassDef)) {
-                continue;
-            }
-            if (typesOnly && !slang::ast::Type::isKind(member.kind) &&
-                member.kind != slang::ast::SymbolKind::GenericClassDef &&
-                member.kind != slang::ast::SymbolKind::TypeParameter) {
+            if (typesOnly && !symbol->isType() &&
+                symbol->kind != ast::SymbolKind::GenericClassDef &&
+                symbol->kind != ast::SymbolKind::TypeParameter) {
                 continue;
             }
 
             // ports are in there twice as value symbols and port symbols, so skip the value
-            if ((member.kind == slang::ast::SymbolKind::Variable ||
-                 member.kind == slang::ast::SymbolKind::Net) &&
-                results.size() > 0 && results.back().label == member.name) {
+            if ((symbol->kind == ast::SymbolKind::Variable ||
+                 symbol->kind == ast::SymbolKind::Net) &&
+                results.size() > 0 && results.back().label == symbol->name) {
                 continue;
             }
 
-            // unwrap enum values, explicit imports
-            if (slang::ast::TransparentMemberSymbol::isKind(member.kind)) {
-                auto& wrapped = member.as<slang::ast::TransparentMemberSymbol>().wrapped;
-                results.push_back(getCompletion(wrapped, originalScope, documentUri, labelOnly,
-                                                deferCallableEdit));
-            }
-            else if (slang::ast::ExplicitImportSymbol::isKind(member.kind)) {
-                auto importSym = member.as<slang::ast::ExplicitImportSymbol>().importedSymbol();
-                if (importSym) {
-                    results.push_back(getCompletion(*importSym, originalScope, documentUri,
-                                                    labelOnly, deferCallableEdit));
-                }
-            }
-            else {
-                results.push_back(getCompletion(member, originalScope, documentUri, labelOnly,
-                                                deferCallableEdit));
-            }
+            results.push_back(
+                getCompletion(*symbol, originalScope, documentUri, labelOnly, deferCallableEdit));
         }
 
         // Add wildcard imports
-        if (isOriginalCall) {
+        if (traversal != ScopeTraversal::Imported) {
             if (auto importData = currentScope->getWildcardImportData()) {
                 for (auto import : importData->wildcardImports) {
                     auto package = import->getPackage();
                     if (package != nullptr) {
                         INFO("Adding wildcard imports from package {}", package->name);
                         addCompletions(results, package, contextKind, originalScope, documentUri,
-                                       labelOnly, deferCallableEdit, false);
+                                       labelOnly, deferCallableEdit, ScopeTraversal::Imported);
                     }
                 }
             }
         }
 
-        // Package members are only available through imports or scoped access.
         auto& parentSymbol = currentScope->asSymbol();
         if (parentSymbol.kind == slang::ast::SymbolKind::CompilationUnit ||
-            parentSymbol.kind == slang::ast::SymbolKind::Package) {
+            (parentSymbol.kind == slang::ast::SymbolKind::Package &&
+             traversal != ScopeTraversal::Lexical)) {
             break;
         }
 
         // Move up to parent scope
-        prevSym = &currentScope->asSymbol();
         currentScope = parentSymbol.getParentScope();
     }
 }
@@ -760,11 +776,22 @@ void MemberCompletionQuery::resolve(CompletionDispatch& dispatch, lsp::Completio
     auto& root = analysis->getCompilation()->getRoot();
     const ast::Symbol* symbol = nullptr;
     if (data->bufferId && data->bufferId == doc->getBuffer().getId()) {
-        CompletionSymbolFinder finder(
-            SourceLocation(BufferID(data->bufferId, "completion item resolve"), data->offset),
-            data->symbolKind, data->symbolName, data->symbolPath, ctx);
-        root.visit(finder);
-        symbol = finder.result;
+        auto location = SourceLocation(doc->getBuffer(), data->offset);
+        // Fallback scopes for uninstantiated classes are retained by the document's index.
+        for (auto* candidate : analysis->getSymbolsAtToken(analysis->getWordTokenAt(location))) {
+            if (candidate->location == location && candidate->kind == data->symbolKind &&
+                candidate->name == data->symbolName &&
+                candidate->getHierarchicalPath() == data->symbolPath) {
+                symbol = candidate;
+                break;
+            }
+        }
+        if (!symbol) {
+            CompletionSymbolFinder finder(location, data->symbolKind, data->symbolName,
+                                          data->symbolPath, ctx);
+            root.visit(finder);
+            symbol = finder.result;
+        }
     }
     if (!symbol) {
         ctx.throwIfCancelled("before completion symbol lookup");

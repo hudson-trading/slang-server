@@ -1,5 +1,6 @@
 import assert from 'assert'
 import * as vscode from 'vscode'
+import type { LanguageClient } from 'vscode-languageclient/node'
 
 const extensionId = 'Hudson-River-Trading.vscode-slang'
 const timeoutMs = 15_000
@@ -57,7 +58,10 @@ export async function run(): Promise<void> {
 
   const extension = vscode.extensions.getExtension(extensionId)
   assert.ok(extension, `${extensionId} was not loaded`)
-  const extensionApi = (await extension.activate()) as { project: ProjectComponent }
+  const extensionApi = (await extension.activate()) as {
+    project: ProjectComponent
+    client: LanguageClient
+  }
 
   const uri = vscode.Uri.joinPath(workspace.uri, 'hierarchy.sv')
   const document = await vscode.workspace.openTextDocument(uri)
@@ -201,6 +205,46 @@ export async function run(): Promise<void> {
 
     const scope = await vscode.commands.executeCommand<unknown[]>('slang.getScope', 'top')
     assert.ok(Array.isArray(scope) && scope.length > 0, 'language server stopped responding')
+
+    const originalClient = extensionApi.client
+    const stateChanges: unknown[] = []
+    const stateSubscription = originalClient.onDidChangeState((change) => stateChanges.push(change))
+    const config = vscode.workspace.getConfiguration('slang')
+    const originalPath = config.inspect<string>('path')?.workspaceValue
+    const originalOpacity = config.inspect<number>('inactiveRegions.opacity')?.workspaceValue
+    try {
+      for (const serverPath of ['temporary-server-path', undefined, 'restored-server-path']) {
+        await config.update('path', serverPath, vscode.ConfigurationTarget.Workspace)
+      }
+      await config.update('inactiveRegions.opacity', 0.42, vscode.ConfigurationTarget.Workspace)
+      await originalClient.sendRequest('textDocument/documentHighlight', {
+        textDocument: { uri: uri.toString() },
+        position: { line: 0, character: 0 },
+      })
+      assert.equal(extensionApi.client, originalClient, 'settings changes must retain the client')
+      assert.deepEqual(stateChanges, [], 'settings changes must leave the server running')
+    } finally {
+      await config.update('path', originalPath, vscode.ConfigurationTarget.Workspace)
+      await config.update(
+        'inactiveRegions.opacity',
+        originalOpacity,
+        vscode.ConfigurationTarget.Workspace
+      )
+      stateSubscription.dispose()
+    }
+
+    const outputChannel = originalClient.outputChannel
+    await vscode.commands.executeCommand('slang.restartLanguageServer')
+    assert.notEqual(extensionApi.client, originalClient, 'explicit restart must replace the client')
+    assert.equal(
+      extensionApi.client.outputChannel,
+      outputChannel,
+      'restart must retain the output channel'
+    )
+    await extensionApi.client.sendRequest('textDocument/documentHighlight', {
+      textDocument: { uri: uri.toString() },
+      position: { line: 0, character: 0 },
+    })
   } finally {
     if (document.isDirty) {
       await vscode.commands.executeCommand('workbench.action.files.revert')

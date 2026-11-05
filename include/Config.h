@@ -9,6 +9,7 @@
 #include "rfl/Deprecated.hpp"
 #include "rfl/Description.hpp"
 #include "rfl/config.hpp"
+#include <map>
 #include <optional>
 #include <rfl/Result.hpp>
 #include <rfl/Skip.hpp>
@@ -19,19 +20,36 @@
 /// 3. `.slang/local/server.json` — local config (untracked, personal overrides)
 ///
 /// Merging rules:
-/// - Array fields (e.g. index, indexGlobs) are appended across all files.
+/// - Array fields (e.g. index, incdirs) are appended across all files.
 /// - Scalar fields are overwritten by later files (local > user > workspace).
+/// - Environment variables are merged by name, with later files overriding earlier values.
 /// - `flags` has special precedence: workspace overrides user (only one is used as the base),
 ///   and local flags are always appended on top. This means local flags add to whichever
 ///   of workspace/user flags won, rather than replacing them.
 ///
 /// The "Add define" code action writes `-D` flags to `.slang/local/server.json`.
-class SlangLspClient;
-
+/// The "Auto-configure" command discovers index and include directories for `.slang/server.json`.
 struct Config {
+    /// Literal environment overrides for server paths, flags, and file lists.
+    rfl::Description<"Environment variables used by the server for paths, flags, and file lists. "
+                     "Values are literal strings; local overrides user overrides workspace. "
+                     "Unspecified variables are inherited. Changes reload automatically.",
+                     std::map<std::string, std::string>>
+        env;
+
     /// generate json schema from this by running with --config-schema
     // all fields must be optional
-    rfl::Description<"Flags to pass to slang", std::string> flags;
+    rfl::Description<"Flags to pass to slang. Environment variables are expanded; unset or empty "
+                     "variables are errors.",
+                     std::string>
+        flags;
+
+    /// Ordered include directories, with environment variables expanded before path resolution.
+    rfl::Description<"Include directories, relative to the workspace root. Searched after "
+                     "directories supplied through flags and build files. Supports $VAR, "
+                     "${VAR}, and $(VAR) environment variables.",
+                     std::vector<std::string>>
+        incdirs;
 
     // Legacy indexing globs, kept for backwards compatibility
     rfl::Deprecated<"Use 'index' instead.",
@@ -41,16 +59,23 @@ struct Config {
         indexGlobs;
 
     struct IndexConfig {
-        rfl::Description<"Directories to index", std::vector<std::string>> dirs;
+        /// Source roots, with environment variables expanded before path resolution.
+        rfl::Description<"Directories to index. Supports $VAR, ${VAR}, and $(VAR) environment "
+                         "variables.",
+                         std::vector<std::string>>
+            dirs;
+        /// Directory names or paths to skip, with the same variable expansion as source roots.
         rfl::Description<
-            "Directories to exclude; only supports single directory names and applies to "
-            "all path levels",
+            "Exact directory names to exclude at all path levels, or specific workspace-relative "
+            "paths starting with './' (absolute paths are also supported). Wildcards are not "
+            "supported. Supports $VAR, ${VAR}, and $(VAR) environment variables.",
             std::optional<std::vector<std::string>>>
             excludeDirs;
     };
 
     rfl::Description<"Index configurations; by default indexes all .sv, .svh, .v, and .vh files in "
-                     "the workspace.",
+                     "the workspace. External-only roots supplement this default. A workspace "
+                     "directory or an empty dirs entry replaces the default scan.",
                      std::vector<IndexConfig>>
         index = {};
 
@@ -72,7 +97,10 @@ struct Config {
     rfl::Deprecated<"Use 'index' instead.", "Directories to exclude", std::vector<std::string>>
         excludeDirs;
     rfl::Description<"Thread count to use for indexing", int> indexingThreads = 0;
-    rfl::Description<"Build file to use", std::optional<std::string>> build;
+    /// File list selected by configuration, with environment variables expanded on load.
+    rfl::Description<"Build file to use. Supports $VAR, ${VAR}, and $(VAR) environment variables.",
+                     std::optional<std::string>>
+        build;
     rfl::Description<"Build file glob pattern, e.g. `builds/{}.f`. Used for selecting build "
                      "files. If omitted and no other build source is configured, defaults to "
                      "matching all `.f` files in the workspace.",
@@ -144,11 +172,16 @@ struct Config {
     /// @param workspaceConf  .slang/server.json (tracked, shared)
     /// @param userConf       ~/.slang/server.json (user-wide)
     /// @param localConf      .slang/local/server.json (untracked, personal)
-    /// Non-flag fields are merged (arrays appended, scalars overwritten by later files).
+    /// Arrays are appended, env is merged by name, and scalars are overwritten by later files.
     /// For flags: workspace overrides user (last non-local wins), local always appends.
-    static Config fromFiles(const std::optional<std::string>& workspaceConf,
-                            const std::optional<std::string>& userConf,
-                            const std::optional<std::string>& localConf, SlangLspClient& client);
+    static rfl::Result<Config> fromFiles(const std::optional<std::string>& workspaceConf,
+                                         const std::optional<std::string>& userConf,
+                                         const std::optional<std::string>& localConf);
+
+    /// Expand environment variables once, returning an error for unset or empty references.
+    /// The original configuration remains unchanged for serialization and auto-configuration.
+    static rfl::Result<std::string> expandPathVariables(
+        std::string_view path, const std::map<std::string, std::string>& environmentOverrides = {});
 
     /// Per-file flags with correct precedence. Skipped during serialization.
     rfl::Skip<std::vector<FlagSource>> flagsByFile;

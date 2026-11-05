@@ -33,6 +33,7 @@ import {
 import { glob } from 'glob'
 import { SlangClientInfoFeature } from './lib/clientInfo'
 import { InactiveRegionsFeature } from './lib/inactiveRegions'
+import { DebugScanFeature, debugScanCommand } from './lib/debugScan'
 
 export var ext: SlangExtension
 
@@ -175,11 +176,74 @@ File input is sent to stdin, and formatted output is read from stdout.',
   )
 
   client: LanguageClient | undefined
+  private readonly debugScanFeature = new DebugScanFeature((available) => {
+    void vscode.commands.executeCommand('setContext', 'slang.debugScanAvailable', available)
+  })
+
+  debugScanDocument: CommandNode = new CommandNode(
+    {
+      title: 'Debug: Scan Current Document',
+      paletteWhen: 'slang.debugScanAvailable',
+      enablement:
+        'slang.debugScanAvailable && editorLangId =~ /^(verilog|systemverilog)(header)?$/',
+    },
+    async () => {
+      const document = vscode.window.activeTextEditor?.document
+      const client = this.client
+      if (!document || !AnyVerilogLanguages.includes(document.languageId)) {
+        await vscode.window.showInformationMessage(
+          'Open a Verilog or SystemVerilog document to scan'
+        )
+        return
+      }
+      if (!client || !this.debugScanFeature.available) {
+        await vscode.window.showErrorMessage(
+          'The connected slang-server does not support debug scans'
+        )
+        return
+      }
+      try {
+        const result = await vscode.window.withProgress(
+          {
+            location: vscode.ProgressLocation.Notification,
+            title: 'Scanning hovers, definitions, and completions',
+            cancellable: true,
+          },
+          (_progress, token) =>
+            client.sendRequest<{ diagnostics: vscodelc.Diagnostic[] }>(
+              vscodelc.ExecuteCommandRequest.type.method,
+              { command: debugScanCommand, arguments: [{ uri: document.uri.toString() }] },
+              token
+            )
+        )
+        if (result.diagnostics.length > 0) {
+          await vscode.commands.executeCommand('workbench.actions.view.problems')
+        }
+        vscode.window.setStatusBarMessage(
+          `slang: Scan found ${result.diagnostics.length} issues`,
+          5000
+        )
+        return result
+      } catch (error) {
+        if (
+          error instanceof vscodelc.ResponseError &&
+          error.code === vscodelc.LSPErrorCodes.RequestCancelled
+        ) {
+          return
+        }
+        await vscode.window.showErrorMessage(`Document scan failed: ${String(error)}`)
+        return undefined
+      }
+    }
+  )
+
   private isRestarting: boolean = false
+  private readonly serverOutputChannel: vscode.OutputChannel
 
   path: PathConfigObject = new PathConfigObject(
     {
-      description: 'Path to slang-server (not slang)',
+      description:
+        'Path to slang-server (not slang). Run "slang: Restart Language Server" to apply changes.',
     },
     {
       windows: 'slang-server.exe',
@@ -202,18 +266,20 @@ File input is sent to stdin, and formatted output is read from stdout.',
   args: ConfigObject<string[]> = new ConfigObject({
     default: [],
     description:
-      'Arguments to pass to the slang-server. These are different from slang flags; for those open `.slang/server.json`',
+      'Arguments to pass to the slang-server. These are different from slang flags; for those open `.slang/server.json`. Run "slang: Restart Language Server" to apply changes.',
   })
 
   debugArgs: ConfigObject<string[]> = new ConfigObject({
     default: [],
-    description: 'Arguments to pass to slang-server when debugging',
+    description:
+      'Arguments to pass to slang-server when debugging. Run "slang: Restart Language Server" to apply changes.',
   })
 
   /// The final config from slang-server json files
   slangConfig: slang.Config = {}
 
   async setupLanguageClient(): Promise<void> {
+    this.debugScanFeature.clear()
     const slangServerPath = await this.path.resolveToolPath(this.context, this.logger)
     if (!slangServerPath) {
       return
@@ -228,15 +294,18 @@ File input is sent to stdin, and formatted output is read from stdout.',
 
     const clientOptions: LanguageClientOptions = {
       documentSelector: anyVerilogSelector,
+      outputChannel: this.serverOutputChannel,
     }
 
     this.client = new LanguageClient('slang-server', serverOptions, clientOptions)
+    this.client.info(`Starting language server: ${slangServerPath}`)
     const clientInfo = {
       name: this.context.extension.packageJSON.name as string,
       version: this.context.extension.packageJSON.version as string,
     }
 
     this.client.registerFeature(new SlangClientInfoFeature(clientInfo))
+    this.client.registerFeature(this.debugScanFeature)
     this.context.subscriptions.push(
       this.client.onNotification(
         'slang/activeInstanceChanged',
@@ -386,6 +455,8 @@ File input is sent to stdin, and formatted output is read from stdout.',
     },
     async () => {
       this.isRestarting = true
+      this.logger.info('Restarting language server by explicit request')
+      this.client?.info('Restarting language server by explicit request')
       try {
         await this.stopServer()
         await this.setupLanguageClient()
@@ -403,14 +474,15 @@ File input is sent to stdin, and formatted output is read from stdout.',
       title: 'Show Output',
     },
     async () => {
-      if (this.client !== undefined) {
-        this.client.outputChannel.show()
-      }
+      this.serverOutputChannel.show()
     }
   )
 
   async stopServer() {
+    this.debugScanFeature.clear()
     if (this.client !== undefined) {
+      this.logger.info('Stopping language server')
+      this.client.info('Stopping language server')
       try {
         await this.client.stop()
       } catch (e) {
@@ -425,20 +497,11 @@ File input is sent to stdin, and formatted output is read from stdout.',
   constructor(context: vscode.ExtensionContext, obj: ViewContainerSpec) {
     super(obj)
     this.context = context
+    this.serverOutputChannel = vscode.window.createOutputChannel('slang-server')
+    context.subscriptions.push(this.serverOutputChannel)
   }
 
   async activate(context: vscode.ExtensionContext) {
-    context.subscriptions.push(
-      this.onConfigUpdated(async () => {
-        this.isRestarting = true
-        try {
-          await this.stopServer()
-          await this.setupLanguageClient()
-        } finally {
-          this.isRestarting = false
-        }
-      })
-    )
     await this.setupLanguageClient()
 
     if (context.storageUri !== undefined) {
@@ -451,9 +514,11 @@ File input is sent to stdin, and formatted output is read from stdout.',
     // Configure Format on save
     /////////////////////////////////////////////
 
-    this.onConfigUpdated(() => {
-      void this.checkFormatDirs()
-    })
+    context.subscriptions.push(
+      this.onConfigUpdated(() => {
+        void this.checkFormatDirs()
+      })
+    )
     await this.checkFormatDirs()
 
     this.logger.info(`${context.extension.id} activation finished.`)
@@ -521,9 +586,11 @@ File input is sent to stdin, and formatted output is read from stdout.',
       const normalized = toPosix(str)
       let ret: vscode.Uri[]
       if (path.isAbsolute(normalized)) {
-        ret = (await glob(normalized)).map((p: string) => vscode.Uri.file(p))
+        ret = (await glob(normalized, { dot: true })).map((p: string) => vscode.Uri.file(p))
       } else {
-        ret = (await glob(toPosix(path.join(ws, str)))).map((p: string) => vscode.Uri.file(p))
+        ret = (await glob(toPosix(path.join(ws, str)), { dot: true })).map((p: string) =>
+          vscode.Uri.file(p)
+        )
       }
       return ret
     }

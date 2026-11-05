@@ -8,6 +8,7 @@
 #pragma once
 
 #include "ActiveDesignContext.h"
+#include "ConeResult.h"
 #include "HierarchicalView.h"
 #include "ServerCompilationAnalysis.h"
 #include "document/SlangDoc.h"
@@ -32,14 +33,6 @@ using namespace slang;
 struct ActiveGenerateLoop {
     std::string activePath;
     std::vector<std::string> iterationPaths;
-};
-
-/// @brief A single endpoint of a driver/load cone.
-struct ConeEntry {
-    // The hierarchical RTL path of the signal
-    std::string path;
-    // The declaration location of the signal
-    lsp::Location location;
 };
 
 /// @brief A server compilation that is set via top level or a .f file.
@@ -123,41 +116,11 @@ public:
     /// Issue all semantic diagnostics from the compilation to the diagnostic engine
     void issueDiagnosticsTo(slang::DiagnosticEngine& diagEngine);
 
-    /// Return the drivers (isDrivers=true) or loads (isDrivers=false) of the signal at the
-    /// given path, each with the source location where it appears. Endpoints without a valid
-    /// source location are omitted.
-    template<bool isDrivers>
-    std::vector<ConeEntry> getConeLocations(const std::string& path) {
-        auto cone = m_analysis->getCone<isDrivers>(path);
-        std::vector<ConeEntry> result;
-        for (const auto leaf : cone) {
-            auto range = leaf.getDeclarationRange();
-            if (range.start().valid()) {
-                auto fullPath = std::filesystem::absolute(
-                    m_sourceManager.getFileName(range.start()));
-                result.push_back({.path = leaf.getHierarchicalPath(),
-                                  .location = {.uri = URI::fromFile(fullPath),
-                                               .range = toRange(range, m_sourceManager)}});
-            }
-        }
-        return result;
-    }
+    /// Return the driver cone for the given RTL path, valid until the compilation is refreshed.
+    ConeResult getDriverCone(const std::string& path);
 
-    /// Return list of RTL paths for a driver or load cone
-    template<bool isDrivers>
-    std::vector<std::string> getConePaths(const std::string& path) {
-        auto cone = m_analysis->getCone<isDrivers>(path);
-        std::vector<std::string> result;
-        std::set<std::string> seen;
-        for (const auto leaf : cone) {
-            std::string hier = leaf.getHierarchicalPath();
-            if (seen.insert(hier).second) {
-                result.push_back(hier);
-            }
-        }
-
-        return result;
-    }
+    /// Return the load cone for the given RTL path, valid until the compilation is refreshed.
+    ConeResult getLoadCone(const std::string& path);
 
 private:
     /// Return the stored active selection for a module, if any.

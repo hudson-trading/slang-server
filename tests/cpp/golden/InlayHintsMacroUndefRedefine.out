@@ -1,0 +1,11 @@
+
+module test;
+    `define ADD(a, b) ((a) + (b))
+    wire [3:0] x = `ADD(/*a:*/ 4'd1, /*b:*/ 4'd2);
+    `undef ADD
+
+    `define PAIR(lhs, rhs) {lhs, rhs}
+    wire [1:0] y = `PAIR(/*lhs:*/ 1'b0, /*rhs:*/ 1'b1);
+    `define PAIR(first, second) {second, first}
+    wire [1:0] z = `PAIR(/*first:*/ 1'b0, /*second:*/ 1'b1);
+endmodule

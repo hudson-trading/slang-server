@@ -83,6 +83,9 @@ std::string toCamelCase(std::string_view str);
 /// Convert a string to lower case
 std::string toLowerCase(std::string_view str);
 
+/// Byte length of the first UTF-8 sequence, or zero for empty or invalid input.
+size_t validUtf8SequenceLength(std::string_view s);
+
 /// @brief Format a ConstantValue for display to users
 /// Uses compact notation for scalar bits and escapes invalid UTF-8 strings.
 std::string formatConstantValue(const slang::ConstantValue& value);
