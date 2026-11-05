@@ -1252,7 +1252,7 @@ endmodule
 TEST_CASE("HoverIncludeDirective") {
     ServerHarness server;
 
-    server.openFile("payload.svh", R"(class payload;
+    auto payload = server.openFile("payload.svh", R"(class payload;
 endclass
 )");
 
@@ -1269,6 +1269,6 @@ endpackage
 
         auto content = rfl::get<lsp::MarkupContent>(hover->contents);
         CHECK(content.value.find("### payload.svh") != std::string::npos);
-        CHECK(content.value.find("/payload.svh") != std::string::npos);
+        CHECK(content.value.find(payload.m_uri.getPath()) != std::string::npos);
     }
 }
