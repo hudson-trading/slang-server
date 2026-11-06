@@ -10,6 +10,7 @@
 #include "ast/ActiveDesignContext.h"
 #include <memory>
 #include <optional>
+#include <unordered_map>
 #include <vector>
 
 #include "slang/analysis/AnalysisManager.h"
@@ -46,6 +47,10 @@ public:
 
     /// Whether every syntax tree still uses the latest source buffers.
     bool hasValidBuffers() const;
+
+    /// Return a cached synthetic instance with the active design's parameter overrides.
+    slang::ast::InstanceSymbol& getDefinitionInstance(
+        const slang::ast::DefinitionSymbol& definition);
 
     /// Elaborate definitions from the primary tree and return compilation-wide diagnostics.
     const slang::Diagnostics& getSemanticDiagnostics();
@@ -89,6 +94,15 @@ private:
 
     /// Selected full-design instances and overrides used by every file view.
     std::optional<ActiveDesignContext> m_activeDesign;
+
+    struct DefinitionInstance {
+        slang::ast::HierarchyOverrideNode overrides;
+        slang::ast::InstanceSymbol* instance = nullptr;
+    };
+
+    /// Synthetic instances used for diagnostics and navigation, with stable override storage.
+    std::unordered_map<const slang::ast::DefinitionSymbol*, DefinitionInstance>
+        m_definitionInstances;
 
     /// Options used when lazily running driver analysis.
     slang::analysis::AnalysisOptions m_analysisOptions;

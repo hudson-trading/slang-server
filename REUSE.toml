@@ -9,6 +9,20 @@ SPDX-FileCopyrightText = "Hudson River Trading"
 SPDX-License-Identifier = "MIT"
 
 [[annotations]]
+path = [
+    "REUSE.toml",
+    "include/ast/ShallowCompilation.h",
+    "src/ast/ShallowCompilation.cpp",
+    "src/document/ShallowAnalysis.cpp",
+    "tests/cpp/ActiveInstanceTests.cpp",
+    "tests/cpp/golden/FindSymbolRefHdl.out",
+    "tests/data/active_instance_member_access/*",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Copyright 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
 path = "external/boost_unordered.hpp"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "Boost authors"
