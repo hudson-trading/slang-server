@@ -39,6 +39,11 @@ import {
   splitHierarchyPath,
 } from '../lib/InstancePathUtils'
 import { InstancesView } from './InstancesView'
+import {
+  loadCompilationSourceMemento,
+  saveCompilationSourceMemento,
+  uriToPersistedTopFile,
+} from './ProjectMemento'
 
 const STRUCTURE_SYMS = [
   slang.SlangKind.Instance,
@@ -399,7 +404,34 @@ export class ProjectComponent
   top: RootItem | undefined = undefined
 
   // Current build or top - mutually exclusive
-  private compilationSource: CompilationSource = { type: 'none' }
+  private _compilationSource: CompilationSource = { type: 'none' }
+
+  private get compilationSource(): CompilationSource {
+    return this._compilationSource
+  }
+
+  private set compilationSource(value: CompilationSource) {
+    this._compilationSource = value
+    void saveCompilationSourceMemento(
+      value.type === 'none'
+        ? undefined
+        : value.type === 'topfile'
+          ? uriToPersistedTopFile(value.topFile)
+          : value
+    )
+  }
+
+  private async restoreCompilationSourceMemento(): Promise<void> {
+    const persisted = await loadCompilationSourceMemento()
+    if (persisted === undefined) {
+      return
+    }
+    this._compilationSource =
+      persisted.type === 'topfile'
+        ? { type: 'topfile', topFile: vscode.Uri.file(persisted.topFile) }
+        : persisted
+  }
+
   private activeBuildWatcher: vscode.FileSystemWatcher | undefined
 
   // Getters for backward compatibility
@@ -1691,6 +1723,11 @@ export class ProjectComponent
         }
       })
     )
+
+    await this.restoreCompilationSourceMemento()
+    if (await this.refreshActiveCompilationSource()) {
+      await this.refreshSlangCompilation()
+    }
   }
 
   async refreshSlangCompilation({
