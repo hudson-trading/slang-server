@@ -325,6 +325,12 @@
                   "systemverilog"
                 ],
                 "description": "Language IDs to format (e.g., \"systemverilog\", \"verilog\")"
+              },
+              "timeout": {
+                "type": "number",
+                "default": 2000,
+                "minimum": 0,
+                "description": "Milliseconds to wait for the formatter before stopping it. 0 disables the time limit."
               }
             }
           },
