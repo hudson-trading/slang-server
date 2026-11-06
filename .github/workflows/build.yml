@@ -227,19 +227,47 @@ jobs:
             luarocks-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('clients/neovim/*.rockspec') }}-
             luarocks-v1-${{ runner.os }}-${{ runner.arch }}-
 
-      - name: Run Neovim plugin tests
+      - name: Set up Neovim
         # This should work on Windows as well, but there's some linker error
         # that I don't feel like debugging via GH
         # Also skip when running inside a container (manylinux_2_28): the
-        # prebuilt nvim binaries from nvim-busted-action require a newer GLIBC
+        # prebuilt nvim binaries require a newer GLIBC
         # than the container provides. The dev-only Ubuntu jobs cover this.
         if: runner.os != 'Windows' && matrix.container == '' && matrix.skip_neovim_tests != true
-        uses: nvim-neorocks/nvim-busted-action@v1
+        uses: rhysd/action-setup-vim@v1
         env:
           HOMEBREW_NO_AUTO_UPDATE: '1'
-          SLANG_SERVER_BIN: ../../build/${{ matrix.preset }}/bin/slang-server
         with:
-          luarocks_args: 'clients/neovim/slang-server.nvim-scm-1.rockspec --test-type busted -- -C clients/neovim/'
+          neovim: true
+          version: nightly
+
+      - name: Install LuaJIT and LuaRocks
+        if: runner.os != 'Windows' && matrix.container == '' && matrix.skip_neovim_tests != true
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: '1'
+        run: |
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            sudo apt-get update
+            sudo apt-get install -y luajit libluajit-5.1-dev luarocks
+            luajit_prefix=/usr
+          else
+            brew install luajit luarocks
+            luajit_prefix="$(brew --prefix luajit)"
+          fi
+          "$luajit_prefix/bin/luajit" -v
+          echo "LUAJIT_PREFIX=$luajit_prefix" >> "$GITHUB_ENV"
+
+      - name: Run Neovim plugin tests
+        if: runner.os != 'Windows' && matrix.container == '' && matrix.skip_neovim_tests != true
+        env:
+          SLANG_SERVER_BIN: ../../build/${{ matrix.preset }}/bin/slang-server
+        run: |
+          luarocks --local --lua-version=5.1 test \
+            clients/neovim/slang-server.nvim-scm-1.rockspec --test-type busted --prepare \
+            LUA="$LUAJIT_PREFIX/bin/luajit" LUA_INCDIR="$LUAJIT_PREFIX/include/luajit-2.1"
+          # Packaged LuaRocks can use a newer Lua; export 5.1 paths only for the tests.
+          eval "$(luarocks --local --lua-version=5.1 path)"
+          busted -C clients/neovim/
 
       - name: Package release artifact
         if: inputs.upload_artifacts && !matrix.skip_upload
