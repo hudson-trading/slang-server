@@ -80,6 +80,7 @@ public:
         indexSymbolName(sym, sym.isUnnamed);
         visitDefault(sym);
     }
+    /// Index the loop and its instantiated or representative body scopes.
     void handle(const slang::ast::GenerateBlockArraySymbol& sym) {
         indexSymbolName(sym, sym.isUnnamed);
         visitDefault(sym);

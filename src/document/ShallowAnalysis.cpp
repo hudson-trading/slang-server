@@ -625,7 +625,9 @@ const ShallowAnalysis::GenvarElaboration* ShallowAnalysis::getGenvarElaborationA
     if (!syntax)
         return nullptr;
 
-    while (syntax && syntax->kind != syntax::SyntaxKind::LoopGenerate)
+    while (syntax && (syntax->kind != syntax::SyntaxKind::LoopGenerate ||
+                      syntax->as<syntax::LoopGenerateSyntax>().identifier.valueText() !=
+                          declTok->valueText()))
         syntax = syntax->parent;
     if (!syntax)
         return nullptr;
