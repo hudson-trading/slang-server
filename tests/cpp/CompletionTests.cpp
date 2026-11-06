@@ -336,6 +336,121 @@ TEST_CASE("Expression delimiters require an explicit scope completion request") 
     }
 }
 
+TEST_CASE("Named port and parameter completion inside an instance", "[named-connections]") {
+    ServerHarness server("repo1");
+
+    auto doc = server.openFile("named_ports.sv", R"(
+    module child #(
+        parameter int WIDTH = 8
+    ) (
+        input  logic             clk,
+        input  logic             rst_n,
+        output logic [WIDTH-1:0] data
+    );
+    endmodule
+
+    module top;
+        logic clk, rst_n;
+        logic [7:0] d;
+        child u_child (
+            .clk(clk),
+            .
+        );
+    endmodule
+    )");
+
+    auto labels = [](const std::vector<CompletionHandle>& items) {
+        std::vector<std::string> out;
+        for (const auto& item : items)
+            out.push_back(item.m_item.label);
+        return out;
+    };
+
+    auto cursor = doc.after(".clk(clk),\n            .");
+    auto items = labels(cursor.getCompletions("."));
+
+    CHECK(std::ranges::find(items, "rst_n") != items.end());
+    CHECK(std::ranges::find(items, "data") != items.end());
+    CHECK(std::ranges::find(items, "clk") == items.end());
+}
+
+TEST_CASE("New named connections insert argument placeholders", "[named-connections]") {
+    ServerHarness server("repo1");
+
+    auto doc = server.openFile("implicit_ports.sv", R"(
+    module child #(
+        parameter int WIDTH = 8
+    ) (
+        input  logic             clk,
+        input  logic             rst_n,
+        output logic [WIDTH-1:0] data
+    );
+    endmodule
+
+    module top;
+        logic clk, rst_n;
+        logic [7:0] d;
+        child u_child (
+            .clk(clk),
+            .
+        );
+    endmodule
+    )");
+
+    auto find = [](const std::vector<CompletionHandle>& items,
+                   std::string_view label) -> const CompletionHandle* {
+        for (const auto& item : items)
+            if (item.m_item.label == label)
+                return &item;
+        return nullptr;
+    };
+
+    auto cursor = doc.after(".clk(clk),\n            .");
+    auto items = cursor.getCompletions(".");
+
+    auto* inScope = find(items, "rst_n");
+    REQUIRE(inScope != nullptr);
+    CHECK(inScope->m_item.insertText == "rst_n($1)");
+    CHECK(inScope->m_item.insertTextFormat == lsp::InsertTextFormat::Snippet);
+
+    auto* notInScope = find(items, "data");
+    REQUIRE(notInScope != nullptr);
+    CHECK(notInScope->m_item.insertText == "data($1)");
+    CHECK(notInScope->m_item.insertTextFormat == lsp::InsertTextFormat::Snippet);
+}
+
+TEST_CASE("Parameter completion carries the elaborated type", "[named-connections]") {
+    ServerHarness server("repo1");
+
+    auto doc = server.openFile("param_detail.sv", R"(
+    module child #(
+        parameter int WIDTH = 8
+    ) (
+        input logic clk
+    );
+    endmodule
+
+    module top;
+        logic clk;
+        child #(
+            .
+        ) u_child (.clk(clk));
+    endmodule
+    )");
+
+    auto cursor = doc.after("child #(\n            .");
+    auto items = cursor.getCompletions(".");
+
+    const CompletionHandle* width = nullptr;
+    for (const auto& item : items)
+        if (item.m_item.label == "WIDTH")
+            width = &item;
+
+    REQUIRE(width != nullptr);
+    REQUIRE(width->m_item.labelDetails);
+    CHECK(width->m_item.labelDetails->detail == " int");
+}
+
 TEST_CASE("MacroCompletion") {
     ServerHarness server("repo1");
 
@@ -2377,4 +2492,591 @@ TEST_CASE("LocalparamKeywordInheritance") {
     // lp1 and lp2 should NOT be included (they're localparams)
     CHECK(insertText.find("lp1") == std::string::npos);
     CHECK(insertText.find("lp2") == std::string::npos);
+}
+
+TEST_CASE("Sibling instances do not share connected port names", "[named-connections]") {
+    ServerHarness server("repo1");
+
+    auto doc = server.openFile("sibling_ports.sv", R"(
+    module child (
+        input  logic clk,
+        input  logic rst_n
+    );
+    endmodule
+
+    module top;
+        logic clk, rst_n;
+        child u_first (
+            .clk(clk)
+        ), u_second (
+            .
+        );
+    endmodule
+    )");
+
+    auto cursor = doc.after("), u_second (\n            .");
+    std::vector<std::string> labels;
+    for (const auto& item : cursor.getCompletions("."))
+        labels.push_back(item.m_item.label);
+
+    CHECK(std::ranges::find(labels, "clk") != labels.end());
+    CHECK(std::ranges::find(labels, "rst_n") != labels.end());
+}
+
+TEST_CASE("Named connection completions preserve expression member access", "[named-connections]") {
+    ServerHarness server;
+    auto doc = server.openFile("connection_expressions.sv", R"(
+module child #(parameter int WIDTH = 1) (input logic valid);
+endmodule
+class entry #(parameter int WIDTH = 1);
+endclass
+module top;
+    typedef struct packed { logic flag; logic other; } packet_t;
+    localparam packet_t SETTINGS = '0;
+    packet_t packet;
+    child #(.WIDTH(SETTINGS.flag)) named (.valid(packet.flag));
+    child #(SETTINGS.flag) ordered (packet.flag);
+    typedef entry #(.WIDTH(SETTINGS.other)) entry_t;
+endmodule
+)");
+    auto marker = GENERATE(".WIDTH(SETTINGS.", ".valid(packet.", "#(SETTINGS.", "ordered (packet.",
+                           "entry #(.WIDTH(SETTINGS.");
+    auto trigger = GENERATE(std::optional<std::string>("."), std::optional<std::string>());
+    auto items = doc.after(marker).getCompletions(trigger);
+    for (auto name : {"flag", "other"}) {
+        CHECK(std::ranges::any_of(items,
+                                  [&](const auto& item) { return item.m_item.label == name; }));
+    }
+    CHECK(std::ranges::none_of(items, [](const auto& item) {
+        return item.m_item.label == "valid" || item.m_item.label == "WIDTH";
+    }));
+}
+
+TEST_CASE("Named connection completions replace names without duplicating arguments",
+          "[named-connections]") {
+    ServerHarness server;
+    auto doc = server.openFile("connection_edits.sv", R"(
+module child #(parameter int WIDTH = 8, parameter int DEPTH = 2) (
+    input logic valid, output logic [WIDTH-1:0] data
+);
+endmodule
+module top;
+    child #(.WIxxx /* parameter */ (4), .DEPTH(2)) inst (.vaXXX /* port */ (1'b0), .data());
+endmodule
+)");
+    auto parameter = GENERATE(false, true);
+    auto trigger = GENERATE(std::optional<std::string>("."), std::optional<std::string>());
+    auto cursor = doc.after(parameter ? "#(.WI" : "inst (.va");
+    auto items = cursor.getCompletions(trigger);
+    auto name = parameter ? "WIDTH" : "valid";
+    auto item = std::ranges::find_if(items,
+                                     [&](const auto& item) { return item.m_item.label == name; });
+    REQUIRE(item != items.end());
+    CHECK(std::ranges::none_of(items, [&](const auto& item) {
+        return item.m_item.label == (parameter ? "DEPTH" : "data");
+    }));
+    CHECK(getCompletionTextEdit(item->m_item).newText == name);
+    item->resolve();
+    REQUIRE(item->m_item.documentation);
+    CHECK(rfl::get<lsp::MarkupContent>(*item->m_item.documentation).value.find(name) !=
+          std::string::npos);
+    CHECK(getCompletionTextEdit(item->m_item).newText == name);
+    item->insert();
+    CHECK(doc.getText().find(parameter ? "#(.WIDTH /* parameter */ (4), .DEPTH(2))"
+                                       : "inst (.valid /* port */ (1'b0), .data())") !=
+          std::string::npos);
+}
+
+TEST_CASE("Named connection completions separate following connections", "[named-connections]") {
+    auto kind = GENERATE("port", "parameter", "class", "argument");
+    bool classType = kind == std::string_view("class");
+    bool argument = kind == std::string_view("argument");
+    bool parameter = kind != std::string_view("port");
+    auto arguments = GENERATE(false, true);
+    auto partial = GENERATE(false, true);
+    auto following = GENERATE("connection", "comma", "end");
+    CAPTURE(kind, arguments, partial, following);
+
+    std::string declarations = R"(
+module child #(parameter int FIRST = 0, WIDTH = 8, LAST = 2) (
+    input logic first, valid, last
+);
+endmodule
+class entry #(parameter int FIRST = 0, WIDTH = 8, LAST = 2);
+endclass
+module top;
+    function automatic int invoke(input int FIRST = 0, WIDTH = 8, LAST = 2);
+        return WIDTH;
+    endfunction
+    )";
+    std::string prefix = argument    ? "initial invoke(.FIRST(0), ."
+                         : classType ? "typedef entry #(.FIRST(0), ."
+                         : parameter ? "child #(.FIRST(0), ."
+                                     : "child inst (.first(), .";
+    std::string name = parameter ? "WIDTH" : "valid";
+    std::string typed = partial ? (parameter ? "WIxxx" : "vaXXX") : "";
+    std::string existingArgs = arguments ? " /* argument */ (1)" : "";
+    std::string tail = following == std::string_view("comma") ? "," : "";
+    tail += " // next connection\n        ";
+    if (following != std::string_view("end"))
+        tail += parameter ? ".LAST(2)" : ".last()";
+    tail += argument    ? ");\nendmodule\n"
+            : classType ? ") entry_t;\nendmodule\n"
+            : parameter ? ") inst ();\nendmodule\n"
+                        : ");\nendmodule\n";
+
+    ServerHarness server;
+    auto doc = server.openFile("connection_commas.sv",
+                               declarations + prefix + typed + existingArgs + tail);
+    auto items = doc.after(prefix + (partial ? typed.substr(0, 2) : "")).getCompletions();
+    auto item = std::ranges::find_if(items,
+                                     [&](const auto& item) { return item.m_item.label == name; });
+    REQUIRE(item != items.end());
+    item->resolve();
+
+    auto edits = item->m_item.additionalTextEdits.value_or(std::vector<lsp::TextEdit>{});
+    edits.push_back(getCompletionTextEdit(item->m_item));
+    auto completed = name + (arguments ? existingArgs : "($1)");
+    if (following == std::string_view("connection"))
+        completed += ",";
+    CHECK(doc.withTextEdits(edits) == declarations + prefix + completed + tail);
+}
+
+TEST_CASE("Named call arguments resolve to formal parameters",
+          "[named-arguments][named-connections]") {
+    auto [call, declaration] = GENERATE(
+        std::pair{"compute", "function automatic int compute(input int "},
+        std::pair{"defs::compute", "function automatic int compute(input int "},
+        std::pair{"object.compute", "function automatic int compute(input T "},
+        std::pair{"defs::worker#(shortint)::evaluate", "static function int evaluate(input int "},
+        std::pair{"object.update", "task update(input int "},
+        std::pair{"abstractObject.compute", "pure virtual function int compute(input int "});
+    auto trigger = GENERATE(std::optional<std::string>("."), std::optional<std::string>());
+    CAPTURE(call, trigger);
+    ServerHarness server;
+    auto doc = server.openFile("named_calls.sv", std::string(R"(
+package defs;
+    function automatic int compute(input int count, input byte mode = 0);
+        return count;
+    endfunction
+    class worker #(parameter type T = int);
+        function automatic int compute(input T count, input byte mode = 0);
+            int hidden;
+            return count;
+        endfunction
+        static function int evaluate(input int count, input byte mode = 0);
+            return count;
+        endfunction
+        task update(input int count, input byte mode = 0);
+        endtask
+    endclass
+    virtual class abstract_worker;
+        pure virtual function int compute(input int count, input byte mode = 0);
+    endclass
+endpackage
+module top;
+    import defs::*;
+    worker#(shortint) object;
+    abstract_worker abstractObject;
+    logic count;
+    initial begin
+)") + call + "(.count(count), .mode(1));\nend\nendmodule\n");
+    auto cursor = doc.after(std::string(call) + "(.");
+    auto definitions = cursor.getDefinitions();
+    REQUIRE(definitions.size() == 1);
+    CHECK(definitions.front().targetSelectionRange.start == doc.after(declaration).getPosition());
+    auto hover = doc.getHoverAt(cursor.m_offset);
+    REQUIRE(hover);
+    CHECK(rfl::get<lsp::MarkupContent>(hover->contents).value.find("count") != std::string::npos);
+    auto items = cursor.getCompletions(trigger);
+    REQUIRE(items.size() == 1);
+    auto& item = items.front();
+    CHECK(item.m_item.label == "count");
+    CHECK(getCompletionTextEdit(item.m_item).newText == "count");
+    item.resolve();
+    REQUIRE(item.m_item.documentation);
+    CHECK(rfl::get<lsp::MarkupContent>(*item.m_item.documentation).value.find("count") !=
+          std::string::npos);
+    CHECK(getCompletionTextEdit(item.m_item).newText == "count");
+    auto value = doc.after(std::string(call) + "(.count(");
+    auto valueDefinitions = value.getDefinitions();
+    REQUIRE(valueDefinitions.size() == 1);
+    CHECK(valueDefinitions.front().targetSelectionRange.start == doc.after("logic ").getPosition());
+}
+
+TEST_CASE("Named call arguments resolve through forward receivers", "[named-arguments]") {
+    ServerHarness server;
+    auto doc = server.openFile("forward_named_call.sv", R"(
+module top;
+    class Worker;
+        function void run(int count);
+            controller.worker.consume(.count(count));
+        endfunction
+        function void consume(int count); endfunction
+    endclass
+    class Controller;
+        Worker worker;
+    endclass
+    Controller controller;
+endmodule
+)");
+    auto cursor = doc.after("consume(.");
+    auto definitions = cursor.getDefinitions();
+    REQUIRE(definitions.size() == 1);
+    CHECK(definitions.front().targetSelectionRange.start ==
+          doc.after("consume(int ").getPosition());
+    auto hover = doc.getHoverAt(cursor.m_offset);
+    REQUIRE(hover);
+    CHECK(rfl::get<lsp::MarkupContent>(hover->contents).value.find("count") != std::string::npos);
+    auto items = cursor.getCompletions(".");
+    REQUIRE(items.size() == 1);
+    CHECK(items.front().m_item.label == "count");
+    items.front().resolve();
+    REQUIRE(items.front().m_item.documentation);
+    CHECK(rfl::get<lsp::MarkupContent>(*items.front().m_item.documentation).value.find("count") !=
+          std::string::npos);
+    auto valueDefinitions = doc.after(".count(").getDefinitions();
+    REQUIRE(valueDefinitions.size() == 1);
+    CHECK(valueDefinitions.front().targetSelectionRange.start ==
+          doc.after("run(int ").getPosition());
+}
+
+TEST_CASE("Named call arguments complete unfinished and mixed lists",
+          "[named-arguments][named-connections]") {
+    auto call = GENERATE("compute(", "object.compute(");
+    auto suffix = GENERATE(".", ".co", "1, .", ", .", ".mode(1), .");
+    CAPTURE(call, suffix);
+    ServerHarness server;
+    auto doc = server.openFile("unfinished_calls.sv", std::string(R"(
+class worker;
+    function int compute(input int count = 0, input byte mode = 0);
+        int hidden;
+        return count;
+    endfunction
+endclass
+module top;
+    worker object;
+    function automatic int compute(input int count = 0, input byte mode = 0);
+        return count;
+    endfunction
+    initial begin
+)") + call + suffix);
+    auto items = doc.after(std::string(call) + suffix).getCompletions();
+    auto names = std::string_view(suffix).starts_with(".mode") ? std::vector{"count"}
+                 : std::string_view(suffix).find(',') != std::string_view::npos
+                     ? std::vector{"mode"}
+                     : std::vector{"count", "mode"};
+    REQUIRE(items.size() == names.size());
+    for (auto name : names) {
+        auto item = std::ranges::find_if(items, [&](const auto& item) {
+            return item.m_item.label == name;
+        });
+        REQUIRE(item != items.end());
+        CHECK(getCompletionTextEdit(item->m_item).newText == std::string(name) + "($1)");
+    }
+}
+
+TEST_CASE("Named constructor arguments resolve their formal parameters",
+          "[named-arguments][named-connections]") {
+    auto prefix = GENERATE("worker constructed = new(", "initial object = new(");
+    auto suffix = GENERATE(".", ".count(1));");
+    CAPTURE(prefix, suffix);
+    ServerHarness server;
+    auto doc = server.openFile("constructor_arguments.sv", std::string(R"(
+class worker;
+    function new(input int count = 0);
+    endfunction
+endclass
+module top;
+    worker object;
+)") + prefix + suffix);
+    auto cursor = doc.after(std::string(prefix) + ".");
+    auto items = cursor.getCompletions();
+    REQUIRE(items.size() == 1);
+    CHECK(items.front().m_item.label == "count");
+    if (std::string_view(suffix).size() > 1) {
+        auto definitions = cursor.getDefinitions();
+        REQUIRE(definitions.size() == 1);
+        CHECK(definitions.front().targetSelectionRange.start ==
+              doc.after("input int ").getPosition());
+        CHECK(doc.getHoverAt(cursor.m_offset).has_value());
+    }
+}
+
+TEST_CASE("Named argument names and expressions use different scopes",
+          "[named-arguments][named-connections]") {
+    ServerHarness server;
+    auto doc = server.openFile("argument_scopes.sv", R"(
+module top;
+    typedef struct packed { int field; } packet_t;
+    packet_t packet;
+    int missing;
+    function automatic void consume(input int value);
+    endfunction
+    initial begin
+        consume(.value(packet.field));
+        consume(.missing());
+    end
+endmodule
+)");
+    auto member = doc.after("packet.");
+    auto items = member.getCompletions(".");
+    REQUIRE(items.size() == 1);
+    CHECK(items.front().m_item.label == "field");
+    auto definitions = member.getDefinitions();
+    REQUIRE(definitions.size() == 1);
+    CHECK(definitions.front().targetSelectionRange.start == doc.before("field;").getPosition());
+    auto unknown = doc.after("consume(.").after("consume(.");
+    CHECK(unknown.getDefinitions().empty());
+    CHECK_FALSE(doc.getHoverAt(unknown.m_offset));
+}
+
+TEST_CASE("Named class parameters complete in types inheritance and static access",
+          "[named-connections][class-parameters]") {
+    auto use = GENERATE("typedef defs::entry #(.WIDTH(4), .T(byte)) entry_t;",
+                        "defs::entry #(.WIDTH(4), .T(byte)) value;",
+                        "class derived extends defs::entry #(.WIDTH(4), .T(byte)); endclass",
+                        "localparam int SIZE = defs::entry #(.WIDTH(4), .T(byte))::WIDTH;");
+    auto parameter = GENERATE("WIDTH", "T");
+    auto trigger = GENERATE(std::optional<std::string>("."), std::optional<std::string>());
+    CAPTURE(use, parameter, trigger);
+    ServerHarness server;
+    auto doc = server.openFile("class_parameters.sv", std::string(R"(
+package defs;
+    class base #(parameter int BASE = 1);
+    endclass
+    class entry #(parameter int WIDTH = 8, parameter type T = int, localparam int HIDDEN = 0)
+        extends base;
+        localparam int BODY = 2;
+        int member;
+    endclass
+endpackage
+module top;
+)") + use + "\nendmodule\n");
+    auto items = doc.after(std::string(".") + parameter).getCompletions(trigger);
+    REQUIRE(items.size() == 1);
+    auto& item = items.front();
+    CHECK(item.m_item.label == parameter);
+    CHECK(getCompletionTextEdit(item.m_item).newText == parameter);
+    item.resolve();
+    REQUIRE(item.m_item.documentation);
+    CHECK(rfl::get<lsp::MarkupContent>(*item.m_item.documentation).value.find(parameter) !=
+          std::string::npos);
+    CHECK(getCompletionTextEdit(item.m_item).newText == parameter);
+}
+
+TEST_CASE("Named class parameters complete unfinished specializations",
+          "[named-connections][class-parameters]") {
+    auto use = GENERATE("typedef defs::entry #(.", "typedef defs::entry #(.WI", "defs::entry #(.",
+                        "class derived extends defs::entry #(.", "typedef entry #(.",
+                        "typedef entry #(.WIDTH(4), .");
+    CAPTURE(use);
+    ServerHarness server;
+    auto doc = server.openFile("unfinished_class_parameters.sv", std::string(R"(
+package defs;
+    class entry #(parameter int WIDTH, parameter type T);
+    endclass
+endpackage
+module top;
+import defs::*;
+)") + use);
+    auto items = doc.after(use).getCompletions();
+    auto names = std::string_view(use).find("WIDTH(4)") == std::string_view::npos
+                     ? std::vector{"WIDTH", "T"}
+                     : std::vector{"T"};
+    REQUIRE(items.size() == names.size());
+    for (auto name : names) {
+        auto item = std::ranges::find_if(items, [&](const auto& item) {
+            return item.m_item.label == name;
+        });
+        REQUIRE(item != items.end());
+        CHECK(getCompletionTextEdit(item->m_item).newText == std::string(name) + "($1)");
+        item->resolve();
+        REQUIRE(item->m_item.documentation);
+        CHECK(rfl::get<lsp::MarkupContent>(*item->m_item.documentation).value.find(name) !=
+              std::string::npos);
+    }
+}
+
+TEST_CASE("Named class parameters use the qualified specialization",
+          "[named-connections][class-parameters]") {
+    auto suffix = GENERATE("::entry #(.", "::entry #(.VA",
+                           "::entry #(.VALUE(1), .T(int)) entry_t;");
+    auto external = GENERATE(false, true);
+    CAPTURE(suffix, external);
+    ServerHarness server("repo1");
+    std::string declarations = R"(
+package defs;
+    class entry #(parameter int WRONG = 0);
+    endclass
+    class outer #(parameter type U = int);
+        class entry #(parameter U VALUE, parameter type T);
+        endclass
+    endclass
+endpackage
+)";
+    if (external) {
+        auto definitions = server.openFile("class_definitions.sv", declarations);
+        definitions.save();
+        declarations.clear();
+    }
+    auto doc = server.openFile("nested_class_parameters.sv", declarations + R"(
+module top;
+    typedef defs::outer #(.U(byte))
+)" + suffix);
+    auto items = doc.after("::entry #(.").getCompletions(".");
+    const bool arguments = std::string_view(suffix).find("VALUE(1)") != std::string_view::npos;
+    REQUIRE(items.size() == (arguments ? 1 : 2));
+    auto item = std::ranges::find_if(items,
+                                     [](const auto& item) { return item.m_item.label == "VALUE"; });
+    REQUIRE(item != items.end());
+    CHECK(getCompletionTextEdit(item->m_item).newText == (arguments ? "VALUE" : "VALUE($1)"));
+    item->resolve();
+    REQUIRE(item->m_item.documentation);
+    CHECK(
+        rfl::get<lsp::MarkupContent>(*item->m_item.documentation).value.find("parameter U VALUE") !=
+        std::string::npos);
+}
+
+TEST_CASE("Virtual interface parameters complete inside class type arguments",
+          "[named-connections]") {
+    auto prefix = GENERATE("virtual bus_if #(", "typedef entry #(virtual bus_if #(");
+    auto suffix = GENERATE(".", ".PA", ".PAYLOAD(byte), .WIDTH(4)");
+    CAPTURE(prefix, suffix);
+    ServerHarness server;
+    auto doc = server.openFile("virtual_interface_parameters.sv", std::string(R"(
+interface bus_if #(parameter type PAYLOAD = int, parameter int WIDTH = 8, localparam int HIDDEN = 1);
+endinterface
+class entry #(parameter type T = int);
+endclass
+module top;
+)") + prefix + suffix);
+    auto items = doc.after(std::string(prefix) + ".").getCompletions(".");
+    const bool arguments = std::string_view(suffix).find("PAYLOAD(byte)") != std::string_view::npos;
+    REQUIRE(items.size() == (arguments ? 1 : 2));
+    auto item = std::ranges::find_if(items, [](const auto& item) {
+        return item.m_item.label == "PAYLOAD";
+    });
+    REQUIRE(item != items.end());
+    CHECK(getCompletionTextEdit(item->m_item).newText == (arguments ? "PAYLOAD" : "PAYLOAD($1)"));
+    item->resolve();
+    REQUIRE(item->m_item.documentation);
+    CHECK(rfl::get<lsp::MarkupContent>(*item->m_item.documentation)
+              .value.find("parameter type PAYLOAD") != std::string::npos);
+}
+
+TEST_CASE("Named connections complete partial and unfinished instances", "[named-connections]") {
+    ServerHarness server;
+    auto suffix = GENERATE("child inst (.", "child inst (.va", "child #(.", "child #(.WI",
+                           "child #(.WIDTH(4), .");
+    CAPTURE(suffix);
+    auto doc = server.openFile("unfinished_connections.sv", std::string(R"(
+module child #(parameter int WIDTH = 8, parameter type T = logic, localparam int HIDDEN = 1) (
+    input logic valid, output logic ready
+);
+endmodule
+module top;
+)") + suffix);
+    auto items = doc.after(suffix).getCompletions();
+    auto parameters = std::string_view(suffix).find('#') != std::string_view::npos;
+    auto names = parameters ? std::vector{"WIDTH", "T"} : std::vector{"valid", "ready"};
+    if (std::string_view(suffix).find("WIDTH(4)") != std::string_view::npos) {
+        std::erase(names, std::string_view("WIDTH"));
+        CHECK(std::ranges::none_of(items,
+                                   [](const auto& item) { return item.m_item.label == "WIDTH"; }));
+    }
+    for (auto name : names) {
+        auto item = std::ranges::find_if(items, [&](const auto& item) {
+            return item.m_item.label == name;
+        });
+        REQUIRE(item != items.end());
+        CHECK(getCompletionTextEdit(item->m_item).newText == std::string(name) + "($1)");
+    }
+    CHECK(std::ranges::none_of(items,
+                               [](const auto& item) { return item.m_item.label == "HIDDEN"; }));
+}
+
+TEST_CASE("Unfinished named parameters find indexed module definitions", "[named-connections]") {
+    ServerHarness server("repo1");
+    auto target = server.openFile("parameter_target.sv", R"(
+module parameter_target #(parameter int WIDTH = 8, parameter type T = logic) ();
+endmodule
+)");
+    target.save();
+    auto doc = server.openFile("parameter_use.sv", "module top; parameter_target #(.WI");
+    auto items = doc.after("#(.WI").getCompletions();
+    REQUIRE(
+        std::ranges::any_of(items, [](const auto& item) { return item.m_item.label == "WIDTH"; }));
+    CHECK(std::ranges::any_of(items, [](const auto& item) { return item.m_item.label == "T"; }));
+}
+
+TEST_CASE("Named connections resolve interface-dependent members in an empty instance array",
+          "[named-connections][scan-crashes]") {
+    ServerHarness server;
+    auto doc = server.openFile("empty_instances.sv", R"(
+interface Channel;
+    parameter int Width = 8;
+endinterface
+module child(Channel link);
+    localparam Width = link.Width;
+    missing_module #(Width) inner();
+endmodule
+module top;
+    child instances[0](.link());
+endmodule
+)");
+    auto items = doc.after("instances[0](.").getCompletions(".");
+    REQUIRE(
+        std::ranges::any_of(items, [](const auto& item) { return item.m_item.label == "link"; }));
+}
+
+TEST_CASE("Named connection completions support instance arrays and interface ports",
+          "[named-connections]") {
+    ServerHarness server;
+    auto doc = server.openFile("connection_arrays.sv", R"(
+interface bus_if;
+    logic valid;
+    modport sink(input valid);
+endinterface
+module child #(parameter int WIDTH = 8, parameter type T = logic) (
+    bus_if.sink bus, output T [WIDTH-1:0] data
+);
+endmodule
+module top;
+    bus_if links[2]();
+    child #(.WIDTH(4), .T(bit)) instances[2] (.bus(links), .data());
+endmodule
+)");
+    auto marker = GENERATE("#(.", "instances[2] (.");
+    auto items = doc.after(marker).getCompletions(".");
+    auto name = std::string_view(marker) == "#(." ? "WIDTH" : "bus";
+    auto item = std::ranges::find_if(items,
+                                     [&](const auto& item) { return item.m_item.label == name; });
+    REQUIRE(item != items.end());
+    REQUIRE(item->m_item.labelDetails);
+    CHECK(item->m_item.labelDetails->detail ==
+          (std::string_view(name) == "WIDTH" ? " int" : " bus_if.sink"));
+}
+
+TEST_CASE("Named connections use external non-ANSI port names and overridable parameters",
+          "[named-connections]") {
+    ServerHarness server;
+    auto doc = server.openFile("nonansi_connections.sv", R"(
+module child (.external_port(internal_port), other_port);
+    input internal_port, other_port;
+    parameter int WIDTH = 8;
+    localparam int HIDDEN = 1;
+endmodule
+module top;
+    child #(.WIDTH(4)) inst (.external_port(), .other_port());
+endmodule
+)");
+    auto parameters = GENERATE(false, true);
+    auto items = doc.after(parameters ? "#(." : "inst (.").getCompletions();
+    auto name = parameters ? "WIDTH" : "external_port";
+    REQUIRE(
+        std::ranges::any_of(items, [&](const auto& item) { return item.m_item.label == name; }));
+    CHECK(std::ranges::none_of(items, [](const auto& item) {
+        return item.m_item.label == "internal_port" || item.m_item.label == "HIDDEN";
+    }));
 }

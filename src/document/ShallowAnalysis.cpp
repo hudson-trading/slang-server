@@ -263,6 +263,7 @@ const ast::Symbol* ShallowAnalysis::handleInterfacePortHeader(const parsing::Tok
 
     auto& idef = iface.definition->as<ast::DefinitionSymbol>();
     auto& inst = ast::InstanceSymbol::createDefault(*getCompilation(), idef);
+    inst.setParent(getCompilation()->getRoot());
 
     // TODO: avoid creating a default instance each time
     return inst.body.lookupName(header.modport->member.valueText());
@@ -279,6 +280,29 @@ const ast::Scope* ShallowAnalysis::getScopeFromSym(const ast::Symbol* symbol) co
     }
     if (!symbol) {
         return nullptr;
+    }
+
+    if (auto* definition = symbol->as_if<ast::DefinitionSymbol>()) {
+        auto [it, inserted] = m_definitionScopes.try_emplace(definition, nullptr);
+        if (inserted) {
+            auto& compilation = definition->getParentScope()->getCompilation();
+            auto& fallback = ast::InstanceSymbol::createDefault(compilation, *definition);
+            fallback.setParent(compilation.getRoot());
+            fallback.name = "";
+            it->second = &fallback.body;
+        }
+        return it->second;
+    }
+
+    if (auto* generic = symbol->as_if<ast::GenericClassDefSymbol>()) {
+        auto [it, inserted] = m_definitionScopes.try_emplace(generic, nullptr);
+        if (inserted) {
+            auto* type = generic->getDefaultSpecialization(*generic->getParentScope());
+            if (!type)
+                type = &generic->getInvalidSpecialization();
+            it->second = type->as_if<ast::ClassType>();
+        }
+        return it->second;
     }
 
     if (symbol->isScope()) {
@@ -303,18 +327,7 @@ const ast::Scope* ShallowAnalysis::getScopeFromSym(const ast::Symbol* symbol) co
         auto scope = getScopeFromSym(connSym);
 
         if (!scope && port.interfaceDef) {
-            auto parentScope = port.getParentScope();
-            if (!parentScope)
-                return nullptr;
-
-            auto [it, inserted] = m_interfaceFallbackScopes.try_emplace(port.interfaceDef, nullptr);
-            if (inserted) {
-                auto& fallback = ast::InstanceSymbol::createDefault(parentScope->getCompilation(),
-                                                                    *port.interfaceDef);
-                fallback.name = "";
-                it->second = &fallback.body;
-            }
-            scope = it->second;
+            scope = getScopeFromSym(port.interfaceDef);
             if (!port.modport.empty()) {
                 auto fallbackModport = scope->find(port.modport);
                 if (fallbackModport && fallbackModport->kind == ast::SymbolKind::Modport)
@@ -495,19 +508,10 @@ const ast::Symbol* ShallowAnalysis::getAssignmentPatternTargetSymbol(
     auto* arguments = argument && argument->parent
                           ? argument->parent->as_if<syntax::ArgumentListSyntax>()
                           : nullptr;
-    auto* invocation = arguments && arguments->parent
-                           ? arguments->parent->as_if<syntax::InvocationExpressionSyntax>()
-                           : nullptr;
-    if (!argument || !arguments || !invocation)
+    if (!argument || !arguments)
         return nullptr;
 
-    auto* targetToken = invocation->left->getLastTokenPtr();
-    auto* target = getSymbolAtToken(targetToken);
-    auto* subroutine = target ? target->as_if<ast::SubroutineSymbol>() : nullptr;
-    if (!subroutine)
-        return nullptr;
-
-    auto formals = subroutine->getArguments();
+    auto formals = getCallArguments(*arguments);
     if (auto* named = argument->as_if<syntax::NamedArgumentSyntax>()) {
         auto formal = std::ranges::find(formals, named->name.valueText(),
                                         [](const auto* arg) { return arg->name; });
@@ -519,6 +523,27 @@ const ast::Symbol* ShallowAnalysis::getAssignmentPatternTargetSymbol(
             return index < formals.size() ? formals[index] : nullptr;
     }
     return nullptr;
+}
+
+std::span<const ast::FormalArgumentSymbol* const> ShallowAnalysis::getCallArguments(
+    const syntax::ArgumentListSyntax& arguments) const {
+    auto* owner = arguments.parent.get();
+    if (!owner)
+        return {};
+    const parsing::Token* callee = nullptr;
+    if (auto* invocation = owner->as_if<syntax::InvocationExpressionSyntax>())
+        callee = invocation->left->getLastTokenPtr();
+    else if (auto* constructor = owner->as_if<syntax::NewClassExpressionSyntax>())
+        callee = constructor->scopedNew->getLastTokenPtr();
+    auto* target = getSymbolAtToken(callee);
+    if (auto* subroutine = target ? target->as_if<ast::SubroutineSymbol>() : nullptr) {
+        // Pure virtual stubs clone arguments without retaining their declaration syntax.
+        auto* prototype = subroutine->getPrototype();
+        return prototype ? prototype->getArguments() : subroutine->getArguments();
+    }
+    if (auto* prototype = target ? target->as_if<ast::MethodPrototypeSymbol>() : nullptr)
+        return prototype->getArguments();
+    return {};
 }
 
 const ast::Scope* ShallowAnalysis::getAssignmentPatternTargetScope(
@@ -736,6 +761,18 @@ slang::SmallVector<const ast::Symbol*, 2> ShallowAnalysis::getSymbolsAtToken(
     if (!syntax) {
         return symbols;
     }
+    if (auto* named = syntax->as_if<syntax::NamedArgumentSyntax>();
+        named && named->name == *declTok) {
+        auto* arguments = named->parent ? named->parent->as_if<syntax::ArgumentListSyntax>()
+                                        : nullptr;
+        if (arguments) {
+            for (auto* formal : getCallArguments(*arguments)) {
+                if (formal->name == named->name.valueText())
+                    addSymbol(formal);
+            }
+        }
+        return symbols;
+    }
     if (syntax->kind == syntax::SyntaxKind::SuperHandle) {
         // Slang only accepts 'super' as part of a qualified lookup, while completion
         // queries need the receiver alone, including when the member is unfinished.
@@ -878,6 +915,12 @@ slang::SmallVector<const ast::Symbol*, 2> ShallowAnalysis::getSymbolsAtToken(
 
     auto recoverMembers = [&](const syntax::SyntaxNode& left, std::string_view name) {
         auto leftToken = syntaxes.getTokenAt(left.getLastToken().location());
+        if (auto* type = getExpressionTypeAtToken(leftToken)) {
+            if (auto* scope = getScopeFromSym(type)) {
+                addSymbol(scope->find(name));
+                return;
+            }
+        }
         for (auto* receiver : getSymbolsAtToken(leftToken)) {
             if (auto* receiverScope = getScopeFromSym(receiver))
                 addSymbol(receiverScope->find(name));

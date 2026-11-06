@@ -56,6 +56,7 @@ DebugScanResult SlangServer::debugScanDocument(const lsp::TextDocumentIdentifier
             case syntax::SyntaxKind::ClassName:
             case syntax::SyntaxKind::NamedPortConnection:
             case syntax::SyntaxKind::NamedParamAssignment:
+            case syntax::SyntaxKind::NamedArgument:
             case syntax::SyntaxKind::HierarchyInstantiation:
             case syntax::SyntaxKind::PackageImportItem:
             case syntax::SyntaxKind::MemberAccessExpression:

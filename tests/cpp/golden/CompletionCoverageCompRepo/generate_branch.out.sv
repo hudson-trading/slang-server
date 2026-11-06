@@ -3,7 +3,6 @@
 
 module top;
     sub #(.condition ('1)) the_sub();
-//         ^^^^^^^^^ MissingCompletion[condition] Context[Expression] Trigger[.] Items[0]
 endmodule
 
 module sub #(
