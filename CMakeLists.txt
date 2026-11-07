@@ -348,6 +348,10 @@ target_precompile_headers(slang_server_obj_lib PRIVATE
                           "${PROJECT_SOURCE_DIR}/include/lsp/LspTypes.h")
 
 target_link_libraries(slang_server_obj_lib PUBLIC slang::slang fmt::fmt ctre)
+if(WIN32)
+  # WcpClient uses Winsock
+  target_link_libraries(slang_server_obj_lib PUBLIC ws2_32)
+endif()
 
 # Apply pedantic warnings only to slang-server code, not external libraries
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")

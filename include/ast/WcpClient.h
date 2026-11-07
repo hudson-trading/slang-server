@@ -14,12 +14,29 @@
 #include <thread>
 
 #ifdef _WIN32
-// Handle Windows macro collision
-#    define NOMINMAX
+// Handle Windows macro collision. MinGW's libstdc++ already defines NOMINMAX.
+#    ifndef NOMINMAX
+#        define NOMINMAX
+#    endif
+// Keep rarely used Windows headers out of every file that includes this one.
+// Without it, windows.h pulls in rpcndr.h, whose global 'byte' typedef clashes
+// with slang::byte in any file that has 'using namespace slang'.
+#    ifndef WIN32_LEAN_AND_MEAN
+#        define WIN32_LEAN_AND_MEAN
+#        define SLANG_SERVER_UNDEF_WIN32_LEAN_AND_MEAN
+#    endif
 
 #    include <winsock2.h>
 #    include <ws2tcpip.h>
-#    pragma comment(lib, "ws2_32.lib")
+
+#    ifdef SLANG_SERVER_UNDEF_WIN32_LEAN_AND_MEAN
+#        undef WIN32_LEAN_AND_MEAN
+#        undef SLANG_SERVER_UNDEF_WIN32_LEAN_AND_MEAN
+#    endif
+// CMake links ws2_32 for all Windows toolchains; this covers other MSVC builds.
+#    ifdef _MSC_VER
+#        pragma comment(lib, "ws2_32.lib")
+#    endif
 typedef int socklen_t;
 typedef SSIZE_T ssize_t;
 #    define MSG_DONTWAIT 0
