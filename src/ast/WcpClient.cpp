@@ -19,7 +19,9 @@
 
 #ifdef _WIN32
 // Handle Windows macro collision
-#    define NOMINMAX
+#    ifndef NOMINMAX
+#        define NOMINMAX
+#    endif
 
 #    include <process.h>
 #    include <windows.h>
