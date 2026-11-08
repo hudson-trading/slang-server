@@ -10,7 +10,7 @@
 // Pattern from RFC 3986
 // https://www.rfc-editor.org/rfc/rfc3986#appendix-B
 static constexpr auto uriPattern = ctll::fixed_string{
-    R"(^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?$)"};
+    R"(^(([^:/?#]++):)?(//([^/?#]*+))?([^?#]*+)(\?([^#]*+))?(#(.*+))?$)"};
 
 URI::URI(const std::string& input) {
 

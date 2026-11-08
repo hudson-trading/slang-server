@@ -62,3 +62,16 @@ TEST_CASE("URI WindowsUNCPath") {
 }
 
 #endif
+
+TEST_CASE("URI LongPath") {
+    std::string path(4096, 'x');
+    URI uri("file:///" + path);
+
+    CHECK(uri.str() == "file:///" + path);
+
+#ifdef _WIN32
+    CHECK(uri.getPath() == "\\" + path);
+#else
+    CHECK(uri.getPath() == "/" + path);
+#endif
+}
