@@ -47,6 +47,12 @@ module test(
     parameter logic parameter_driver = 1'b1;
     logic parameter_driven;
     assign parameter_driven = parameter_driver;
+
+    logic open_src;
+    open_ports the_open(
+        .in (open_src),
+        .unused_in (),
+        .out ());
 endmodule
 
 module sub(
@@ -99,4 +105,12 @@ module sub_sub(
             1'b1: switched_result = 1'b0;
         endcase
     end
+endmodule
+
+module open_ports(
+    input logic in,
+    input logic unused_in,
+    output logic out
+);
+    assign out = in;
 endmodule
