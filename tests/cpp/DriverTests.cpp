@@ -1042,12 +1042,7 @@ TEST_CASE("LoadConfig") {
 
     CHECK(flags.size() > 0);
 
-#if _WIN32
-    server.client.expectWarning(
-        "include directory 'some/include/path': The system cannot find the path specified.");
-#else
-    server.client.expectWarning("include directory 'some/include/path': No such file or directory");
-#endif
+    server.client.expectWarning("include directory 'some/include/path':");
 }
 
 TEST_CASE("CapturedDriverErrors") {

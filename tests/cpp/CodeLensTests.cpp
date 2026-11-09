@@ -4,6 +4,7 @@
 #include "SlangLspClient.h"
 #include "lsp/LspTypes.h"
 #include "utils/ServerHarness.h"
+#include "utils/Utils.h"
 #include <catch2/generators/catch_generators.hpp>
 #include <fstream>
 #include <ranges>
@@ -26,10 +27,7 @@ TEST_CASE("CodeLensNestedIncludesRecognizeDirectoryAliases") {
         std::error_code ec;
         fs::remove_all(root, ec);
     });
-    std::error_code ec;
-    fs::create_directory_symlink(physical, alias, ec);
-    if (ec)
-        SKIP("Directory symlinks unavailable: " + ec.message());
+    createDirectorySymlinkOrSkip(physical, alias);
 
     std::ofstream(physical / "library_pkg.sv") << R"(package library_pkg;
     typedef logic [7:0] data_t;

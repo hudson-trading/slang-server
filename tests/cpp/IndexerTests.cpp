@@ -311,7 +311,7 @@ TEST_CASE("Includer lookup resolves only the requested gathered filename") {
     for (const auto* directory : {"first", "second"})
         std::ofstream(root / directory / "types.svh") << "typedef int value_t;\n";
     auto alias = root / "headers";
-    fs::create_directory_symlink(root / "first", alias);
+    createDirectorySymlinkOrSkip(root / "first", alias);
     auto source = root / "src/source.sv";
     auto ready = root / "src/ready.svh";
     auto late = root / "src/late.svh";
@@ -326,7 +326,7 @@ TEST_CASE("Includer lookup resolves only the requested gathered filename") {
 
     std::ofstream(late) << "typedef int late_t;\n";
     fs::remove(alias);
-    fs::create_directory_symlink(root / "second", alias);
+    createDirectorySymlinkOrSkip(root / "second", alias);
     CHECK(indexer.getFilesIncluding(late) == std::vector<fs::path>{source});
     CHECK(indexer.getFilesIncluding(root / "first/types.svh").empty());
     CHECK(indexer.getFilesIncluding(root / "second/types.svh") == std::vector<fs::path>{source});
@@ -383,7 +383,7 @@ TEST_CASE("Include lookup caches refresh after reindexing and file changes") {
     auto source = root / "src/source.sv";
     std::ofstream(source) << "`include \"types.svh\"\n`include \"late.svh\"\n";
     auto alias = root / "headers";
-    fs::create_directory_symlink(root / "first", alias);
+    createDirectorySymlinkOrSkip(root / "first", alias);
     std::vector<Config::IndexConfig> configs{{.dirs = std::vector<std::string>{"headers", "src"}}};
     Indexer indexer;
     indexer.startIndexing(configs, root.string(), inferDirectories);
@@ -391,7 +391,7 @@ TEST_CASE("Include lookup caches refresh after reindexing and file changes") {
     CHECK(indexer.getFilesIncluding(root / "src/late.svh").empty());
 
     fs::remove(alias);
-    fs::create_directory_symlink(root / "second", alias);
+    createDirectorySymlinkOrSkip(root / "second", alias);
     std::ofstream(root / "src/late.svh") << "typedef int late_t;\n";
     indexer.startIndexing(configs, root.string(), inferDirectories);
     CHECK(indexer.getFilesIncluding(root / "first/types.svh").empty());

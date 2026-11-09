@@ -91,9 +91,14 @@ URI URI::fromFile(const std::filesystem::path& file) {
     if (file.empty())
         return URI();
 
-    auto path = std::filesystem::absolute(file);
 #ifdef _WIN32
+    auto path = file;
     path.make_preferred();
+    // MinGW's absolute() can replace a UNC root with the current drive.
+    if (!path.native().starts_with(L"\\\\"))
+        path = std::filesystem::absolute(path);
+#else
+    auto path = std::filesystem::absolute(file);
 #endif
     const auto utf8 = path.u8string();
     const std::string filename(utf8.begin(), utf8.end());
