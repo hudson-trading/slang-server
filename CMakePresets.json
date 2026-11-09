@@ -90,6 +90,24 @@
       }
     },
     {
+      "name": "mingw64-release",
+      "displayName": "MinGW-w64 Release",
+      "inherits": "gcc-flags",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "installDir": "${sourceDir}/install/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER": "g++"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
       "name": "clang-flags",
       "hidden": true,
       "cacheVariables": {
