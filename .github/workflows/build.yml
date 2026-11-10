@@ -98,6 +98,13 @@ jobs:
           - name: windows-x64
             preset: win64-release
             os: windows-latest
+          - name: windows-x64-mingw
+            preset: mingw64-release
+            os: windows-latest
+            msys2: true
+            shell: 'msys2 {0}'
+            skip_pytests: true
+            skip_upload: true
           - name: windows-arm64
             preset: winarm64-release
             os: windows-11-arm
@@ -165,8 +172,20 @@ jobs:
             git
             make
             python3
+      - name: Set up MinGW-w64 (UCRT)
+        if: matrix.msys2 == true
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            git
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-python
       - uses: ilammy/msvc-dev-cmd@v1
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && matrix.msys2 != true
         with:
           arch: ${{ runner.arch == 'ARM64' && 'arm64' || 'x64' }}
       - uses: maxim-lobanov/setup-xcode@v1

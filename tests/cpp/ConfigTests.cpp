@@ -4,6 +4,7 @@
 #include "util/Log.h"
 #include "util/Process.h"
 #include "utils/ServerHarness.h"
+#include "utils/Utils.h"
 #include <catch2/generators/catch_generators.hpp>
 #include <cstdio>
 #include <cstdlib>
@@ -743,6 +744,8 @@ TEST_CASE("External index roots supplement the default workspace scan") {
 }
 
 TEST_CASE("Explicit workspace index scopes replace the default scan") {
+    const std::string_view scope = GENERATE("relative", "absolute", "ancestor", "empty", "alias");
+    CAPTURE(scope);
     ConfigWorkspace files;
     const auto root = files.root / "workspace";
     files.write("workspace/rtl/top.sv", "module top; endmodule\n");
@@ -752,23 +755,20 @@ TEST_CASE("Explicit workspace index scopes replace the default scan") {
         {.dirs = std::vector<std::string>{(files.root / "external").string()}}};
     std::vector<std::string> directories;
     bool selected = true;
-    SECTION("Relative workspace subdirectory") {
+    if (scope == "relative") {
         directories = {"./rtl/../rtl"};
     }
-    SECTION("Absolute workspace subdirectory") {
+    else if (scope == "absolute") {
         directories = {(root / "rtl").string()};
     }
-    SECTION("Workspace ancestor already covers the workspace") {
+    else if (scope == "ancestor") {
         directories = {".."};
     }
-    SECTION("Explicit empty entry disables the implicit workspace") {
+    else if (scope == "empty") {
         selected = false;
     }
-    SECTION("External alias of a workspace subdirectory") {
-        std::error_code ec;
-        fs::create_directory_symlink(root / "rtl", files.root / "alias", ec);
-        if (ec)
-            SKIP("Directory symlinks are unavailable");
+    else if (scope == "alias") {
+        createDirectorySymlinkOrSkip(root / "rtl", files.root / "alias");
         directories = {(files.root / "alias").string()};
     }
     index.push_back({.dirs = directories, .excludeDirs = std::vector<std::string>{"./unselected"}});
@@ -1831,7 +1831,7 @@ TEST_CASE("Shallow include fallback resolves tied matches in canonical path orde
     ConfigWorkspace workspace;
     workspace.write("a/types.svh", "typedef int first_t;\n");
     workspace.write("b/types.svh", "typedef int second_t;\n");
-    fs::create_directory_symlink(workspace.root / "b", workspace.root / "0alias");
+    createDirectorySymlinkOrSkip(workspace.root / "b", workspace.root / "0alias");
     workspace.write("src/top.sv", "`include \"types.svh\"\n"
                                   "module top(output first_t v); assign v = 0; endmodule\n");
     auto server = workspace.server();
@@ -1883,6 +1883,8 @@ TEST_CASE("Shallow include fallback leaves system includes unresolved") {
 }
 
 TEST_CASE("Shallow include fallback ignores deleted candidates and duplicate filesystem aliases") {
+    const std::string_view candidate = GENERATE("deleted", "duplicate", "alias");
+    CAPTURE(candidate);
     ConfigWorkspace workspace;
     workspace.write("first/inc/types.svh", "typedef int value_t;\n");
     workspace.write("second/inc/types.svh", "typedef int value_t;\n");
@@ -1890,22 +1892,22 @@ TEST_CASE("Shallow include fallback ignores deleted candidates and duplicate fil
                                         "module top(output value_t v); assign v = 0; endmodule\n");
     auto expected = workspace.root / "first/inc/types.svh";
     auto server = workspace.server();
-    SECTION("Deleted closest candidate") {
+    if (candidate == "deleted") {
         fs::remove(expected);
         expected = workspace.root / "second/inc/types.svh";
     }
-    SECTION("Multiple paths to the same candidate") {
+    else if (candidate == "duplicate") {
         auto alias = workspace.root / "alias";
-        fs::create_directory_symlink(workspace.root / "first/inc", alias);
+        createDirectorySymlinkOrSkip(workspace.root / "first/inc", alias);
         server.m_indexer.startIndexing(
             std::vector<Config::IndexConfig>{
                 {.dirs = std::vector<std::string>{"first/inc", "alias", "second/inc"}}},
             workspace.root.string());
         REQUIRE(server.m_indexer.getFilesForInclude("types.svh").size() == 3);
     }
-    SECTION("Include path through a directory alias") {
+    else if (candidate == "alias") {
         auto alias = workspace.root / "alias";
-        fs::create_directory_symlink(workspace.root / "first/inc", alias);
+        createDirectorySymlinkOrSkip(workspace.root / "first/inc", alias);
         server.m_indexer.startIndexing(
             std::vector<Config::IndexConfig>{
                 {.dirs = std::vector<std::string>{"first/inc", "alias"}}},

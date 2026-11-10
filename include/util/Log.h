@@ -39,7 +39,8 @@ struct fmt::formatter<server::logging::Milliseconds> {
 namespace server::logging {
 
 namespace detail {
-inline thread_local FILE* output = stderr;
+/// Per-thread log destination; one definition avoids duplicate MinGW TLS initializers.
+extern thread_local FILE* output;
 
 template<typename... Args>
 void write(std::string_view prefix, fmt::format_string<Args...> format, Args&&... args) {
