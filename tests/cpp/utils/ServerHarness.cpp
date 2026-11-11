@@ -148,11 +148,7 @@ std::shared_ptr<server::SlangDoc> ServerHarness::getDoc(const URI& uri) {
     if (!m_driver) {
         return nullptr;
     }
-    auto doc = m_driver->docs.find(uri);
-    if (doc == m_driver->docs.end()) {
-        return nullptr;
-    }
-    return doc->second;
+    return m_driver->getDocument(uri);
 }
 
 std::vector<std::string> ServerHarness::getModulesInFile(const std::string& fileName) {
