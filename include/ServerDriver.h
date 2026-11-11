@@ -237,8 +237,11 @@ private:
                                                          const parsing::Token& token,
                                                          const syntax::SyntaxNode& referenceSyntax);
 
-    /// Set of URIs for documents that are explicitly opened by the client
-    flat_hash_set<URI> m_openDocs;
+    /// Client URIs mapped to their canonical document identities while open.
+    flat_hash_map<URI, URI> m_openDocs;
+
+    /// Resolve a client URI without changing the identity of an already open document.
+    URI getDocumentURI(const URI& uri) const;
 
     /// Every source file covered by the build, including secondary single-unit buffers.
     flat_hash_set<URI> m_buildSourceUris;

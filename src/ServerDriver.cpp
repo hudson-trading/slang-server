@@ -237,11 +237,11 @@ void ServerDriver::onDocDidSave(SlangDoc& doc) {
     if (!comp) {
         analyzeDocument(doc);
         // Reanalyze open documents whose dependency buffers were invalidated
-        for (const auto& uri : m_openDocs) {
-            if (uri == doc.getURI())
+        for (const auto& [uri, documentUri] : m_openDocs) {
+            if (documentUri == doc.getURI())
                 continue;
 
-            auto it = docs.find(uri);
+            auto it = docs.find(documentUri);
             if (it == docs.end()) {
                 ERROR("Open Doc {} not found", uri.getPath());
                 continue;
@@ -280,8 +280,8 @@ void ServerDriver::copyOpenDocumentsFrom(const ServerDriver* oldDriver) {
     m_includeSelections = oldDriver->m_includeSelections;
     completions.resolveEdits = oldDriver->completions.resolveEdits;
     oldDriver->diagClient->clearAndPush();
-    for (const auto& uri : oldDriver->m_openDocs) {
-        auto docIt = oldDriver->docs.find(uri);
+    for (const auto& [uri, documentUri] : oldDriver->m_openDocs) {
+        auto docIt = oldDriver->docs.find(documentUri);
         if (docIt == oldDriver->docs.end()) {
             ERROR("Open Doc {} not found in old driver", uri.getPath());
             continue;
@@ -290,6 +290,7 @@ void ServerDriver::copyOpenDocumentsFrom(const ServerDriver* oldDriver) {
         // openDocument expects no \0
         auto text = docIt->second->getText();
         text.remove_suffix(1);
+        m_openDocs.insert_or_assign(uri, documentUri);
         openDocument(uri, text);
     }
 }
@@ -338,19 +339,30 @@ std::unique_ptr<ServerDriver> ServerDriver::createFromFileLists(
     return newDriver;
 }
 
+URI ServerDriver::getDocumentURI(const URI& uri) const {
+    if (auto it = m_openDocs.find(uri); it != m_openDocs.end())
+        return it->second;
+    if (!uri.str().starts_with("file:"))
+        return uri;
+    std::error_code ec;
+    auto path = std::filesystem::weakly_canonical(uri.getPath(), ec);
+    return ec ? uri : URI::fromFile(path);
+}
+
 void ServerDriver::openDocument(const URI& uri, const std::string_view text) {
-    auto docIter = docs.find(uri);
+    auto documentUri = getDocumentURI(uri);
+    auto docIter = docs.find(documentUri);
     std::shared_ptr<SlangDoc> doc;
     bool matchesBuildSource = false;
     if (docIter != docs.end() && docIter->second->textMatches(text)) {
         doc = docIter->second;
-        matchesBuildSource = m_buildSourceUris.contains(uri);
+        matchesBuildSource = m_buildSourceUris.contains(documentUri);
     }
-    else if (docIter == docs.end() && m_buildSourceUris.contains(uri)) {
-        doc = SlangDoc::open(*this, uri);
+    else if (docIter == docs.end() && m_buildSourceUris.contains(documentUri)) {
+        doc = SlangDoc::open(*this, documentUri);
         if (doc->textMatches(text)) {
             matchesBuildSource = true;
-            docs[uri] = doc;
+            docs[documentUri] = doc;
         }
         else {
             doc.reset();
@@ -360,37 +372,43 @@ void ServerDriver::openDocument(const URI& uri, const std::string_view text) {
     if (!doc) {
         if (docIter != docs.end())
             WARN("Document {} text does not match, updating", uri.getPath());
-        doc = SlangDoc::fromText(*this, uri, text);
-        docs[uri] = doc;
+        doc = SlangDoc::fromText(*this, documentUri, text);
+        docs[documentUri] = doc;
     }
+
+    m_openDocs.insert_or_assign(uri, documentUri);
+    diagClient->openDocument(uri, documentUri);
 
     if (comp && matchesBuildSource) {
         // File is already part of the compilation — compilation diags were
-        // already published, so skip shallow diags. Still publish inactive regions.
+        // already computed, so reuse them for the newly opened client URI.
+        diagClient->pushDiags(documentUri);
         publishInactiveRegions(*doc);
     }
     else {
         analyzeDocument(*doc);
     }
-
-    // Track this as an open document
-    m_openDocs.insert(uri);
 }
 
 std::shared_ptr<SlangDoc> ServerDriver::getDocument(const URI& uri) {
-    auto it = docs.find(uri);
+    auto documentUri = getDocumentURI(uri);
+    auto it = docs.find(documentUri);
     if (it != docs.end())
         return it->second;
 
-    auto doc = SlangDoc::open(*this, uri);
+    auto doc = SlangDoc::open(*this, documentUri);
     if (doc) {
-        docs[uri] = doc;
+        docs[documentUri] = doc;
     }
     return doc;
 }
 
 bool ServerDriver::isDocumentOpen(const URI& uri) {
-    return m_openDocs.find(uri) != m_openDocs.end();
+    if (m_openDocs.contains(uri))
+        return true;
+    auto documentUri = getDocumentURI(uri);
+    return std::ranges::any_of(m_openDocs,
+                               [&](const auto& entry) { return entry.second == documentUri; });
 }
 
 void ServerDriver::onDocDidChange(const lsp::DidChangeTextDocumentParams& params,
@@ -410,19 +428,22 @@ void ServerDriver::onDocDidChange(const lsp::DidChangeTextDocumentParams& params
 }
 
 void ServerDriver::closeDocument(const URI& uri) {
-#ifdef SLANG_SERVER_DEBUG
-    diagClient->setDebugDiagnostics(uri, {});
-#endif
-    // Remove from open docs set
+    auto documentUri = getDocumentURI(uri);
+    // Closing one client URI must not close other aliases of the document.
     m_openDocs.erase(uri);
-    if (!comp) {
-        diagClient->clear(uri);
+    diagClient->closeDocument(uri);
+    if (!isDocumentOpen(documentUri)) {
+#ifdef SLANG_SERVER_DEBUG
+        diagClient->setDebugDiagnostics(documentUri, {});
+#endif
+        if (!comp)
+            diagClient->clear(documentUri);
     }
 }
 
 void ServerDriver::reloadDocument(const URI& uri) {
     // Only reload if this is an open document
-    if (m_openDocs.find(uri) == m_openDocs.end()) {
+    if (!isDocumentOpen(uri)) {
         return;
     }
 
@@ -456,7 +477,7 @@ void ServerDriver::onWorkspaceDidChangeWatchedFiles(
         switch (change.type) {
             case lsp::FileChangeType::Created:
             case lsp::FileChangeType::Changed: {
-                auto it = docs.find(change.uri);
+                auto it = docs.find(getDocumentURI(change.uri));
                 if (it == docs.end()) {
                     // Included headers can be cached without having a SlangDoc.
                     if (sm.isCached(change.uri.getPath())) {
@@ -490,8 +511,8 @@ void ServerDriver::onWorkspaceDidChangeWatchedFiles(
     for (auto& doc : updatedDocs) {
         analyzeDocument(*doc);
     }
-    for (const auto& uri : m_openDocs) {
-        auto it = docs.find(uri);
+    for (const auto& [uri, documentUri] : m_openDocs) {
+        auto it = docs.find(documentUri);
         if (it != docs.end() && !it->second->hasAnalysis())
             analyzeDocument(*it->second);
     }
@@ -604,7 +625,7 @@ bool ServerDriver::setIncludeContext(const IncludeContextSelection& selection) {
                                            .source = source,
                                            .occurrence = selection.occurrence});
     invalidateAnalysesAndRefreshClient();
-    for (const auto& uri : m_openDocs)
+    for (const auto& [uri, documentUri] : m_openDocs)
         analyzeDocument(*getDocument(uri));
     return true;
 }
@@ -770,7 +791,7 @@ std::vector<std::shared_ptr<syntax::SyntaxTree>> ServerDriver::getDependentTrees
 
 std::vector<std::string> ServerDriver::getModulesInFile(const std::string& path) {
     // Find the document
-    auto uri = URI::fromFile(path);
+    auto uri = getDocumentURI(URI::fromFile(path));
     auto it = docs.find(uri);
     if (it == docs.end()) {
         WARN("Document {} not found", path);
@@ -1781,8 +1802,12 @@ void ServerDriver::publishInactiveRegions(SlangDoc& doc, const lsp::RequestConte
 
     client.onTextDocumentInactiveRegions(lsp::InactiveRegionsParams{
         .uri = doc.getURI(),
-        .regions = std::move(regions),
+        .regions = regions,
     });
+    for (const auto& [uri, documentUri] : m_openDocs) {
+        if (documentUri == doc.getURI() && uri != documentUri)
+            client.onTextDocumentInactiveRegions({.uri = uri, .regions = regions});
+    }
 }
 
 } // namespace server
