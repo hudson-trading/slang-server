@@ -87,9 +87,8 @@ private:
     /// Decode a percent-encoded string
     static std::string decode(const std::string& s);
 
-    /// Encode a string into percent-encoding.
-    /// This isn't used anywhere currently, but is provided for completeness.
-    static std::string encode(const std::string& s);
+    /// Encode a decoded URI component, preserving the delimiters allowed in that component.
+    static std::string encode(std::string_view value, std::string_view allowedDelimiters);
 
     /// Converts a char to hexadecimal
     static std::string to_hex(unsigned char c);

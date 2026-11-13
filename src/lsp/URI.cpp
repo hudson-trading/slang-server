@@ -132,7 +132,27 @@ void URI::init(std::string scheme, std::string authority, std::string path, std:
 
 /// Necessary for the serialization to work.
 URI::ReflectionType URI::reflection() const {
-    return str();
+    std::string result;
+    if (!scheme().empty()) {
+        result += scheme();
+        result += ':';
+    }
+
+    if (!authority().empty() || scheme() == "file") {
+        result += "//";
+        result += encode(authority(), ":@[]");
+    }
+
+    result += encode(path(), ":@/");
+    if (!query().empty()) {
+        result += '?';
+        result += encode(query(), ":@/?");
+    }
+    if (!fragment().empty()) {
+        result += '#';
+        result += encode(fragment(), ":@/?");
+    }
+    return result;
 }
 
 /// Expresses the underlying URI as a string.
@@ -226,10 +246,15 @@ std::string URI::decode(const std::string& s) {
     return result;
 }
 
-std::string URI::encode(const std::string& s) {
+std::string URI::encode(std::string_view value, std::string_view allowedDelimiters) {
     std::string result;
-    for (unsigned char c : s) {
-        if (std::isalnum(c) || c == '-' || c == '.' || c == '_' || c == '~' || c == '/') {
+    for (unsigned char c : value) {
+        const bool unreserved = (c < 0x80 && std::isalnum(c)) || c == '-' || c == '.' || c == '_' ||
+                                c == '~';
+        const bool subDelimiter = c == '!' || c == '$' || c == '&' || c == '\'' || c == '(' ||
+                                  c == ')' || c == '*' || c == '+' || c == ',' || c == ';' ||
+                                  c == '=';
+        if (unreserved || subDelimiter || allowedDelimiters.find(c) != std::string_view::npos) {
             result += static_cast<char>(c);
         }
         else {

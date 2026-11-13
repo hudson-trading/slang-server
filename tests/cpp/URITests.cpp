@@ -12,6 +12,28 @@ TEST_CASE("URI Decode") {
 #endif
 }
 
+TEST_CASE("URI Reflection Percent Encodes Components") {
+    SECTION("Path") {
+        URI u("file:///with%20space/%E4%B8%AD%E6%96%87/f%3F.sv");
+
+        CHECK(u.reflection() == "file:///with%20space/%E4%B8%AD%E6%96%87/f%3F.sv");
+    }
+
+    SECTION("Authority, query, and fragment") {
+        URI u("https://user%20name@example.com/a%23b?q=hello%20world%23value#part%20one%23two");
+
+        CHECK(u.reflection() ==
+              "https://user%20name@example.com/a%23b?q=hello%20world%23value#part%20one%23two");
+    }
+
+    SECTION("Reserved delimiters remain intact") {
+        URI u("https://example.com:8042/a;b/c?x=1&next=/d?y=2#section/1?mode=full");
+
+        CHECK(u.reflection() ==
+              "https://example.com:8042/a;b/c?x=1&next=/d?y=2#section/1?mode=full");
+    }
+}
+
 TEST_CASE("URI EmptyInput") {
     URI u("");
 
