@@ -5,6 +5,8 @@
 
 #include <array>
 
+#include "slang/ast/symbols/SpecifySymbols.h"
+
 namespace server {
 
 using slang::parsing::KnownSystemName;
@@ -1040,6 +1042,63 @@ const SystemTaskDoc* getSystemTaskDoc(KnownSystemName name) {
 /// For completions
 std::span<const SystemTaskDoc> getSystemTaskDocs() {
     return DOCS;
+}
+
+std::span<const SystemTimingCheckDoc> getSystemTimingCheckDocs() {
+    static constexpr SystemTimingCheckDoc docs[] = {
+        {"$setup",
+         {"$setup(data_event, reference_event, timing_check_limit[, notifier])",
+          "Checks that data is stable for the required interval before the reference event.",
+          "31"}},
+        {"$hold",
+         {"$hold(reference_event, data_event, timing_check_limit[, notifier])",
+          "Checks that data remains stable for the required interval after the reference event.",
+          "31"}},
+        {"$setuphold",
+         {"$setuphold(reference_event, data_event, setup_limit, hold_limit"
+          "[, notifier[, timestamp_condition[, timecheck_condition"
+          "[, delayed_reference[, delayed_data]]]]])",
+          "Combines setup and hold checks, including support for negative timing limits.", "31"}},
+        {"$recovery",
+         {"$recovery(reference_event, data_event, timing_check_limit[, notifier])",
+          "Checks the minimum interval from asynchronous control release to the clock event.",
+          "31"}},
+        {"$removal",
+         {"$removal(reference_event, data_event, timing_check_limit[, notifier])",
+          "Checks the minimum interval from the clock event to asynchronous control release.",
+          "31"}},
+        {"$recrem",
+         {"$recrem(reference_event, data_event, recovery_limit, removal_limit"
+          "[, notifier[, timestamp_condition[, timecheck_condition"
+          "[, delayed_reference[, delayed_data]]]]])",
+          "Combines recovery and removal checks, including support for negative timing limits.",
+          "31"}},
+        {"$skew",
+         {"$skew(reference_event, data_event, timing_check_limit[, notifier])",
+          "Checks that the delay between reference and data events does not exceed the limit.",
+          "31"}},
+        {"$timeskew",
+         {"$timeskew(reference_event, data_event, timing_check_limit"
+          "[, notifier[, event_based_flag[, remain_active_flag]]])",
+          "Checks event skew with optional event-based checking and persistent monitoring.", "31"}},
+        {"$fullskew",
+         {"$fullskew(reference_event, data_event, limit1, limit2"
+          "[, notifier[, event_based_flag[, remain_active_flag]]])",
+          "Checks skew in both directions between reference and data events.", "31"}},
+        {"$period",
+         {"$period(controlled_reference_event, timing_check_limit[, notifier])",
+          "Checks the minimum interval between successive reference events.", "31"}},
+        {"$width",
+         {"$width(controlled_reference_event, timing_check_limit[, threshold[, notifier]])",
+          "Checks the minimum pulse width, ignoring pulses shorter than the optional threshold.",
+          "31"}},
+        {"$nochange",
+         {"$nochange(reference_event, data_event, start_edge_offset, end_edge_offset[, notifier])",
+          "Checks that data does not change within the specified reference-event window.", "31"}},
+    };
+    static_assert(std::size(docs) + 1 == slang::ast::SystemTimingCheckKind_traits::values.size(),
+                  "Document every system timing check except Unknown.");
+    return docs;
 }
 
 } // namespace server

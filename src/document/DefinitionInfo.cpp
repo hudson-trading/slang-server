@@ -982,9 +982,10 @@ markup::Document DefinitionInfo::SystemSubroutineTarget::getHover(
     markup::Document md;
 
     auto& head = md.addParagraph();
-    head.appendBold(token.kind != parsing::TokenKind::SystemIdentifier ? "Built-in method"
-                    : isTask                                           ? "System task"
-                                                                       : "System function")
+    head.appendBold(kind == Kind::TimingCheck                            ? "System timing check"
+                    : token.kind != parsing::TokenKind::SystemIdentifier ? "Built-in method"
+                    : kind == Kind::Task                                 ? "System task"
+                                                                         : "System function")
         .appendText(" ")
         .appendCode(token.valueText());
     if (!doc->ieeeSection.empty()) {
