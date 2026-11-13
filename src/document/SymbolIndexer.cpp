@@ -15,6 +15,7 @@
 #include "slang/ast/Scope.h"
 #include "slang/ast/Symbol.h"
 #include "slang/ast/symbols/CompilationUnitSymbols.h"
+#include "slang/ast/symbols/CoverSymbols.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
 #include "slang/ast/symbols/PortSymbols.h"
 #include "slang/ast/types/AllTypes.h"
@@ -116,6 +117,9 @@ slang::SmallVector<const slang::ast::Scope*, 2> SymbolIndexer::getScopesForSynta
                 else
                     scope = symbol->getParentScope();
 
+                if (auto* covergroup = scope ? scope->asSymbol().as_if<ast::CovergroupType>()
+                                             : nullptr)
+                    scope = &covergroup->getBody();
                 if (scope && std::ranges::find(result, scope) == result.end())
                     result.push_back(scope);
             }
