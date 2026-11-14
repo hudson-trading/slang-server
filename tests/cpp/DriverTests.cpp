@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <functional>
+#include <map>
 
 #include "slang/analysis/ValueDriver.h"
 #include "slang/ast/symbols/CompilationUnitSymbols.h"
@@ -179,6 +180,52 @@ TEST_CASE("Included dependencies can refer back to the compilation being analyze
     CHECK(first.doc->getAnalysis()->getShallowCompilation() != originalCompilation);
     CHECK(firstHeader.doc->getCompilation() == first.doc->getCompilation());
     CHECK(secondHeader.doc->getCompilation() == second.doc->getCompilation());
+}
+
+TEST_CASE("Packages in included files can refer to each other") {
+    // https://github.com/hudson-trading/slang-server/issues/576
+    auto firstOpened = GENERATE("top.sv", "a_src.sv", "b_src.sv", "a_pkg.svh", "b_pkg.svh");
+    CAPTURE(firstOpened);
+    auto root = fs::weakly_canonical(fs::temp_directory_path()) /
+                fmt::format("slang_package_cycle_{}", slang::OS::getpid());
+    fs::create_directories(root);
+    slang::ScopeGuard cleanup([&] { fs::remove_all(root); });
+    const std::map<std::string, std::string> files = {
+        {"a_pkg.svh", "package a_pkg;\n"
+                      "    parameter int LOCAL_WIDTH = 8;\n"
+                      "    parameter int PEER_WIDTH = b_pkg::LOCAL_WIDTH;\n"
+                      "endpackage\n"},
+        {"b_pkg.svh", "package b_pkg;\n"
+                      "    parameter int LOCAL_WIDTH = 16;\n"
+                      "    parameter int PEER_WIDTH = a_pkg::LOCAL_WIDTH;\n"
+                      "endpackage\n"},
+        {"a_src.sv", "`include \"a_pkg.svh\"\n"},
+        {"b_src.sv", "`include \"b_pkg.svh\"\n"},
+        {"top.sv", "module top(output int combined_width);\n"
+                   "    assign combined_width = a_pkg::PEER_WIDTH + b_pkg::PEER_WIDTH;\n"
+                   "endmodule\n"},
+    };
+    for (const auto& [name, text] : files)
+        std::ofstream(root / name) << text;
+    ServerHarness server(lsp::InitializeParams{
+        .workspaceFolders = {{lsp::WorkspaceFolder{URI::fromFile(root), "package_cycle"}}}});
+    // a_src.sv and b_src.sv only contain an include, so open files without the symbol check
+    auto open = [&](const std::string& name) { return server.openFile(name, files.at(name)); };
+
+    open(firstOpened);
+    auto top = open("top.sv");
+    open("a_src.sv");
+    open("b_src.sv");
+    auto aHeader = open("a_pkg.svh");
+    auto bHeader = open("b_pkg.svh");
+    CHECK(top.getDiagnostics().empty());
+
+    auto definitions = top.before("a_pkg::PEER_WIDTH").getDefinitions();
+    REQUIRE(definitions.size() == 1);
+    CHECK(definitions.front().targetUri == aHeader.m_uri);
+    definitions = top.before("b_pkg::PEER_WIDTH").getDefinitions();
+    REQUIRE(definitions.size() == 1);
+    CHECK(definitions.front().targetUri == bHeader.m_uri);
 }
 
 TEST_CASE("Expand macros preserves the selected file and uses its include context") {
