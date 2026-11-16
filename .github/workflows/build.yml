@@ -97,10 +97,11 @@ jobs:
             os: macos-15
           - name: windows-x64
             preset: win64-release
-            os: windows-latest
+            os: windows-2022
           - name: windows-arm64
             preset: winarm64-release
             os: windows-11-arm
+            msvc_toolset: '14.44'
 
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
@@ -169,6 +170,7 @@ jobs:
         if: runner.os == 'Windows'
         with:
           arch: ${{ runner.arch == 'ARM64' && 'arm64' || 'x64' }}
+          toolset: ${{ matrix.msvc_toolset }}
       - uses: maxim-lobanov/setup-xcode@v1
         if: runner.os == 'macOS'
         with:
