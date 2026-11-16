@@ -136,6 +136,16 @@ TEST_CASE("Cone Tracing") {
                                  {"test.the_sub_2.the_sub_sub.switched_result", &cursor_switched}});
     }
 
+    SECTION("Loads Through Instance With Unconnected Input") {
+        auto cursor = doc.after("module open_ports(").after("input logic ");
+        server.checkConeCommand("slang.getLoadsWithLocation", "test.open_src",
+                                {{"test.the_open.in", &cursor}});
+    }
+
+    SECTION("Loads Of Unconnected Output") {
+        server.checkConeCommand("slang.getLoadsWithLocation", "test.the_open.out", {});
+    }
+
     SECTION("Loads Interface") {
         auto cursor = doc.before("quz;");
         server.checkConeCommand("slang.getLoadsWithLocation", "test.the_intfs[1].quz",

@@ -245,15 +245,19 @@ public:
         for (auto const connection : symbol.getPortConnections()) {
             // TODO -- interfaces, etc.
             const auto port = connection->port.as_if<slang::ast::PortSymbol>();
+            const auto expr = connection->getExpression();
+            if (!expr) {
+                continue;
+            }
             if (port) {
                 if (port->direction == slang::ast::ArgumentDirection::Out &&
                     port->internalSymbol == root) {
                     ScopedReset foundRootScope(foundRoot, true);
-                    connection->getExpression()->visit(*this);
+                    expr->visit(*this);
                 }
                 else if (port->direction == slang::ast::ArgumentDirection::In) {
                     ScopedReset foundRootScope(foundRoot);
-                    connection->getExpression()->visit(*this);
+                    expr->visit(*this);
                     if (foundRoot) {
                         addLeaf(port);
                     }
