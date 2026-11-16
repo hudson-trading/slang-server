@@ -205,6 +205,64 @@ endpackage
     }
 }
 
+TEST_CASE("Generic class scope compatibility supports navigation and completion",
+          "[generic-class]") {
+    auto allowScope = GENERATE(false, true);
+    ServerHarness server;
+    if (allowScope) {
+        Config config;
+        config.flagsByFile.value().push_back({"test", "--allow-generic-class-scope"});
+        REQUIRE(server.loadConfig(config));
+    }
+    auto doc = server.openFile("generic_scope.sv", R"(
+package sample_pkg;
+    class Factory #(type T = int);
+        static function T create();
+            T value;
+            return value;
+        endfunction
+    endclass
+    class Generic #(int WIDTH = 8);
+        typedef Factory#(bit [WIDTH-1:0]) type_id;
+        localparam int LIMIT = WIDTH;
+    endclass
+endpackage
+module top;
+    localparam int RESULT = sample_pkg::Generic::LIMIT;
+    logic [7:0] value = sample_pkg::Generic::type_id::create();
+endmodule
+)");
+    auto diagnostics = doc.getDiagnostics();
+    if (!allowScope) {
+        CHECK(std::ranges::any_of(diagnostics, [](const auto& diagnostic) {
+            return diagnostic.message.find("cannot refer to generic class") != std::string::npos;
+        }));
+        return;
+    }
+    CHECK(std::ranges::none_of(diagnostics, [](const auto& diagnostic) {
+        return diagnostic.severity == lsp::DiagnosticSeverity::Error;
+    }));
+    for (auto name : {"LIMIT", "type_id", "create"}) {
+        CAPTURE(name);
+        auto cursor = doc.after("module top;").before(name);
+        auto definitions = cursor.getDefinitions();
+        REQUIRE(definitions.size() == 1);
+        CHECK(definitions.front().targetSelectionRange.start == doc.before(name).getPosition());
+        auto hover = doc.getHoverAt(cursor.m_offset);
+        REQUIRE(hover);
+        CHECK(rfl::get<lsp::MarkupContent>(hover->contents).value.find(name) != std::string::npos);
+        auto items = cursor.getCompletions(":");
+        auto item = std::ranges::find_if(items, [&](const CompletionHandle& item) {
+            return item.m_item.label == name;
+        });
+        REQUIRE(item != items.end());
+        item->resolve();
+        REQUIRE(item->m_item.documentation);
+        CHECK(rfl::get<lsp::MarkupContent>(*item->m_item.documentation).value.find(name) !=
+              std::string::npos);
+    }
+}
+
 TEST_CASE("Named class parameters navigate to the parameter declaration", "[generic-class]") {
     ServerHarness server;
     auto doc = server.openFile("generic.sv", R"(
