@@ -936,7 +936,10 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
         auto buffer = analysis->getIncludedBuffer(include);
         if (!buffer)
             return {};
-        return DefinitionInfo{sm, DefinitionInfo::IncludeTarget{include.fileName, *buffer}};
+        auto path = sm.getFullPath(*buffer).string();
+        path.erase(0, getWsRelativePathOffset(path));
+        return DefinitionInfo{sm, DefinitionInfo::IncludeTarget{include.fileName, *buffer,
+                                                                std::move(path)}};
     }
 
     const parsing::Token* declTok = analysis->syntaxes.getWordTokenAt(loc.value());

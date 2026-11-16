@@ -231,6 +231,10 @@ private:
     /// Keeps the syntax and symbols referenced by this file's indexes alive.
     std::shared_ptr<ShallowCompilation> m_shallowCompilation;
 
+    /// Buffers resolved for skipped includes, retained so repeated queries reuse the same target.
+    mutable slang::flat_hash_map<const slang::syntax::IncludeDirectiveSyntax*, slang::BufferID>
+        m_resolvedIncludes;
+
     /// Symbol tree visitor for /documentSymbols
     /// Currently this is relies on syntax, but we should switch it to use the shallow compilation
     /// when symbols exist

@@ -1099,11 +1099,9 @@ std::vector<lsp::LocationLink> DefinitionInfo::SystemSubroutineTarget::getDefini
 
 markup::Document DefinitionInfo::IncludeTarget::getHover(
     const SourceManager& sm, BufferID /*docBuffer*/, const Config::HoverConfig& /*hovers*/) const {
-    const auto& path = sm.getFullPath(buffer);
-
     markup::Document md;
-    md.addParagraph().appendHeader(path.filename().string(), 3);
-    md.addParagraph().appendText(path.string());
+    md.addParagraph().appendHeader(sm.getFullPath(buffer).filename().string(), 3);
+    md.addParagraph().appendText(displayPath);
     return md;
 }
 
