@@ -239,6 +239,30 @@ TEST_CASE("JSON-RPC messages log their latency") {
                 R"(\[#9 [0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}\] INFO: <--- context\n\[#9 {8}\+\.[0-9]{3}\] INFO: Started context\n\[#9 {8}\+\.[0-9]{3}\] INFO: request checkpoint\n\[#9 {8}\+\.[0-9]{3}\] INFO: ---> context\n)")));
     }
 
+    SECTION("unknown request answers MethodNotFound") {
+        auto result = server.processMessage({
+            .jsonrpc = "2.0",
+            .id = 16,
+            .method = "textDocument/unknown",
+            .params = std::nullopt,
+        });
+
+        REQUIRE(std::holds_alternative<lsp::RpcError>(result));
+        CHECK(std::get<lsp::RpcError>(result).code ==
+              static_cast<int>(lsp::ErrorCodes::MethodNotFound));
+    }
+
+    SECTION("unknown notification is ignored") {
+        auto result = server.processMessage({
+            .jsonrpc = "2.0",
+            .id = std::nullopt,
+            .method = "$/unknown",
+            .params = std::nullopt,
+        });
+
+        CHECK(std::holds_alternative<std::nullopt_t>(result));
+    }
+
     SECTION("notification handler receives request context") {
         auto result = server.processMessage({
             .jsonrpc = "2.0",

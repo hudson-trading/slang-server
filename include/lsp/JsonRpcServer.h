@@ -283,8 +283,10 @@ protected:
 
         auto it = requests.find(request.method);
         if (it == requests.end()) {
-            server::logging::warn("<-/- {} (not found)", request.method);
-            return std::nullopt;
+            // Every request must get a response, even one the server does not implement.
+            server::logging::warn("<-/- {} (method not found)", request.method);
+            return RpcError{.code = static_cast<int>(ErrorCodes::MethodNotFound),
+                            .message = fmt::format("Method not found: {}", request.method)};
         }
 
         MessageLog messageLog(ctx, logStart);
