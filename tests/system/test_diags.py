@@ -3,6 +3,7 @@ from __future__ import annotations
 import typing
 
 import pytest
+from pygls import uris
 
 if typing.TYPE_CHECKING:
     pass
@@ -16,12 +17,12 @@ def assert_diagnostic_messages(diags, messages: list[str]):
 @pytest.mark.asyncio
 async def test_publish_diagnostics(
     client: SlangClient,
+    document_uri: str,
 ):
     """Ensure that diagnostics are published on open."""
 
-    uri = "file:///mymodule.sv"
     client.openText(
-        uri,
+        document_uri,
         text="""
                     module m #() ()
                     endmodule
@@ -31,19 +32,20 @@ async def test_publish_diagnostics(
     diags = await client.wait_for_notification("textDocument/publishDiagnostics")
 
     assert len(diags.diagnostics) == 2
-    assert diags.uri == uri
+    assert diags.uri.isascii()
+    assert " " not in diags.uri
+    assert uris.to_fs_path(diags.uri) == uris.to_fs_path(document_uri)
 
 
 @pytest.mark.asyncio
 async def test_diags_update(
     client: SlangClient,
+    document_uri: str,
 ):
     """Ensure that onChange sends out new diagnostics."""
 
-    test_uri = "file:///mymodule.sv"
-
     doc = client.openText(
-        test_uri,
+        document_uri,
         text="""
                     module m #() ()
                     endmodule

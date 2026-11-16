@@ -28,19 +28,17 @@ def tree_contains(
 
 
 @pytest.mark.asyncio
-async def test_symbol_tree_regression(client: SlangClient) -> None:
+async def test_symbol_tree_regression(client: SlangClient, document_uri: str) -> None:
     """
     Use a snapshot of `all.sv` to ensure that all expected symbols are correctly returned.
     """
 
-    uri = "file:///mymodule.sv"
-
     all_sv = pathlib.Path.cwd().joinpath("tests/data/all.sv")
 
     with open(all_sv, "r") as fh:
-        client.openText(uri=uri, text=fh.read())
+        client.openText(uri=document_uri, text=fh.read())
 
-    symbols = await client.getDocDocumentSymbols(uri)
+    symbols = await client.getDocDocumentSymbols(document_uri)
     logger.info(symbols)
 
     # Count the total number of symbols in the hierarchy
@@ -56,15 +54,13 @@ async def test_symbol_tree_regression(client: SlangClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_symbol_tree_defines(client: SlangClient) -> None:
+async def test_symbol_tree_defines(client: SlangClient, document_uri: str) -> None:
     """
     Test that the symbol tree can correctly extract macro definitions.
     """
 
-    uri = "file:///mymodule.sv"
-
     client.openText(
-        uri,
+        document_uri,
         """
                     `define A
                     `ifdef A
@@ -91,7 +87,7 @@ async def test_symbol_tree_defines(client: SlangClient) -> None:
                     """,
     )
 
-    symbols = await client.getDocDocumentSymbols(uri)
+    symbols = await client.getDocDocumentSymbols(document_uri)
     logger.info(symbols)
 
     assert tree_contains(symbols, "A", types.SymbolKind.Constant)

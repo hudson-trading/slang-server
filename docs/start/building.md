@@ -16,7 +16,7 @@
 git clone https://github.com/hudson-trading/slang-server.git
 cd slang-server
 
-# Pull direct dependencies (slang, reflect-cpp, and ctre)
+# Pull direct submodules (slang and reflect-cpp)
 git submodule update --init
 
 # Build with cmake using a C++20 compliant compiler
@@ -27,6 +27,15 @@ cmake --build build -j --target slang_server
 Only direct submodules are needed. Leave out `--recursive` to skip reflect-cpp's
 optional `vcpkg` submodule; slang-server uses its bundled JSON support with
 `REFLECTCPP_USE_VCPKG=OFF` by default.
+
+CMake downloads the remaining dependencies, including uriparser, during
+configuration. Network access is required unless those dependencies are already
+available locally.
+
+To use an installed uriparser instead of downloading it, configure with
+`-DSLANG_SERVER_USE_SYSTEM_URIPARSER=ON`. This requires uriparser 1.0.3 or later
+with `char` support and its CMake package configuration. Set `CMAKE_PREFIX_PATH`
+if the package is installed outside CMake's default search paths.
 
 The binary will be at `build/bin/slang-server`.
 

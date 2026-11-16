@@ -80,6 +80,8 @@ endif()
 
 option(SLANG_SERVER_USE_SYSTEM_FMT
        "Use a system-installed fmt library instead of slang's bundled fmt" OFF)
+option(SLANG_SERVER_USE_SYSTEM_URIPARSER
+       "Use a system-installed uriparser library instead of FetchContent" OFF)
 
 if(CMAKE_SYSTEM_NAME MATCHES "Darwin")
   # This ensures that *all* targets (including slang and reflect-cpp) use the
@@ -279,7 +281,38 @@ if(SLANG_SERVER_USE_SYSTEM_FMT AND NOT TARGET fmt::fmt)
   find_package(fmt REQUIRED)
 endif()
 add_subdirectory(external/reflect-cpp)
-add_subdirectory(external/ctre)
+if(SLANG_SERVER_USE_SYSTEM_URIPARSER)
+  # URI serialization relies on the length overflow checks added in 1.0.3.
+  find_package(uriparser 1.0.3 CONFIG REQUIRED COMPONENTS char)
+else()
+  set(URIPARSER_SHARED_LIBS
+      OFF
+      CACHE BOOL "Link uriparser statically" FORCE)
+  set(URIPARSER_BUILD_DOCS
+      OFF
+      CACHE BOOL "Don't build uriparser docs" FORCE)
+  set(URIPARSER_BUILD_TESTS
+      OFF
+      CACHE BOOL "Don't build uriparser tests" FORCE)
+  set(URIPARSER_BUILD_TOOLS
+      OFF
+      CACHE BOOL "Don't build uriparser tools" FORCE)
+  set(URIPARSER_BUILD_WCHAR_T
+      OFF
+      CACHE BOOL "Use UTF-8 URI strings" FORCE)
+  set(URIPARSER_ENABLE_INSTALL
+      OFF
+      CACHE BOOL "Don't install uriparser separately" FORCE)
+  FetchContent_Declare(
+    uriparser
+    GIT_REPOSITORY https://github.com/uriparser/uriparser.git
+    GIT_TAG b91f8ff43aecad5e165f422b03c97814582bda68)
+  FetchContent_MakeAvailable(uriparser)
+  if(MSVC AND CMAKE_MSVC_RUNTIME_LIBRARY)
+    set_property(TARGET uriparser PROPERTY MSVC_RUNTIME_LIBRARY
+                                           "${CMAKE_MSVC_RUNTIME_LIBRARY}")
+  endif()
+endif()
 
 # Suppress warnings in reflect-cpp library
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
@@ -347,7 +380,8 @@ target_include_directories(slang_server_obj_lib SYSTEM
 target_precompile_headers(slang_server_obj_lib PRIVATE
                           "${PROJECT_SOURCE_DIR}/include/lsp/LspTypes.h")
 
-target_link_libraries(slang_server_obj_lib PUBLIC slang::slang fmt::fmt ctre)
+target_link_libraries(slang_server_obj_lib PUBLIC slang::slang fmt::fmt
+                                                  uriparser::uriparser)
 
 # Apply pedantic warnings only to slang-server code, not external libraries
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
