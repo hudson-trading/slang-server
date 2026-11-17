@@ -133,6 +133,13 @@ DebugWorkspaceScanResult debugScanWorkspace(const std::filesystem::path& targetP
             auto uri = URI::fromFile(path);
             bool opened = false;
             try {
+                const auto limit = server.getConfig().maxFileSize.value();
+                if (limit && fs::file_size(path) > limit)
+                    throw std::runtime_error(fmt::format(
+                        "Analysis skipped: file exceeds maxFileSize ({} bytes). Increase "
+                        "'maxFileSize' in '.slang/server.json' or set it to 0 to disable the "
+                        "limit.",
+                        limit));
                 std::ifstream input(path, std::ios::binary);
                 if (!input)
                     throw std::runtime_error("Cannot open source file");

@@ -104,6 +104,11 @@ directories and their descendants. Environment variables use the configured
 `env` overrides. The Python runner additionally accepts repeatable
 workspace-relative `--exclude` globs and a `--timeout` per-request limit in seconds.
 
+Both runners honor the server's `maxFileSize` setting (1 MiB by default, `0` for
+unlimited). Oversized files are reported in `errors`, and scanning continues with
+the remaining files. These skipped files make the report incomplete rather than
+counting as successfully scanned.
+
 Both runners produce JSON containing:
 
 - `documents`: every finding, compiler diagnostics, URI, path, and check counts.

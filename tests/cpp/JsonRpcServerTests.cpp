@@ -18,6 +18,7 @@ public:
     TestJsonRpcServer() {
         registerMethod<std::nullopt_t, int, &TestJsonRpcServer::succeedRequest>("success");
         registerMethod<std::nullopt_t, int, &TestJsonRpcServer::failRequest>("fail");
+        registerMethod<std::nullopt_t, int, &TestJsonRpcServer::limitedRequest>("limited");
         registerMethod<std::nullopt_t, int, &TestJsonRpcServer::contextRequest>("context");
         registerMethod<std::nullopt_t, std::monostate, &TestJsonRpcServer::contextVoidRequest>(
             "context-void");
@@ -36,6 +37,8 @@ public:
     int succeedRequest(std::monostate) { return 42; }
 
     int failRequest(std::monostate) { throw std::runtime_error("failed"); }
+
+    int limitedRequest(std::monostate) { throw lsp::RequestFailed("analysis limit"); }
 
     int contextRequest(std::monostate, const lsp::RequestContext& ctx) {
         contextRequestCalls++;
@@ -207,6 +210,20 @@ TEST_CASE("JSON-RPC messages log their latency") {
             capture.str(),
             std::regex(
                 R"(\[n([0-9]+) [0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}\] INFO: <--- notification\n\[n\1 {8}\+\.[0-9]{3}\] INFO: ---- notification \(notification finished\)\n)")));
+    }
+
+    SECTION("unavailable analysis answers RequestFailed") {
+        auto result = server.processMessage({
+            .jsonrpc = "2.0",
+            .id = 8,
+            .method = "limited",
+            .params = std::nullopt,
+        });
+
+        REQUIRE(std::holds_alternative<lsp::RpcError>(result));
+        const auto& error = std::get<lsp::RpcError>(result);
+        CHECK(error.code == static_cast<int>(lsp::LSPErrorCodes::RequestFailed));
+        CHECK(error.message == "analysis limit");
     }
 
     SECTION("failed notification") {

@@ -209,13 +209,24 @@ void ServerDriver::analyzeDocument(SlangDoc& doc, const lsp::RequestContext& ctx
     // Clear and re-issue diagnostics for this document
     diagClient->clear(doc.getURI());
 
-    // Pragma mappings are populated from the preprocessor/lexer
-    doc.getSyntaxTree();
-
-    // Update pragma mappings for the changed buffer
-    diagEngine.setMappingsFromPragmas(doc.getBuffer());
-
-    doc.issueDiagnosticsTo(diagEngine, ctx);
+    try {
+        if (auto message = doc.getAnalysisLimitMessage())
+            throw lsp::RequestFailed(*message);
+        // Pragma mappings are populated from the preprocessor/lexer.
+        doc.getSyntaxTree();
+        diagEngine.setMappingsFromPragmas(doc.getBuffer());
+        doc.issueDiagnosticsTo(diagEngine, ctx);
+    }
+    catch (const lsp::RequestFailed& error) {
+        diagClient->clear(doc.getURI());
+        diagClient->pushDiags(doc.getURI());
+        if (isDocumentOpen(doc.getURI()) && m_analysisLimitNotified.insert(doc.getURI()).second)
+            client.showWarning(error.what());
+        if (client.capabilities.inactiveRegionsSupported)
+            client.onTextDocumentInactiveRegions({.uri = doc.getURI(), .regions = {}});
+        return;
+    }
+    m_analysisLimitNotified.erase(doc.getURI());
     ctx.throwIfCancelled("before publishing diagnostics");
     diagClient->pushDiags(doc.getURI());
 
@@ -223,6 +234,10 @@ void ServerDriver::analyzeDocument(SlangDoc& doc, const lsp::RequestContext& ctx
 }
 
 void ServerDriver::onDocDidSave(SlangDoc& doc) {
+    if (doc.getAnalysisLimitMessage()) {
+        analyzeDocument(doc);
+        return;
+    }
     auto tree = doc.getSyntaxTree();
     if (sm.getFullPath(tree->getSourceBufferIds()[0]) != sm.getFullPath(doc.getBuffer())) {
         auto indexOptions = options;
@@ -265,9 +280,14 @@ void ServerDriver::onDocDidSave(SlangDoc& doc) {
 void ServerDriver::publishCompilationDiagnostics(const URI* priorityUri) {
     diagEngine.setMappingsFromPragmas();
     for (const auto& entry : docs) {
-        entry.second->issueParseDiagnostics(diagEngine);
+        if (!entry.second->getAnalysisLimitMessage())
+            entry.second->issueParseDiagnostics(diagEngine);
     }
     comp->issueDiagnosticsTo(diagEngine);
+    for (const auto& [uri, doc] : docs) {
+        if (doc->getAnalysisLimitMessage())
+            diagClient->clear(uri);
+    }
     if (priorityUri)
         diagClient->pushDiags(*priorityUri);
     else
@@ -279,6 +299,8 @@ void ServerDriver::copyOpenDocumentsFrom(const ServerDriver* oldDriver) {
         return;
 
     m_includeSelections = oldDriver->m_includeSelections;
+    if (getMaxFileSize() == oldDriver->getMaxFileSize())
+        m_analysisLimitNotified = oldDriver->m_analysisLimitNotified;
     completions.resolveEdits = oldDriver->completions.resolveEdits;
     oldDriver->diagClient->clearAndPush();
     for (const auto& uri : oldDriver->m_openDocs) {
@@ -365,7 +387,9 @@ void ServerDriver::openDocument(const URI& uri, const std::string_view text) {
         docs[uri] = doc;
     }
 
-    if (comp && matchesBuildSource) {
+    m_openDocs.insert(uri);
+    if (comp && matchesBuildSource && !doc->getAnalysisLimitMessage()) {
+        m_analysisLimitNotified.erase(uri);
         // File is already part of the compilation — compilation diags were
         // already published, so skip shallow diags. Still publish inactive regions.
         publishInactiveRegions(*doc);
@@ -373,9 +397,6 @@ void ServerDriver::openDocument(const URI& uri, const std::string_view text) {
     else {
         analyzeDocument(*doc);
     }
-
-    // Track this as an open document
-    m_openDocs.insert(uri);
 }
 
 std::shared_ptr<SlangDoc> ServerDriver::getDocument(const URI& uri) {
@@ -416,6 +437,7 @@ void ServerDriver::closeDocument(const URI& uri) {
 #endif
     // Remove from open docs set
     m_openDocs.erase(uri);
+    m_analysisLimitNotified.erase(uri);
     if (!comp) {
         diagClient->clear(uri);
     }
@@ -564,7 +586,7 @@ std::vector<ServerDriver::IncludeContext> ServerDriver::getIncludeContexts(
         if (!sm.isCached(source) && !std::filesystem::is_regular_file(source, ec))
             continue;
         auto doc = getDocument(URI::fromFile(source));
-        if (!doc)
+        if (!doc || doc->getAnalysisLimitMessage())
             continue;
         auto tree = doc->getSyntaxTree();
         size_t occurrence = 0;
@@ -763,6 +785,8 @@ std::vector<std::string> ServerDriver::getModulesInFile(const std::string& path)
     }
 
     auto& doc = it->second;
+    if (auto message = doc->getAnalysisLimitMessage())
+        throw lsp::RequestFailed(*message);
 
     // Get the module-like things from the document and collect into a vector
     std::vector<std::string> moduleNames;

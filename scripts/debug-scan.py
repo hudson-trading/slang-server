@@ -235,6 +235,17 @@ async def scan(args, files, report):
                 raise RuntimeError("No HDL files selected")
             await client.notify("initialized", {})
             for current in files:
+                limit = client.config.get("maxFileSize", 0)
+                if limit and current.stat().st_size > limit:
+                    report["errors"].append(
+                        {
+                            "path": str(current),
+                            "message": f"Analysis skipped: file exceeds maxFileSize ({limit} bytes). "
+                            "Increase 'maxFileSize' in '.slang/server.json' or set it to 0 "
+                            "to disable the limit.",
+                        }
+                    )
+                    continue
                 uri = current.as_uri()
                 # read_bytes preserves CRLF so reported byte positions match the source on disk.
                 source = current.read_bytes().decode("utf-8")

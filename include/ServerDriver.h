@@ -50,6 +50,9 @@ public:
     /// Mapping of URI to SlangDoc, which may hold a shallow analysis of the document
     std::unordered_map<URI, std::shared_ptr<SlangDoc>> docs;
 
+    /// Maximum bytes in a document eligible for analysis; zero disables the limit.
+    uint64_t getMaxFileSize() const { return m_config.maxFileSize.value(); }
+
     // Owned by the Slang Driver
     SourceManager& sm;
     DiagnosticEngine& diagEngine;
@@ -239,6 +242,9 @@ private:
 
     /// Set of URIs for documents that are explicitly opened by the client
     flat_hash_set<URI> m_openDocs;
+
+    /// Open documents already notified while their size remains above the limit.
+    flat_hash_set<URI> m_analysisLimitNotified;
 
     /// Every source file covered by the build, including secondary single-unit buffers.
     flat_hash_set<URI> m_buildSourceUris;

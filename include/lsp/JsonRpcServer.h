@@ -307,6 +307,11 @@ protected:
             return RpcError{.code = static_cast<int>(LSPErrorCodes::RequestCancelled),
                             .message = "Request cancelled"};
         }
+        catch (const RequestFailed& e) {
+            messageLog.setError(e.what());
+            return RpcError{.code = static_cast<int>(LSPErrorCodes::RequestFailed),
+                            .message = e.what()};
+        }
         catch (const std::exception& e) {
             messageLog.setError(e.what());
             return RpcError{.code = static_cast<int>(ErrorCodes::InternalError),

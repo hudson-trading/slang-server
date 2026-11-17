@@ -15,6 +15,136 @@
 
 using namespace server;
 
+TEST_CASE("Document size limits preserve edits and resume analysis", "[analysis-limit]") {
+    ServerHarness server;
+    const std::string source = "// é\nmodule top; endmodule\n";
+    auto config = server.getConfig();
+    config.maxFileSize = source.size();
+    REQUIRE(server.loadConfig(config));
+    auto file = server.openFile("size_limit.sv", source);
+    auto doc = server.getDoc(file.m_uri);
+    CHECK(doc->hasAnalysis());
+    CHECK_FALSE(doc->getAnalysisLimitMessage());
+
+    const auto large = source + "// padding past the configured limit\n";
+    file.replaceAll(large);
+    file.publishChanges();
+    CHECK_FALSE(doc->hasAnalysis());
+    REQUIRE(doc->getAnalysisLimitMessage());
+    server.client.expectWarning("Increase 'maxFileSize' in '.slang/server.json'");
+    CHECK(file.getDiagnostics().empty());
+    auto buffers = doc->getSourceManager().getAllBuffers();
+    CHECK_THROWS_AS(doc->getAnalysis(), lsp::RequestFailed);
+    CHECK_THROWS_AS(doc->getLocation({1, 7}), lsp::RequestFailed);
+    CHECK_THROWS_AS(server.getDocCodeLens({.textDocument = {.uri = file.m_uri}}),
+                    lsp::RequestFailed);
+    CHECK_THROWS_AS(server.getModulesInFile("size_limit.sv"), lsp::RequestFailed);
+    CHECK(doc->getSourceManager().getAllBuffers() == buffers);
+    CHECK_NOTHROW(file.save());
+    CHECK(file.getText() == large);
+
+    SECTION("Shrinking the document restores analysis") {
+        file.replaceAll(source);
+        file.publishChanges();
+    }
+    SECTION("Raising the limit restores analysis after config reload") {
+        config.maxFileSize = large.size();
+        REQUIRE(server.loadConfig(config));
+    }
+    SECTION("Zero disables the limit") {
+        config.maxFileSize = 0;
+        REQUIRE(server.loadConfig(config));
+    }
+    doc = server.getDoc(file.m_uri);
+    CHECK(doc->hasAnalysis());
+    CHECK_FALSE(doc->getAnalysisLimitMessage());
+    CHECK(file.getDiagnostics().empty());
+    CHECK_FALSE(doc->getSymbols().empty());
+}
+
+TEST_CASE("Document size notifications clear stale diagnostics without repeating",
+          "[analysis-limit]") {
+    ServerHarness server;
+    const std::string source = "module top; initial missing(); endmodule\n";
+    auto config = server.getConfig();
+    config.maxFileSize = source.size();
+    REQUIRE(server.loadConfig(config));
+    auto file = server.openFile("notify_limit.sv", source);
+    REQUIRE_FALSE(file.getDiagnostics().empty());
+    file.append("// past the limit\n");
+    file.publishChanges();
+    server.client.expectWarning("Analysis skipped for " +
+                                std::string(file.doc->getWsRelativePath()));
+    CHECK(file.getDiagnostics().empty());
+
+    file.append("// still past the limit\n");
+    file.publishChanges();
+    file.save();
+    CHECK_THROWS_AS(file.doc->getAnalysis(), lsp::RequestFailed);
+    CHECK_THROWS_AS(server.getDocCodeLens({.textDocument = {.uri = file.m_uri}}),
+                    lsp::RequestFailed);
+    CHECK(file.getDiagnostics().empty());
+
+    SECTION("Unrelated config reload does not repeat the notification") {
+        config.inlayHints.value().funcArgNames = 3;
+        REQUIRE(server.loadConfig(config));
+    }
+    SECTION("Reopening an oversized document notifies again") {
+        file.close();
+        file.open();
+        server.client.expectWarning("maxFileSize");
+    }
+    SECTION("Shrinking and then exceeding the limit notifies again") {
+        file.replaceAll(source);
+        file.publishChanges();
+        CHECK(file.doc->hasAnalysis());
+        CHECK_FALSE(file.getDiagnostics().empty());
+        file.append("// past the limit again\n");
+        file.publishChanges();
+        server.client.expectWarning("maxFileSize");
+        CHECK(file.getDiagnostics().empty());
+    }
+    SECTION("Changing the limit notifies about the new value") {
+        config.maxFileSize = source.size() - 1;
+        REQUIRE(server.loadConfig(config));
+        server.client.expectWarning("maxFileSize");
+    }
+}
+
+TEST_CASE("Document size limits allow explicit builds to load", "[analysis-limit]") {
+    ServerHarness server("active_instance_hover");
+    auto config = server.getConfig();
+    config.maxFileSize = 1;
+    REQUIRE(server.loadConfig(config));
+    CHECK_NOTHROW(server.setBuildFile("design.f"));
+    std::ifstream input("top.sv");
+    REQUIRE(input);
+    auto file = server.openFile("top.sv", std::string(std::istreambuf_iterator<char>(input), {}));
+    CHECK(server.getDoc(file.m_uri)->getAnalysisLimitMessage());
+    CHECK_FALSE(server.getDoc(file.m_uri)->hasAnalysis());
+    server.client.expectWarning("Analysis skipped for top.sv");
+    CHECK(file.getDiagnostics().empty());
+    CHECK_NOTHROW(file.save());
+}
+
+TEST_CASE("Small headers can be analyzed when their includer exceeds the limit",
+          "[analysis-limit]") {
+    ServerHarness server("header_context");
+    auto config = server.getConfig();
+    config.maxFileSize = 512;
+    REQUIRE(server.loadConfig(config));
+    auto package = server.openFile("device_pkg.sv");
+    package.append("//" + std::string(1024, 'x') + "\n");
+    package.publishChanges();
+    CHECK(package.doc->getAnalysisLimitMessage());
+    server.client.expectWarning("Analysis skipped for device_pkg.sv");
+
+    auto header = server.openFile("src/transaction.svh");
+    CHECK_FALSE(header.doc->getAnalysisLimitMessage());
+    CHECK(header.doc->hasAnalysis());
+    CHECK_FALSE(header.getSymbolTree().empty());
+}
+
 TEST_CASE("BasicInsertion") {
     ServerHarness server;
     auto doc = server.openFile("top.sv", R"(module top;

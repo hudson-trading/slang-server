@@ -42,6 +42,8 @@ SlangDoc::SlangDoc(ServerDriver& driver, URI uri, SourceBuffer buffer) :
 }
 
 std::optional<SourceLocation> SlangDoc::getLocation(const lsp::Position& position) {
+    if (auto message = getAnalysisLimitMessage())
+        throw lsp::RequestFailed(*message);
     getSyntaxTree();
     return toSourceLocation(m_buffer.id, position, m_sourceManager);
 }
@@ -94,6 +96,21 @@ std::shared_ptr<SlangDoc> SlangDoc::open(ServerDriver& driver, const URI& uri) {
 const std::string_view SlangDoc::getText() const {
     // null terminator is included in data
     return m_sourceManager.getSourceText(m_buffer.id);
+}
+
+std::optional<std::string> SlangDoc::getAnalysisLimitMessage() {
+    const auto limit = m_driver.getMaxFileSize();
+    if (!limit)
+        return std::nullopt;
+    if (!m_sourceManager.isLatestData(m_buffer.id))
+        m_buffer = m_sourceManager.readSource(m_uri.getPath(), nullptr).value();
+    const auto size = getText().size() - 1;
+    if (size <= limit)
+        return std::nullopt;
+    return fmt::format("Analysis skipped for {}: {} bytes exceeds maxFileSize ({} bytes). "
+                       "Increase 'maxFileSize' in '.slang/server.json' or set it to 0 to "
+                       "disable the limit.",
+                       getWsRelativePath(), size, limit);
 }
 
 bool SlangDoc::isMacroOnly() {
@@ -154,6 +171,8 @@ std::shared_ptr<syntax::SyntaxTree> SlangDoc::getSyntaxTree() {
 
 std::shared_ptr<ShallowAnalysis> SlangDoc::refreshAnalysis(const lsp::RequestContext& ctx) {
     ctx.throwIfCancelled("before analysis");
+    if (auto message = getAnalysisLimitMessage())
+        throw lsp::RequestFailed(*message);
     auto tree = getSyntaxTree();
     auto compilation = m_includeCompilation;
     if (!compilation) {
@@ -170,6 +189,8 @@ std::shared_ptr<ShallowAnalysis> SlangDoc::refreshAnalysis(const lsp::RequestCon
 }
 
 std::shared_ptr<ShallowAnalysis> SlangDoc::getAnalysis(const lsp::RequestContext& ctx) {
+    if (auto message = getAnalysisLimitMessage())
+        throw lsp::RequestFailed(*message);
     getSyntaxTree();
     if (!m_analysis || !m_analysis->hasValidBuffers())
         return refreshAnalysis(ctx);

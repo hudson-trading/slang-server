@@ -12,6 +12,8 @@ export interface Config {
   flags?: string
   /** Include directories, relative to the workspace root. Searched after directories supplied through flags and build files. Supports $VAR, ${VAR}, and $(VAR) environment variables. */
   incdirs?: string[]
+  /** Maximum document size in bytes for editor analysis and debug scans. Larger documents remain editable but their analysis is skipped. Set to 0 to disable the limit. Dependencies and explicit builds may still read larger files. */
+  maxFileSize?: number
   /**
    * @deprecated
    * Globs of what to index. By default will index all sv and svh files in the workspace.
