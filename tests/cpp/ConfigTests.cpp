@@ -78,6 +78,78 @@ struct ConfigWorkspace {
 
 } // namespace
 
+TEST_CASE("Symlinked build documents retain compilation context and editor diagnostics") {
+    ConfigWorkspace files;
+    files.write("real/other_pkg.sv", "package other_pkg; int value = 7; endpackage\n");
+    const std::string text =
+        "package my_pkg; int value = other_pkg::value; int bad = missing; endpackage\n";
+    files.write("real/my_pkg.sv", text);
+    files.write("real/design.f", "other_pkg.sv\nmy_pkg.sv\n");
+    files.write("real/.slang/server.json", R"({"build":"design.f"})");
+    std::error_code ec;
+    fs::create_directory_symlink(files.root / "real", files.root / "alias", ec);
+    if (ec)
+        SKIP("Directory symlinks are unavailable");
+
+    ServerHarness server(lsp::InitializeParams{
+        .workspaceFolders = {{lsp::WorkspaceFolder{URI::fromFile(files.root / "real"), "test"}}}});
+    const auto canonicalUri = URI::fromFile(files.root / "real/my_pkg.sv");
+    const auto aliasUri = URI::fromFile(files.root / "alias/my_pkg.sv");
+    auto errors = [&](const URI& uri) {
+        auto diagnostics = server.client.getDiagnostics(uri);
+        std::erase_if(diagnostics, [](const auto& diagnostic) {
+            return diagnostic.severity != lsp::DiagnosticSeverity::Error;
+        });
+        return diagnostics;
+    };
+    const auto originalDiags = errors(canonicalUri);
+    REQUIRE(originalDiags.size() == 1);
+    REQUIRE(originalDiags.front().message.find("missing") != std::string::npos);
+
+    const bool openCanonicalFirst = GENERATE(false, true);
+    if (openCanonicalFirst)
+        server.m_driver->openDocument(canonicalUri, text);
+    auto alias = server.openFile(std::string(aliasUri.getPath()));
+    CHECK(server.getDoc(aliasUri) == server.getDoc(canonicalUri));
+    CHECK(errors(canonicalUri).size() == 1);
+    REQUIRE(errors(aliasUri).size() == 1);
+    CHECK(errors(aliasUri).front().message == originalDiags.front().message);
+    auto definitions = alias.after("other_pkg::").getDefinitions();
+    REQUIRE(definitions.size() == 1);
+    CHECK(definitions.front().targetUri == URI::fromFile(files.root / "real/other_pkg.sv"));
+
+    alias.replaceAll("package my_pkg; int value = other_pkg::value; endpackage\n");
+    alias.publishChanges();
+    CHECK(errors(aliasUri).empty());
+    CHECK(server.getDoc(canonicalUri)->getText().find("missing") == std::string::npos);
+
+    // A watcher for the canonical path must not replace unsaved alias contents.
+    server.onWorkspaceDidChangeWatchedFiles(
+        {.changes = {{.uri = canonicalUri, .type = lsp::FileChangeType::Changed}}});
+    CHECK(server.getDoc(aliasUri)->getText().find("missing") == std::string::npos);
+    alias.save();
+    CHECK(errors(aliasUri).empty());
+    CHECK(errors(canonicalUri).empty());
+
+    if (!openCanonicalFirst)
+        server.m_driver->openDocument(canonicalUri, alias.getText());
+    server.onDocDidChange({
+        .textDocument = {.version = 2, .uri = canonicalUri},
+        .contentChanges = {lsp::TextDocumentContentChangeWholeDocument{.text = text}},
+    });
+    REQUIRE(errors(aliasUri).size() == 1);
+    alias.close();
+    CHECK(errors(aliasUri).empty());
+    CHECK(server.m_driver->isDocumentOpen(canonicalUri));
+    server.client.diagnosticPublications.clear();
+    server.onDocDidSave({.textDocument = {.uri = canonicalUri}, .text = text});
+    CHECK(errors(canonicalUri).size() == 1);
+    CHECK(std::ranges::find(server.client.diagnosticPublications, aliasUri) ==
+          server.client.diagnosticPublications.end());
+    server.onDocDidClose({.textDocument = {.uri = canonicalUri}});
+    CHECK_FALSE(server.m_driver->isDocumentOpen(canonicalUri));
+}
+
 TEST_CASE("Config path environment variables expand once and reject unresolved references") {
     ConfigEnvironment environment;
     const std::string reference = GENERATE("$SLANG_SERVER_CONFIG_TEST_PATH",

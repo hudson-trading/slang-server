@@ -264,14 +264,32 @@ void ServerDiagClient::clear(URI uri) {
     m_dirtyUris.emplace(uri);
 }
 
+void ServerDiagClient::openDocument(const URI& uri, const URI& canonicalUri) {
+    if (uri != canonicalUri)
+        m_documentAliases.insert_or_assign(uri, canonicalUri);
+    m_dirtyUris.emplace(canonicalUri);
+}
+
+void ServerDiagClient::closeDocument(const URI& uri) {
+    if (m_documentAliases.erase(uri))
+        m_client.onDocPublishDiagnostics({.uri = uri, .diagnostics = {}});
+}
+
+void ServerDiagClient::publishDiagnostics(const URI& uri,
+                                          const std::vector<lsp::Diagnostic>& diagnostics) {
+    m_client.onDocPublishDiagnostics({.uri = uri, .diagnostics = diagnostics});
+    for (const auto& [alias, canonicalUri] : m_documentAliases) {
+        if (canonicalUri == uri)
+            m_client.onDocPublishDiagnostics({.uri = alias, .diagnostics = diagnostics});
+    }
+}
+
 void ServerDiagClient::clearAndPush() {
     for (const auto& [uri, diags] : m_diagnostics) {
-        m_client.onDocPublishDiagnostics(
-            lsp::PublishDiagnosticsParams{.uri = uri, .diagnostics = {}});
+        publishDiagnostics(uri, {});
     }
     for (auto& uri : m_dirtyUris) {
-        m_client.onDocPublishDiagnostics(
-            lsp::PublishDiagnosticsParams{.uri = uri, .diagnostics = {}});
+        publishDiagnostics(uri, {});
     }
     m_diagnostics.clear();
     m_dirtyUris.clear();
@@ -288,12 +306,10 @@ void ServerDiagClient::clear() {
 void ServerDiagClient::pushDiags(const URI& priorityUri) {
     auto it = m_diagnostics.find(priorityUri);
     if (it != m_diagnostics.end()) {
-        m_client.onDocPublishDiagnostics(
-            lsp::PublishDiagnosticsParams{.uri = priorityUri, .diagnostics = it->second});
+        publishDiagnostics(priorityUri, it->second);
     }
     else if (m_dirtyUris.contains(priorityUri)) {
-        m_client.onDocPublishDiagnostics(
-            lsp::PublishDiagnosticsParams{.uri = priorityUri, .diagnostics = {}});
+        publishDiagnostics(priorityUri, {});
     }
     m_dirtyUris.erase(priorityUri);
     pushDiags();
@@ -303,12 +319,10 @@ void ServerDiagClient::pushDiags() {
     for (auto& uri : m_dirtyUris) {
         auto it = m_diagnostics.find(uri);
         if (it != m_diagnostics.end()) {
-            m_client.onDocPublishDiagnostics(
-                lsp::PublishDiagnosticsParams{.uri = uri, .diagnostics = it->second});
+            publishDiagnostics(uri, it->second);
         }
         else {
-            m_client.onDocPublishDiagnostics(
-                lsp::PublishDiagnosticsParams{.uri = uri, .diagnostics = {}});
+            publishDiagnostics(uri, {});
         }
     }
     m_dirtyUris.clear();

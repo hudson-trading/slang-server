@@ -42,6 +42,10 @@ public:
     // Add all uris to dirty so they get republished after new diags are added.
     void clear();
 
+    /// Mirror canonical diagnostics to an editor's symlinked document URI while open.
+    void openDocument(const URI& uri, const URI& canonicalUri);
+    void closeDocument(const URI& uri);
+
 #ifdef SLANG_SERVER_DEBUG
     /// Replace scan findings while preserving compiler diagnostics for this document.
     void setDebugDiagnostics(const URI& uri, std::vector<lsp::Diagnostic> diagnostics);
@@ -51,6 +55,9 @@ private:
     std::unordered_map<URI, std::vector<lsp::Diagnostic>> m_diagnostics;
     // Uris that have modified diags yet to be pushed to the client
     slang::flat_hash_set<URI> m_dirtyUris;
+    std::unordered_map<URI, URI> m_documentAliases;
+
+    void publishDiagnostics(const URI& uri, const std::vector<lsp::Diagnostic>& diagnostics);
 
     const slang::SourceManager& m_sourceManager;
     std::string cwd;
