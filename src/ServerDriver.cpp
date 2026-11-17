@@ -968,6 +968,15 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
         return getMacroDefinitionInfo(*analysis, *declTok, *declSyntax);
 
     if (declTok->kind == parsing::TokenKind::SystemIdentifier) {
+        using Kind = DefinitionInfo::SystemSubroutineTarget::Kind;
+        if (declSyntax->kind == syntax::SyntaxKind::SystemTimingCheck) {
+            for (const auto& [name, doc] : getSystemTimingCheckDocs()) {
+                if (declTok->valueText() == name)
+                    return DefinitionInfo{sm, DefinitionInfo::SystemSubroutineTarget{
+                                                  *declTok, &doc, Kind::TimingCheck}};
+            }
+            return {};
+        }
         auto knownName = declTok->systemName();
         if (knownName == parsing::KnownSystemName::Unknown)
             return {};
@@ -978,7 +987,9 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
             return {};
 
         return DefinitionInfo{sm, DefinitionInfo::SystemSubroutineTarget{
-                                      *declTok, sysDoc, sub->kind == ast::SubroutineKind::Task}};
+                                      *declTok, sysDoc,
+                                      sub->kind == ast::SubroutineKind::Task ? Kind::Task
+                                                                             : Kind::Function}};
     }
     auto symbolsEquivalent = [&](const ast::Symbol* left, const ast::Symbol* right) {
         if (left == right)
@@ -1051,9 +1062,12 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
                                                      declTok->valueText());
             auto* methodDoc = method ? getSystemTaskDoc(method->knownNameId) : nullptr;
             if (methodDoc) {
+                using Kind = DefinitionInfo::SystemSubroutineTarget::Kind;
                 return DefinitionInfo{sm, DefinitionInfo::SystemSubroutineTarget{
                                               *declTok, methodDoc,
-                                              method->kind == ast::SubroutineKind::Task}};
+                                              method->kind == ast::SubroutineKind::Task
+                                                  ? Kind::Task
+                                                  : Kind::Function}};
             }
         }
     }
