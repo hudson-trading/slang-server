@@ -165,6 +165,11 @@ public:
             return;
 
         INFO("General completions with context: {}", toString(context.kind));
+        if (context.syntax) {
+            for (auto* iterator : context.analysis->getArrayMethodIterators(*context.syntax))
+                results.push_back(getCompletion(*iterator, context.scope, doc->getURI().str(),
+                                                followedByCall, resolvesCompletionEdits(dispatch)));
+        }
         InstanceCompletionQuery::addCompletions(results, getIndexer(dispatch), context);
         if (context.scope) {
             addCompletions(results, context.scope, context.kind, context.scope, doc->getURI().str(),

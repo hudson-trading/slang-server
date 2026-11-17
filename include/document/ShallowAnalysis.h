@@ -184,6 +184,10 @@ public:
     /// Gets the type of the expression ending at a token, including call results.
     const slang::ast::Type* getExpressionTypeAtToken(const slang::parsing::Token* token) const;
 
+    /// Array-method iterators visible at this syntax, from inner to outer with expressions.
+    slang::SmallVector<const slang::ast::ValueSymbol*, 2> getArrayMethodIterators(
+        const slang::syntax::SyntaxNode& syntax) const;
+
     /// Looks up built-in methods by receiver kind and result type, retaining arrays with invalid
     /// bounds.
     const slang::ast::SystemSubroutine* getSystemMethod(const slang::ast::Type* type,
@@ -248,6 +252,11 @@ private:
     /// Cached receiver types for expressions that require binding beyond a symbol lookup.
     mutable slang::flat_hash_map<const slang::syntax::ExpressionSyntax*, const slang::ast::Type*>
         m_expressionTypes;
+
+    /// Iterator symbols recovered by binding a queried with expression and its nested calls.
+    mutable slang::flat_hash_map<const slang::syntax::ArrayOrRandomizeMethodExpressionSyntax*,
+                                 const slang::ast::ValueSymbol*>
+        m_arrayMethodIterators;
 
     const GenvarElaboration* getGenvarElaborationAtToken(const slang::parsing::Token* node) const;
 

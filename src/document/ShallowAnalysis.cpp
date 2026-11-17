@@ -21,8 +21,10 @@
 #include "slang/ast/ASTContext.h"
 #include "slang/ast/Compilation.h"
 #include "slang/ast/Expression.h"
+#include "slang/ast/expressions/CallExpression.h"
 #include "slang/ast/symbols/BlockSymbols.h"
 #include "slang/ast/symbols/CompilationUnitSymbols.h"
+#include "slang/ast/symbols/CoverSymbols.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
 #include "slang/ast/symbols/MemberSymbols.h"
 #include "slang/ast/symbols/ParameterSymbols.h"
@@ -305,11 +307,15 @@ const ast::Scope* ShallowAnalysis::getScopeFromSym(const ast::Symbol* symbol) co
         return it->second;
     }
 
+    if (auto* covergroup = symbol->as_if<ast::CovergroupType>())
+        return &covergroup->getBody();
     if (symbol->isScope()) {
         return &symbol->as<ast::Scope>();
     }
 
     if (auto* type = getSymbolType(*symbol)) {
+        if (auto* covergroup = type->as_if<ast::CovergroupType>())
+            return &covergroup->getBody();
         if (auto* virtualInterface = type->as_if<ast::VirtualInterfaceType>()) {
             if (virtualInterface->modport)
                 return virtualInterface->modport;
@@ -386,6 +392,52 @@ const ast::Type* ShallowAnalysis::getExpressionTypeAtToken(const parsing::Token*
         }
     }
     return it->second;
+}
+
+SmallVector<const ast::ValueSymbol*, 2> ShallowAnalysis::getArrayMethodIterators(
+    const syntax::SyntaxNode& syntax) const {
+    SmallVector<const syntax::ArrayOrRandomizeMethodExpressionSyntax*, 2> clauses;
+    auto location = syntax.getFirstToken().location();
+    for (auto* node = &syntax; node; node = node->parent) {
+        auto* clause = node->as_if<syntax::ArrayOrRandomizeMethodExpressionSyntax>();
+        if (!clause || !clause->args)
+            continue;
+        auto* invocation = clause->method->as_if<syntax::InvocationExpressionSyntax>();
+        if (clause->args->sourceRange().contains(location) ||
+            (invocation && invocation->arguments &&
+             invocation->arguments->sourceRange().contains(location)))
+            clauses.push_back(clause);
+    }
+    SmallVector<const ast::ValueSymbol*, 2> result;
+    if (clauses.empty())
+        return result;
+
+    auto* outer = clauses.back();
+    if (m_arrayMethodIterators.try_emplace(outer, nullptr).second) {
+        if (auto* scope = m_symbolIndexer.getScopeForSyntax(*outer)) {
+            ast::ASTContext context(*scope, ast::LookupLocation::max);
+            auto& bound = ast::Expression::bind(*outer, context);
+            auto visitor = ast::makeVisitor([&](auto& visitor, const ast::CallExpression& call) {
+                if (call.isSystemCall() && call.syntax) {
+                    if (auto* clause =
+                            call.syntax->as_if<syntax::ArrayOrRandomizeMethodExpressionSyntax>()) {
+                        auto [expression, iterator] = std::get<ast::CallExpression::SystemCallInfo>(
+                                                          call.subroutine)
+                                                          .getIteratorInfo();
+                        m_arrayMethodIterators[clause] = iterator;
+                    }
+                }
+                visitor.visitDefault(call);
+            });
+            bound.visit(visitor);
+        }
+    }
+    for (auto* clause : clauses) {
+        if (auto it = m_arrayMethodIterators.find(clause);
+            it != m_arrayMethodIterators.end() && it->second)
+            result.push_back(it->second);
+    }
+    return result;
 }
 
 const ast::SystemSubroutine* ShallowAnalysis::getSystemMethod(const ast::Type* type,
@@ -760,6 +812,16 @@ slang::SmallVector<const ast::Symbol*, 2> ShallowAnalysis::getSymbolsAtToken(
     auto syntax = syntaxes.getTokenParent(declTok);
     if (!syntax) {
         return symbols;
+    }
+    if (syntax->kind == syntax::SyntaxKind::IdentifierName &&
+        (!syntax->parent || !syntax::ScopedNameSyntax::isKind(syntax->parent->kind) ||
+         syntax->parent->as<syntax::ScopedNameSyntax>().left == syntax)) {
+        for (auto* iterator : getArrayMethodIterators(*syntax)) {
+            if (iterator->name == declTok->valueText()) {
+                addSymbol(iterator);
+                return symbols;
+            }
+        }
     }
     if (auto* named = syntax->as_if<syntax::NamedArgumentSyntax>();
         named && named->name == *declTok) {

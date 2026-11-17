@@ -70,6 +70,12 @@ protected:
                                                          bool deferCallableEdit = false,
                                                          std::string_view completionLabel = {});
 
+    /// Build a completion for a symbol recovered by a specialized query.
+    static lsp::CompletionItem getCompletion(const slang::ast::Symbol& symbol,
+                                             const slang::ast::Scope* currentScope,
+                                             std::string_view documentUri, bool labelOnly,
+                                             bool deferCallableEdit);
+
 private:
     struct CompletionData {
         std::string documentUri;
@@ -82,10 +88,6 @@ private:
     };
 
     static lsp::CompletionItemKind getCompletionKind(const slang::ast::Symbol& symbol);
-    static lsp::CompletionItem getCompletion(const slang::ast::Symbol& symbol,
-                                             const slang::ast::Scope* currentScope,
-                                             std::string_view documentUri, bool labelOnly,
-                                             bool deferCallableEdit);
 };
 
 } // namespace server::completions

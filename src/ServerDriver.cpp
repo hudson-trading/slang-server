@@ -1185,7 +1185,8 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
     }
 
     auto makeSyntaxTarget =
-        [&](const ast::Symbol* symbol) -> std::optional<DefinitionInfo::SyntaxTarget> {
+        [&](const ast::Symbol* symbol,
+            const ShallowAnalysis& symbolAnalysis) -> std::optional<DefinitionInfo::SyntaxTarget> {
         auto* symSyntax = symbol->getSyntax();
         if (!symSyntax) {
             if (auto* typeParam = symbol->as_if<ast::TypeParameterSymbol>())
@@ -1195,6 +1196,11 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
                 if (subroutine && subroutine->returnValVar == symbol)
                     symSyntax = subroutine->getSyntax();
             }
+        }
+        if (!symSyntax && symbol->kind == ast::SymbolKind::Iterator) {
+            auto* token = symbolAnalysis.syntaxes.getWordTokenAt(symbol->location);
+            if (token && token->valueText() == symbol->name)
+                symSyntax = symbolAnalysis.syntaxes.getTokenParent(token);
         }
         if (!symSyntax) {
             if (symbol->location != SourceLocation::NoLocation)
@@ -1230,7 +1236,7 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
             bool renderInterfaceConnection = true) -> std::optional<DefinitionInfo::SymbolTarget> {
         if (!symbol)
             return {};
-        auto syntaxTarget = makeSyntaxTarget(symbol);
+        auto syntaxTarget = makeSyntaxTarget(symbol, *symbolAnalysis);
         if (!syntaxTarget && symbol->location != SourceLocation::NoLocation)
             return {};
 
@@ -1239,7 +1245,8 @@ std::optional<DefinitionInfo> ServerDriver::getDefinitionInfoAt(const URI& uri,
             syntaxes.push_back(std::move(*syntaxTarget));
         if (auto* modportPort = symbol->as_if<ast::ModportPortSymbol>()) {
             if (modportPort->internalSymbol) {
-                if (auto internalSyntax = makeSyntaxTarget(modportPort->internalSymbol))
+                if (auto internalSyntax = makeSyntaxTarget(modportPort->internalSymbol,
+                                                           *symbolAnalysis))
                     syntaxes.push_back(std::move(*internalSyntax));
             }
         }
