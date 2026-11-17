@@ -145,13 +145,19 @@ TEST_CASE("Included dependencies can refer back to the compilation being analyze
     fs::create_directories(root);
     slang::ScopeGuard cleanup([&] { fs::remove_all(root); });
     std::ofstream(root / "first_if.svh")
-        << "interface first_if; logic [`WIDTH-1:0] value; endinterface\n";
+        << "interface first_if; logic [`WIDTH-1:0] value; endinterface\n"
+           "package first_pkg; localparam int WIDTH = `WIDTH; endpackage\n";
     std::ofstream(root / "second_if.svh")
-        << "interface second_if; logic [`WIDTH-1:0] value; endinterface\n";
+        << "interface second_if; logic [`WIDTH-1:0] value; endinterface\n"
+           "package second_pkg; localparam int WIDTH = `WIDTH; endpackage\n";
     std::ofstream(root / "first.sv") << "`define WIDTH 4\n`include \"first_if.svh\"\n"
-                                        "module first(second_if bus); endmodule\n";
+                                        "module first(second_if bus, output int width);\n"
+                                        "    assign width = second_pkg::WIDTH;\n"
+                                        "endmodule\n";
     std::ofstream(root / "second.sv") << "`define WIDTH 8\n`include \"second_if.svh\"\n"
-                                         "module second(first_if bus); endmodule\n";
+                                         "module second(first_if bus, output int width);\n"
+                                         "    assign width = first_pkg::WIDTH;\n"
+                                         "endmodule\n";
     ServerHarness server(lsp::InitializeParams{
         .workspaceFolders = {{lsp::WorkspaceFolder{URI::fromFile(root), "dependency_cycle"}}}});
 
@@ -170,9 +176,13 @@ TEST_CASE("Included dependencies can refer back to the compilation being analyze
     definitions = second.before("first_if bus").getDefinitions();
     REQUIRE(definitions.size() == 1);
     CHECK(definitions.front().targetUri == firstHeader.m_uri);
+    definitions = first.before("second_pkg::WIDTH").getDefinitions();
+    REQUIRE(definitions.size() == 1);
+    CHECK(definitions.front().targetUri == secondHeader.m_uri);
 
     auto originalCompilation = first.doc->getAnalysis()->getShallowCompilation();
-    secondHeader.replaceAll("interface second_if; logic [`WIDTH:0] value; endinterface\n");
+    secondHeader.replaceAll("interface second_if; logic [`WIDTH:0] value; endinterface\n"
+                            "package second_pkg; localparam int WIDTH = `WIDTH; endpackage\n");
     secondHeader.publishChanges();
     CHECK(first.getDiagnostics().empty());
     CHECK(second.getDiagnostics().empty());
