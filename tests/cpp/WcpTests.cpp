@@ -1,10 +1,13 @@
 // SPDX-FileCopyrightText: Hudson River Trading
 // SPDX-License-Identifier: MIT
 
+#include "ast/WcpClient.h"
 #include "lsp/LspTypes.h"
 #include "utils/ServerHarness.h"
+#include <chrono>
 #include <filesystem>
 #include <optional>
+#include <thread>
 
 namespace fs = std::filesystem;
 
@@ -151,3 +154,24 @@ TEST_CASE("WCP Tests") {
         CHECK(server.m_driver->comp->isWcpVariable("test.the_other_sub.the_array[4]"));
     }
 }
+
+#ifndef _WIN32
+TEST_CASE("WCP client can be recreated after the viewer disconnects") {
+    ServerHarness server("");
+
+    // Greets the server, then closes the connection, like a viewer that was closed
+    const std::string command = "python3 " + fs::absolute("wcp_hangup_viewer.py").string() + " {}";
+
+    std::optional<waves::WcpClient> client;
+    for (int i = 0; i < 2; i++) {
+        // Replacing the stopped client used to call std::terminate
+        std::string commandCopy = command;
+        client.emplace(&server, commandCopy);
+
+        for (int wait = 0; wait < 500 && client->running(); wait++) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+        CHECK(!client->running());
+    }
+}
+#endif

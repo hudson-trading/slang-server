@@ -162,6 +162,10 @@ void waves::WcpClient::greet() {
     std::optional<std::string> s2cGreeting;
     auto greetingStart = std::chrono::steady_clock::now();
     while (!(s2cGreeting = getMessage())) {
+        if (!m_running) {
+            // The viewer disconnected before greeting us
+            return;
+        }
         std::chrono::duration<double> greetingWait = std::chrono::steady_clock::now() -
                                                      greetingStart;
         if (greetingWait.count() > 2.0) {

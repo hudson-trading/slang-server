@@ -10,7 +10,10 @@
 #include "SlangServerWcp.h"
 #include "wcp/WcpTypes.h"
 #include <atomic>
+#include <cstring>
+#include <iostream>
 #include <mutex>
+#include <rfl/json.hpp>
 #include <thread>
 
 #ifdef _WIN32
@@ -50,8 +53,8 @@ private:
     void runClient();
 
     // WCP socket
-    int m_serverFd;
-    int m_clientFd;
+    int m_serverFd = -1;
+    int m_clientFd = -1;
 
     // WCP TCP port
     int m_port;
@@ -65,15 +68,22 @@ private:
     // Waveform viewer command
     std::string m_command;
 
-    // Close the sockets and stop the client loop.
-    void stop() {
+    static void closeSocket(int& fd) {
+        if (fd < 0) {
+            return;
+        }
 #ifdef _WIN32
-        closesocket(m_clientFd);
-        closesocket(m_serverFd);
+        closesocket(fd);
 #else
-        close(m_clientFd);
-        close(m_serverFd);
+        close(fd);
 #endif
+        fd = -1;
+    }
+
+    // Close the sockets and stop the client loop. Safe to call more than once.
+    void stop() {
+        closeSocket(m_clientFd);
+        closeSocket(m_serverFd);
         m_running = false;
     }
 
@@ -159,6 +169,18 @@ public:
         runViewer();
         greet();
         m_clientThread = std::thread(&WcpClient::runClient, this);
+    }
+
+    WcpClient(const WcpClient&) = delete;
+    WcpClient& operator=(const WcpClient&) = delete;
+
+    ~WcpClient() {
+        // Destroying a joinable std::thread calls std::terminate.
+        m_running = false;
+        if (m_clientThread.joinable()) {
+            m_clientThread.join();
+        }
+        stop();
     }
 
     bool running() { return m_running; }
