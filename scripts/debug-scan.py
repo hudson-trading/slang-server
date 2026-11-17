@@ -8,9 +8,10 @@ import asyncio
 import fnmatch
 import json
 import os
-from pathlib import Path
+import re
 import sys
 import tempfile
+from pathlib import Path
 
 
 class ScanClient:
@@ -22,6 +23,7 @@ class ScanClient:
         self.next_id = 0
         self.diagnostics = {}
         self.messages = []
+        self.config = None
 
     async def send(self, message):
         payload = json.dumps({"jsonrpc": "2.0", **message}).encode()
@@ -68,6 +70,8 @@ class ScanClient:
                         self.diagnostics[data["uri"]] = data["diagnostics"]
                     elif message["method"] == "window/showMessage":
                         self.messages.append(message["params"])
+                    elif message["method"] == "slang/setConfig":
+                        self.config = message["params"]
                 elif message.get("id") == request_id:
                     if "error" in message:
                         raise RuntimeError(f"{method}: {message['error']}")
@@ -76,8 +80,34 @@ class ScanClient:
         return await asyncio.wait_for(exchange(), self.timeout)
 
 
-def discover(target, workspace, excludes):
+def discover(target, workspace, excludes, config=None):
     """Enumerate deterministically; do not follow symlinks into unrelated source trees."""
+    config = config or {}
+    exclusions = list(config.get("excludeDirs", []))
+    for entry in config.get("index", []):
+        exclusions.extend(entry.get("excludeDirs") or [])
+    environment = {**os.environ, **config.get("env", {})}
+    excluded_names = {".git"}
+    excluded_paths = []
+
+    def expand(match):
+        name = next(part for part in match.groups() if part is not None)
+        value = environment.get(name)
+        if not value:
+            raise ValueError(f"environment variable {name} is unset or empty")
+        return value
+
+    for exclusion in exclusions:
+        exclusion = re.sub(r"\$(?:\{([^}]+)\}|\(([^)]+)\)|(\w+))", expand, exclusion)
+        if Path(exclusion).is_absolute() or exclusion.startswith("./"):
+            excluded_paths.append(Path(os.path.normpath(workspace / exclusion)))
+        else:
+            excluded_names.add(exclusion)
+
+    def excluded_directory(directory):
+        return not excluded_names.isdisjoint(directory.parts) or any(
+            directory == path or path in directory.parents for path in excluded_paths
+        )
 
     def excluded(path):
         relative = path.relative_to(workspace).as_posix()
@@ -87,10 +117,13 @@ def discover(target, workspace, excludes):
         return (
             []
             if excluded(target)
+            or excluded_directory(target.parent)
             or target.suffix.lower() not in {".v", ".vh", ".sv", ".svh"}
             else [target]
         )
     files = []
+    if excluded_directory(target):
+        return files
 
     def fail(error):
         raise error
@@ -100,7 +133,7 @@ def discover(target, workspace, excludes):
         dirs[:] = sorted(
             name
             for name in dirs
-            if name != ".git"
+            if not excluded_directory(directory / name)
             and not (directory / name).is_symlink()
             and not excluded(directory / name)
         )
@@ -193,6 +226,13 @@ async def scan(args, files, report):
                     "Server requires a build with -DSLANG_SERVER_DEBUG=ON"
                 )
             report["serverInfo"] = initialized.get("serverInfo")
+            if client.config is None:
+                raise RuntimeError("Server returned no workspace configuration")
+            files[:] = discover(
+                args.target, args.workspace, args.exclude, client.config
+            )
+            if not files:
+                raise RuntimeError("No HDL files selected")
             await client.notify("initialized", {})
             for current in files:
                 uri = current.as_uri()
@@ -308,9 +348,6 @@ def main():
     }
     files = []
     try:
-        files = discover(args.target, args.workspace, args.exclude)
-        if not files:
-            raise RuntimeError("No HDL files selected")
         asyncio.run(scan(args, files, report))
     except (OSError, RuntimeError) as error:
         report["errors"].append({"path": None, "message": str(error)})

@@ -9,6 +9,7 @@
 #include <fstream>
 #include <map>
 #include <tuple>
+#include <unordered_set>
 
 #include "slang/util/ScopeGuard.h"
 
@@ -56,34 +57,6 @@ DebugWorkspaceScanResult debugScanWorkspace(const std::filesystem::path& targetP
         if (relative.empty() || *relative.begin() == "..")
             throw std::runtime_error("Target must be inside the workspace");
 
-        auto isHdl = [](const fs::path& path) {
-            auto extension = path.extension().string();
-            std::ranges::transform(extension, extension.begin(), [](unsigned char c) {
-                return static_cast<char>(std::tolower(c));
-            });
-            return extension == ".sv" || extension == ".svh" || extension == ".v" ||
-                   extension == ".vh";
-        };
-        std::vector<fs::path> files;
-        if (fs::is_regular_file(target)) {
-            if (isHdl(target))
-                files.push_back(target);
-        }
-        else {
-            for (fs::recursive_directory_iterator it(target), end; it != end; ++it) {
-                if (it->is_symlink() || it->path().filename() == ".git") {
-                    it.disable_recursion_pending();
-                    continue;
-                }
-                if (it->is_regular_file() && isHdl(it->path()))
-                    files.push_back(it->path());
-            }
-        }
-        std::ranges::sort(files);
-        report.summary.filesSelected = files.size();
-        if (files.empty())
-            throw std::runtime_error("No HDL files selected");
-
         auto previousDirectory = fs::current_path();
         slang::ScopeGuard restoreDirectory([&] {
             std::error_code ec;
@@ -100,6 +73,62 @@ DebugWorkspaceScanResult debugScanWorkspace(const std::filesystem::path& targetP
         });
         report.serverInfo = initialized.serverInfo;
         server.onInitialized({});
+        std::vector<std::string> exclusions = server.getConfig().excludeDirs.value();
+        for (const auto& entry : server.getConfig().index.value()) {
+            if (entry.excludeDirs.value())
+                exclusions.insert(exclusions.end(), entry.excludeDirs.value()->begin(),
+                                  entry.excludeDirs.value()->end());
+        }
+        std::unordered_set<std::string> excludedNames{".git"};
+        std::vector<fs::path> excludedPaths;
+        for (const auto& exclusion : exclusions) {
+            auto expanded = Config::expandPathVariables(exclusion, server.getConfig().env.value());
+            if (!expanded)
+                throw std::runtime_error(expanded.error().what());
+            if (fs::path(*expanded).is_absolute() || expanded->starts_with("./"))
+                excludedPaths.push_back((workspace / *expanded).lexically_normal());
+            else
+                excludedNames.insert(*expanded);
+        }
+        auto excluded = [&](const fs::path& directory) {
+            if (std::ranges::any_of(directory, [&](const auto& part) {
+                    return excludedNames.contains(part.string());
+                }))
+                return true;
+            return std::ranges::any_of(excludedPaths, [&](const auto& path) {
+                auto relative = directory.lexically_relative(path);
+                return !relative.empty() && !relative.is_absolute() && *relative.begin() != "..";
+            });
+        };
+
+        auto isHdl = [](const fs::path& path) {
+            auto extension = path.extension().string();
+            std::ranges::transform(extension, extension.begin(), [](unsigned char c) {
+                return static_cast<char>(std::tolower(c));
+            });
+            return extension == ".sv" || extension == ".svh" || extension == ".v" ||
+                   extension == ".vh";
+        };
+        std::vector<fs::path> files;
+        if (fs::is_regular_file(target)) {
+            if (isHdl(target) && !excluded(target.parent_path()))
+                files.push_back(target);
+        }
+        else if (!excluded(target)) {
+            for (fs::recursive_directory_iterator it(target), end; it != end; ++it) {
+                if (it->is_symlink() || (it->is_directory() && excluded(it->path()))) {
+                    it.disable_recursion_pending();
+                    continue;
+                }
+                if (it->is_regular_file() && isHdl(it->path()))
+                    files.push_back(it->path());
+            }
+        }
+        std::ranges::sort(files);
+        report.summary.filesSelected = files.size();
+        if (files.empty())
+            throw std::runtime_error("No HDL files selected");
+
         for (const auto& path : files) {
             auto uri = URI::fromFile(path);
             bool opened = false;
