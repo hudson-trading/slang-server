@@ -64,7 +64,7 @@ private:
     /// Compilation shared with the includer, used to detect context replacement.
     std::shared_ptr<ShallowCompilation> m_includeCompilation;
 
-    /// Latest standalone buffer checked for a file containing only macro definitions.
+    /// Standalone buffer whose source-data version was checked for macro-only contents.
     slang::BufferID m_macroOnlyBuffer;
 
     /// Whether the checked buffer defines macros without declarations or includes.

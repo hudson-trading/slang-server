@@ -875,6 +875,8 @@ module n(Iface.m a);
     function void a.bar(int i, logic l); endfunction
                   ^ Ref -> **InterfacePort** `a` in `n`  \n\\n\\n\---\n\\n\`Iface.m a`
                     ^^^ Ref -> **Subroutine** `bar` in `Iface`  \n\\n\\n\---\n\\n\`function void bar(int, logic)`
+                            ^ Sym i : FormalArgument
+                                     ^ Sym l : FormalArgument
 
     task a.baz; endtask
          ^ Ref -> **InterfacePort** `a` in `n`  \n\\n\\n\---\n\\n\`Iface.m a`
@@ -883,12 +885,15 @@ module n(Iface.m a);
     function void a.func(int i); endfunction
                   ^ Ref -> **InterfacePort** `a` in `n`  \n\\n\\n\---\n\\n\`Iface.m a`
                     ^^^^ Ref -> **Subroutine** `func` in `Iface`  \n\\n\\n\---\n\\n\`function void func(int)`
+                             ^ Sym i : FormalArgument
 
 
 
     function void a.foo(int i, real r);
                   ^ Ref -> **InterfacePort** `a` in `n`  \n\\n\\n\---\n\\n\`Iface.m a`
                     ^^^ Ref -> **Subroutine** `foo` in `Iface`  \n\\n\\n\---\n\\n\`extern function void foo(int i, real r);`
+                            ^ Sym i : FormalArgument
+                                    ^ Sym r : FormalArgument
 
     endfunction
 
@@ -930,6 +935,7 @@ module m4;
             ^^ Ref -> **Subroutine** `t2` in `Iface`  \n\\n\\n\---\n\\n\`task t2`
 
         static int i = baz;
+                   ^ Sym i : Variable
                        ^^^ Ref -> **Parameter** `baz` in `m4`  \n\Type: `int`  \n\Value: `3`  \n\\n\\n\---\n\\n\`localparam int baz = 3`
 
     endtask
@@ -941,6 +947,7 @@ module m4;
             ^^ Ref -> **Subroutine** `t2` in `Iface`  \n\\n\\n\---\n\\n\`task t2`
 
         static int i = baz;
+                   ^ Sym i : Variable
                        ^^^ Ref -> **Parameter** `baz` in `m4`  \n\Type: `int`  \n\Value: `3`  \n\\n\\n\---\n\\n\`localparam int baz = 3`
 
     endtask

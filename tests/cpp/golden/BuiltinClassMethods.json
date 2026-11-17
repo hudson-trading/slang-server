@@ -64,10 +64,26 @@
     }
   },
   {
+    "mailbox::constraint_mode": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `constraint_mode` in `std::mailbox`  \n\n\n---\n\n````systemverilog\nfunction void constraint_mode(input bit on_ff);\n````\n\n---\n\nEnables or disables all constraint blocks in this object.\n\n---\n\nIEEE 1800-2023 §18.9"
+      }
+    }
+  },
+  {
     "mailbox::get": {
       "contents": {
         "kind": "markdown",
         "value": "**Subroutine** `get` in `std::mailbox`  \n\n\n---\n\n````systemverilog\ntask get(ref int message);\n````\n\n---\n\nRemoves the oldest message, blocking while the mailbox is empty. A message type mismatch is a runtime error.\n\n---\n\nIEEE 1800-2023 §15.4.5"
+      }
+    }
+  },
+  {
+    "mailbox::get_randstate": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `get_randstate` in `std::mailbox`  \n\n\n---\n\n````systemverilog\nfunction string get_randstate();\n````\n\n---\n\nReturns this object's random number generator state as a string.\n\n---\n\nIEEE 1800-2023 §18.13.4"
       }
     }
   },
@@ -96,10 +112,58 @@
     }
   },
   {
+    "mailbox::post_randomize": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `post_randomize` in `std::mailbox`  \n\n\n---\n\n````systemverilog\nfunction void post_randomize();\n````\n\n---\n\nCallback invoked after successful randomization; override it to process the new values.\n\n---\n\nIEEE 1800-2023 §18.6.2"
+      }
+    }
+  },
+  {
+    "mailbox::pre_randomize": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `pre_randomize` in `std::mailbox`  \n\n\n---\n\n````systemverilog\nfunction void pre_randomize();\n````\n\n---\n\nCallback invoked before randomization; override it to prepare the object.\n\n---\n\nIEEE 1800-2023 §18.6.2"
+      }
+    }
+  },
+  {
     "mailbox::put": {
       "contents": {
         "kind": "markdown",
         "value": "**Subroutine** `put` in `std::mailbox`  \n\n\n---\n\n````systemverilog\ntask put(input int message);\n````\n\n---\n\nAppends a message in FIFO order, blocking while a bounded mailbox is full.\n\n---\n\nIEEE 1800-2023 §15.4.3"
+      }
+    }
+  },
+  {
+    "mailbox::rand_mode": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `rand_mode` in `std::mailbox`  \n\n\n---\n\n````systemverilog\nfunction void rand_mode(input bit on_ff);\n````\n\n---\n\nEnables or disables randomization of all random variables in this object.\n\n---\n\nIEEE 1800-2023 §18.8"
+      }
+    }
+  },
+  {
+    "mailbox::randomize": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `randomize` in `std::mailbox`  \n\n\n---\n\n````systemverilog\nvirtual function int randomize(...);\n````\n\n---\n\nRandomizes this object's active random variables subject to its enabled constraints and an optional with block. Returns 1 on success or 0 on failure.\n\n---\n\nIEEE 1800-2023 §18.6.1"
+      }
+    }
+  },
+  {
+    "mailbox::set_randstate": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `set_randstate` in `std::mailbox`  \n\n\n---\n\n````systemverilog\nfunction void set_randstate(input string state);\n````\n\n---\n\nRestores this object's random number generator state from a previously saved string.\n\n---\n\nIEEE 1800-2023 §18.13.5"
+      }
+    }
+  },
+  {
+    "mailbox::srandom": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `srandom` in `std::mailbox`  \n\n\n---\n\n````systemverilog\nfunction void srandom(input int seed);\n````\n\n---\n\nSeeds this object's random number generator.\n\n---\n\nIEEE 1800-2023 §18.13.3"
       }
     }
   },
@@ -136,6 +200,14 @@
     }
   },
   {
+    "process::constraint_mode": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `constraint_mode` in `std::process`  \n\n\n---\n\n````systemverilog\nfunction void constraint_mode(input bit on_ff);\n````\n\n---\n\nEnables or disables all constraint blocks in this object.\n\n---\n\nIEEE 1800-2023 §18.9"
+      }
+    }
+  },
+  {
     "process::get_randstate": {
       "contents": {
         "kind": "markdown",
@@ -148,6 +220,38 @@
       "contents": {
         "kind": "markdown",
         "value": "**Subroutine** `kill` in `std::process`  \n\n\n---\n\n````systemverilog\nfunction void kill();\n````\n\n---\n\nTerminates this process and its descendant subprocesses.\n\n---\n\nIEEE 1800-2023 §9.7"
+      }
+    }
+  },
+  {
+    "process::post_randomize": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `post_randomize` in `std::process`  \n\n\n---\n\n````systemverilog\nfunction void post_randomize();\n````\n\n---\n\nCallback invoked after successful randomization; override it to process the new values.\n\n---\n\nIEEE 1800-2023 §18.6.2"
+      }
+    }
+  },
+  {
+    "process::pre_randomize": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `pre_randomize` in `std::process`  \n\n\n---\n\n````systemverilog\nfunction void pre_randomize();\n````\n\n---\n\nCallback invoked before randomization; override it to prepare the object.\n\n---\n\nIEEE 1800-2023 §18.6.2"
+      }
+    }
+  },
+  {
+    "process::rand_mode": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `rand_mode` in `std::process`  \n\n\n---\n\n````systemverilog\nfunction void rand_mode(input bit on_ff);\n````\n\n---\n\nEnables or disables randomization of all random variables in this object.\n\n---\n\nIEEE 1800-2023 §18.8"
+      }
+    }
+  },
+  {
+    "process::randomize": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `randomize` in `std::process`  \n\n\n---\n\n````systemverilog\nvirtual function int randomize(...);\n````\n\n---\n\nRandomizes this object's active random variables subject to its enabled constraints and an optional with block. Returns 1 on success or 0 on failure.\n\n---\n\nIEEE 1800-2023 §18.6.1"
       }
     }
   },
@@ -200,10 +304,26 @@
     }
   },
   {
+    "semaphore::constraint_mode": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `constraint_mode` in `std::semaphore`  \n\n\n---\n\n````systemverilog\nfunction void constraint_mode(input bit on_ff);\n````\n\n---\n\nEnables or disables all constraint blocks in this object.\n\n---\n\nIEEE 1800-2023 §18.9"
+      }
+    }
+  },
+  {
     "semaphore::get": {
       "contents": {
         "kind": "markdown",
         "value": "**Subroutine** `get` in `std::semaphore`  \n\n\n---\n\n````systemverilog\ntask get(input int keyCount = 1);\n````\n\n---\n\nObtains the requested number of keys, blocking until enough keys are available.\n\n---\n\nIEEE 1800-2023 §15.3.3"
+      }
+    }
+  },
+  {
+    "semaphore::get_randstate": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `get_randstate` in `std::semaphore`  \n\n\n---\n\n````systemverilog\nfunction string get_randstate();\n````\n\n---\n\nReturns this object's random number generator state as a string.\n\n---\n\nIEEE 1800-2023 §18.13.4"
       }
     }
   },
@@ -216,10 +336,58 @@
     }
   },
   {
+    "semaphore::post_randomize": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `post_randomize` in `std::semaphore`  \n\n\n---\n\n````systemverilog\nfunction void post_randomize();\n````\n\n---\n\nCallback invoked after successful randomization; override it to process the new values.\n\n---\n\nIEEE 1800-2023 §18.6.2"
+      }
+    }
+  },
+  {
+    "semaphore::pre_randomize": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `pre_randomize` in `std::semaphore`  \n\n\n---\n\n````systemverilog\nfunction void pre_randomize();\n````\n\n---\n\nCallback invoked before randomization; override it to prepare the object.\n\n---\n\nIEEE 1800-2023 §18.6.2"
+      }
+    }
+  },
+  {
     "semaphore::put": {
       "contents": {
         "kind": "markdown",
         "value": "**Subroutine** `put` in `std::semaphore`  \n\n\n---\n\n````systemverilog\nfunction void put(input int keyCount = 1);\n````\n\n---\n\nReturns keys to the semaphore, making them available to waiting processes.\n\n---\n\nIEEE 1800-2023 §15.3.2"
+      }
+    }
+  },
+  {
+    "semaphore::rand_mode": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `rand_mode` in `std::semaphore`  \n\n\n---\n\n````systemverilog\nfunction void rand_mode(input bit on_ff);\n````\n\n---\n\nEnables or disables randomization of all random variables in this object.\n\n---\n\nIEEE 1800-2023 §18.8"
+      }
+    }
+  },
+  {
+    "semaphore::randomize": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `randomize` in `std::semaphore`  \n\n\n---\n\n````systemverilog\nvirtual function int randomize(...);\n````\n\n---\n\nRandomizes this object's active random variables subject to its enabled constraints and an optional with block. Returns 1 on success or 0 on failure.\n\n---\n\nIEEE 1800-2023 §18.6.1"
+      }
+    }
+  },
+  {
+    "semaphore::set_randstate": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `set_randstate` in `std::semaphore`  \n\n\n---\n\n````systemverilog\nfunction void set_randstate(input string state);\n````\n\n---\n\nRestores this object's random number generator state from a previously saved string.\n\n---\n\nIEEE 1800-2023 §18.13.5"
+      }
+    }
+  },
+  {
+    "semaphore::srandom": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `srandom` in `std::semaphore`  \n\n\n---\n\n````systemverilog\nfunction void srandom(input int seed);\n````\n\n---\n\nSeeds this object's random number generator.\n\n---\n\nIEEE 1800-2023 §18.13.3"
       }
     }
   },
@@ -248,6 +416,14 @@
     }
   },
   {
+    "weak_reference::constraint_mode": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `constraint_mode` in `std::weak_reference`  \n\n\n---\n\n````systemverilog\nfunction void constraint_mode(input bit on_ff);\n````\n\n---\n\nEnables or disables all constraint blocks in this object.\n\n---\n\nIEEE 1800-2023 §18.9"
+      }
+    }
+  },
+  {
     "weak_reference::get": {
       "contents": {
         "kind": "markdown",
@@ -264,10 +440,66 @@
     }
   },
   {
+    "weak_reference::get_randstate": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `get_randstate` in `std::weak_reference`  \n\n\n---\n\n````systemverilog\nfunction string get_randstate();\n````\n\n---\n\nReturns this object's random number generator state as a string.\n\n---\n\nIEEE 1800-2023 §18.13.4"
+      }
+    }
+  },
+  {
     "weak_reference::new": {
       "contents": {
         "kind": "markdown",
         "value": "**Subroutine** `new` in `std::weak_reference`  \n\n\n---\n\n````systemverilog\nfunction new(input Sample referent);\n````\n\n---\n\nCreates a weak reference to the referent without keeping it strongly reachable.\n\n---\n\nIEEE 1800-2023 §8.30.2"
+      }
+    }
+  },
+  {
+    "weak_reference::post_randomize": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `post_randomize` in `std::weak_reference`  \n\n\n---\n\n````systemverilog\nfunction void post_randomize();\n````\n\n---\n\nCallback invoked after successful randomization; override it to process the new values.\n\n---\n\nIEEE 1800-2023 §18.6.2"
+      }
+    }
+  },
+  {
+    "weak_reference::pre_randomize": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `pre_randomize` in `std::weak_reference`  \n\n\n---\n\n````systemverilog\nfunction void pre_randomize();\n````\n\n---\n\nCallback invoked before randomization; override it to prepare the object.\n\n---\n\nIEEE 1800-2023 §18.6.2"
+      }
+    }
+  },
+  {
+    "weak_reference::rand_mode": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `rand_mode` in `std::weak_reference`  \n\n\n---\n\n````systemverilog\nfunction void rand_mode(input bit on_ff);\n````\n\n---\n\nEnables or disables randomization of all random variables in this object.\n\n---\n\nIEEE 1800-2023 §18.8"
+      }
+    }
+  },
+  {
+    "weak_reference::randomize": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `randomize` in `std::weak_reference`  \n\n\n---\n\n````systemverilog\nvirtual function int randomize(...);\n````\n\n---\n\nRandomizes this object's active random variables subject to its enabled constraints and an optional with block. Returns 1 on success or 0 on failure.\n\n---\n\nIEEE 1800-2023 §18.6.1"
+      }
+    }
+  },
+  {
+    "weak_reference::set_randstate": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `set_randstate` in `std::weak_reference`  \n\n\n---\n\n````systemverilog\nfunction void set_randstate(input string state);\n````\n\n---\n\nRestores this object's random number generator state from a previously saved string.\n\n---\n\nIEEE 1800-2023 §18.13.5"
+      }
+    }
+  },
+  {
+    "weak_reference::srandom": {
+      "contents": {
+        "kind": "markdown",
+        "value": "**Subroutine** `srandom` in `std::weak_reference`  \n\n\n---\n\n````systemverilog\nfunction void srandom(input int seed);\n````\n\n---\n\nSeeds this object's random number generator.\n\n---\n\nIEEE 1800-2023 §18.13.3"
       }
     }
   }

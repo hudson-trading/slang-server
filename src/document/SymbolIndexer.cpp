@@ -273,6 +273,16 @@ void SymbolIndexer::indexSymbolName(const slang::ast::Symbol& symbol, bool isUnn
         addSymbol(symbol.getSyntax(), symbol);
 
         auto& syntax = *symbol.getSyntax();
+        if (symbol.kind == ast::SymbolKind::Subroutine) {
+            if (auto function = syntax.as_if<syntax::FunctionDeclarationSyntax>()) {
+                if (auto name = function->prototype->name->as_if<syntax::ScopedNameSyntax>();
+                    name && name->separator.kind == parsing::TokenKind::Dot) {
+                    // Resolve the qualified name through the interface declaration while
+                    // retaining this implementation's scope for its arguments and body.
+                    return;
+                }
+            }
+        }
         if (!isUnnamed && syntax.sourceRange().start().buffer() == m_buffer &&
             !symbol.name.empty()) {
             SmallVector<const parsing::Token*> tokens;
@@ -385,10 +395,7 @@ void SymbolIndexer::handle(const slang::ast::GenericClassDefSymbol& sym) {
     if (!shouldVisit(sym.location.buffer()))
         return;
 
-    // Traversing members can create more specializations and invalidate the map iterator.
-    SmallVector<const slang::ast::Type*> specializations;
-    for (auto& specialization : sym.specializations())
-        specializations.push_back(&specialization);
+    auto specializations = sym.specializations();
     if (specializations.empty()) {
         auto* specialization = sym.getDefaultSpecialization(*sym.getParentScope());
         specializations.push_back(specialization ? specialization

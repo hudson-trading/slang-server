@@ -131,7 +131,7 @@ endpackage
 }
 
 TEST_CASE("BuiltinClassMethods", "[builtin-methods]") {
-    const std::map<std::string, std::map<std::string, std::string>> calls{
+    std::map<std::string, std::map<std::string, std::string>> calls{
         {"process",
          {{"self", "process::self()"},
           {"status", "proc.status()"},
@@ -172,6 +172,15 @@ TEST_CASE("BuiltinClassMethods", "[builtin-methods]") {
           {"constraint_mode", "object.constraint_mode(1)"}}},
         {"std", {{"randomize", "std::randomize(value)"}}},
     };
+    const std::map<std::string, std::string> variables{{"process", "proc"},
+                                                       {"semaphore", "sem"},
+                                                       {"mailbox", "messages"},
+                                                       {"weak_reference", "weak_handle"},
+                                                       {"Sample", "object"}};
+    for (auto owner : {"process", "semaphore", "mailbox", "weak_reference"}) {
+        for (const auto& [name, call] : calls.at("Sample"))
+            calls.at(owner).try_emplace(name, variables.at(owner) + call.substr(call.find('.')));
+    }
     std::string source = R"(
 class Sample;
     rand int value;
@@ -218,11 +227,6 @@ module top;
           std::set<std::string>{"process", "semaphore", "mailbox", "weak_reference"});
     CHECK(freeFunctions == std::set<std::string>{"randomize"});
 
-    const std::map<std::string, std::string> variables{{"process", "proc"},
-                                                       {"semaphore", "sem"},
-                                                       {"mailbox", "messages"},
-                                                       {"weak_reference", "weak_handle"},
-                                                       {"Sample", "object"}};
     JsonGoldenTest golden;
     for (auto& [owner, methods] : calls) {
         CAPTURE(owner);

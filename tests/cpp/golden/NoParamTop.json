@@ -3,6 +3,42 @@
     {
       "range": {
         "start": {
+          "line": 1,
+          "character": 4
+        },
+        "end": {
+          "line": 1,
+          "character": 13
+        }
+      },
+      "severity": "Warning",
+      "code": "prefer-localparam",
+      "codeDescription": {
+        "href": "https://sv-lang.com/warning-ref.html#prefer-localparam"
+      },
+      "message": "prefer 'localparam' because parameter cannot be overridden in this context"
+    },
+    {
+      "range": {
+        "start": {
+          "line": 15,
+          "character": 4
+        },
+        "end": {
+          "line": 15,
+          "character": 13
+        }
+      },
+      "severity": "Warning",
+      "code": "prefer-localparam",
+      "codeDescription": {
+        "href": "https://sv-lang.com/warning-ref.html#prefer-localparam"
+      },
+      "message": "prefer 'localparam' because parameter cannot be overridden in this context"
+    },
+    {
+      "range": {
+        "start": {
           "line": 171,
           "character": 26
         },
@@ -166,7 +202,7 @@
       "codeDescription": {
         "href": "https://sv-lang.com/warning-ref.html#case-enum-explicit"
       },
-      "message": "enumeration value 'STATE_C' not explicitly handled in case statement"
+      "message": "enumeration value 'STATE_C' not explicitly handled by any case item"
     },
     {
       "range": {

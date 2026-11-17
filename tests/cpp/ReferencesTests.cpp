@@ -10,8 +10,10 @@ using namespace slang;
 void verifyReferenceTokens(ServerHarness& server, const std::vector<lsp::Location>& refs,
                            const std::string& expectedToken) {
     for (const auto& ref : refs) {
-        auto refDoc = server.openFile(std::string(ref.uri.getPath()));
-        auto text = refDoc.getText();
+        auto refDoc = server.getDoc(ref.uri);
+        if (!refDoc)
+            refDoc = server.openFile(std::string(ref.uri.getPath())).doc;
+        auto text = refDoc->getText();
 
         // Calculate byte offset from position
         size_t offset = 0;
@@ -470,9 +472,13 @@ TEST_CASE("FindReferences - Cross-File Function") {
 }
 
 TEST_CASE("FindReferences - Cross-File Interface Modport Port Header") {
+    const auto ports =
+        GENERATE("(cross_if.producer prod, cross_if.consumer cons);\n",
+                 "(prod, cons);\ncross_if.producer prod;\ncross_if.consumer cons;\n");
     ServerHarness server("indexer_test");
     auto intfHdl = server.openFile("crossfile_interface_defs.sv");
-    auto userHdl = server.openFile("crossfile_interface_user.sv");
+    auto userHdl = server.openFile("crossfile_interface_user.sv",
+                                   std::string("module cross_if_user") + ports + "endmodule\n");
     intfHdl.ensureSynced();
     userHdl.ensureSynced();
 

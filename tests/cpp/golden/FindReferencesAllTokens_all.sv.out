@@ -873,6 +873,8 @@ module n(Iface.m a);
     function void a.bar(int i, logic l); endfunction
                   ^ Refs[8]
                     ^^^ Refs[3]
+                            ^ Refs[1]
+                                     ^ Refs[1]
 
     task a.baz; endtask
          ^ Refs[8]
@@ -881,12 +883,15 @@ module n(Iface.m a);
     function void a.func(int i); endfunction
                   ^ Refs[8]
                     ^^^^ Refs[2]
+                             ^ Refs[1]
 
 
 
     function void a.foo(int i, real r);
                   ^ Refs[8]
                     ^^^ Refs[3]
+                            ^ Refs[1]
+                                    ^ Refs[1]
 
     endfunction
 
@@ -928,6 +933,7 @@ module m4;
             ^^ Refs[3]
 
         static int i = baz;
+                   ^ Refs[1]
                        ^^^ Refs[3]
 
     endtask
@@ -939,6 +945,7 @@ module m4;
             ^^ Refs[3]
 
         static int i = baz;
+                   ^ Refs[1]
                        ^^^ Refs[3]
 
     endtask
