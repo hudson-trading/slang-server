@@ -9,6 +9,7 @@
 #include "completions/InstanceCompletions.h"
 
 #include "Indexer.h"
+#include "ServerDriver.h"
 #include "document/SlangDoc.h"
 #include "lsp/SnippetString.h"
 #include "util/Converters.h"
@@ -17,6 +18,8 @@
 #include <fmt/format.h>
 #include <unordered_set>
 
+#include "slang/ast/Compilation.h"
+#include "slang/ast/symbols/CompilationUnitSymbols.h"
 #include "slang/parsing/Token.h"
 #include "slang/parsing/TokenKind.h"
 #include "slang/syntax/AllSyntax.h"
@@ -282,6 +285,17 @@ void InstanceCompletionQuery::resolve(CompletionDispatch& dispatch, lsp::Complet
         auto documentUri = item.data->to_string();
         if (!documentUri)
             return;
+        if (auto doc = getDriver(dispatch).getDocument(URI(*documentUri))) {
+            auto analysis = doc->getAnalysis();
+            if (auto* package = analysis->getCompilation()->getPackage(name)) {
+                auto* syntax = package->getSyntax();
+                if (auto* declaration = syntax ? syntax->as_if<syntax::ModuleDeclarationSyntax>()
+                                               : nullptr)
+                    item.documentation = svCodeBlock(*declaration->header);
+                item.data.reset();
+                return;
+            }
+        }
         auto symbolLoc = getIndexer(dispatch).getNearestSymbolLoc(name,
                                                                   URI(*documentUri).getPath());
         if (!symbolLoc)

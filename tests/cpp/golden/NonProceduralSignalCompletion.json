@@ -251,6 +251,32 @@
         }
       },
       {
+        "label": "std",
+        "labelDetails": {
+          "detail": " Package"
+        },
+        "kind": "Module",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\npackage std;\n````"
+        },
+        "filterText": "std",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 10,
+              "character": 0
+            },
+            "end": {
+              "line": 10,
+              "character": 0
+            }
+          },
+          "newText": "std"
+        },
+        "data": "file://assign_test.sv"
+      },
+      {
         "label": "util_pkg",
         "labelDetails": {
           "detail": " Package"

@@ -316,6 +316,32 @@
         }
       },
       {
+        "label": "std",
+        "labelDetails": {
+          "detail": " Package"
+        },
+        "kind": "Module",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\npackage std;\n````"
+        },
+        "filterText": "std",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 43,
+              "character": 8
+            },
+            "end": {
+              "line": 43,
+              "character": 8
+            }
+          },
+          "newText": "std"
+        },
+        "data": "file://module_test.sv"
+      },
+      {
         "label": "tb",
         "labelDetails": {
           "detail": " Module"
@@ -969,6 +995,34 @@
           },
           "newText": "state_t"
         }
+      },
+      {
+        "label": "std",
+        "labelDetails": {
+          "detail": " Package"
+        },
+        "kind": "Module",
+        "documentation": {
+          "kind": "markdown",
+          "value": "````systemverilog\npackage std;\n````"
+        },
+        "filterText": "std",
+        "insertText": "std",
+        "insertTextFormat": "PlainText",
+        "textEdit": {
+          "range": {
+            "start": {
+              "line": 64,
+              "character": 25
+            },
+            "end": {
+              "line": 64,
+              "character": 25
+            }
+          },
+          "newText": "std"
+        },
+        "data": "file://module_test.sv"
       },
       {
         "label": "u_sub",
