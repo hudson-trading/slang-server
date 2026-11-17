@@ -1105,6 +1105,10 @@ optional <code>vcpkg</code> submodule; slang-server uses its bundled JSON suppor
 <p>CMake downloads the remaining dependencies, including uriparser, during
 configuration. Network access is required unless those dependencies are already
 available locally.</p>
+<p>To use an installed uriparser instead of downloading it, configure with
+<code>-DSLANG_SERVER_USE_SYSTEM_URIPARSER=ON</code>. This requires uriparser 1.0.3 or later
+with <code>char</code> support and its CMake package configuration. Set <code>CMAKE_PREFIX_PATH</code>
+if the package is installed outside CMake's default search paths.</p>
 <p>The binary will be at <code>build/bin/slang-server</code>.</p>
 <p>For developer hovers and document/repository coverage scans, enable
 <code>-DSLANG_SERVER_DEBUG=ON</code>. See <a href="../../development/debug-scans/">Debug hovers and feature scans</a>.</p>
