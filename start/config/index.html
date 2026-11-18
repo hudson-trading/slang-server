@@ -530,6 +530,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#document-size-limit" class="md-nav__link">
+    <span class="md-ellipsis">
+      Document size limit
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#environment-variables" class="md-nav__link">
     <span class="md-ellipsis">
       Environment variables
@@ -1203,6 +1212,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#document-size-limit" class="md-nav__link">
+    <span class="md-ellipsis">
+      Document size limit
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#environment-variables" class="md-nav__link">
     <span class="md-ellipsis">
       Environment variables
@@ -1403,6 +1421,22 @@
 <li><code>${workspaceFolder}/.slang/local/server.json</code> — local config (<code>.slang/local</code> should be ignored by source control)</li>
 </ol>
 <p>Later files override earlier ones for scalar values. Lists (like <code>index</code> and <code>incdirs</code>) are appended across all files. <code>env</code> objects merge by variable name.</p>
+<h3 id="document-size-limit">Document size limit<a class="headerlink" href="#document-size-limit" title="Permanent link">&para;</a></h3>
+<p><code>maxFileSize</code> limits per-document editor analysis and debug scans. It defaults to
+1 MiB (1,048,576 bytes); set it to <code>0</code> to disable the limit:</p>
+<div class="language-json highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;maxFileSize&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1048576</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Oversized documents stay open and editable. The server sends a warning
+notification and declines analysis requests for that document. The notification
+appears once while an open document remains above the limit; edits, saves, and
+unrelated configuration changes do not repeat it.
+The limit uses the current editor contents, including unsaved changes. Analysis
+resumes when the document shrinks to the limit or below, or the setting is raised or
+disabled. Saving the config reloads the setting automatically.</p>
+<p>This is a per-document analysis limit, not a total memory limit. Indexing,
+dependencies, and explicitly selected builds can still read larger files.</p>
 <h3 id="environment-variables">Environment variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h3>
 <p><code>build</code>, <code>index[].dirs</code>, <code>index[].excludeDirs</code>, and <code>incdirs</code> accept <code>$VAR</code>, <code>${VAR}</code>, and
 <code>$(VAR)</code> references to variables configured in <code>env</code> or inherited by the server process. For example:</p>

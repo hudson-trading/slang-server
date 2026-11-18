@@ -1157,9 +1157,17 @@ workspace-relative exclusion globs and per-request timeouts:</p>
 folder (or the file's parent); specify the repository root to use its usual
 <code>.slang/server.json</code>, include paths, defines, indexing, and build configuration.
 Neither runner changes that configuration. Directory scans include <code>.sv</code>, <code>.svh</code>,
-<code>.v</code>, and <code>.vh</code> files and skip <code>.git</code> and symlinks. Scan file selection is independent
-of index exclusions. The Python runner additionally accepts repeatable
+<code>.v</code>, and <code>.vh</code> files and skip <code>.git</code>, symlinks, and directories in the loaded
+configuration's <code>index[].excludeDirs</code> and legacy <code>excludeDirs</code> lists. Exclusions
+apply throughout the requested scan target: bare names match whole directory
+names, while absolute paths and paths starting with <code>./</code> exclude specific
+directories and their descendants. Environment variables use the configured
+<code>env</code> overrides. The Python runner additionally accepts repeatable
 workspace-relative <code>--exclude</code> globs and a <code>--timeout</code> per-request limit in seconds.</p>
+<p>Both runners honor the server's <code>maxFileSize</code> setting (1 MiB by default, <code>0</code> for
+unlimited). Oversized files are reported in <code>errors</code>, and scanning continues with
+the remaining files. These skipped files make the report incomplete rather than
+counting as successfully scanned.</p>
 <p>Both runners produce JSON containing:</p>
 <ul>
 <li><code>documents</code>: every finding, compiler diagnostics, URI, path, and check counts.</li>
