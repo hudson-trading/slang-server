@@ -12,10 +12,11 @@
 #include <unordered_map>
 #include <vector>
 
+#include "slang/ast/Compilation.h"
 #include "slang/text/SourceLocation.h"
 
 namespace slang::ast {
-class Compilation;
+class DefinitionSymbol;
 class InstanceSymbol;
 class InterfacePortSymbol;
 class Symbol;
@@ -40,8 +41,13 @@ InterfaceConnection resolveInterfaceConnection(const slang::ast::InterfacePortSy
 /// to the active instances
 class ActiveDesignContext {
 public:
-    /// Install the selected design's parameter values into a shallow compilation.
-    void applyOverrides(slang::ast::Compilation& shallowCompilation) const;
+    /// Override nodes keyed by shallow definition. Node-based so instance bodies can point at them.
+    using DefinitionOverrides =
+        std::unordered_map<const slang::ast::DefinitionSymbol*, slang::ast::HierarchyOverrideNode>;
+
+    /// Install the selected design's parameter values into a shallow compilation, returning the
+    /// overrides of each bound definition for instances created outside the root.
+    DefinitionOverrides applyOverrides(slang::ast::Compilation& shallowCompilation) const;
 
     /// Return the corresponding symbol from the selected full-design instance, if any.
     const slang::ast::Symbol* getDesignSymbol(const slang::ast::Symbol& shallowSymbol) const;

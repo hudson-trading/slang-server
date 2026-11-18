@@ -168,6 +168,31 @@ TEST_CASE("ActiveInstanceDiagnosticsUseOverriddenStructType") {
     CHECK(diagnostics.front().message.find("valid_missing") != std::string::npos);
 }
 
+TEST_CASE("DefinitionScopeUsesActiveInstanceOverrides") {
+    ServerHarness server("active_instance_member_access");
+    server.setBuildFile("design.f");
+
+    // child is instantiated here, so its definition scope comes from a synthetic instance.
+    auto doc = server.openFile("top.sv");
+    REQUIRE(server.setActiveInstance("top.selected"));
+    auto analysis = doc.doc->getAnalysis();
+    auto& compilation = *analysis->getCompilation();
+    auto* definition = compilation.tryGetDefinition("child", compilation.getRoot()).definition;
+    REQUIRE(definition);
+    auto* scope = analysis->getScopeFromSym(definition);
+    REQUIRE(scope);
+    auto* type = scope->lookupName("T");
+    REQUIRE(type);
+    CHECK(type->as<slang::ast::Type>().isStruct());
+}
+
+TEST_CASE("BuildFileDiagnosticsUsePreferredInstanceWithoutSelection") {
+    ServerHarness server("active_instance_member_access");
+    server.setBuildFile("design.f");
+    auto doc = server.openFile("child.sv");
+    CHECK(doc.getDiagnostics().empty());
+}
+
 TEST_CASE("StandaloneDiagnosticsStillCheckDefaultType") {
     ServerHarness server("active_instance_member_access");
     auto doc = server.openFile("child.sv");

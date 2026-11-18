@@ -279,7 +279,9 @@ void ActiveDesignContext::bindInstance(const ast::InstanceSymbol& instance) {
     m_definitions.insert_or_assign(std::string(instance.getDefinition().name), std::move(binding));
 }
 
-void ActiveDesignContext::applyOverrides(ast::Compilation& shallowCompilation) const {
+ActiveDesignContext::DefinitionOverrides ActiveDesignContext::applyOverrides(
+    ast::Compilation& shallowCompilation) const {
+    DefinitionOverrides result;
     std::unordered_map<std::string_view, const ast::DefinitionSymbol*> shallowDefinitions;
     for (auto* symbol : shallowCompilation.getDefinitions()) {
         if (auto* definition = symbol->as_if<ast::DefinitionSymbol>())
@@ -300,8 +302,7 @@ void ActiveDesignContext::applyOverrides(ast::Compilation& shallowCompilation) c
             return std::ranges::any_of(binding.interfaceConnections,
                                        [&](const auto& entry) { return entry.first == portName; });
         });
-        auto& shallowOverride = shallowCompilation.getOrAddTopLevelHierarchyOverride(
-            *shallowDefinitionSyntax);
+        auto& shallowOverride = result[shallowDefinition];
         copyParameterOverrides(shallowOverride, binding.instance->body, *shallowDefinition,
                                shallowCompilation);
 
@@ -323,7 +324,10 @@ void ActiveDesignContext::applyOverrides(ast::Compilation& shallowCompilation) c
                                    designInterfaceInstance->body, *shallowInterfaceIt->second,
                                    shallowCompilation);
         }
+        shallowCompilation.getOrAddTopLevelHierarchyOverride(
+            *shallowDefinitionSyntax) = shallowOverride;
     }
+    return result;
 }
 
 const ast::Symbol* ActiveDesignContext::getDesignSymbol(const ast::Symbol& shallowSymbol) const {

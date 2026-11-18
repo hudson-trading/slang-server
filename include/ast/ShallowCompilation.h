@@ -48,8 +48,9 @@ public:
     /// Whether every syntax tree still uses the latest source buffers.
     bool hasValidBuffers() const;
 
-    /// Return a cached synthetic instance with the active design's parameter overrides.
-    slang::ast::InstanceSymbol& getDefinitionInstance(
+    /// Return a representative instance of a definition with the active design's parameter
+    /// overrides: its top instance if it has one, otherwise a cached synthetic instance.
+    const slang::ast::InstanceSymbol& getDefinitionInstance(
         const slang::ast::DefinitionSymbol& definition);
 
     /// Elaborate definitions from the primary tree and return compilation-wide diagnostics.
@@ -95,13 +96,11 @@ private:
     /// Selected full-design instances and overrides used by every file view.
     std::optional<ActiveDesignContext> m_activeDesign;
 
-    struct DefinitionInstance {
-        slang::ast::HierarchyOverrideNode overrides;
-        slang::ast::InstanceSymbol* instance = nullptr;
-    };
+    /// Active-design overrides referenced by the synthetic instances of bound definitions.
+    ActiveDesignContext::DefinitionOverrides m_definitionOverrides;
 
-    /// Synthetic instances used for diagnostics and navigation, with stable override storage.
-    std::unordered_map<const slang::ast::DefinitionSymbol*, DefinitionInstance>
+    /// Representative instances used for diagnostics and navigation.
+    std::unordered_map<const slang::ast::DefinitionSymbol*, const slang::ast::InstanceSymbol*>
         m_definitionInstances;
 
     /// Options used when lazily running driver analysis.

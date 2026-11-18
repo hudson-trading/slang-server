@@ -10,6 +10,7 @@
 
 #include "ast/ServerCompilation.h"
 #include "util/SlangExtensions.h"
+#include <algorithm>
 
 #include "slang/ast/symbols/CompilationUnitSymbols.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
@@ -46,17 +47,7 @@ ShallowCompilation::ShallowCompilation(
                 definitionNames.push_back(definition->name);
         }
         m_activeDesign = design->createActiveDesignContext(definitionNames);
-        m_activeDesign->applyOverrides(*m_compilation);
-
-        // Keep overrides available for synthetic instances after getRoot finalizes the
-        // compilation. createDefault does not consult the compilation's override tree.
-        for (auto* symbol : m_compilation->getDefinitions()) {
-            auto* definition = symbol->as_if<ast::DefinitionSymbol>();
-            if (definition && m_activeDesign->getDesignSymbol(*definition)) {
-                m_definitionInstances[definition].overrides =
-                    m_compilation->getOrAddTopLevelHierarchyOverride(*definition->getSyntax());
-            }
-        }
+        m_definitionOverrides = m_activeDesign->applyOverrides(*m_compilation);
     }
 }
 
@@ -68,27 +59,41 @@ bool ShallowCompilation::hasValidBuffers() const {
     return true;
 }
 
-ast::InstanceSymbol& ShallowCompilation::getDefinitionInstance(
+const ast::InstanceSymbol& ShallowCompilation::getDefinitionInstance(
     const ast::DefinitionSymbol& definition) {
-    auto& entry = m_definitionInstances[&definition];
-    if (!entry.instance) {
+    auto [it, inserted] = m_definitionInstances.try_emplace(&definition, nullptr);
+    if (inserted) {
         auto& root = m_compilation->getRoot();
-        entry.instance = &ast::InstanceSymbol::createDefault(*m_compilation, definition,
-                                                             &entry.overrides);
-        entry.instance->setParent(root);
+        auto top = std::ranges::find(root.topInstances, &definition,
+                                     [](auto* instance) { return &instance->getDefinition(); });
+        if (top != root.topInstances.end()) {
+            it->second = *top;
+        }
+        else {
+            // The root has been finalized, so its override tree no longer reaches new instances.
+            auto overrides = m_definitionOverrides.find(&definition);
+            auto& instance = ast::InstanceSymbol::createDefault(
+                *m_compilation, definition,
+                overrides == m_definitionOverrides.end() ? nullptr : &overrides->second);
+            instance.setParent(root);
+            it->second = &instance;
+        }
     }
-    return *entry.instance;
+    return *it->second;
 }
 
 const Diagnostics& ShallowCompilation::getSemanticDiagnostics() {
     if (!m_editedDefinitionsElaborated) {
+        auto topInstances = m_compilation->getRoot().topInstances;
         for (auto* symbol : m_compilation->getDefinitions()) {
             auto* definition = symbol->as_if<ast::DefinitionSymbol>();
             if (!definition || definition->syntaxTree != m_tree.get())
                 continue;
 
+            // Top instances are already elaborated with the root.
             auto& instance = getDefinitionInstance(*definition);
-            m_compilation->forceElaborate(instance.body);
+            if (std::ranges::find(topInstances, &instance) == topInstances.end())
+                m_compilation->forceElaborate(instance.body);
         }
         m_editedDefinitionsElaborated = true;
     }

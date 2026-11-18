@@ -281,17 +281,8 @@ const ast::Scope* ShallowAnalysis::getScopeFromSym(const ast::Symbol* symbol) co
         return nullptr;
     }
 
-    if (auto* definition = symbol->as_if<ast::DefinitionSymbol>()) {
-        auto [it, inserted] = m_definitionScopes.try_emplace(definition, nullptr);
-        if (inserted) {
-            auto& compilation = definition->getParentScope()->getCompilation();
-            auto& fallback = ast::InstanceSymbol::createDefault(compilation, *definition);
-            fallback.setParent(compilation.getRoot());
-            fallback.name = "";
-            it->second = &fallback.body;
-        }
-        return it->second;
-    }
+    if (auto* definition = symbol->as_if<ast::DefinitionSymbol>())
+        return &m_shallowCompilation->getDefinitionInstance(*definition).body;
 
     if (auto* generic = symbol->as_if<ast::GenericClassDefSymbol>()) {
         auto [it, inserted] = m_definitionScopes.try_emplace(generic, nullptr);
