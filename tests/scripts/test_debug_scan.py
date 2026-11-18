@@ -5,18 +5,17 @@
 
 import json
 import os
-from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
-
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
 class DebugScanTests(unittest.TestCase):
-    def run_scan(self, sources, *options, expected_status=0, native=False):
+    def run_scan(self, sources, *options, expected_status=0, native=False, target=""):
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory)
             for name, text in sources.items():
@@ -32,15 +31,22 @@ class DebugScanTests(unittest.TestCase):
             process = subprocess.run(
                 [
                     *command,
+                    str(workspace / target),
+                    "--workspace",
                     str(workspace),
                     "--output",
                     str(output),
                     *options,
                 ],
-                env={**os.environ, "SLANG_SERVER_TESTS": "YES"},
+                env={
+                    **os.environ,
+                    "SLANG_SERVER_TESTS": "YES",
+                    "DEBUG_SCAN_TEST_WORKSPACE": str(workspace),
+                },
                 text=True,
                 capture_output=True,
                 timeout=30,
+                check=False,
             )
             self.assertEqual(process.returncode, expected_status, process.stderr)
             self.assertEqual(process.stdout, "")
@@ -93,6 +99,80 @@ class DebugScanTests(unittest.TestCase):
             for diagnostic in document["diagnostics"]:
                 self.assertEqual(
                     diagnostic["range"]["start"], {"line": 0, "character": column}
+                )
+
+    def test_configured_directory_exclusions(self):
+        sources = {
+            ".slang/server.json": json.dumps(
+                {
+                    "env": {"SCAN_SKIP": "cache"},
+                    "index": [
+                        {
+                            "dirs": ["."],
+                            "excludeDirs": [
+                                "generated",
+                                "./rtl/private",
+                                "$(SCAN_SKIP)",
+                                "$DEBUG_SCAN_TEST_WORKSPACE/absolute-only",
+                            ],
+                        }
+                    ],
+                }
+            ),
+            ".slang/local/server.json": json.dumps(
+                {
+                    "env": {"LOCAL_SKIP": "local-only"},
+                    "index": [{"dirs": [], "excludeDirs": ["${LOCAL_SKIP}"]}],
+                }
+            ),
+            "top.sv": "module top; endmodule\n",
+            "generated_extra/kept.SV": "module kept; endmodule\n",
+            "other/private/valid.sv": "module valid; endmodule\n",
+        }
+        for directory in (
+            "generated",
+            "nested/generated",
+            "rtl/private",
+            "cache",
+            "local-only",
+            "absolute-only",
+        ):
+            sources[f"{directory}/broken.sv"] = (
+                "module bad; initial missing(); endmodule\n"
+            )
+        for native in (False, True):
+            with self.subTest(native=native):
+                report = self.run_scan(sources, native=native)
+                self.assertTrue(report["summary"]["complete"])
+                self.assertEqual(report["summary"]["filesSelected"], 3)
+                self.assertEqual(
+                    [doc["path"] for doc in report["documents"]],
+                    ["generated_extra/kept.SV", "other/private/valid.sv", "top.sv"],
+                )
+        for native in (False, True):
+            for target in (
+                "nested/generated",
+                "rtl/private/broken.sv",
+                "absolute-only/broken.sv",
+            ):
+                with self.subTest(native=native, target=target):
+                    report = self.run_scan(
+                        sources, native=native, target=target, expected_status=2
+                    )
+                    self.assertFalse(report["summary"]["complete"])
+                    self.assertEqual(report["summary"]["filesSelected"], 0)
+
+    def test_legacy_directory_exclusions(self):
+        sources = {
+            ".slang/server.json": '{"excludeDirs":["generated"]}',
+            "top.sv": "module top; endmodule\n",
+            "generated/broken.sv": "module bad; initial missing(); endmodule\n",
+        }
+        for native in (False, True):
+            with self.subTest(native=native):
+                report = self.run_scan(sources, native=native)
+                self.assertEqual(
+                    [doc["path"] for doc in report["documents"]], ["top.sv"]
                 )
 
     def test_native_and_lsp_scans_agree(self):

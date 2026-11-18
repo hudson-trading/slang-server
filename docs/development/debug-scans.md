@@ -96,8 +96,12 @@ The target can be a single file or a folder. The workspace defaults to the targe
 folder (or the file's parent); specify the repository root to use its usual
 `.slang/server.json`, include paths, defines, indexing, and build configuration.
 Neither runner changes that configuration. Directory scans include `.sv`, `.svh`,
-`.v`, and `.vh` files and skip `.git` and symlinks. Scan file selection is independent
-of index exclusions. The Python runner additionally accepts repeatable
+`.v`, and `.vh` files and skip `.git`, symlinks, and directories in the loaded
+configuration's `index[].excludeDirs` and legacy `excludeDirs` lists. Exclusions
+apply throughout the requested scan target: bare names match whole directory
+names, while absolute paths and paths starting with `./` exclude specific
+directories and their descendants. Environment variables use the configured
+`env` overrides. The Python runner additionally accepts repeatable
 workspace-relative `--exclude` globs and a `--timeout` per-request limit in seconds.
 
 Both runners produce JSON containing:
