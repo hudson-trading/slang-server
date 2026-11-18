@@ -1092,7 +1092,7 @@
 git<span class="w"> </span>clone<span class="w"> </span>https://github.com/hudson-trading/slang-server.git
 <span class="nb">cd</span><span class="w"> </span>slang-server
 
-<span class="c1"># Pull direct dependencies (slang, reflect-cpp, and ctre)</span>
+<span class="c1"># Pull direct submodules (slang and reflect-cpp)</span>
 git<span class="w"> </span>submodule<span class="w"> </span>update<span class="w"> </span>--init
 
 <span class="c1"># Build with cmake using a C++20 compliant compiler</span>
@@ -1102,6 +1102,13 @@ cmake<span class="w"> </span>--build<span class="w"> </span>build<span class="w"
 <p>Only direct submodules are needed. Leave out <code>--recursive</code> to skip reflect-cpp's
 optional <code>vcpkg</code> submodule; slang-server uses its bundled JSON support with
 <code>REFLECTCPP_USE_VCPKG=OFF</code> by default.</p>
+<p>CMake downloads the remaining dependencies, including uriparser, during
+configuration. Network access is required unless those dependencies are already
+available locally.</p>
+<p>To use an installed uriparser instead of downloading it, configure with
+<code>-DSLANG_SERVER_USE_SYSTEM_URIPARSER=ON</code>. This requires uriparser 1.0.3 or later
+with <code>char</code> support and its CMake package configuration. Set <code>CMAKE_PREFIX_PATH</code>
+if the package is installed outside CMake's default search paths.</p>
 <p>The binary will be at <code>build/bin/slang-server</code>.</p>
 <p>For developer hovers and document/repository coverage scans, enable
 <code>-DSLANG_SERVER_DEBUG=ON</code>. See <a href="../../development/debug-scans/">Debug hovers and feature scans</a>.</p>
