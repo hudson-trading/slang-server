@@ -70,6 +70,26 @@ TEST_CASE("FindReferences - Simple Variable") {
     CHECK(refs->size() == 3); // declaration + 2 uses
 }
 
+TEST_CASE("Rename - Encoded Filename") {
+    ServerHarness server;
+    auto doc = server.openFile("a %23#.sv", R"(
+module example;
+    int value;
+    assign value = 1;
+endmodule
+)");
+    auto edits = server.getDocRename({.textDocument = {.uri = doc.m_uri},
+                                      .position = doc.after("int ").getPosition(),
+                                      .newName = "renamed"});
+    REQUIRE(edits);
+    REQUIRE(edits->changes);
+    REQUIRE(edits->changes->size() == 1);
+    const auto& [uri, changes] = *edits->changes->begin();
+    CHECK(uri.ends_with("/a%20%2523%23.sv"));
+    CHECK(URI(uri) == doc.m_uri);
+    CHECK(changes.size() == 2);
+}
+
 TEST_CASE("FindReferences - Exclude Declaration") {
     ServerHarness server("indexer_test");
     auto hdl = server.openFile("references_test.sv");

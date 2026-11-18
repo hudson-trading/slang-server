@@ -1,249 +1,111 @@
 #include "lsp/URI.h"
 
-#include <cctype>
-#include <ctre.hpp>
-#include <filesystem>
-#include <string>
-#include <string_view>
-#include <utility>
+#include <limits>
+#include <new>
+#include <stdexcept>
+#include <uriparser/Uri.h>
 
-// Pattern from RFC 3986
-// https://www.rfc-editor.org/rfc/rfc3986#appendix-B
-static constexpr auto uriPattern = ctll::fixed_string{
-    R"(^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?$)"};
+#include "slang/util/ScopeGuard.h"
+
+namespace {
+
+void checkUri(int result) {
+    if (result == URI_ERROR_MALLOC)
+        throw std::bad_alloc();
+    if (result == URI_ERROR_OUTPUT_TOO_LARGE)
+        throw std::length_error("URI is too long");
+    if (result != URI_SUCCESS)
+        throw std::invalid_argument("Invalid URI");
+}
+
+} // namespace
 
 URI::URI(const std::string& input) {
+    UriUriA parsed{};
+    slang::ScopeGuard cleanup([&] { uriFreeUriMembersA(&parsed); });
+    checkUri(uriParseSingleUriExA(&parsed, input.data(), input.data() + input.size(), nullptr));
+    checkUri(uriNormalizeSyntaxExA(&parsed, URI_NORMALIZE_SCHEME | URI_NORMALIZE_HOST));
 
-    const auto m = ctre::match<uriPattern>(input);
-    if (!m) {
-        return; // empty URI
+    if (parsed.absolutePath || (parsed.hostText.first && parsed.pathHead))
+        fsPath_ += '/';
+    for (auto* segment = parsed.pathHead; segment; segment = segment->next) {
+        if (segment->text.first != segment->text.afterLast)
+            fsPath_.append(segment->text.first, segment->text.afterLast);
+        if (segment->next)
+            fsPath_ += '/';
     }
+    fsPath_.resize(uriUnescapeInPlaceA(fsPath_.data()) - fsPath_.data());
 
-    std::string scheme = m.get<2>().to_string();
-    std::string authority = decode(m.get<4>().to_string());
-    std::string path = decode(m.get<5>().to_string());
-    std::string query = decode(m.get<7>().to_string());
-    std::string fragment = decode(m.get<9>().to_string());
-
-    init(std::move(scheme), std::move(authority), std::move(path), std::move(query),
-         std::move(fragment));
-}
-
-std::string_view URI::scheme() const {
-    return std::string_view(underlying_.data() + scheme_.first, scheme_.second);
-}
-
-std::string_view URI::authority() const {
-    return std::string_view(underlying_.data() + authority_.first, authority_.second);
-}
-
-std::string_view URI::path() const {
-    return std::string_view(underlying_.data() + path_.first, path_.second);
-}
-
-std::string_view URI::query() const {
-    return std::string_view(underlying_.data() + query_.first, query_.second);
-}
-
-std::string_view URI::fragment() const {
-    return std::string_view(underlying_.data() + fragment_.first, fragment_.second);
-}
-
-void URI::init(std::string scheme, std::string authority, std::string path, std::string query,
-               std::string fragment) {
-
-    // Ensure path has leading slash (which will be the end of the authority)
-    if (path.empty())
-        path = "/";
-    else if (path[0] != '/')
-        path = "/" + path;
+    const bool isFile = parsed.scheme.first &&
+                        std::string_view(parsed.scheme.first,
+                                         parsed.scheme.afterLast - parsed.scheme.first) == "file";
+    if (isFile) {
+        if (fsPath_.find('\0') != std::string::npos)
+            throw std::invalid_argument("File URI contains a null byte");
 
 #ifdef _WIN32
-    // Normalize Windows drive letter to uppercase
-    if (path.size() >= 3 && path[0] == '/' && std::isalpha(path[1]) && path[2] == ':') {
-        path[1] = static_cast<char>(std::toupper(path[1]));
-    }
+        const size_t drive = fsPath_.starts_with('/') ? 1 : 0;
+        if (fsPath_.size() > drive + 1 && fsPath_[drive + 1] == ':' && fsPath_[drive] >= 'a' &&
+            fsPath_[drive] <= 'z') {
+            fsPath_[drive] -= 'a' - 'A';
+        }
 #endif
 
-    underlying_.reserve(scheme.size() + authority.size() + path.size() + query.size() +
-                        fragment.size() + 10);
-
-    std::size_t pos = 0;
-
-    // scheme
-    if (!scheme.empty()) {
-        underlying_ += scheme;
-        scheme_ = {pos, scheme.size()};
-        pos += scheme.size();
-
-        underlying_ += ':';
-        ++pos;
-    }
-    else {
-        scheme_ = {};
+        // Canonicalize escapes without normalizing dot segments: resolving ".." across a
+        // symlink can change which file is opened.
+        std::string encodedPath(3 * fsPath_.size() + 8, '\0');
+        checkUri(uriUnixFilenameToUriStringA(fsPath_.c_str(), encodedPath.data()));
+        encodedPath.resize(std::char_traits<char>::length(encodedPath.c_str()));
+        if (fsPath_.starts_with('/')) {
+            encodedPath.erase(0, 7); // The filename helper prepends "file://".
+            if (!parsed.hostText.first)
+                checkUri(uriSetHostRegNameA(&parsed, encodedPath.data(), encodedPath.data()));
+        }
+        if (!encodedPath.empty())
+            checkUri(
+                uriSetPathA(&parsed, encodedPath.data(), encodedPath.data() + encodedPath.size()));
     }
 
-    // authority
-    if (!authority.empty() || scheme == "file") {
-        underlying_ += "//";
-        pos += 2;
+    int length = 0;
+    // uriparser checks length overflow; its count excludes the null terminator.
+    checkUri(uriToStringCharsRequiredA(&parsed, &length));
+    if (length == std::numeric_limits<int>::max())
+        throw std::length_error("URI is too long");
+    underlying_.resize(static_cast<size_t>(length) + 1);
+    checkUri(uriToStringA(underlying_.data(), &parsed, length + 1, nullptr));
+    underlying_.resize(length);
+
+#ifdef _WIN32
+    if (isFile) {
+        // Filename conversion consumes the whole string, so omit query and fragment.
+        const auto end = underlying_.find_first_of("?#");
+        const auto fileUri = underlying_.substr(0, end);
+        fsPath_.resize(fileUri.size() + 1);
+        checkUri(uriUriStringToWindowsFilenameA(fileUri.c_str(), fsPath_.data()));
+        fsPath_.resize(std::char_traits<char>::length(fsPath_.c_str()));
     }
-
-    if (!authority.empty()) {
-        underlying_ += authority;
-        authority_ = {pos, authority.size()};
-        pos += authority.size();
-    }
-    else {
-        authority_ = {};
-    }
-
-    // path
-    underlying_ += path;
-    path_ = {pos, path.size()};
-    pos += path.size();
-
-    // query
-    if (!query.empty()) {
-        underlying_ += '?';
-        ++pos;
-
-        underlying_ += query;
-        query_ = {pos, query.size()};
-        pos += query.size();
-    }
-    else {
-        query_ = {};
-    }
-
-    // fragment
-    if (!fragment.empty()) {
-        underlying_ += '#';
-        ++pos;
-
-        underlying_ += fragment;
-        fragment_ = {pos, fragment.size()};
-        pos += fragment.size();
-    }
-    else {
-        fragment_ = {};
-    }
-}
-
-/// Necessary for the serialization to work.
-URI::ReflectionType URI::reflection() const {
-    return str();
-}
-
-/// Expresses the underlying URI as a string.
-std::string URI::str() const {
-    return underlying_;
-}
-
-// Constructor from components
-URI::URI(std::string scheme, std::string authority, std::string path, std::string query,
-         std::string fragment) {
-    init(scheme, authority, path, query, fragment);
+#endif
 }
 
 URI URI::fromFile(const std::filesystem::path& file) {
     if (file.empty())
         return URI();
 
-    std::string path = file.generic_string();
-    std::string authority = "";
-
+    auto path = std::filesystem::absolute(file);
 #ifdef _WIN32
-    // UNC: \\server\path\to\file.txt
-    // URI: file://server/path/to/file.txt
-    //   Authority: 'server'
-    //   Path: path/to/file.txt'
-    if (path.size() >= 2 && path[0] == '/' && path[1] == '/') {
-        const std::size_t idx = path.find('/', 2);
-        if (idx == std::string::npos) {
-            authority = path.substr(2);
-            path = "/";
-        }
-        else {
-            authority = path.substr(2, idx - 2);
-            path = path.substr(idx);
-            if (path.empty())
-                path = "/";
-        }
-    }
+    path.make_preferred();
 #endif
+    const auto utf8 = path.u8string();
+    const std::string filename(utf8.begin(), utf8.end());
+    if (filename.find('\0') != std::string::npos)
+        throw std::invalid_argument("Filename contains a null byte");
 
-    return URI("file", authority, path, "", "");
-}
-
-URI URI::fromWeb(const std::string& url) {
-    // URLs are valid URIs
-    return URI("https://" + url);
-}
-
-std::string_view URI::getPath() const {
-    // Use cached decoded path if available
-    if (!fsPath_.empty())
-        return fsPath_;
-
-    fsPath_ = std::string(path());
-
+    std::string encoded(3 * filename.size() + 9, '\0');
 #ifdef _WIN32
-    // Convert drive letter: /c:/ -> C:/
-    if (fsPath_.size() >= 3 && fsPath_[0] == '/' && std::isalpha(fsPath_[1]) && fsPath_[2] == ':') {
-        fsPath_[1] = static_cast<char>(std::toupper(fsPath_[1]));
-        fsPath_.erase(0, 1); // remove leading slash
-    }
-
-    // Convert forward slashes to backslashes
-    std::replace(fsPath_.begin(), fsPath_.end(), '/', '\\');
-
-    // UNC path: file://server/share/file -> \\server\share\file
-    if (!authority().empty() && scheme() == "file") {
-        fsPath_ = "\\\\" + std::string(authority()) + fsPath_;
-    }
+    checkUri(uriWindowsFilenameToUriStringA(filename.c_str(), encoded.data()));
+#else
+    checkUri(uriUnixFilenameToUriStringA(filename.c_str(), encoded.data()));
 #endif
-
-    return fsPath_;
-}
-
-bool URI::operator==(URI const& other) const {
-    return underlying_ == other.underlying_;
-}
-
-std::string URI::decode(const std::string& s) {
-    std::string result;
-    for (std::size_t i = 0; i < s.length(); ++i) {
-        if (s[i] == '%' && i + 2 < s.length()) {
-            const int val = std::stoi(s.substr(i + 1, 2), nullptr, 16);
-            result += static_cast<char>(val);
-            i += 2; // Skip XX in %XX
-        }
-        else {
-            result += s[i];
-        }
-    }
-    return result;
-}
-
-std::string URI::encode(const std::string& s) {
-    std::string result;
-    for (unsigned char c : s) {
-        if (std::isalnum(c) || c == '-' || c == '.' || c == '_' || c == '~' || c == '/') {
-            result += static_cast<char>(c);
-        }
-        else {
-            result += '%';
-            result += to_hex(c);
-        }
-    }
-    return result;
-}
-
-std::string URI::to_hex(unsigned char c) {
-    static const char* hex_chars = "0123456789ABCDEF";
-    std::string hex;
-    hex += hex_chars[(c >> 4) & 0xF];
-    hex += hex_chars[c & 0xF];
-    return hex;
+    encoded.resize(std::char_traits<char>::length(encoded.c_str()));
+    return URI(encoded);
 }

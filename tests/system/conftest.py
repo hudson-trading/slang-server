@@ -60,6 +60,11 @@ def my_options(request) -> Flags:
     )
 
 
+@pytest.fixture
+def document_uri(tmp_path: pathlib.Path) -> str:
+    return (tmp_path / "mymodule.sv").resolve().as_uri()
+
+
 class LanguageClientProtocol(LanguageServerProtocol):
     """An extended protocol class with extra methods that are useful for testing."""
 
