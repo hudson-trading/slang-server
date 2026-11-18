@@ -148,11 +148,16 @@ const BuiltinMethodDoc* getBuiltinMethodDoc(const ast::SubroutineSymbol& method)
          "constraint_mode",
          {"Enables or disables all constraint blocks in this object.", "18.9"}},
     };
+    const BuiltinMethodDoc* classDoc = nullptr;
     for (auto& entry : docs) {
-        if (entry.owner == owner && entry.name == method.name)
+        if (entry.name != method.name)
+            continue;
+        if (entry.owner == owner)
             return &entry.doc;
+        if (entry.owner.empty() && scope->asSymbol().kind == ast::SymbolKind::ClassType)
+            classDoc = &entry.doc;
     }
-    return nullptr;
+    return classDoc;
 }
 
 std::string formatBuiltinMethodSignature(const ast::SubroutineSymbol& method) {

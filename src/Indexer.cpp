@@ -167,7 +167,8 @@ void Indexer::extractFromRoot(const slang::syntax::CompilationUnitSyntax& root,
 
     // Extract referenced symbols from metadata
     slang::SmallSet<std::string_view, 8> seenDeps;
-    meta.visitReferencedSymbols([&](std::string_view name) {
+    meta.visitReferencedSymbols([&](slang::parsing::Token token) {
+        auto name = token.valueText();
         if (seenDeps.insert(name).second)
             dest.referencedSymbols.push_back(std::string{name});
     });
@@ -272,7 +273,9 @@ std::vector<Indexer::IndexedPath> Indexer::indexPaths(const std::vector<fs::path
             if (!meta.nodeMeta.empty()) {
                 extractFromRoot(root, meta, sourceManager, buffer.id, dest);
             }
-            else if (meta.classDecls.empty()) {
+            else if (std::ranges::none_of(meta.decls, [](const auto* decl) {
+                         return decl->kind == syntax::SyntaxKind::ClassDeclaration;
+                     })) {
                 // If an svh file contains a class, it's likely actually included in a package
                 extractMacros(preprocessor.getDefinedMacros(), sourceManager, buffer.id, dest);
             }

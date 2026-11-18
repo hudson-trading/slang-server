@@ -97,8 +97,8 @@ const std::string_view SlangDoc::getText() const {
 }
 
 bool SlangDoc::isMacroOnly() {
-    auto buffer = m_sourceManager.readSource(m_uri.getPath(), nullptr).value();
-    if (m_macroOnlyBuffer != buffer.id) {
+    if (!m_sourceManager.isLatestData(m_macroOnlyBuffer)) {
+        auto buffer = m_sourceManager.readSource(m_uri.getPath(), nullptr).value();
         auto options = m_driver.options;
         auto ppOptions = options.getOrDefault<parsing::PreprocessorOptions>();
         ppOptions.maxIncludeDepth = 0;

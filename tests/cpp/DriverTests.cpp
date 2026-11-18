@@ -17,6 +17,24 @@
 #include "slang/util/OS.h"
 #include "slang/util/ScopeGuard.h"
 
+TEST_CASE("Macro-only classification reuses unchanged source data and follows edits") {
+    ServerHarness server("repo1");
+    auto file = server.openFile("macro_cache.svh", "`define VALUE 1\n");
+    auto doc = server.getDoc(file.m_uri);
+    auto& sm = doc->getSourceManager();
+    for (const auto& [text, expected] :
+         {std::pair{"`define VALUE 1\n", true},
+          std::pair{"class register_model; int value; endclass\n", false},
+          std::pair{"`define VALUE 2\n", true}}) {
+        file.replaceAll(text);
+        file.publishChanges();
+        CHECK(doc->isMacroOnly() == expected);
+        auto buffers = sm.getAllBuffers();
+        CHECK(doc->isMacroOnly() == expected);
+        CHECK(sm.getAllBuffers() == buffers);
+    }
+}
+
 TEST_CASE("Shallow file views share analysis and retain compilation state independently") {
     slang::SourceManager sm;
     // Include lookup canonicalizes paths, so assigned buffers need absolute cache keys.
@@ -108,7 +126,8 @@ endclass
         std::ranges::sort(names);
         CHECK(names == expected);
         names.clear();
-        metadata.visitReferencedSymbols([&](auto name) { names.push_back(name); }, false);
+        metadata.visitReferencedSymbols(
+            [&](slang::parsing::Token token) { names.push_back(token.valueText()); }, false);
         std::ranges::sort(names);
         CHECK(names == expected);
     }
