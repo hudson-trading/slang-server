@@ -55,6 +55,12 @@ public:
     /// @return Vector of LSP document links to included files
     std::vector<lsp::DocumentLink> getDocLinks() const;
 
+    /// @brief Gets the buffer included by an `include directive
+    /// @param syntax An `include directive from this document's syntax tree
+    /// @return The included buffer, or nullopt if the file was not found
+    std::optional<slang::BufferID> getIncludedBuffer(
+        const slang::syntax::IncludeDirectiveSyntax& syntax) const;
+
     /// @brief Gets hover information for a symbol at an LSP position
     /// @param position The LSP position to query
     /// @return Optional hover information, or nullopt if none available
@@ -228,6 +234,10 @@ private:
 
     /// Keeps the syntax and symbols referenced by this file's indexes alive.
     std::shared_ptr<ShallowCompilation> m_shallowCompilation;
+
+    /// Buffers resolved for skipped includes, retained so repeated queries reuse the same target.
+    mutable slang::flat_hash_map<const slang::syntax::IncludeDirectiveSyntax*, slang::BufferID>
+        m_resolvedIncludes;
 
     /// Symbol tree visitor for /documentSymbols
     /// Currently this is relies on syntax, but we should switch it to use the shallow compilation

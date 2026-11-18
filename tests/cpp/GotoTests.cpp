@@ -4,6 +4,9 @@
 #include "utils/ServerHarness.h"
 #include <catch2/generators/catch_generators.hpp>
 
+#include "slang/util/OS.h"
+#include "slang/util/ScopeGuard.h"
+
 using namespace slang;
 
 TEST_CASE("Array members retain their types with unknown shallow bounds", "[scan-gaps]") {
@@ -708,4 +711,79 @@ TEST_CASE("FindReferencesAllTokens_crossfile_module.sv") {
 
     ReferencesScanner scanner(server);
     scanner.scanDocument(hdl);
+}
+
+TEST_CASE("GotoDefinition_IncludeDirective") {
+    ServerHarness server;
+
+    server.openFile("payload.svh", R"(class payload;
+endclass
+)");
+
+    auto doc = server.openFile("pkg.sv", R"(package pkg;
+    `include "payload.svh"
+endpackage
+)");
+
+    // On the directive, on the gap after it, and on the file name
+    for (const auto& anchor :
+         {std::string("    `inc"), std::string("`include"), std::string("`include \"pay")}) {
+        auto cursor = doc.after(anchor);
+        auto result = server.getDocDefinition(lsp::DefinitionParams{
+            .textDocument = {.uri = doc.m_uri}, .position = cursor.getPosition()});
+
+        REQUIRE(rfl::holds_alternative<lsp::Definition>(result));
+        const auto& definition = rfl::get<lsp::Definition>(result);
+        REQUIRE(rfl::holds_alternative<std::vector<lsp::Location>>(definition));
+
+        const auto& locations = rfl::get<std::vector<lsp::Location>>(definition);
+        REQUIRE(locations.size() == 1);
+        CHECK(locations[0].uri.getPath().ends_with("payload.svh"));
+    }
+}
+
+TEST_CASE("GotoDefinition_RepeatedGuardedIncludes") {
+    const std::string header =
+        GENERATE("`ifndef PAYLOAD_SVH\n`define PAYLOAD_SVH\nclass payload; endclass\n`endif\n",
+                 "`pragma once\nclass payload; endclass\n");
+    auto root = fs::weakly_canonical(fs::temp_directory_path()) /
+                fmt::format("slang_guarded_includes_{}", slang::OS::getpid());
+    fs::create_directories(root / "headers");
+    slang::ScopeGuard cleanup([&] { fs::remove_all(root); });
+    ServerHarness server(lsp::InitializeParams{
+        .workspaceFolders = {{lsp::WorkspaceFolder{URI::fromFile(root), "guarded_includes"}}}});
+    auto config = server.getConfig();
+    config.incdirs = std::vector<std::string>{"headers"};
+    REQUIRE(server.loadConfig(config));
+    auto payload = server.openFile("headers/payload.svh", header);
+    auto wrapper = server.openFile("wrapper.svh", "`include \"payload.svh\"\n");
+    auto doc = server.openFile("pkg.sv", R"(`define HEADER "payload.svh"
+package pkg;
+    `include `HEADER
+    `include "wrapper.svh"
+    `include "payload.svh"
+    `include "missing.svh"
+endpackage
+)");
+
+    for (auto cursor :
+         {doc.after("    `inc"), doc.after("`include \"pay"), wrapper.after("`inc")}) {
+        auto info = server.m_driver->getDefinitionInfoAt(cursor.getUri(), cursor.getPosition());
+        REQUIRE(info);
+        CHECK(info == server.m_driver->getDefinitionInfoAt(cursor.getUri(), cursor.getPosition()));
+        auto definitions = cursor.getDefinitions();
+        REQUIRE(definitions.size() == 1);
+        CHECK(definitions.front().targetUri == payload.m_uri);
+        CHECK(definitions.front().targetSelectionRange == lsp::Range{});
+        auto hover = server.getDocHover(
+            {.textDocument = {cursor.getUri()}, .position = cursor.getPosition()});
+        REQUIRE(hover);
+        CHECK(rfl::get<lsp::MarkupContent>(hover->contents).value ==
+              "### payload.svh\n\n---\n\n" +
+                  fs::path("headers/payload.svh").make_preferred().string());
+    }
+
+    auto missing = doc.after("`include \"miss");
+    CHECK(missing.getDefinitions().empty());
+    CHECK_FALSE(doc.getHoverAt(missing.m_offset));
 }

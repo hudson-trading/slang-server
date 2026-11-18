@@ -33,6 +33,7 @@
 #include "slang/ast/symbols/ValueSymbol.h"
 #include "slang/ast/types/AllTypes.h"
 #include "slang/ast/types/Type.h"
+#include "slang/parsing/Preprocessor.h"
 #include "slang/parsing/Token.h"
 #include "slang/parsing/TokenKind.h"
 #include "slang/syntax/AllSyntax.h"
@@ -1338,6 +1339,32 @@ std::vector<lsp::DocumentLink> ShallowAnalysis::getDocLinks() const {
         });
     }
     return links;
+}
+
+std::optional<BufferID> ShallowAnalysis::getIncludedBuffer(
+    const syntax::IncludeDirectiveSyntax& syntax) const {
+    const auto& tree = m_shallowCompilation->getSyntaxTree();
+    for (auto& inc : tree->getIncludeDirectives()) {
+        if (inc.syntax != &syntax) {
+            continue;
+        }
+        if (inc.buffer)
+            return inc.buffer.id;
+        if (auto cached = m_resolvedIncludes.find(&syntax); cached != m_resolvedIncludes.end())
+            return cached->second;
+
+        // Headers skipped by include guards have no buffer in the preprocessor metadata.
+        auto location = m_sourceManager.getFullyExpandedLoc(syntax.directive.location());
+        auto options = tree->options().getOrDefault<parsing::PreprocessorOptions>();
+        auto buffer = m_sourceManager.readHeader(inc.path, location,
+                                                 m_sourceManager.getLibraryFor(location.buffer()),
+                                                 inc.isSystem, options.additionalIncludePaths);
+        if (!buffer)
+            return std::nullopt;
+        m_resolvedIncludes.emplace(&syntax, buffer->id);
+        return buffer->id;
+    }
+    return std::nullopt;
 }
 
 #ifdef SLANG_SERVER_DEBUG

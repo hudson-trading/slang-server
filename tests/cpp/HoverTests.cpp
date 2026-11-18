@@ -6,6 +6,9 @@
 #include <catch2/generators/catch_generators.hpp>
 #include <cstdlib>
 
+#include "slang/util/OS.h"
+#include "slang/util/ScopeGuard.h"
+
 TEST_CASE("Hover the built-in package without a parent scope", "[scan-crashes]") {
     ServerHarness server;
     auto doc = server.openFile("stdlib.sv", R"(
@@ -1311,4 +1314,55 @@ endmodule
     recordNoSystemHover("queue declaration $", "$];");
     recordNoSystemHover("queue selector $", "$] ==");
     recordNoSystemHover("$root", "$root", false);
+}
+
+TEST_CASE("HoverIncludeDirective") {
+    ServerHarness server;
+
+    auto payload = server.openFile("payload.svh", R"(class payload;
+endclass
+)");
+
+    auto doc = server.openFile("pkg.sv", R"(package pkg;
+    `include "payload.svh"
+endpackage
+)");
+
+    // On the directive, on the gap after it, and on the file name
+    for (const auto& anchor :
+         {std::string("    `inc"), std::string("`include"), std::string("`include \"pay")}) {
+        auto hover = doc.getHoverAt(doc.after(anchor).m_offset);
+        REQUIRE(hover.has_value());
+
+        auto content = rfl::get<lsp::MarkupContent>(hover->contents);
+        CHECK(content.value == "### payload.svh\n\n---\n\n" + std::string(payload.m_uri.getPath()));
+    }
+}
+
+TEST_CASE("HoverIncludeDirectiveUsesWorkspaceRelativePath") {
+    const bool outsideWorkspace = GENERATE(false, true);
+    auto root = fs::weakly_canonical(fs::temp_directory_path()) /
+                fmt::format("slang_include_hover_{}", slang::OS::getpid());
+    auto workspace = root / "project";
+    fs::create_directories(workspace);
+    slang::ScopeGuard cleanup([&] { fs::remove_all(root); });
+    ServerHarness server(lsp::InitializeParams{
+        .workspaceFolders = {{lsp::WorkspaceFolder{URI::fromFile(workspace), "project"}}}});
+
+    auto header = outsideWorkspace ? fs::path("../project-other/payload.svh")
+                                   : fs::path("headers/payload.svh");
+    auto payload = server.openFile((workspace / header).lexically_normal().string(),
+                                   "class payload; endclass\n");
+    auto doc = server.openFile("pkg.sv", fmt::format("package pkg;\n`include \"{}\"\nendpackage\n",
+                                                     header.generic_string()));
+    auto cursor = doc.after("`inc");
+    auto hover = doc.getHoverAt(cursor.m_offset);
+    REQUIRE(hover);
+    auto expected = outsideWorkspace ? std::string(payload.m_uri.getPath())
+                                     : header.make_preferred().string();
+    CHECK(rfl::get<lsp::MarkupContent>(hover->contents).value ==
+          "### payload.svh\n\n---\n\n" + expected);
+    auto definitions = cursor.getDefinitions();
+    REQUIRE(definitions.size() == 1);
+    CHECK(definitions.front().targetUri == payload.m_uri);
 }
