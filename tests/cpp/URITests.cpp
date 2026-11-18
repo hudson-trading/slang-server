@@ -179,6 +179,15 @@ TEST_CASE("URI WindowsDriveLetter") {
         CHECK(u.str() == "file:///C%3A/temp/file.txt");
         CHECK(u.getPath() == "C:\\temp\\file.txt");
     }
+
+    SECTION("FromFile") {
+        const auto path = GENERATE(R"(c:\temp\file.txt)", "c:/temp/file.txt");
+        CAPTURE(path);
+        URI u = URI::fromFile(path);
+
+        CHECK(u.str() == "file:///C%3A/temp/file.txt");
+        CHECK(u.getPath() == R"(C:\temp\file.txt)");
+    }
 }
 
 TEST_CASE("URI WindowsUNCPath") {
@@ -190,8 +199,10 @@ TEST_CASE("URI WindowsUNCPath") {
     }
 
     SECTION("UNC FromFile") {
-        std::filesystem::path p(R"(\\server\share\file.txt)");
-        URI u = URI::fromFile(p);
+        const auto path = GENERATE(R"(\\server\share\file.txt)", "//server/share/file.txt",
+                                   R"(\\server/share\file.txt)");
+        CAPTURE(path);
+        URI u = URI::fromFile(path);
 
         CHECK(u.str() == "file://server/share/file.txt");
         CHECK(u.getPath() == R"(\\server\share\file.txt)");
@@ -203,6 +214,15 @@ TEST_CASE("URI WindowsUNCPath") {
         CHECK(uri.str() == "file://server/share/a%20%2523%23.sv");
         CHECK(uri.getPath() == path.string());
         CHECK(URI(uri.str()) == uri);
+    }
+
+    SECTION("UNC Share Root") {
+        const auto path = GENERATE(R"(\\server\share\)", "//server/share/");
+        CAPTURE(path);
+        URI u = URI::fromFile(path);
+
+        CHECK(u.str() == "file://server/share/");
+        CHECK(u.getPath() == R"(\\server\share\)");
     }
 }
 

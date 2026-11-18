@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-/// @file WcpClient.h
+/// @file WcpClient.cpp
 /// @brief Waveform viewer Control Protocol client
 //
 // SPDX-FileCopyrightText: Hudson River Trading
@@ -12,23 +12,112 @@
 #include "rfl/UnderlyingEnums.hpp"
 #include "rfl/to_generic.hpp"
 #include "wcp/WcpTypes.h"
+#include <algorithm>
+#include <cerrno>
 #include <chrono>
 #include <csignal>
 #include <cstdlib>
+#include <cstring>
+#include <filesystem>
+#include <iostream>
+#include <mutex>
 #include <sstream>
 
 #ifdef _WIN32
-// Handle Windows macro collision
-#    define NOMINMAX
+#    ifndef WIN32_LEAN_AND_MEAN
+#        define WIN32_LEAN_AND_MEAN
+#    endif
+#    ifndef NOMINMAX
+#        define NOMINMAX
+#    endif
 
 #    include <process.h>
 #    include <windows.h>
+#    include <winsock2.h>
+#    include <ws2tcpip.h>
+typedef int socklen_t;
+typedef SSIZE_T ssize_t;
+#    define MSG_DONTWAIT 0
 #else
+#    include <arpa/inet.h>
+#    include <netinet/in.h>
+#    include <netinet/tcp.h>
+#    include <sys/socket.h>
 #    include <sys/wait.h>
 #    include <unistd.h>
 #endif
 
 namespace fs = std::filesystem;
+
+void waves::WcpClient::stop() {
+#ifdef _WIN32
+    closesocket(m_clientFd);
+    closesocket(m_serverFd);
+#else
+    close(m_clientFd);
+    close(m_serverFd);
+#endif
+    m_running = false;
+}
+
+void waves::WcpClient::sendBuffer(const char* buff, size_t len) {
+    size_t sentLen = 0;
+    while (sentLen < len) {
+        ssize_t sent = send(m_clientFd, buff + sentLen, len - sentLen, 0);
+        if (sent < 0) {
+            std::cerr << "WCP send failed: " << strerror(errno) << std::endl;
+            return;
+        }
+        else {
+            sentLen += sent;
+        }
+    }
+}
+
+std::optional<std::string> waves::WcpClient::getMessage() {
+    struct timeval tv = {.tv_sec = 0, .tv_usec = 100000};
+    fd_set clientFdSet;
+    FD_ZERO(&clientFdSet);
+    FD_SET(m_clientFd, &clientFdSet);
+
+    int retval = select(m_clientFd + 1, &clientFdSet, nullptr, nullptr, &tv);
+    if (retval < 0) {
+        std::cerr << "WCP select() failure: " << strerror(errno) << std::endl;
+        stop();
+    }
+    else if (retval > 0) {
+        // TODO -- one less copy here
+        const ssize_t buffSize = 1024;
+        char buff[buffSize];
+        ssize_t size = recv(m_clientFd, buff, buffSize, MSG_DONTWAIT);
+        if (size < 0) {
+            std::cerr << "WCP recv() failure: " << strerror(errno) << std::endl;
+            stop();
+        }
+        else if (size == 0) {
+            std::cerr << "WCP server disconnected" << std::endl;
+            stop();
+        }
+        else {
+            m_recvBuffer.append(buff, size);
+
+            // prevent nagle / delayed ack deadlock
+            // should also make sure servers use TCP_NODELAY
+#ifdef __linux__
+            int flag = 1;
+            setsockopt(m_clientFd, IPPROTO_TCP, TCP_QUICKACK, &flag, sizeof(flag));
+#endif
+            size_t pos = m_recvBuffer.find('\0');
+            if (pos != std::string::npos) {
+                std::string result = m_recvBuffer.substr(0, pos);
+                m_recvBuffer.erase(0, pos + 1);
+                return result;
+            }
+        }
+    }
+
+    return std::nullopt;
+}
 
 void waves::WcpClient::runViewer() {
 #ifdef _WIN32

@@ -11,7 +11,9 @@
 #include "slang/util/ScopeGuard.h"
 
 #ifdef _WIN32
-#    define NOMINMAX
+#    ifndef NOMINMAX
+#        define NOMINMAX
+#    endif
 #    include <io.h>
 #    include <windows.h>
 #elif !defined(__wasi__)
