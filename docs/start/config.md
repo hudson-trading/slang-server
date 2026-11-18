@@ -142,7 +142,7 @@ All configuration options are optional and have sensible defaults. In VSCode, th
 
 ### `flags`
 
-:   **Type:** `string`
+:   **Type:** `string | string[]`
 
     Flags to pass to slang. It uses the underlying driver to parse the flags, however some flags may not be used by the server.
 
@@ -152,7 +152,12 @@ All configuration options are optional and have sensible defaults. In VSCode, th
 
     For preprocessor defines (`-D`), you can also use the **"Add define"** code action: place your cursor on an undefined macro name in an `` `ifdef `` and use the quick fix to automatically add `-D<name>` to `.slang/local/server.json`.
 
-    **Example:** `"-f path/to/slang_flags.f"`
+    Use an array to pass each argument as a separate string. Paths containing spaces
+    stay in one argument. Use the same form for an option and its value, even
+    when flags are defined in multiple files. Environment variables are expanded
+    in both forms.
+
+    **Examples:** `"-f path/to/slang_flags.f"` or `["-f", "path with spaces/slang_flags.f"]`.
 
 ---
 

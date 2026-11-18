@@ -14,6 +14,8 @@
 #include <optional>
 #include <rfl/Result.hpp>
 #include <rfl/Skip.hpp>
+#include <variant>
+#include <vector>
 /// Server configuration, loaded from up to three JSON files:
 ///
 /// 1. `.slang/server.json`       — workspace config (tracked in version control)
@@ -38,10 +40,13 @@ struct Config {
                      std::map<std::string, std::string>>
         env;
 
+    using Flags = std::variant<std::string, std::vector<std::string>>;
+
     // all fields must be optional
-    rfl::Description<"Flags to pass to slang. Environment variables are expanded; unset or empty "
+    rfl::Description<"Flags to pass to slang as a command-line string or an array of individual "
+                     "arguments. Environment variables are expanded; unset or empty "
                      "variables are errors.",
-                     std::string>
+                     Flags>
         flags;
 
     /// Ordered include directories, with environment variables expanded before path resolution.
@@ -173,7 +178,7 @@ struct Config {
 
     struct FlagSource {
         std::string filePath;
-        std::string flags;
+        Flags flags;
     };
 
     /// Load config from up to three sources:

@@ -8,8 +8,8 @@
 export interface Config {
   /** Environment variables used by the server for paths, flags, and file lists. Values are literal strings; local overrides user overrides workspace. Unspecified variables are inherited. Changes reload automatically. */
   env?: Record<string, string>
-  /** Flags to pass to slang. Environment variables are expanded; unset or empty variables are errors. */
-  flags?: string
+  /** Flags to pass to slang as a command-line string or an array of individual arguments. Environment variables are expanded; unset or empty variables are errors. */
+  flags?: string | string[]
   /** Include directories, relative to the workspace root. Searched after directories supplied through flags and build files. Supports $VAR, ${VAR}, and $(VAR) environment variables. */
   incdirs?: string[]
   /** Maximum document size in bytes for editor analysis and debug scans. Larger documents remain editable but their analysis is skipped. Set to 0 to disable the limit. Dependencies and explicit builds may still read larger files. */

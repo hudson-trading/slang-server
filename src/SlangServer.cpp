@@ -926,14 +926,17 @@ std::monostate SlangServer::addDefine(const std::string& macroName) {
 
     // Append -DMACRO to flags
     std::string newFlag = "-D" + macroName;
-    std::string flags;
-    if (auto existing = obj["flags"].to_string()) {
-        flags = *existing;
+    if (auto existing = obj["flags"].to_array()) {
+        existing->emplace_back(newFlag);
+        obj["flags"] = std::move(*existing);
+    }
+    else {
+        auto flags = obj["flags"].to_string().value_or("");
         if (!flags.empty())
             flags += " ";
+        flags += newFlag;
+        obj["flags"] = rfl::Generic(flags);
     }
-    flags += newFlag;
-    obj["flags"] = rfl::Generic(flags);
 
     // Ensure directory exists and write
     fs::create_directories(localConfigPath.parent_path());

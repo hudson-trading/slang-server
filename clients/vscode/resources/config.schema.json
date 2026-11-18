@@ -14,8 +14,18 @@
           "default": {}
         },
         "flags": {
-          "type": "string",
-          "description": "Flags to pass to slang. Environment variables are expanded; unset or empty variables are errors.",
+          "description": "Flags to pass to slang as a command-line string or an array of individual arguments. Environment variables are expanded; unset or empty variables are errors.",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
           "default": ""
         },
         "incdirs": {

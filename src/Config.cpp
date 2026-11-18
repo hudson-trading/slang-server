@@ -11,10 +11,13 @@
 #include "rfl/Result.hpp"
 #include "rfl/from_generic.hpp"
 #include "util/Logging.h"
+#include <algorithm>
 #include <fstream>
+#include <iomanip>
 #include <rfl/DefaultIfMissing.hpp>
 #include <rfl/json.hpp>
 #include <rfl/to_generic.hpp>
+#include <sstream>
 
 #include "slang/util/OS.h"
 
@@ -89,6 +92,8 @@ rfl::Result<Config> Config::fromFiles(const std::optional<std::string>& workspac
         }
 
         for (const auto& [k, v] : *object) {
+            if (k == "flags")
+                continue;
             if (k == "env") {
                 auto env = config[k].to_object().value();
                 const auto newEnv = v.to_object().value();
@@ -140,36 +145,58 @@ rfl::Result<Config> Config::fromFiles(const std::optional<std::string>& workspac
     }
 
     // Build flagsByFile: workspace overrides user (last non-local wins), local appends
-    auto extractFlags = [](std::optional<rfl::Generic::Object>& obj) -> std::string {
-        if (!obj)
+    auto extractFlags = [](const std::optional<rfl::Generic::Object>& obj) -> Config::Flags {
+        if (!obj || !obj->count("flags"))
             return {};
-        auto flags = (*obj)["flags"].to_string();
-        return flags.value_or("");
+        return rfl::from_generic<Config::Flags>(obj->get("flags").value()).value();
+    };
+    auto nonempty = [](const Flags& flags) {
+        return std::visit([](const auto& value) { return !value.empty(); }, flags);
     };
 
     std::vector<FlagSource> flagsByFile;
-    // Base flags: workspace wins over user
     auto wsFlags = extractFlags(workspaceObj);
     auto userFlags = extractFlags(userObj);
-    if (!wsFlags.empty())
-        flagsByFile.push_back({*workspaceConf, wsFlags});
-    else if (!userFlags.empty())
-        flagsByFile.push_back({*userConf, userFlags});
-    // Local always appends
+    if (nonempty(wsFlags))
+        flagsByFile.push_back({*workspaceConf, std::move(wsFlags)});
+    else if (nonempty(userFlags))
+        flagsByFile.push_back({*userConf, std::move(userFlags)});
     auto lcFlags = extractFlags(localObj);
-    if (!lcFlags.empty())
-        flagsByFile.push_back({*localConf, lcFlags});
+    if (nonempty(lcFlags))
+        flagsByFile.push_back({*localConf, std::move(lcFlags)});
 
-    finalConfig->flagsByFile = std::move(flagsByFile);
-
-    // Reconstruct merged flags for client config
-    std::string merged;
-    for (auto& src : finalConfig->flagsByFile.value()) {
-        if (!merged.empty())
-            merged += " ";
-        merged += src.flags;
+    // Keep the array representation when all contributing files use arrays.
+    // With mixed formats, quote the array entries for the client-facing string.
+    if (!flagsByFile.empty() && std::ranges::all_of(flagsByFile, [](const FlagSource& src) {
+            return std::holds_alternative<std::vector<std::string>>(src.flags);
+        })) {
+        std::vector<std::string> merged;
+        for (const auto& src : flagsByFile) {
+            const auto& args = std::get<std::vector<std::string>>(src.flags);
+            merged.insert(merged.end(), args.begin(), args.end());
+        }
+        finalConfig->flags = Flags(std::move(merged));
     }
-    finalConfig->flags = merged;
+    else {
+        std::ostringstream merged;
+        for (const auto& src : flagsByFile) {
+            if (merged.tellp() > 0)
+                merged << ' ';
+            if (const auto* str = std::get_if<std::string>(&src.flags)) {
+                merged << *str;
+            }
+            else {
+                const auto& args = std::get<std::vector<std::string>>(src.flags);
+                for (size_t i = 0; i < args.size(); ++i) {
+                    if (i != 0)
+                        merged << ' ';
+                    merged << std::quoted(args[i]);
+                }
+            }
+        }
+        finalConfig->flags = Flags(merged.str());
+    }
+    finalConfig->flagsByFile = std::move(flagsByFile);
 
     return *finalConfig;
 }

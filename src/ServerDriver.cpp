@@ -108,7 +108,32 @@ bool ServerDriver::parseAndLoadSources(const std::vector<std::string>& buildfile
 
     for (auto& src : m_config.flagsByFile.value()) {
         auto guard = driver.setCurrentCommandFile(src.filePath);
-        ok &= driver.parseCommandLine(src.flags, parseOpts);
+        if (const auto* str = std::get_if<std::string>(&src.flags)) {
+            ok &= driver.parseCommandLine(*str, parseOpts);
+            continue;
+        }
+
+        const auto& args = std::get<std::vector<std::string>>(src.flags);
+        std::vector<std::string> expandedArgs;
+        expandedArgs.reserve(args.size());
+        for (const auto& arg : args) {
+            auto expanded = Config::expandPathVariables(arg, m_config.env.value());
+            if (!expanded) {
+                client.showError(fmt::format("Failed to parse config flags in {}: {}", src.filePath,
+                                             expanded.error().what()));
+                ok = false;
+                break;
+            }
+            expandedArgs.push_back(std::move(*expanded));
+        }
+        if (expandedArgs.size() != args.size())
+            continue;
+
+        std::vector<const char*> argv;
+        argv.reserve(expandedArgs.size());
+        for (const auto& arg : expandedArgs)
+            argv.push_back(arg.c_str());
+        ok &= driver.parseCommandLine(static_cast<int>(argv.size()), argv.data(), parseOpts);
     }
 
     driver.options.errorLimit = 0;
