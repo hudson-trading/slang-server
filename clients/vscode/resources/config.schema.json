@@ -23,6 +23,10 @@
             "type": "string"
           }
         },
+        "maxFileSize": {
+          "type": "integer",
+          "description": "Maximum document size in bytes for editor analysis and debug scans. Larger documents remain editable but their analysis is skipped. Set to 0 to disable the limit. Dependencies and explicit builds may still read larger files."
+        },
         "indexGlobs": {
           "type": "array",
           "description": "Globs of what to index. By default will index all sv and svh files in the workspace.",

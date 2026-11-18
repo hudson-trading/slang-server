@@ -175,6 +175,38 @@ class DebugScanTests(unittest.TestCase):
                     [doc["path"] for doc in report["documents"]], ["top.sv"]
                 )
 
+    def test_configured_file_size_limit(self):
+        large = "// " + "é" * 64 + "\nmodule large; endmodule\n"
+        size = len(large.encode())
+        for native in (False, True):
+            for limit in (size - 1, size, 0):
+                with self.subTest(native=native, limit=limit):
+                    report = self.run_scan(
+                        {
+                            ".slang/server.json": json.dumps({"maxFileSize": limit}),
+                            "a.sv": "module a; endmodule\n",
+                            "large.sv": large,
+                            "z.sv": "module z; endmodule\n",
+                        },
+                        native=native,
+                        expected_status=2 if limit == size - 1 else 0,
+                    )
+                    self.assertEqual(report["summary"]["filesSelected"], 3)
+                    if limit == size - 1:
+                        self.assertFalse(report["summary"]["complete"])
+                        self.assertEqual(report["summary"]["filesScanned"], 2)
+                        self.assertEqual(len(report["errors"]), 1)
+                        self.assertIn("maxFileSize", report["errors"][0]["message"])
+                        self.assertIn(
+                            ".slang/server.json", report["errors"][0]["message"]
+                        )
+                        self.assertEqual(
+                            [d["path"] for d in report["documents"]], ["a.sv", "z.sv"]
+                        )
+                    else:
+                        self.assertTrue(report["summary"]["complete"])
+                        self.assertEqual(report["summary"]["filesScanned"], 3)
+
     def test_native_and_lsp_scans_agree(self):
         sources = {
             "top.sv": "module top; int value; initial value = missing; endmodule\r\n",

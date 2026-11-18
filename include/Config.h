@@ -9,6 +9,7 @@
 #include "rfl/Deprecated.hpp"
 #include "rfl/Description.hpp"
 #include "rfl/config.hpp"
+#include <cstdint>
 #include <map>
 #include <optional>
 #include <rfl/Result.hpp>
@@ -50,6 +51,14 @@ struct Config {
                      "${VAR}, and $(VAR) environment variables.",
                      std::vector<std::string>>
         incdirs;
+
+    /// Maximum document size eligible for editor analysis; zero disables the limit.
+    rfl::Description<"Maximum document size in bytes for editor analysis and debug scans. "
+                     "Larger documents remain editable but their analysis is skipped. "
+                     "Set to 0 to disable the limit. Dependencies and explicit builds may "
+                     "still read larger files.",
+                     uint64_t>
+        maxFileSize = 1024 * 1024;
 
     // Legacy indexing globs, kept for backwards compatibility
     rfl::Deprecated<"Use 'index' instead.",

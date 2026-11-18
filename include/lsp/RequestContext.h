@@ -25,6 +25,12 @@
 
 namespace lsp {
 
+/// A valid request that cannot be performed in the current document or configuration.
+class RequestFailed : public std::runtime_error {
+public:
+    using std::runtime_error::runtime_error;
+};
+
 class RequestCancelled : public std::runtime_error {
 public:
     explicit RequestCancelled(std::string_view checkpoint) :

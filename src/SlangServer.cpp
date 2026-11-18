@@ -1504,6 +1504,8 @@ std::optional<std::vector<lsp::CodeLens>> SlangServer::getDocCodeLens(
     if (!doc) {
         return std::nullopt;
     }
+    if (auto message = doc->getAnalysisLimitMessage())
+        throw lsp::RequestFailed(*message);
 
     std::vector<lsp::CodeLens> lenses;
     auto tree = doc->getSyntaxTree();

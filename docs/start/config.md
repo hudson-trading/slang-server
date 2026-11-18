@@ -8,6 +8,28 @@ The server uses a hierarchical configuration system with three config files:
 
 Later files override earlier ones for scalar values. Lists (like `index` and `incdirs`) are appended across all files. `env` objects merge by variable name.
 
+### Document size limit
+
+`maxFileSize` limits per-document editor analysis and debug scans. It defaults to
+1 MiB (1,048,576 bytes); set it to `0` to disable the limit:
+
+```json
+{
+  "maxFileSize": 1048576
+}
+```
+
+Oversized documents stay open and editable. The server sends a warning
+notification and declines analysis requests for that document. The notification
+appears once while an open document remains above the limit; edits, saves, and
+unrelated configuration changes do not repeat it.
+The limit uses the current editor contents, including unsaved changes. Analysis
+resumes when the document shrinks to the limit or below, or the setting is raised or
+disabled. Saving the config reloads the setting automatically.
+
+This is a per-document analysis limit, not a total memory limit. Indexing,
+dependencies, and explicitly selected builds can still read larger files.
+
 ### Environment variables
 
 `build`, `index[].dirs`, `index[].excludeDirs`, and `incdirs` accept `$VAR`, `${VAR}`, and

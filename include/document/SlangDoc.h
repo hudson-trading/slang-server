@@ -81,6 +81,9 @@ public:
     /// Macro-definition-only files use standalone analysis without include-context selection.
     bool isMacroOnly();
 
+    /// Explain why the current document exceeds the configured analysis limit, if any.
+    std::optional<std::string> getAnalysisLimitMessage();
+
     // Open a Document from a syntax tree (parsed from slang Driver)
     static std::shared_ptr<SlangDoc> fromTree(ServerDriver& driver,
                                               std::shared_ptr<slang::syntax::SyntaxTree> tree);
