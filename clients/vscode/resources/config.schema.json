@@ -10,22 +10,26 @@
           "description": "Environment variables used by the server for paths, flags, and file lists. Values are literal strings; local overrides user overrides workspace. Unspecified variables are inherited. Changes reload automatically.",
           "additionalProperties": {
             "type": "string"
-          }
+          },
+          "default": {}
         },
         "flags": {
           "type": "string",
-          "description": "Flags to pass to slang. Environment variables are expanded; unset or empty variables are errors."
+          "description": "Flags to pass to slang. Environment variables are expanded; unset or empty variables are errors.",
+          "default": ""
         },
         "incdirs": {
           "type": "array",
           "description": "Include directories, relative to the workspace root. Searched after directories supplied through flags and build files. Supports $VAR, ${VAR}, and $(VAR) environment variables.",
           "items": {
             "type": "string"
-          }
+          },
+          "default": []
         },
         "maxFileSize": {
           "type": "integer",
-          "description": "Maximum document size in bytes for editor analysis and debug scans. Larger documents remain editable but their analysis is skipped. Set to 0 to disable the limit. Dependencies and explicit builds may still read larger files."
+          "description": "Maximum document size in bytes for editor analysis and debug scans. Larger documents remain editable but their analysis is skipped. Set to 0 to disable the limit. Dependencies and explicit builds may still read larger files.",
+          "default": 1048576
         },
         "indexGlobs": {
           "type": "array",
@@ -34,14 +38,16 @@
           "deprecationMessage": "Use 'index' instead.",
           "items": {
             "type": "string"
-          }
+          },
+          "default": []
         },
         "index": {
           "type": "array",
           "description": "Index configurations; by default indexes all .sv, .svh, .v, and .vh files in the workspace. External-only roots supplement this default. A workspace directory or an empty dirs entry replaces the default scan.",
           "items": {
             "$ref": "#/$defs/Config__IndexConfig"
-          }
+          },
+          "default": []
         },
         "excludeDirs": {
           "type": "array",
@@ -50,11 +56,13 @@
           "deprecationMessage": "Use 'index' instead.",
           "items": {
             "type": "string"
-          }
+          },
+          "default": []
         },
         "indexingThreads": {
           "type": "integer",
-          "description": "Thread count to use for indexing"
+          "description": "Thread count to use for indexing",
+          "default": 0
         },
         "build": {
           "description": "Build file to use. Supports $VAR, ${VAR}, and $(VAR) environment variables.",
@@ -80,7 +88,8 @@
         },
         "buildRelativePaths": {
           "description": "Whether build files use paths relative to that file",
-          "type": "boolean"
+          "type": "boolean",
+          "default": false
         },
         "wavesPattern": {
           "description": "Waveform file glob to open given a build. Name and top variables can be passed with {name}, {top})",
@@ -106,18 +115,31 @@
         },
         "hovers": {
           "$ref": "#/$defs/Config__HoverConfig",
-          "description": "Hover behavior settings"
+          "description": "Hover behavior settings",
+          "default": {
+            "docCommentFormat": "markdown"
+          }
         },
         "inlayHints": {
           "$ref": "#/$defs/Config__InlayHints",
-          "description": "Inline hints for things like ordered arguments, wildcard ports, and others"
+          "description": "Inline hints for things like ordered arguments, wildcard ports, and others",
+          "default": {
+            "portTypes": false,
+            "assignmentPatternTypes": true,
+            "activeParameterValues": true,
+            "orderedInstanceNames": true,
+            "wildcardNames": true,
+            "funcArgNames": 2,
+            "macroArgNames": 2
+          }
         },
         "builds": {
           "type": "array",
           "description": "Builds for direct .f selection or command-based .f generation",
           "items": {
             "$ref": "#/$defs/Config__Build"
-          }
+          },
+          "default": []
         }
       },
       "required": []
@@ -165,7 +187,8 @@
               "description": "Show the comment text verbatim, including comment markers, in a code block.",
               "const": "raw"
             }
-          ]
+          ],
+          "default": "markdown"
         }
       },
       "required": []
@@ -202,31 +225,38 @@
       "properties": {
         "portTypes": {
           "description": "Hints for port types",
-          "type": "boolean"
+          "type": "boolean",
+          "default": false
         },
         "assignmentPatternTypes": {
           "description": "Hints for inferred assignment pattern types",
-          "type": "boolean"
+          "type": "boolean",
+          "default": true
         },
         "activeParameterValues": {
           "description": "Hints for active instance parameter and localparam values",
-          "type": "boolean"
+          "type": "boolean",
+          "default": true
         },
         "orderedInstanceNames": {
           "description": "Hints for names of ordered ports and params",
-          "type": "boolean"
+          "type": "boolean",
+          "default": true
         },
         "wildcardNames": {
           "description": "Hints for port names in wildcard (.*) ports",
-          "type": "boolean"
+          "type": "boolean",
+          "default": true
         },
         "funcArgNames": {
           "type": "integer",
-          "description": "Function argument hints: 0=off, N=only calls with >=N args"
+          "description": "Function argument hints: 0=off, N=only calls with >=N args",
+          "default": 2
         },
         "macroArgNames": {
           "type": "integer",
-          "description": "Macro argument hints: 0=off, N=only calls with >=N args"
+          "description": "Macro argument hints: 0=off, N=only calls with >=N args",
+          "default": 2
         }
       },
       "required": []

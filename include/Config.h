@@ -38,7 +38,6 @@ struct Config {
                      std::map<std::string, std::string>>
         env;
 
-    /// generate json schema from this by running with --config-schema
     // all fields must be optional
     rfl::Description<"Flags to pass to slang. Environment variables are expanded; unset or empty "
                      "variables are errors.",

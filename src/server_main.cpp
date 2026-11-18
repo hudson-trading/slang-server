@@ -17,7 +17,6 @@
 #    include <fstream>
 #endif
 #include <fmt/format.h>
-#include <rfl/DefaultIfMissing.hpp>
 
 #include "slang/util/CommandLine.h"
 #include "slang/util/VersionInfo.h"
@@ -45,9 +44,6 @@ int main(int argc, char** argv) {
 
     std::optional<bool> showVersion;
     cmdline.add("--version", showVersion, "Display version information and exit");
-
-    std::optional<bool> configSchema;
-    cmdline.add("--config-schema", configSchema, "Print json schema of config file and exit");
 
 #ifdef SLANG_SERVER_DEBUG
     std::optional<std::string> scanTarget, scanWorkspace, scanOutput;
@@ -77,22 +73,6 @@ int main(int argc, char** argv) {
         return 0;
     }
 
-    if (configSchema == true) {
-        try {
-            const std::string schema = rfl::json::to_schema<Config, rfl::DefaultIfMissing>(
-                rfl::json::pretty | YYJSON_WRITE_PRETTY_TWO_SPACES
-                // Add this when comment support is added
-                // , "@generated from `include/Config.h`"
-            );
-            OS::print(schema);
-            OS::print("\n");
-        }
-        catch (const std::exception& e) {
-            OS::print(fmt::format("Error generating config schema: {}\n", e.what()));
-            return 1;
-        }
-        return 0;
-    }
 #ifdef SLANG_SERVER_DEBUG
     if (scanTarget) {
         auto report = debugScanWorkspace(*scanTarget, scanWorkspace.value_or(""));
