@@ -88,9 +88,9 @@ The **slang: Go to Drivers** command in VS Code navigates to the drivers of the 
 
 Other clients can request the same locations with the `slang.getDriversAt` command, which takes a text document and position and returns a list of locations.
 
-Each result points to the driven expression, for example the left-hand side of an assignment in an `always_ff` block, rather than to the start of the enclosing block. For a signal that is connected to an output port, the results include the port connection and the drivers in the instantiated module.
+Each result points to the driven expression, for example the left-hand side of an assignment in an `always_ff` block, rather than to the start of the enclosing block. A block that assigns the same bits more than once, for example in both branches of an `if`, gives only one result: slang's analysis records only the first assignment. For a signal that is connected to an output port, the results include the port connection and the drivers in the instantiated module.
 
-For an input port, the result is the port connection in the parent instance. When the parent is in another file, this requires an [elaborated design](hdl/hdl.md), and the result follows the [active instance](hdl/hdl.md#active-instances) of the module.
+For an input port, the result is the port connection in the parent instance. When the parent is in another file, this requires an [elaborated design](hdl/hdl.md), and the result follows the [active instance](hdl/hdl.md#active-instances) of the module. An input port with no connection, for example on a top-level module or with an empty connection such as `.data()`, has no result.
 
 ### Inlay Hints
 

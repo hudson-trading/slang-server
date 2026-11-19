@@ -569,32 +569,36 @@ void appendUniqueLocations(std::vector<lsp::Location>& result,
 }
 
 /// Input port drivers are located at the port declaration inside the module; returns the range of
-/// the matching connection on the parent instance instead.
+/// the matching connection on the parent instance instead. Returns NoLocation if the port is not
+/// connected, for example on a top-level module or for an empty connection.
 SourceRange getInputPortConnectionRange(const analysis::ValueDriver& driver) {
     const auto* instance = getDriverInstance(*driver.containingSymbol);
     if (!instance)
         return SourceRange::NoLocation;
 
     const auto& driven = driver.getSymbol();
+    const auto driverStart = driver.getSourceRange().start();
+    auto drivesPort = [&](const ast::PortSymbol& port) {
+        // Non-ANSI explicit ports such as .a(x) have an internal expression and no internal symbol
+        if (auto* internalExpr = port.getInternalExpr())
+            return internalExpr->sourceRange.contains(driverStart);
+        return port.internalSymbol == &driven;
+    };
     auto isDrivenPort = [&](const ast::Symbol& port) {
         if (auto* single = port.as_if<ast::PortSymbol>())
-            return single->internalSymbol == &driven;
-        if (auto* multi = port.as_if<ast::MultiPortSymbol>()) {
-            return std::ranges::any_of(multi->ports,
-                                       [&](auto* p) { return p->internalSymbol == &driven; });
-        }
+            return drivesPort(*single);
+        if (auto* multi = port.as_if<ast::MultiPortSymbol>())
+            return std::ranges::any_of(multi->ports, [&](auto* p) { return drivesPort(*p); });
         return false;
     };
     for (auto* connection : instance->getPortConnections()) {
         if (!isDrivenPort(connection->port))
             continue;
-        if (auto* expression = connection->getExpression();
-            expression && expression->sourceRange != SourceRange::NoLocation) {
+        if (auto* expression = connection->getExpression())
             return expression->sourceRange;
-        }
         break;
     }
-    return {instance->location, instance->location};
+    return SourceRange::NoLocation;
 }
 
 /// Collects the locations of the drivers listed in hovers. Each location is the driven expression
@@ -609,12 +613,19 @@ std::vector<lsp::Location> collectDriverLocations(const ast::Symbol& symbol,
     forEachDriverGroup(symbol, analysis, sourceManager, includeInputPortDriver, followPortDriver,
                        visitedGroupSyntaxes, [&](const DriverGroup& group) {
                            for (const auto* driver : group.drivers) {
-                               auto range = driver->isInputPort()
-                                                ? getInputPortConnectionRange(*driver)
-                                                : driver->getSourceRange();
-                               if (range == SourceRange::NoLocation)
-                                   range = {group.containingSymbol->location,
-                                            group.containingSymbol->location};
+                               SourceRange range;
+                               if (driver->isInputPort()) {
+                                   // An unconnected input port has no driver to jump to
+                                   range = getInputPortConnectionRange(*driver);
+                                   if (range == SourceRange::NoLocation)
+                                       continue;
+                               }
+                               else {
+                                   range = driver->getSourceRange();
+                                   if (range == SourceRange::NoLocation)
+                                       range = {group.containingSymbol->location,
+                                                group.containingSymbol->location};
+                               }
 
                                const auto expanded = sourceManager.getFullyExpandedRange(range);
                                if (sourceManager.getFullPath(expanded.start().buffer()).empty())

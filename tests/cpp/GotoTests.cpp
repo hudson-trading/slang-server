@@ -865,14 +865,38 @@ module leaf(input logic data);
     assign copy = data;
 endmodule
 
+module open_leaf(input logic open_data);
+    logic open_copy;
+    assign open_copy = open_data;
+endmodule
+
+module explicit_leaf(.port_a(internal_a));
+    input logic internal_a;
+    logic explicit_copy;
+    assign explicit_copy = internal_a;
+endmodule
+
 module top(input logic value);
     leaf u(.data(value));
+    open_leaf o(.open_data());
+    explicit_leaf e(.port_a(value));
+    logic top_copy;
+    assign top_copy = value;
 endmodule
 )");
 
     auto drivers = doc.after("assign copy = ").getDrivers();
     REQUIRE(drivers.size() == 1);
-    CHECK(drivers[0].range.start == doc.after(".data(").getPosition());
+    CHECK(drivers[0].range.start == doc.after("u(.data(").getPosition());
+
+    // Non-ANSI explicit port
+    drivers = doc.after("assign explicit_copy = ").getDrivers();
+    REQUIRE(drivers.size() == 1);
+    CHECK(drivers[0].range.start == doc.after("e(.port_a(").getPosition());
+
+    // Unconnected port and top-level input port have no driver
+    CHECK(doc.after("assign open_copy = ").getDrivers().empty());
+    CHECK(doc.after("assign top_copy = ").getDrivers().empty());
 }
 
 TEST_CASE("GotoDrivers_InputPortUsesActiveInstanceAcrossFiles") {
