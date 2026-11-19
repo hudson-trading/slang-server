@@ -660,6 +660,12 @@ std::monostate SlangServer::openWaveform(const std::string& path) {
     else {
         m_client.showInfo(fmt::format("Opening waveform from {} (creating WCP)", path));
         m_wcpClient.emplace(this, wcpCommand);
+        if (!m_wcpClient->running()) {
+            m_client.showError(
+                fmt::format("Could not connect to the waveform viewer started with '{}'",
+                            m_config.wcpCommand.value().value_or("surfer --wcp-initiate {}")));
+            return std::monostate{};
+        }
     }
     m_wcpClient->loadWaveform(path);
 
