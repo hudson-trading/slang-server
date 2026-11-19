@@ -10,6 +10,7 @@
 
 #include "JsonTypes.h"
 #include "rfl/Generic.hpp"
+#include <charconv>
 #include <iostream>
 #include <optional>
 #include <rfl/json.hpp> // IWYU pragma: keep
@@ -92,16 +93,30 @@ std::optional<T> readJson(std::string& line, std::string& content) {
             continue;
         }
 
-        int contentLength = std::stoi(line.substr(16));
+        std::string_view lengthText = std::string_view(line).substr(16);
+        if (lengthText.ends_with('\r'))
+            lengthText.remove_suffix(1);
+        size_t contentLength = 0;
+        auto [lengthEnd, lengthError] = std::from_chars(lengthText.data(),
+                                                        lengthText.data() + lengthText.size(),
+                                                        contentLength);
+        // Lengths past 1 GiB are treated as corrupt framing rather than allocated
+        if (lengthError != std::errc() || lengthEnd != lengthText.data() + lengthText.size() ||
+            contentLength > (size_t(1) << 30)) {
+            std::cerr << "<-/- " << "Invalid Content-Length: " << line << std::endl;
+            continue;
+        }
         content.resize(contentLength);
 
-        do {
-            // Read maybe charset and empty line. Neovim and Vscode both don't
-            // have this header row.
-            std::getline(std::cin, line);
-        } while (line.size() > 1);
+        // Read maybe charset and empty line. Neovim and Vscode both don't
+        // have this header row.
+        while (std::getline(std::cin, line) && line.size() > 1) {
+        }
 
-        std::cin.read(&content[0], contentLength);
+        if (!std::cin.read(content.data(), static_cast<std::streamsize>(contentLength))) {
+            std::cerr << "<-/- " << "Input closed in the middle of a message" << std::endl;
+            return std::nullopt;
+        }
 
         rfl::Result<T> request = rfl::json::read<T>(content);
         if (!request) {

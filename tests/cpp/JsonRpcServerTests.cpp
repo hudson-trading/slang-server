@@ -163,6 +163,31 @@ TEST_CASE("JSON-RPC server separates activity batches and exits when input close
     CHECK(output.find("(notification finished)", firstCompletion + 1) != std::string::npos);
 }
 
+TEST_CASE("JSON-RPC reader survives malformed framing") {
+    TestJsonRpcServer server;
+    LogCapture capture;
+    const std::string initialize =
+        R"({"jsonrpc":"2.0","id":1,"method":"initialize","params":null})";
+    const std::string notification = R"({"jsonrpc":"2.0","method":"notification","params":null})";
+    auto frame = [](std::string_view message) {
+        return fmt::format("Content-Length: {}\r\n\r\n{}", message.size(), message);
+    };
+    // The final frame promises more content than the input holds
+    std::istringstream input(frame(initialize) + "Content-Length: abc\r\n\r\n" +
+                             "Content-Length: -1\r\n\r\n" +
+                             "Content-Length: 99999999999999999999\r\n\r\n" + frame(notification) +
+                             "Content-Length: 500\r\n\r\n{}");
+    const auto originalState = std::cin.rdstate();
+    auto* originalBuffer = std::cin.rdbuf(input.rdbuf());
+    slang::ScopeGuard restoreInput([&] {
+        std::cin.rdbuf(originalBuffer);
+        std::cin.clear(originalState);
+    });
+
+    server.run();
+    CHECK(capture.str().find("(notification finished)") != std::string::npos);
+}
+
 TEST_CASE("JSON-RPC messages log their latency") {
     TestJsonRpcServer server;
     LogCapture capture;
