@@ -13,6 +13,7 @@ import {
   ExternalFormatterConfig,
   ValidatedFormatterConfig,
 } from './ExternalFormatter'
+import { DEFAULT_FORMATTER_TIMEOUT_MS } from './lib/formatProcess'
 import {
   ActivityBarComponent,
   CommandNode,
@@ -90,7 +91,7 @@ File input is sent to stdin, and formatted output is read from stdout.',
         },
         timeout: {
           type: 'number',
-          default: 2000,
+          default: DEFAULT_FORMATTER_TIMEOUT_MS,
           minimum: 0,
           description:
             'Milliseconds to wait for the formatter before stopping it. 0 disables the time limit.',
@@ -534,7 +535,7 @@ File input is sent to stdin, and formatted output is read from stdout.',
   private async checkFormatDirs() {
     // Dispose all existing formatters
     for (const formatter of this.activeFormatters) {
-      formatter.provider.dispose()
+      formatter.dispose()
     }
     this.activeFormatters = []
 

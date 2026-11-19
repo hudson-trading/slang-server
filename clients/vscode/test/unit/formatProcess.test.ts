@@ -1,3 +1,6 @@
+import * as fs from 'fs'
+import * as os from 'os'
+import * as path from 'path'
 import tape from 'tape'
 import { runFormatterProcess } from '../../src/lib/formatProcess'
 
@@ -95,5 +98,37 @@ tape('runFormatterProcess cancels a running formatter', async (assert) => {
     signal: preAborted.signal,
   })
   assert.deepEqual(skipped, { kind: 'cancelled' })
+  assert.end()
+})
+
+tape('runFormatterProcess stops processes started by a wrapper', async (assert) => {
+  if (process.platform === 'win32') {
+    assert.end()
+    return
+  }
+  const pidFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'format-process-')), 'pid')
+  const wrapper = `
+    const child = require('child_process').spawn(process.execPath, ['-e', 'setTimeout(() => {}, 60000)'], { stdio: 'inherit' })
+    require('fs').writeFileSync(${JSON.stringify(pidFile)}, String(child.pid))
+  `
+  const result = await runFormatterProcess(node, script(wrapper), '', { timeoutMs: 1000 })
+  assert.deepEqual(result, { kind: 'timeout' })
+
+  const pid = Number(fs.readFileSync(pidFile, 'utf-8'))
+  await new Promise((resolve) => setTimeout(resolve, 1000))
+  assert.throws(() => process.kill(pid, 0), 'wrapped process is gone')
+  assert.end()
+})
+
+tape('runFormatterProcess stops a formatter that floods its output', async (assert) => {
+  const result = await runFormatterProcess(
+    node,
+    script(
+      'const b = "x".repeat(65536); const w = () => { while (process.stdout.write(b)); }; process.stdout.on("drain", w); w()'
+    ),
+    'input',
+    { timeoutMs: 0 }
+  )
+  assert.deepEqual(result, { kind: 'failed', message: 'Formatter produced too much output' })
   assert.end()
 })
