@@ -1056,7 +1056,7 @@ TEST_CASE("Document log paths are workspace relative") {
 
 TEST_CASE("LoadConfig") {
     ServerHarness server("basic_config");
-    auto flags = server.getConfig().flags.value();
+    auto flags = std::get<std::string>(server.getConfig().flags.value());
     std::cerr << "Config flags: " << flags << '\n';
 
     CHECK(flags.size() > 0);

@@ -282,7 +282,7 @@ TEST_CASE("Config reload retains working state when environment variables are mi
     CHECK(server.m_driver.get() == originalDriver);
     CHECK(server.getDoc(doc.m_uri) == originalDoc);
     CHECK(server.getConfig().build.value() == "design.f");
-    CHECK(server.getConfig().flags.value() == "-DWIDTH=8");
+    CHECK(std::get<std::string>(server.getConfig().flags.value()) == "-DWIDTH=8");
     CHECK(server.getDoc(doc.m_uri)->getText() == doc.m_text + '\0');
 
     workspace.write(".slang/server.json", R"({"build":"design.f","flags":"-DWIDTH=16"})");
@@ -291,7 +291,7 @@ TEST_CASE("Config reload retains working state when environment variables are mi
         {.changes = {{.uri = URI::fromFile(workspace.root / "source.sv"),
                       .type = lsp::FileChangeType::Changed}}});
     CHECK(server.m_driver.get() != originalDriver);
-    CHECK(server.getConfig().flags.value() == "-DWIDTH=16");
+    CHECK(std::get<std::string>(server.getConfig().flags.value()) == "-DWIDTH=16");
     CHECK(server.m_driver->comp);
     CHECK(server.m_driver->isDocumentOpen(doc.m_uri));
     CHECK(server.getDoc(doc.m_uri)->getText() == doc.m_text + '\0');
@@ -399,6 +399,59 @@ TEST_CASE("Flag and nested file-list variables preserve quoted paths containing 
           std::vector<std::string>{"VALUE=sources with spaces"});
 }
 
+TEST_CASE("Config flag arrays preserve argument boundaries alongside legacy flags") {
+    ConfigWorkspace workspace;
+    workspace.write("source.sv", "module source; endmodule\n");
+    workspace.write("outer.f", "source.sv\n");
+    workspace.write(".slang/server.json", R"({
+        "build":"outer.f", "buildRelativePaths":true,
+        "env":{"VALUE":"directory with spaces"},
+        "flags":["-D", "PATH=$VALUE", "-DTAG=#literal"]})");
+    workspace.write(".slang/local/server.json", R"({"flags":"-DLOCAL=added"})");
+    auto server = workspace.server();
+    REQUIRE(server.m_driver->comp);
+    CHECK(server.m_driver->options.getOrDefault<parsing::PreprocessorOptions>().predefines ==
+          std::vector<std::string>{"PATH=directory with spaces", "TAG=#literal", "LOCAL=added"});
+}
+
+TEST_CASE("Config flag arrays load command files with spaces in their paths") {
+    ConfigWorkspace workspace;
+    workspace.write("source.sv", "module source; endmodule\n");
+    workspace.write("files with spaces/extra.f", "../source.sv\n");
+    workspace.write("primary.f", "# Sources come from the extra command file\n");
+    rfl::Generic::Object config;
+    config["build"] = "primary.f";
+    config["flags"] = rfl::to_generic(std::vector<std::string>{
+        "-F", (workspace.root / "files with spaces/extra.f").generic_string()});
+    workspace.write(".slang/server.json", rfl::json::write(rfl::Generic(config)));
+    auto server = workspace.server();
+    REQUIRE(server.m_driver->comp);
+    CHECK(server.m_driver->driver.syntaxTrees.size() == 1);
+}
+
+TEST_CASE("Config rejects nonstring elements in flag arrays") {
+    ConfigWorkspace workspace;
+    workspace.write("server.json", R"({"flags":["-DVALID",42]})");
+    auto result = Config::fromFiles((workspace.root / "server.json").string(), std::nullopt,
+                                    std::nullopt);
+    REQUIRE_FALSE(result);
+    CHECK(std::string_view(result.error().what()).find("flags") != std::string_view::npos);
+}
+
+TEST_CASE("Add define appends to existing local flag arrays") {
+    ConfigWorkspace workspace;
+    const std::string configPath = ".slang/local/server.json";
+    workspace.write(configPath, R"({"flags":["-DORIGINAL"]})");
+    auto server = workspace.server();
+    server.executeCommand(
+        {.command = "slang.addDefine",
+         .arguments = std::vector<lsp::LSPAny>{rfl::to_generic(std::string("NEW"))}});
+    auto saved = rfl::json::read<Config, rfl::DefaultIfMissing>(workspace.read(configPath));
+    REQUIRE(saved);
+    CHECK(std::get<std::vector<std::string>>(saved->flags.value()) ==
+          std::vector<std::string>{"-DORIGINAL", "-DNEW"});
+}
+
 TEST_CASE("Auto-configure preserves environment variables when saving discovered paths") {
     ConfigEnvironment environment;
     ConfigWorkspace workspace(" with spaces");
@@ -503,7 +556,22 @@ TEST_CASE("Config incdirs append across workspace user and local files") {
     REQUIRE(result);
     const auto& config = *result;
     CHECK(config.incdirs.value() == std::vector<std::string>{"shared", "personal", "local"});
-    CHECK(config.flags.value() == "-DSHARED -DLOCAL");
+    CHECK(std::get<std::string>(config.flags.value()) == "-DSHARED -DLOCAL");
+}
+
+TEST_CASE("Config flag arrays retain workspace precedence and append local arguments") {
+    ConfigWorkspace workspace;
+    const bool useWorkspace = GENERATE(true, false);
+    workspace.write("workspace.json",
+                    useWorkspace ? R"({"flags":["-DSHARED"]})" : R"({"flags":[]})");
+    workspace.write("user.json", R"({"flags":["-DUSER"]})");
+    workspace.write("local.json", R"({"flags":["-DLOCAL"]})");
+    auto result = Config::fromFiles((workspace.root / "workspace.json").string(),
+                                    (workspace.root / "user.json").string(),
+                                    (workspace.root / "local.json").string());
+    REQUIRE(result);
+    CHECK(std::get<std::vector<std::string>>(result->flags.value()) ==
+          std::vector<std::string>{useWorkspace ? "-DSHARED" : "-DUSER", "-DLOCAL"});
 }
 
 TEST_CASE("Config environment overrides merge by name and remain literal") {
@@ -660,7 +728,7 @@ TEST_CASE("Auto-configure persists incdirs only when invoked and preserves setti
     REQUIRE(result);
     CHECK(result->to_bool().value());
     CHECK(server.getConfig().incdirs.value() == std::vector<std::string>{"headers", "nested"});
-    CHECK(server.getConfig().flags.value() == "-DSHARED -DLOCAL");
+    CHECK(std::get<std::string>(server.getConfig().flags.value()) == "-DSHARED -DLOCAL");
     CHECK(server.getConfig().indexingThreads.value() == 1);
     auto updated = server.m_driver->getDocument(doc.m_uri);
     REQUIRE(updated);
@@ -881,7 +949,7 @@ TEST_CASE("Auto-configure saves the deepest common index directory and preserves
     const auto& config = server.getConfig();
     REQUIRE(config.index.value().size() == 1);
     CHECK(config.index.value().front().dirs.value() == std::vector<std::string>{"src/hardware"});
-    CHECK(config.flags.value() == "-DPRESERVED");
+    CHECK(std::get<std::string>(config.flags.value()) == "-DPRESERVED");
     CHECK(config.indexingThreads.value() == 1);
     CHECK(config.incdirs.value() == (inferIncludes
                                          ? std::vector<std::string>{"src/hardware/include"}
