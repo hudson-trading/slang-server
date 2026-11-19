@@ -1285,6 +1285,17 @@ void Indexer::indexAndReport(std::vector<fs::path> pathsToIndex, bool inferInclu
     includedFiles_.clear();
     resolvedIncluders_.clear();
     {
+        // Drop files that were deleted or have left the configured index scope
+        std::unordered_set<const fs::path*> wanted;
+        for (const auto& path : pathsToIndex)
+            wanted.insert(internUri(path));
+        for (auto it = indexedFiles.begin(); it != indexedFiles.end();) {
+            const auto* path = (it++)->first;
+            if (!wanted.contains(path))
+                removePathFromIndex(path);
+        }
+    }
+    {
         ScopedTimer t_parse("Slang parsing and metadata indexing");
         auto indexedPaths = indexPaths(pathsToIndex);
         for (size_t i = 0; i < indexedPaths.size(); ++i)

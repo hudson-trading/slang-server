@@ -236,6 +236,18 @@ TEST_CASE("Unset config build variables notify the client and leave exploration 
     CHECK(server.openFile("source.sv", "module source; endmodule\n").getDiagnostics().empty());
 }
 
+TEST_CASE("Indexed files that disappear from disk do not fail analysis") {
+    ConfigWorkspace workspace;
+    workspace.write("child.sv", "module child; endmodule\n");
+    workspace.write("top.sv", "module top; endmodule\n");
+    auto server = workspace.server();
+    fs::remove(workspace.root / "child.sv");
+
+    auto doc = server.openFile("top.sv", "module top;\n    child u_child();\nendmodule\n");
+    CHECK_NOTHROW(doc.getDiagnostics());
+    CHECK_NOTHROW(doc.before("child u_child").hasDefinition());
+}
+
 TEST_CASE("Config reload retains working state when environment variables are missing") {
     ConfigEnvironment environment;
     environment.set(nullptr);

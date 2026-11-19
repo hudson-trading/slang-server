@@ -547,8 +547,10 @@ std::vector<ServerDriver::IncludeContext> ServerDriver::getIncludeContexts(
     if (!m_indexer.hasPotentialIncluders(canonical))
         return {};
     std::error_code ec;
-    if ((!sm.isCached(canonical) && !std::filesystem::is_regular_file(canonical, ec)) ||
-        getDocument(URI::fromFile(canonical))->isMacroOnly())
+    if (!sm.isCached(canonical) && !std::filesystem::is_regular_file(canonical, ec))
+        return {};
+    auto includedDoc = getDocument(URI::fromFile(canonical));
+    if (!includedDoc || includedDoc->isMacroOnly())
         return {};
     std::vector<std::filesystem::path> pending{canonical};
     std::unordered_set<std::filesystem::path> visited;
@@ -1452,7 +1454,7 @@ void ServerDriver::addMemberReferences(std::vector<lsp::Location>& references,
         URI fileUri = URI::fromFile(filePath.string());
 
         // Skip the file where targetSymbol is defined to avoid duplicates
-        if (fileUri == targetDoc->getURI()) {
+        if (targetDoc && fileUri == targetDoc->getURI()) {
             continue;
         }
 

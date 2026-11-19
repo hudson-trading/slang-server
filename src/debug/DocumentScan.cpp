@@ -20,6 +20,8 @@ DebugScanResult SlangServer::debugScanDocument(const lsp::TextDocumentIdentifier
         throw std::runtime_error("slang.debug.scanDocument requires an open document URI");
 
     auto doc = m_driver->getDocument(document.uri);
+    if (!doc)
+        throw std::runtime_error("slang.debug.scanDocument could not read the document");
     auto analysis = doc->getAnalysis(ctx);
     DebugScanResult result{.uri = document.uri,
                            .positionEncoding = m_client.capabilities.utf8Positions ? "utf-8"
