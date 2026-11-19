@@ -170,6 +170,29 @@ TEST_CASE("Cone locations deduplicate generated multi-bit drivers") {
                             {{"test.bit_driver", &declaration}});
 }
 
+TEST_CASE("Cone tracing skips ports without an internal symbol") {
+    ServerHarness server("");
+    auto doc = server.openFile("explicit_port_cone.sv", R"(
+module child(output .o(x), input .i());
+    logic x;
+    assign x = 1'b0;
+endmodule
+
+module top;
+    logic w;
+    logic unconnected;
+    logic result;
+    child c(.o(w), .i(unconnected));
+    assign result = w;
+endmodule
+)");
+    server.setTopLevel(std::string(doc.m_uri.getPath()));
+
+    auto result = doc.before("result;");
+    server.checkConeCommand("slang.getLoadsWithLocation", "top.w", {{"top.result", &result}});
+    server.checkConeCommand("slang.getDriversWithLocation", "top.w", {});
+}
+
 TEST_CASE("Undriven signals have empty driver cones") {
     ServerHarness server;
     auto doc = server.openFile("undriven_cone.sv", R"(

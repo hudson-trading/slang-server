@@ -44,7 +44,8 @@ public:
         return slang::SourceRange(startLoc, startLoc + symbol->name.length());
     }
 
-    bool isParameter() const { return symbol->kind == slang::ast::SymbolKind::Parameter; }
+    // Ports without an internal symbol have no signal to report, and parameters are constants.
+    bool isSignal() const { return symbol && symbol->kind != slang::ast::SymbolKind::Parameter; }
 
     bool operator<(const ConeLeaf& other) const {
         return std::less<const slang::ast::Symbol*>{}(symbol, other.symbol);
@@ -67,7 +68,7 @@ protected:
     const slang::ast::Symbol* root;
 
     void addLeaf(const ConeLeaf& leaf) {
-        if (!leaf.isParameter()) {
+        if (leaf.isSignal()) {
             leaves.insert(leaf);
         }
     }
