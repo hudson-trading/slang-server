@@ -473,6 +473,18 @@ std::vector<lsp::LocationLink> Cursor::getDefinitions() {
     return {};
 }
 
+std::vector<lsp::Location> Cursor::getDrivers() {
+    lsp::TextDocumentPositionParams params{.textDocument = {.uri = m_doc.m_uri},
+                                           .position = getPosition()};
+    auto result = m_doc.m_server.executeCommand({
+        .command = "slang.getDriversAt",
+        .arguments = std::vector<lsp::LSPAny>{rfl::to_generic<rfl::UnderlyingEnums>(params)},
+    });
+    if (!result)
+        return {};
+    return rfl::from_generic<std::vector<lsp::Location>>(*result).value();
+}
+
 std::vector<lsp::DocumentHighlight> Cursor::getHighlights() {
     auto maybeHighlights = m_doc.m_server.getDocDocumentHighlight(
         lsp::DocumentHighlightParams{.textDocument = {getUri()}, .position = getPosition()});

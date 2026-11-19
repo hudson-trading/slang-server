@@ -12,8 +12,10 @@
 #include "document/SlangDoc.h"
 #include "lsp/LspTypes.h"
 #include "lsp/SnippetString.h"
+#include "rfl/from_generic.hpp"
 #include <algorithm>
 #include <exception>
+#include <filesystem>
 #include <memory>
 #include <string>
 #include <utility>
@@ -220,6 +222,9 @@ public:
     // Goto definition methods
     bool hasDefinition();
     std::vector<lsp::LocationLink> getDefinitions();
+
+    // Driver locations from the slang.getDriversAt command
+    std::vector<lsp::Location> getDrivers();
 
     // Get document highlights
     std::vector<lsp::DocumentHighlight> getHighlights();
@@ -544,6 +549,61 @@ protected:
                 test.record(fmt::format(" Refs[{}]\n", refInfo.count));
             }
         }
+    }
+};
+
+struct DriversInfo {
+    std::string tokenText;
+    std::vector<std::string> locations;
+
+    bool operator==(const DriversInfo& other) const = default;
+};
+
+/// Records the slang.getDriversAt locations at each token, as file:line:column (1-based)
+class DriversScanner : public DocumentScanner<DriversInfo> {
+public:
+    DriversScanner(ServerHarness& server) : DocumentScanner<DriversInfo>(), m_server(server) {}
+
+protected:
+    ServerHarness& m_server;
+
+    std::optional<DriversInfo> getElementAt(DocumentHandle* hdl, lsp::uint offset) override {
+        auto pos = hdl->getLspLocation(offset);
+        if (!pos.has_value()) {
+            return std::nullopt;
+        }
+
+        lsp::TextDocumentPositionParams params{.textDocument = {.uri = hdl->m_uri},
+                                               .position = *pos};
+        auto result = m_server.executeCommand({
+            .command = "slang.getDriversAt",
+            .arguments = std::vector<lsp::LSPAny>{rfl::to_generic<rfl::UnderlyingEnums>(params)},
+        });
+        if (!result) {
+            return std::nullopt;
+        }
+        auto drivers = rfl::from_generic<std::vector<lsp::Location>>(*result).value();
+        if (drivers.empty()) {
+            return std::nullopt;
+        }
+
+        auto doc = hdl->doc;
+        auto tok = doc->getWordTokenAt(slang::SourceLocation(doc->getBuffer(), offset));
+        DriversInfo info{.tokenText = tok ? std::string(tok->valueText()) : ""};
+        for (const auto& driver : drivers) {
+            info.locations.push_back(fmt::format(
+                "{}:{}:{}", std::filesystem::path(driver.uri.getPath()).filename().string(),
+                driver.range.start.line + 1, driver.range.start.character + 1));
+        }
+        return info;
+    }
+
+    void processElementTransition(DocumentHandle*, SourceManager&, lsp::uint) override {
+        auto& info = std::get<DriversInfo>(*prevElement);
+        test.record(fmt::format(" Drivers[{}]:", info.locations.size()));
+        for (const auto& location : info.locations)
+            test.record(" " + location);
+        test.record("\n");
     }
 };
 
