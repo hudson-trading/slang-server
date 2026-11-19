@@ -279,14 +279,19 @@ void ServerDriver::onDocDidSave(SlangDoc& doc) {
 
 void ServerDriver::publishCompilationDiagnostics(const URI* priorityUri) {
     diagEngine.setMappingsFromPragmas();
-    for (const auto& entry : docs) {
-        if (!entry.second->getAnalysisLimitMessage())
-            entry.second->issueParseDiagnostics(diagEngine);
+    // Issuing diagnostics can load include contexts and dependencies, which adds to docs
+    std::vector<std::shared_ptr<SlangDoc>> currentDocs;
+    currentDocs.reserve(docs.size());
+    for (const auto& entry : docs)
+        currentDocs.push_back(entry.second);
+    for (const auto& doc : currentDocs) {
+        if (!doc->getAnalysisLimitMessage())
+            doc->issueParseDiagnostics(diagEngine);
     }
     comp->issueDiagnosticsTo(diagEngine);
-    for (const auto& [uri, doc] : docs) {
+    for (const auto& doc : currentDocs) {
         if (doc->getAnalysisLimitMessage())
-            diagClient->clear(uri);
+            diagClient->clear(doc->getURI());
     }
     if (priorityUri)
         diagClient->pushDiags(*priorityUri);

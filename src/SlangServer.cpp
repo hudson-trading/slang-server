@@ -541,7 +541,12 @@ std::optional<lsp::Location> SlangServer::getHierLocation(const std::string& hie
     }
     auto packageName = std::string_view(hierPath).substr(0, separator);
     auto memberName = std::string_view(hierPath).substr(separator + 2);
-    for (const auto& [_, doc] : m_driver->docs) {
+    // Analyzing a document can load its dependencies, which adds to docs
+    std::vector<std::shared_ptr<SlangDoc>> currentDocs;
+    currentDocs.reserve(m_driver->docs.size());
+    for (const auto& entry : m_driver->docs)
+        currentDocs.push_back(entry.second);
+    for (const auto& doc : currentDocs) {
         auto analysis = doc->getAnalysis();
         auto* pkg = analysis->getCompilation()->getPackage(packageName);
         auto* member = pkg ? pkg->lookupName(memberName) : nullptr;
