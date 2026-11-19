@@ -117,8 +117,7 @@ ShallowAnalysis::ShallowAnalysis(BufferID buffer, std::shared_ptr<ShallowCompila
     for (auto* definition : unindexedDefinitions) {
         if (m_symbolIndexer.getSymbol(definition->getSyntax()))
             continue;
-        auto& instance = ast::InstanceSymbol::createDefault(*getCompilation(), *definition);
-        instance.setParent(getCompilation()->getRoot());
+        auto& instance = m_shallowCompilation->getDefinitionInstance(*definition);
         instance.visit(m_symbolIndexer);
     }
 }
@@ -265,10 +264,7 @@ const ast::Symbol* ShallowAnalysis::handleInterfacePortHeader(const parsing::Tok
     }
 
     auto& idef = iface.definition->as<ast::DefinitionSymbol>();
-    auto& inst = ast::InstanceSymbol::createDefault(*getCompilation(), idef);
-    inst.setParent(getCompilation()->getRoot());
-
-    // TODO: avoid creating a default instance each time
+    auto& inst = m_shallowCompilation->getDefinitionInstance(idef);
     return inst.body.lookupName(header.modport->member.valueText());
 }
 
@@ -285,17 +281,8 @@ const ast::Scope* ShallowAnalysis::getScopeFromSym(const ast::Symbol* symbol) co
         return nullptr;
     }
 
-    if (auto* definition = symbol->as_if<ast::DefinitionSymbol>()) {
-        auto [it, inserted] = m_definitionScopes.try_emplace(definition, nullptr);
-        if (inserted) {
-            auto& compilation = definition->getParentScope()->getCompilation();
-            auto& fallback = ast::InstanceSymbol::createDefault(compilation, *definition);
-            fallback.setParent(compilation.getRoot());
-            fallback.name = "";
-            it->second = &fallback.body;
-        }
-        return it->second;
-    }
+    if (auto* definition = symbol->as_if<ast::DefinitionSymbol>())
+        return &m_shallowCompilation->getDefinitionInstance(*definition).body;
 
     if (auto* generic = symbol->as_if<ast::GenericClassDefSymbol>()) {
         auto [it, inserted] = m_definitionScopes.try_emplace(generic, nullptr);

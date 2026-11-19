@@ -144,6 +144,63 @@ TEST_CASE("EditingActiveInstancePreservesParentLocalType") {
           &designType->as<slang::ast::Type>().getCanonicalType());
 }
 
+TEST_CASE("ActiveInstanceDiagnosticsUseOverriddenStructType") {
+    ServerHarness server("active_instance_member_access");
+    SECTION("Source file") {
+        server.setBuildFile("design.f");
+    }
+    SECTION("Library file") {
+        server.setBuildFile("library.f");
+    }
+
+    auto doc = server.openFile("child.sv");
+    REQUIRE(server.setActiveInstance("top.selected"));
+    CHECK(doc.doc->getAnalysis()->getSemanticDiagnostics().empty());
+    doc.append("\n");
+    doc.publishChanges();
+    CHECK(doc.getDiagnostics().empty());
+
+    // A real member error must still be diagnosed in the selected struct type.
+    doc.after("item.valid").write("_missing");
+    doc.publishChanges();
+    auto diagnostics = doc.getDiagnostics();
+    REQUIRE(diagnostics.size() == 1);
+    CHECK(diagnostics.front().message.find("valid_missing") != std::string::npos);
+}
+
+TEST_CASE("DefinitionScopeUsesActiveInstanceOverrides") {
+    ServerHarness server("active_instance_member_access");
+    server.setBuildFile("design.f");
+
+    // child is instantiated here, so its definition scope comes from a synthetic instance.
+    auto doc = server.openFile("top.sv");
+    REQUIRE(server.setActiveInstance("top.selected"));
+    auto analysis = doc.doc->getAnalysis();
+    auto& compilation = *analysis->getCompilation();
+    auto* definition = compilation.tryGetDefinition("child", compilation.getRoot()).definition;
+    REQUIRE(definition);
+    auto* scope = analysis->getScopeFromSym(definition);
+    REQUIRE(scope);
+    auto* type = scope->lookupName("T");
+    REQUIRE(type);
+    CHECK(type->as<slang::ast::Type>().isStruct());
+}
+
+TEST_CASE("BuildFileDiagnosticsUsePreferredInstanceWithoutSelection") {
+    ServerHarness server("active_instance_member_access");
+    server.setBuildFile("design.f");
+    auto doc = server.openFile("child.sv");
+    CHECK(doc.getDiagnostics().empty());
+}
+
+TEST_CASE("StandaloneDiagnosticsStillCheckDefaultType") {
+    ServerHarness server("active_instance_member_access");
+    auto doc = server.openFile("child.sv");
+    auto diagnostics = doc.getDiagnostics();
+    REQUIRE(diagnostics.size() == 1);
+    CHECK(diagnostics.front().message == "invalid member access for type 'T' (aka 'logic')");
+}
+
 TEST_CASE("GotoDefinitionSelectsReferencedActiveInstance") {
     ServerHarness server("active_interface_port_hover");
     server.setBuildFile("design.f");

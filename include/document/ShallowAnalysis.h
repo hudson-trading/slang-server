@@ -255,7 +255,7 @@ private:
     mutable slang::flat_hash_map<const slang::syntax::LoopGenerateSyntax*, GenvarElaboration>
         m_genvarElaborations;
 
-    /// Reusable scopes for module and class definitions without a usable instantiation.
+    /// Reusable default specializations for generic class definitions.
     mutable slang::flat_hash_map<const slang::ast::Symbol*, const slang::ast::Scope*>
         m_definitionScopes;
 
