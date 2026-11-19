@@ -15,6 +15,27 @@ TEST_CASE("DocumentHighlightSanity") {
     REQUIRE(highlightsSome.size() == 1);
 }
 
+TEST_CASE("Lookups resolve an identifier from the position at its end") {
+    ServerHarness server("");
+    auto doc = server.openFile("word_end.sv", R"(
+package pkg;
+    localparam int value = 1;
+endpackage
+
+module top;
+    logic sig;
+    assign sig = pkg::value;
+endmodule
+)");
+
+    CHECK(doc.after("assign sig").getHighlights().size() == 2);
+    CHECK(doc.after("= pkg").hasDefinition());
+    CHECK(doc.after("pkg::value").hasDefinition());
+
+    // A position that is separated from the identifier does not touch it
+    CHECK(doc.after("assign sig ").getHighlights().empty());
+}
+
 TEST_CASE("DocumentHighlightScope") {
     ServerHarness server("");
     JsonGoldenTest golden;

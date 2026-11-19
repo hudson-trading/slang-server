@@ -277,6 +277,10 @@ public:
 template<typename ElementT>
 class DocumentScanner {
 public:
+    // Word lookups also resolve from the position at a word's end; scanners using them pass
+    // perCharacter so that markers only cover the characters of each word.
+    explicit DocumentScanner(bool perCharacter) : perCharacter(perCharacter) {}
+
     void scanDocument(DocumentHandle hdl) {
         auto doc = hdl.doc;
         if (!doc) {
@@ -304,7 +308,9 @@ public:
             // Get current element
             std::optional<std::variant<ElementT, std::string>> currentElement;
             try {
-                currentElement = getElementAt(&hdl, offset);
+                auto* word = perCharacter ? doc->getWordTokenAt(loc) : nullptr;
+                if (!word || word->range().end() != loc)
+                    currentElement = getElementAt(&hdl, offset);
             }
             catch (...) {
                 currentElement = "Exception occurred";
@@ -346,6 +352,7 @@ public:
 protected:
     GoldenTest test;
     std::optional<std::variant<ElementT, std::string>> prevElement;
+    const bool perCharacter;
 
     // These methods should be overridden by derived classes
     virtual std::optional<ElementT> getElementAt(DocumentHandle* hdl, lsp::uint offset) = 0;
@@ -355,7 +362,7 @@ protected:
 
 class SyntaxScanner : public DocumentScanner<parsing::Token> {
 public:
-    SyntaxScanner() : DocumentScanner<parsing::Token>() {}
+    SyntaxScanner() : DocumentScanner<parsing::Token>(false) {}
 
 protected:
     std::optional<parsing::Token> getElementAt(DocumentHandle* hdl, lsp::uint offset) override {
@@ -375,7 +382,8 @@ protected:
 class SymbolRefScanner : public DocumentScanner<server::DefinitionInfo> {
 public:
     explicit SymbolRefScanner(std::vector<lsp::uint> selectedOffsets = {}) :
-        DocumentScanner<server::DefinitionInfo>(), selectedOffsets(std::move(selectedOffsets)) {}
+        DocumentScanner<server::DefinitionInfo>(true), selectedOffsets(std::move(selectedOffsets)) {
+    }
 
 protected:
     std::vector<lsp::uint> selectedOffsets;
@@ -490,7 +498,8 @@ struct ReferenceInfo {
 
 class ReferencesScanner : public DocumentScanner<ReferenceInfo> {
 public:
-    ReferencesScanner(ServerHarness& server) : DocumentScanner<ReferenceInfo>(), m_server(server) {}
+    ReferencesScanner(ServerHarness& server) :
+        DocumentScanner<ReferenceInfo>(true), m_server(server) {}
 
 protected:
     ServerHarness& m_server;
