@@ -12,9 +12,12 @@ For Example:
             "path/to/project2",
         ],
         "languageIds": ["systemverilog"],
+        "timeout": 5000,
     },
 ]
 ```
+
+`timeout` is how many milliseconds to wait before stopping the formatter (default `2000`; `0` disables the limit). The formatter runs in the background, so VSCode stays responsive. If it takes longer than a second, a notification appears with a Cancel button. Typing during a format also cancels it.
 
 To have files in these folders then format on save, add the following to your user settings:
 ```json

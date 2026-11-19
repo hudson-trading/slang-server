@@ -88,6 +88,13 @@ File input is sent to stdin, and formatted output is read from stdout.',
           default: HDLFiles,
           description: 'Language IDs to format (e.g., "systemverilog", "verilog")',
         },
+        timeout: {
+          type: 'number',
+          default: 2000,
+          minimum: 0,
+          description:
+            'Milliseconds to wait for the formatter before stopping it. 0 disables the time limit.',
+        },
       },
     },
   })
