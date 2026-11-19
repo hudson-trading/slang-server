@@ -502,6 +502,26 @@ TEST_CASE("MacroCompletion") {
     CHECK(getCompletionTextEdit(testMacro->m_item).newText == "`TEST_MACRO(${1:arg1}, ${2:arg2})");
 }
 
+TEST_CASE("Completion requests may omit the context") {
+    ServerHarness server;
+    auto doc = server.openFile("no_context.sv", R"(
+module top;
+    logic some_signal;
+    assign some_signal = some
+endmodule
+)");
+    auto cursor = doc.after("= some");
+    auto result = server.getDocCompletion(lsp::CompletionParams{
+        .textDocument = lsp::TextDocumentIdentifier{cursor.getUri()},
+        .position = cursor.getPosition(),
+    });
+    REQUIRE(rfl::holds_alternative<std::vector<lsp::CompletionItem>>(result));
+    CHECK(std::ranges::any_of(rfl::get<std::vector<lsp::CompletionItem>>(result),
+                              [](const lsp::CompletionItem& item) {
+                                  return item.label == "some_signal";
+                              }));
+}
+
 TEST_CASE("MacroArgumentCompletion") {
     ServerHarness server("repo1");
 

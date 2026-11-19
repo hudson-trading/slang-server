@@ -1455,7 +1455,11 @@ rfl::Variant<std::vector<lsp::CompletionItem>, lsp::CompletionList, std::monosta
     }
     auto loc = maybeLoc.value();
 
-    auto ctx = CompletionContext::fromLocation(*doc, loc, *params.context);
+    // Clients without contextSupport omit the context; treat those as manually invoked
+    auto ctx =
+        CompletionContext::fromLocation(*doc, loc,
+                                        params.context.value_or(lsp::CompletionContext{
+                                            .triggerKind = lsp::CompletionTriggerKind::Invoked}));
 
     INFO("Completion: kind={} trigger='{}' query={}", toString(ctx.lspContext.triggerKind),
          ctx.lspContext.triggerCharacter.value_or(""), toString(ctx.query->kind()));
