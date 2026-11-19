@@ -788,6 +788,15 @@ endpackage
     CHECK_FALSE(doc.getHoverAt(missing.m_offset));
 }
 
+TEST_CASE("GotoDriversAllTokens_drivers.sv") {
+    /// Driver locations at each token in drivers.sv
+    ServerHarness server("goto_drivers");
+    auto hdl = server.openFile("drivers.sv");
+
+    DriversScanner scanner(server);
+    scanner.scanDocument(hdl);
+}
+
 TEST_CASE("GotoDrivers_JumpsToDrivers") {
     ServerHarness server;
 
