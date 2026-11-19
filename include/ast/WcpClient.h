@@ -83,6 +83,17 @@ public:
         m_clientThread = std::thread(&WcpClient::runClient, this);
     }
 
+    // Stops the client loop and waits for it; the loop never blocks on the server lock once
+    // stopped, so this is safe to call while holding it.
+    ~WcpClient() {
+        m_running = false;
+        if (m_clientThread.joinable())
+            m_clientThread.join();
+    }
+
+    WcpClient(const WcpClient&) = delete;
+    WcpClient& operator=(const WcpClient&) = delete;
+
     bool running() { return m_running; }
 
     void addItem(const ItemToWaveform&);
