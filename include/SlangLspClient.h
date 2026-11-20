@@ -21,6 +21,9 @@
 
 class SlangLspClient : public lsp::LspClient {
 public:
+    /// Set on `initialized`; LSP forbids diagnostics before the initialize response.
+    bool initialized = false;
+
     enum class InteractionSource {
         editor,
         codeLensSelect,

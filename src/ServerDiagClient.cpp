@@ -300,6 +300,8 @@ void ServerDiagClient::pushDiags(const URI& priorityUri) {
 }
 
 void ServerDiagClient::pushDiags() {
+    if (!m_client.initialized)
+        return;
     for (auto& uri : m_dirtyUris) {
         auto it = m_diagnostics.find(uri);
         if (it != m_diagnostics.end()) {
