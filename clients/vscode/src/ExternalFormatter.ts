@@ -1,8 +1,12 @@
 // SPDX-License-Identifier: MIT
 
-import * as child_process from 'child_process'
 import * as vscode from 'vscode'
 import { getWorkspaceFolder } from './utils'
+import {
+  DEFAULT_FORMATTER_TIMEOUT_MS,
+  FormatProcessResult,
+  runFormatterProcess,
+} from './lib/formatProcess'
 import { ConfigObject, ExtensionComponent } from './lib/libconfig'
 import { Logger } from './lib/logger'
 
@@ -21,22 +25,39 @@ export interface ExternalFormatterConfig {
   command?: string
   dirs?: string[]
   languageIds: string[]
+  timeout?: number
 }
 
 export interface ValidatedFormatterConfig {
   command: string
   dirs?: string[]
   languageIds: string[]
+  timeout?: number
 }
 
 export class ExternalFormatter implements vscode.DocumentFormattingEditProvider {
   private config: ValidatedFormatterConfig
-  provider: vscode.Disposable
+  /// Milliseconds a run may take; 0 disables the limit.
+  private timeoutMs: number
+  /// Registration of this formatter with VSCode.
+  private provider: vscode.Disposable
+  /// Cancels each formatter run still in flight.
+  private running = new Set<AbortController>()
   logger: Logger
 
   constructor(config: ValidatedFormatterConfig, logger: Logger) {
     this.config = config
     this.logger = logger
+
+    const timeout = config.timeout ?? DEFAULT_FORMATTER_TIMEOUT_MS
+    if (typeof timeout === 'number' && Number.isFinite(timeout) && timeout >= 0) {
+      this.timeoutMs = timeout
+    } else {
+      this.timeoutMs = DEFAULT_FORMATTER_TIMEOUT_MS
+      void vscode.window.showWarningMessage(
+        `Formatter timeout ${JSON.stringify(timeout)} is not a non-negative number of milliseconds. Using ${DEFAULT_FORMATTER_TIMEOUT_MS}.`
+      )
+    }
 
     let selectors: vscode.DocumentFilter[]
     if (config.dirs && config.dirs.length > 0) {
@@ -66,57 +87,81 @@ export class ExternalFormatter implements vscode.DocumentFormattingEditProvider 
     this.provider = vscode.languages.registerDocumentFormattingEditProvider(selectors, this)
   }
 
-  provideDocumentFormattingEdits(
+  /// Unregister the formatter and stop any runs still in flight.
+  dispose() {
+    this.provider.dispose()
+    for (const abort of this.running) {
+      abort.abort()
+    }
+  }
+
+  async provideDocumentFormattingEdits(
     document: vscode.TextDocument,
     _options: vscode.FormattingOptions,
-    _token: vscode.CancellationToken
-  ): vscode.ProviderResult<vscode.TextEdit[]> {
+    token: vscode.CancellationToken
+  ): Promise<vscode.TextEdit[]> {
     if (this.config.command.length === 0) {
-      return
+      return []
     }
     const split = this.config.command.split(' ')
     const binPath = split[0]
-    let args = split.slice(1).filter((arg) => arg !== '')
-    if (binPath === undefined) {
+    const args = split.slice(1).filter((arg) => arg !== '')
+    if (binPath === undefined || binPath.length === 0) {
       return []
     }
 
+    const version = document.version
+    const abort = new AbortController()
+    const tokenListener = token.onCancellationRequested(() => abort.abort())
+    this.running.add(abort)
+
+    this.logger.info(`Running external formatter: ${binPath} ${args.join(' ')}`)
+    let result: FormatProcessResult
     try {
-      const options: child_process.SpawnSyncOptionsWithStringEncoding = {
+      result = await runFormatterProcess(binPath, args, document.getText(), {
         cwd: getWorkspaceFolder(),
-        encoding: 'utf-8',
-        timeout: 2000, // 2s
-        input: document.getText(),
-      }
-
-      this.logger.info(`Running external formatter: ${binPath} ${args.join(' ')}`)
-
-      const result = child_process.spawnSync(binPath, args, options)
-      if (result.error) {
-        this.logger.error(`External formatter execution failed: ${result.error.message}`)
-        vscode.window.showErrorMessage(`Verilog formatting failed: ${result.error.message}`)
-        return []
-      }
-      if (result.stdout.length === 0 || result.status !== 0 || result.stderr.length > 0) {
-        const stderrLines = result.stderr.split('\n').slice(0, 5).join('\n')
-        this.logger.error(`External formatter failed:\n${stderrLines}`)
-        vscode.window.showErrorMessage(`Verilog formatting failed:\n${stderrLines}`)
-        return []
-      }
-      this.logger.info(`External formatter completed successfully.`)
-      return [
-        vscode.TextEdit.replace(
-          new vscode.Range(
-            document.positionAt(0),
-            document.lineAt(document.lineCount - 1).range.end
-          ),
-          result.stdout
-        ),
-      ]
-    } catch (err) {
-      vscode.window.showErrorMessage('Formatting failed: ' + (err as Error).toString())
+        timeoutMs: this.timeoutMs,
+        signal: abort.signal,
+      })
+    } finally {
+      this.running.delete(abort)
+      tokenListener.dispose()
     }
 
-    return []
+    switch (result.kind) {
+      case 'cancelled':
+        this.logger.info('External formatter cancelled.')
+        return []
+      case 'timeout': {
+        const message = `Verilog formatting timed out after ${this.timeoutMs / 1000}s`
+        this.logger.error(message)
+        void vscode.window.showErrorMessage(message)
+        return []
+      }
+      case 'failed': {
+        const lines = result.message.split('\n').slice(0, 5).join('\n')
+        this.logger.error(`External formatter failed:\n${lines}`)
+        void vscode.window.showErrorMessage(`Verilog formatting failed:\n${lines}`)
+        return []
+      }
+      case 'ok':
+        break
+    }
+
+    if (token.isCancellationRequested) {
+      this.logger.info('External formatter cancelled.')
+      return []
+    }
+    if (document.version !== version) {
+      this.logger.info('Document changed while formatting; discarding formatter output.')
+      return []
+    }
+    this.logger.info(`External formatter completed successfully.`)
+    return [
+      vscode.TextEdit.replace(
+        new vscode.Range(document.positionAt(0), document.lineAt(document.lineCount - 1).range.end),
+        result.stdout
+      ),
+    ]
   }
 }
