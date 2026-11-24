@@ -1,4 +1,5 @@
 --single-unit
+--libraries-inherit-macros
 +incdir+.
 parent.sv
 submodule.sv
