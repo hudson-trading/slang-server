@@ -1016,9 +1016,11 @@
 <span class="w">            </span><span class="s2">&quot;path/to/project2&quot;</span><span class="p">,</span>
 <span class="w">        </span><span class="p">],</span>
 <span class="w">        </span><span class="nt">&quot;languageIds&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;systemverilog&quot;</span><span class="p">],</span>
+<span class="w">        </span><span class="nt">&quot;timeout&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5000</span><span class="p">,</span>
 <span class="w">    </span><span class="p">},</span>
 <span class="p">]</span>
 </code></pre></div></p>
+<p><code>timeout</code> is how many milliseconds to wait before stopping the formatter (default <code>2000</code>; <code>0</code> disables the limit). The formatter runs in the background, so VSCode stays responsive, and editing the file or cancelling the save stops it.</p>
 <p>To have files in these folders then format on save, add the following to your user settings:
 <div class="language-json highlight"><pre><span></span><code><span class="nt">&quot;[systemverilog]&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;editor.formatOnSave&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
