@@ -40,12 +40,7 @@ ServerCompilationAnalysis::ServerCompilationAnalysis(
     // Retain buffer data to prevent deallocation while this compilation exists
     m_retainedBuffers = sourceManager.retainBuffers(bufferIds);
 
-    // reset and rebuild indexed info
-    auto& root = compilation.getRoot();
-    instances.reset(&root);
-
-    // symbol references are not indexed until cone tracing is requested
-    m_references.reset();
+    instances.build(compilation);
 }
 
 slang::analysis::AnalysisManager& ServerCompilationAnalysis::getAnalysisManager() {

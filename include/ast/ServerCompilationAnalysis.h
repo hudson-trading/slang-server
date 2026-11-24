@@ -36,8 +36,7 @@ public:
 
     slang::ast::Compilation compilation;
 
-    /// Index of buffer -> definitions and definition -> instances given a compilation. Used for
-    /// navigating a compilation via the sidebar
+    /// Shared instance bodies and their concrete hierarchy counts for this compilation.
     InstanceIndexer instances;
 
     /// Issue all semantic diagnostics from the compilation to the diagnostic engine

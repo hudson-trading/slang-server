@@ -297,6 +297,68 @@ TEST_CASE("GetInstancesOfModule") {
     golden.record("cpu_instances", cpuInstances);
 }
 
+TEST_CASE("Shared instance bodies retain concrete paths and selections across saves") {
+    ServerHarness server;
+    auto doc = server.openFile("shared.sv", R"(
+module leaf; endmodule
+module tile #(parameter N = 1);
+    for (genvar i = 0; i < N; ++i) begin : rows
+        leaf child();
+    end
+endmodule
+module top;
+    tile a(), a$();
+    tile #(2) pair[1:0]();
+endmodule
+)");
+    server.setTopLevel(std::string(doc.m_uri.getPath()));
+
+    auto modules = server.getScopesByModule({});
+    auto leaf = std::ranges::find(modules, "leaf", &hier::InstanceSet::declName);
+    REQUIRE(leaf != modules.end());
+    CHECK(leaf->instCount == 6);
+    CHECK_FALSE(leaf->inst);
+
+    std::vector<std::string> paths;
+    for (const auto& instance : server.getInstancesOfModule("leaf")) {
+        paths.push_back(instance.instPath);
+        CHECK(instance.instLoc.uri == doc.m_uri);
+        CHECK(instance.instLoc.range.start.line == 4);
+    }
+    CHECK(paths ==
+          std::vector<std::string>{"top.a.rows[0].child", "top.a$.rows[0].child",
+                                   "top.pair[0].rows[0].child", "top.pair[0].rows[1].child",
+                                   "top.pair[1].rows[0].child", "top.pair[1].rows[1].child"});
+    auto active = server.getActiveInstance("leaf");
+    REQUIRE(active);
+    CHECK(active->instPath == "top.a$.rows[0].child");
+
+    REQUIRE(server.setActiveInstance("top.pair[1].rows[1].child"));
+    doc.insert(0, "\n");
+    doc.save();
+    auto* selected = server.m_driver->comp->getActiveInstanceSymbol("leaf");
+    REQUIRE(selected);
+    CHECK(selected->getHierarchicalPath() == "top.pair[1].rows[1].child");
+    active = server.getActiveInstance("leaf");
+    REQUIRE(active);
+    CHECK(active->instPath == selected->getHierarchicalPath());
+    CHECK(active->instLoc.range.start.line == 5);
+}
+
+TEST_CASE("Hierarchy indexes an instance while its name is missing") {
+    ServerHarness server;
+    auto doc = server.openFile("unnamed.sv", R"(
+module leaf; endmodule
+module top;
+    leaf ();
+endmodule
+)");
+    server.setTopLevel(std::string(doc.m_uri.getPath()));
+    auto leaves = server.getInstancesOfModule("leaf");
+    REQUIRE(leaves.size() == 1);
+    CHECK(leaves.front().instPath == "top");
+}
+
 TEST_CASE("OpenModuleDefinitionOnlyWhenClosed") {
     ServerHarness server("comp_repo");
     server.setBuildFile("cpu_design.f");

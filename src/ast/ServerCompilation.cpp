@@ -30,43 +30,6 @@ namespace server {
 
 namespace {
 
-// Among instances of the same module, pick the one closest to the root, breaking ties by
-// source location, then by hierarchical path. Used as a deterministic default "active"
-// instance when the user hasn't picked one.
-const slang::ast::InstanceSymbol* choosePreferredInstance(
-    const std::vector<const slang::ast::InstanceSymbol*>& instances) {
-    auto depth = [](const slang::ast::InstanceSymbol& i) {
-        auto p = i.getHierarchicalPath();
-        return std::count(p.begin(), p.end(), '.');
-    };
-    auto sortLoc = [](const slang::ast::InstanceSymbol& i) {
-        auto* syntax = i.getSyntax();
-        return syntax ? syntax->sourceRange().start() : i.location;
-    };
-
-    auto less = [&](const slang::ast::InstanceSymbol* a, const slang::ast::InstanceSymbol* b) {
-        if (auto da = depth(*a), db = depth(*b); da != db) {
-            return da < db;
-        }
-        auto la = sortLoc(*a), lb = sortLoc(*b);
-        if (la.valid() != lb.valid()) {
-            return la.valid();
-        }
-        if (la.valid() && la != lb) {
-            return la < lb;
-        }
-        return a->getHierarchicalPath() < b->getHierarchicalPath();
-    };
-
-    const slang::ast::InstanceSymbol* preferred = nullptr;
-    for (const auto* inst : instances) {
-        if (!preferred || less(inst, preferred)) {
-            preferred = inst;
-        }
-    }
-    return preferred;
-}
-
 void setActiveInterfaceInstance(
     const slang::ast::Symbol& symbol,
     std::unordered_map<std::string, hier::QualifiedInstance>& activeInstancesByModule,
@@ -502,33 +465,19 @@ void ServerCompilation::refresh() {
 
 std::vector<hier::InstanceSet> ServerCompilation::getScopesByModule() {
     std::vector<hier::InstanceSet> result;
-    for (auto& [_name, instances] : m_analysis->instances.moduleToInstances) {
-        if (instances.size() == 0) {
-            continue;
-        }
-
-        auto& definition = instances[0]->getDefinition();
+    for (const auto& [name, module] : getInstanceIndex().modules()) {
+        const auto& definition = *module.definition;
         auto instSet = hier::InstanceSet{
             .declName = std::string(definition.name),
             .declLoc = toLocation(definition.getSyntax()->sourceRange(), m_sourceManager),
-            .instCount = instances.size(),
+            .instCount = module.count,
         };
-        if (auto activeInstance = getActiveInstanceSelection(instSet.declName)) {
+        if (auto activeInstance = getActiveInstanceSelection(name)) {
             instSet.inst = std::move(*activeInstance);
         }
         result.push_back(instSet);
     }
     return result;
-}
-
-const std::vector<const slang::ast::InstanceSymbol*>& ServerCompilation::getInstancesOfModule(
-    const std::string& moduleName) const {
-    static const std::vector<const slang::ast::InstanceSymbol*> empty;
-    auto it = m_analysis->instances.moduleToInstances.find(moduleName);
-    if (it == m_analysis->instances.moduleToInstances.end()) {
-        return empty;
-    }
-    return it->second;
 }
 
 std::optional<hier::QualifiedInstance> ServerCompilation::getActiveInstanceSelection(
@@ -542,23 +491,16 @@ std::optional<hier::QualifiedInstance> ServerCompilation::getActiveInstanceSelec
 
 const slang::ast::InstanceSymbol* ServerCompilation::getActiveInstanceSymbol(
     std::string_view moduleName) const {
-    auto it = m_analysis->instances.moduleToInstances.find(std::string(moduleName));
-    if (it == m_analysis->instances.moduleToInstances.end()) {
+    const auto& index = getInstanceIndex();
+    auto it = index.modules().find(moduleName);
+    if (it == index.modules().end())
         return nullptr;
+    const auto& module = it->second;
+    if (auto active = getActiveInstanceSelection(moduleName)) {
+        if (auto* instance = index.resolve(module, active->instPath))
+            return instance;
     }
-
-    if (auto activeInstance = getActiveInstanceSelection(moduleName)) {
-        for (const auto* instance : it->second) {
-            if (instance->getHierarchicalPath() == activeInstance->instPath)
-                return instance;
-        }
-    }
-
-    if (!it->second.empty()) {
-        return choosePreferredInstance(it->second);
-    }
-
-    return nullptr;
+    return index.resolve(module, module.preferredPath);
 }
 
 ActiveDesignContext ServerCompilation::createActiveDesignContext(
@@ -671,41 +613,29 @@ bool ServerCompilation::setActiveInstance(const std::string& hierPath) {
 
 std::optional<hier::QualifiedInstance> ServerCompilation::getActiveInstance(
     const std::string& moduleName) {
-    auto& byModule = m_analysis->instances.moduleToInstances;
-    if (byModule.find(moduleName) == byModule.end()) {
+    const auto& modules = getInstanceIndex().modules();
+    auto it = modules.find(moduleName);
+    if (it == modules.end())
         return std::nullopt;
-    }
-    // Prefer the stored path verbatim, even if the latest recompile dropped the
-    // corresponding instance symbol; otherwise fall back to the preferred instance.
-    if (auto activeInstance = getActiveInstanceSelection(moduleName)) {
-        return activeInstance;
-    }
-    if (auto* inst = getActiveInstanceSymbol(moduleName)) {
-        return hier::toQualifiedInstance(*inst, m_sourceManager);
-    }
-    return std::nullopt;
+    if (auto active = getActiveInstanceSelection(moduleName))
+        return active;
+    const auto& module = it->second;
+    return hier::toQualifiedInstance(*module.preferredSite, m_sourceManager, module.preferredPath);
 }
 
 void ServerCompilation::syncActiveInstances() {
     std::unordered_map<std::string, hier::QualifiedInstance> nextActiveInstances;
-    for (const auto& [moduleName, instances] : m_analysis->instances.moduleToInstances) {
-        if (instances.empty()) {
-            continue;
+    const auto& index = getInstanceIndex();
+    for (const auto& [name, module] : index.modules()) {
+        if (module.count == 1) {
+            nextActiveInstances.emplace(name, hier::toQualifiedInstance(*module.preferredSite,
+                                                                        m_sourceManager,
+                                                                        module.preferredPath));
         }
-
-        if (auto activeInstance = getActiveInstanceSelection(moduleName)) {
-            auto stillExists = std::ranges::any_of(instances, [&](const auto* instance) {
-                return instance->getHierarchicalPath() == activeInstance->instPath;
-            });
-            if (stillExists) {
-                nextActiveInstances[moduleName] = std::move(*activeInstance);
-                continue;
-            }
-        }
-
-        if (instances.size() == 1) {
-            nextActiveInstances[moduleName] = hier::toQualifiedInstance(*instances[0],
-                                                                        m_sourceManager);
+        else if (auto active = getActiveInstanceSelection(name)) {
+            if (auto* instance = index.resolve(module, active->instPath))
+                nextActiveInstances.emplace(name,
+                                            hier::toQualifiedInstance(*instance, m_sourceManager));
         }
     }
 

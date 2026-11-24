@@ -332,6 +332,7 @@ add_library(
   src/BuiltinMethodDocs.cpp
   src/ast/ActiveDesignContext.cpp
   src/ast/ConeResult.cpp
+  src/ast/InstanceIndexer.cpp
   src/ast/ServerCompilation.cpp
   src/ast/ServerCompilationAnalysis.cpp
   src/ast/ShallowCompilation.cpp
