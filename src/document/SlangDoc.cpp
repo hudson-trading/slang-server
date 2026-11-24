@@ -89,8 +89,10 @@ std::shared_ptr<SlangDoc> SlangDoc::fromText(ServerDriver& driver, const URI& ur
 }
 
 std::shared_ptr<SlangDoc> SlangDoc::open(ServerDriver& driver, const URI& uri) {
-    auto buffer = driver.sm.readSource(uri.getPath(), nullptr).value();
-    return std::make_shared<SlangDoc>(driver, uri, buffer);
+    auto buffer = driver.sm.readSource(uri.getPath(), nullptr);
+    if (!buffer)
+        return nullptr;
+    return std::make_shared<SlangDoc>(driver, uri, *buffer);
 }
 
 const std::string_view SlangDoc::getText() const {

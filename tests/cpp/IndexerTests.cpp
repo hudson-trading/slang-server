@@ -415,6 +415,30 @@ TEST_CASE("Include lookup caches refresh after reindexing and file changes") {
     CHECK(indexer.getFilesIncluding(root / "second/types.svh") == std::vector<fs::path>{source});
 }
 
+TEST_CASE("Full reindex drops files that were deleted or left the index scope") {
+    auto root = fs::weakly_canonical(fs::temp_directory_path()) /
+                fmt::format("slang_reindex_scope_{}", slang::OS::getpid());
+    slang::ScopeGuard cleanup([&] { fs::remove_all(root); });
+    for (const auto* directory : {"kept", "dropped"})
+        fs::create_directories(root / directory);
+    std::ofstream(root / "kept/stays.sv") << "module stays; endmodule\n";
+    std::ofstream(root / "kept/deleted.sv") << "module deleted; endmodule\n";
+    std::ofstream(root / "dropped/excluded.sv") << "module excluded; endmodule\n";
+
+    Indexer indexer;
+    indexer.startIndexing({{.dirs = std::vector<std::string>{"kept", "dropped"}}}, root.string(),
+                          false);
+    CHECK(indexer.getFilesForSymbol("stays").size() == 1);
+    CHECK(indexer.getFilesForSymbol("deleted").size() == 1);
+    CHECK(indexer.getFilesForSymbol("excluded").size() == 1);
+
+    fs::remove(root / "kept/deleted.sv");
+    indexer.startIndexing({{.dirs = std::vector<std::string>{"kept"}}}, root.string(), false);
+    CHECK(indexer.getFilesForSymbol("stays").size() == 1);
+    CHECK(indexer.getFilesForSymbol("deleted").empty());
+    CHECK(indexer.getFilesForSymbol("excluded").empty());
+}
+
 TEST_CASE("File notifications update include relationships without inferring directories") {
     auto root = fs::weakly_canonical(fs::temp_directory_path()) /
                 fmt::format("slang_include_updates_{}", slang::OS::getpid());
