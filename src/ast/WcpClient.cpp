@@ -225,6 +225,17 @@ void waves::WcpClient::greet() {
         return;
     }
 
+    // The viewer may fail to launch or never connect back, so wait at most 10 seconds
+    fd_set serverFdSet;
+    FD_ZERO(&serverFdSet);
+    FD_SET(m_serverFd, &serverFdSet);
+    struct timeval connectTimeout = {.tv_sec = 10, .tv_usec = 0};
+    if (select(m_serverFd + 1, &serverFdSet, nullptr, nullptr, &connectTimeout) <= 0) {
+        std::cerr << "WCP timed out waiting for the waveform viewer to connect" << std::endl;
+        stop();
+        return;
+    }
+
     struct sockaddr_in clientAddr;
     socklen_t clientAddrLen = sizeof(clientAddr);
     if ((m_clientFd = accept(m_serverFd, (struct sockaddr*)&clientAddr, &clientAddrLen)) < 0) {
