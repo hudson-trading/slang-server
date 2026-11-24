@@ -403,8 +403,9 @@ TEST_CASE("OpenBuildFileDoesNotOverwriteCompilationDiags") {
     }
 }
 
-TEST_CASE("OpeningSingleUnitBuildFilePreservesCompilationDiags") {
+TEST_CASE("IgnoringSingleUnitPreservesCompilationDiagsAfterSave") {
     ServerHarness server("single_unit_build");
+    server.client.expectWarning("does not support --single-unit");
 
     auto hasInstanceDiag = [](const std::vector<lsp::Diagnostic>& diagnostics) {
         return std::ranges::any_of(diagnostics, [](const auto& diagnostic) {
@@ -415,13 +416,17 @@ TEST_CASE("OpeningSingleUnitBuildFilePreservesCompilationDiags") {
     for (std::string_view fileName : {"submodule.sv", "submodule_two.sv"}) {
         auto childUri = URI::fromFile(fs::current_path() / fileName);
         REQUIRE(hasInstanceDiag(server.client.getDiagnostics(childUri)));
-        server.openFile(std::string(fileName));
+        auto doc = server.openFile(std::string(fileName));
+        CHECK(hasInstanceDiag(server.client.getDiagnostics(childUri)));
+        doc.append("\n");
+        doc.save();
         CHECK(hasInstanceDiag(server.client.getDiagnostics(childUri)));
     }
 }
 
-TEST_CASE("RecreatingSingleUnitBuildDoesNotShallowAnalyzeOpenBuildFile") {
+TEST_CASE("ReloadingBuildWithSingleUnitFlagKeepsCompilationDiagnostics") {
     ServerHarness server("single_unit_build");
+    server.client.expectWarning("does not support --single-unit");
     server.client.capabilities.inactiveRegionsSupported = false;
 
     auto childUri = URI::fromFile(fs::current_path() / "submodule.sv");
@@ -436,6 +441,7 @@ TEST_CASE("RecreatingSingleUnitBuildDoesNotShallowAnalyzeOpenBuildFile") {
     CHECK_FALSE(server.getDoc(childUri)->hasAnalysis());
 
     server.setBuildFile("design.f");
+    server.client.expectWarning("does not support --single-unit");
     REQUIRE(server.getDoc(childUri));
     CHECK_FALSE(server.getDoc(childUri)->hasAnalysis());
 }

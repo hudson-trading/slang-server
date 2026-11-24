@@ -47,6 +47,4 @@ This inference applies to interface ports without a connected instance. In a ful
 
 Slang's `--single-unit` parses the files in a build as one compilation unit, allowing later files to inherit preprocessor macros from earlier files.
 
-When a selected build uses `--single-unit`, full-design diagnostics use that compilation context. Opening an unchanged file from the build preserves its design diagnostics, including for files after the first file in the compilation unit.
-
-Per-file shallow analysis does not reproduce the preceding files' preprocessor state. Editing a file, or opening it without the build selected, can therefore report missing macros that are supplied by earlier files in the build. Explicit includes and configured defines make per-file features more reliable; save to refresh full-design diagnostics.
+slang-server warns and ignores this flag in both server configuration and build filelists. It parses each source file separately so that an edit can reparse just that file. Projects that share macros across source files can supply them through explicit includes or configured defines.

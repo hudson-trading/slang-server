@@ -246,7 +246,7 @@ private:
     /// Open documents already notified while their size remains above the limit.
     flat_hash_set<URI> m_analysisLimitNotified;
 
-    /// Every source file covered by the build, including secondary single-unit buffers.
+    /// Source and header URIs present in the build's syntax trees.
     flat_hash_set<URI> m_buildSourceUris;
 
     /// Explicit include selections by canonical header path, preserved across driver reloads.

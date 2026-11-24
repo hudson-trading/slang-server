@@ -156,6 +156,14 @@ bool ServerDriver::parseAndLoadSources(const std::vector<std::string>& buildfile
         return false;
     }
 
+    if (driver.options.singleUnit == true) {
+        client.showWarning("slang-server does not support --single-unit. "
+                           "Source files will be parsed separately.");
+        driver.options.singleUnit = false;
+        // Library files can only inherit macros from a shared compilation unit.
+        driver.options.librariesInheritMacros = false;
+    }
+
     // Build macro name -> source file map from the driver's per-file define lists
     for (auto& [path, meta] : driver.getCommandFileMetadata()) {
         for (auto& define : meta.defines) {
