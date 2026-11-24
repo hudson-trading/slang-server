@@ -1415,6 +1415,21 @@ void SlangServer::reloadWatchedConfig() {
 void SlangServer::onWorkspaceDidChangeWatchedFiles(const lsp::DidChangeWatchedFilesParams& params) {
     if (m_configReloadPending) {
         reloadWatchedConfig();
+        // A successful reload re-indexes the workspace, which covers these changes
+        if (!m_configReloadPending)
+            return;
+        // The reload is still failing, so keep the index and driver following source changes
+        lsp::DidChangeWatchedFilesParams sources;
+        std::ranges::copy_if(params.changes, std::back_inserter(sources.changes),
+                             [](const lsp::FileEvent& change) {
+                                 auto extension = fs::path(change.uri.getPath()).extension();
+                                 return extension == ".sv" || extension == ".svh" ||
+                                        extension == ".v" || extension == ".vh";
+                             });
+        if (!sources.changes.empty()) {
+            m_indexer.onWorkspaceDidChangeWatchedFiles(sources);
+            m_driver->onWorkspaceDidChangeWatchedFiles(sources);
+        }
         return;
     }
     m_fileWatchers.dispatch(params);

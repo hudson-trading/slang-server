@@ -248,6 +248,32 @@ TEST_CASE("Indexed files that disappear from disk do not fail analysis") {
     CHECK_NOTHROW(doc.before("child u_child").hasDefinition());
 }
 
+TEST_CASE("Source changes still reach the index while a config reload is failing") {
+    ConfigEnvironment environment;
+    environment.set(nullptr);
+    ConfigWorkspace workspace;
+    workspace.write("source.sv", "module source; endmodule\n");
+    workspace.write("design.f", "source.sv\n");
+    workspace.write(".slang/server.json", R"({"build":"design.f"})");
+    auto server = workspace.server();
+    auto* originalDriver = server.m_driver.get();
+
+    workspace.write(".slang/server.json",
+                    R"({"build":"${SLANG_SERVER_CONFIG_TEST_PATH}/design.f"})");
+    server.onWorkspaceDidChangeWatchedFiles(
+        {.changes = {{.uri = URI::fromFile(workspace.root / ".slang/server.json"),
+                      .type = lsp::FileChangeType::Changed}}});
+    REQUIRE(server.m_driver.get() == originalDriver);
+
+    workspace.write("added.sv", "module added; endmodule\n");
+    server.onWorkspaceDidChangeWatchedFiles(
+        {.changes = {{.uri = URI::fromFile(workspace.root / "added.sv"),
+                      .type = lsp::FileChangeType::Created}}});
+    CHECK(server.m_driver.get() == originalDriver);
+    CHECK(server.m_indexer.getFilesForSymbol("added") ==
+          std::vector<fs::path>{workspace.root / "added.sv"});
+}
+
 TEST_CASE("Config reload retains working state when environment variables are missing") {
     ConfigEnvironment environment;
     environment.set(nullptr);
