@@ -210,8 +210,8 @@ int SyntaxIndexer::tokenIndexBefore(slang::SourceLocation loc) const {
 }
 
 bool SyntaxIndexer::editorContains(slang::SourceRange range, slang::SourceLocation loc) const {
-    // TODO: change this to <= since curors are typically between characters (on vscode)
-    return range.start() <= loc && loc < range.end();
+    // Positions sit between characters, so one at the end of a token still touches it
+    return range.start() <= loc && loc <= range.end();
 }
 
 bool SyntaxIndexer::isIdToken(const parsing::TokenKind kind) const {
