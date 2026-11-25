@@ -411,16 +411,13 @@ std::vector<hier::QualifiedInstance> SlangServer::getInstancesOfModule(
         ERROR("No compilation available, cannot get instances of module {}", moduleName);
         return {};
     }
-    auto instances = m_driver->comp->getInstancesOfModule(moduleName);
-    if (instances.empty()) {
-        m_client.showError(fmt::format("Module {} not found", moduleName));
-        return {};
-    }
     std::vector<hier::QualifiedInstance> result;
-    result.reserve(instances.size());
-    for (const auto* inst : instances) {
-        result.push_back(hier::toQualifiedInstance(*inst, m_driver->sm));
-    }
+    m_driver->comp->getInstanceIndex().visit(moduleName, [&](const auto& site,
+                                                             std::string_view path) {
+        result.push_back(hier::toQualifiedInstance(site, m_driver->sm, std::string(path)));
+    });
+    if (result.empty())
+        m_client.showError(fmt::format("Module {} not found", moduleName));
     return result;
 }
 
@@ -597,12 +594,13 @@ std::monostate SlangServer::openModuleDefinition(const std::string& moduleName) 
         ERROR("No compilation available, cannot open module definition for {}", moduleName);
         return {};
     }
-    auto instances = m_driver->comp->getInstancesOfModule(moduleName);
-    if (instances.empty()) {
+    const auto& modules = m_driver->comp->getInstanceIndex().modules();
+    auto it = modules.find(moduleName);
+    if (it == modules.end()) {
         WARN("openModuleDefinition: module {} has no instances", moduleName);
         return {};
     }
-    auto declLoc = toLocation(instances[0]->getDefinition().location, m_driver->sm);
+    auto declLoc = toLocation(it->second.definition->location, m_driver->sm);
     if (declLoc.uri.getPath().empty()) {
         WARN("openModuleDefinition: module {} declaration has no source location", moduleName);
         return {};
@@ -1609,26 +1607,21 @@ std::optional<std::vector<lsp::CodeLens>> SlangServer::getDocCodeLens(
             continue;
         }
 
-        const auto& instances = m_driver->comp->getInstancesOfModule(moduleName);
-        if (instances.empty()) {
-            continue;
-        }
-
-        // Module isn't reachable from the active build.
         auto* activeInstance = m_driver->comp->getActiveInstanceSymbol(moduleName);
         if (!activeInstance) {
             continue;
         }
 
         std::vector<std::string> instancePaths;
-        instancePaths.reserve(instances.size());
-        for (auto* instance : instances)
-            instancePaths.push_back(instance->getHierarchicalPath());
+        m_driver->comp->getInstanceIndex().visit(moduleName,
+                                                 [&](const auto&, std::string_view path) {
+                                                     instancePaths.emplace_back(path);
+                                                 });
 
         auto range = toRange(nameToken.location(), m_driver->sm, nameToken.rawText().size());
         auto title = fmt::format("{} ({})", activeInstance->getHierarchicalPath(),
-                                 instances.size());
-        auto selectCommand = instances.size() == 1
+                                 instancePaths.size());
+        auto selectCommand = instancePaths.size() == 1
                                  ? lsp::Command{
                                        .title = title,
                                        .tooltip = "Show active instance in hierarchy",

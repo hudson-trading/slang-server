@@ -54,14 +54,11 @@ public:
     /// Update the compilation based by requesting all syntax trees from the documents
     void refresh();
 
-    InstanceIndexer& getInstances() { return m_analysis->instances; }
+    /// Instance hierarchy for the current compilation.
+    const InstanceIndexer& getInstanceIndex() const { return m_analysis->instances; }
 
     /// Get instances by module; Used for the 'instances' view. Includes declaration metadata.
     std::vector<hier::InstanceSet> getScopesByModule();
-
-    /// Get instances of a specific module
-    const std::vector<const slang::ast::InstanceSymbol*>& getInstancesOfModule(
-        const std::string& moduleName) const;
 
     /// Return the file path that the active compilation resolved for a symbol name, if any.
     std::optional<std::string> getPreferredSymbolPath(std::string_view name) const;

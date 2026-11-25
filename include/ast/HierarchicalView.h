@@ -264,13 +264,18 @@ static Instance toInstance(const slang::ast::InstanceSymbol& inst, const SourceM
 }
 
 [[maybe_unused]] static QualifiedInstance toQualifiedInstance(
-    const slang::ast::InstanceSymbol& inst, const SourceManager& sm) {
+    const slang::ast::InstanceSymbol& inst, const SourceManager& sm, std::string path) {
     return QualifiedInstance{
-        .instPath = inst.getHierarchicalPath(),
+        .instPath = std::move(path),
         .instLoc = toLocation(inst.getSyntax() ? inst.getSyntax()->sourceRange()
                                                : inst.getDefinition().getSyntax()->sourceRange(),
                               sm),
     };
+}
+
+[[maybe_unused]] static QualifiedInstance toQualifiedInstance(
+    const slang::ast::InstanceSymbol& inst, const SourceManager& sm) {
+    return toQualifiedInstance(inst, sm, inst.getHierarchicalPath());
 }
 
 static void handleInstance(std::vector<HierItem_t>& result, const slang::ast::InstanceSymbol& inst,
