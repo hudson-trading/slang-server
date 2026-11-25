@@ -51,6 +51,13 @@ public:
         onInitialized(lsp::InitializedParams{});
     }
 
+    // Sends only `initialize`, to test behavior before `initialized`
+    struct InitializeOnly {};
+    ServerHarness(lsp::InitializeParams params, InitializeOnly) :
+        ClientOwner(), SlangServer(client) {
+        getInitialize(params);
+    }
+
     // Constructor with repository root - equivalent to old initRepo()
     explicit ServerHarness(const std::string& repoRoot) : ClientOwner(), SlangServer(client) {
         auto repoDir = (findSlangRoot() / "tests/data" / repoRoot);

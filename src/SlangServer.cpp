@@ -317,7 +317,9 @@ lsp::InitializeResult SlangServer::getInitialize(const lsp::InitializeParams& pa
 
 void SlangServer::onInitialized(const lsp::InitializedParams&) {
     INFO("Server initialized at {}", m_workspaceFolder ? m_workspaceFolder->uri.getPath() : "none");
+    m_client.initialized = true;
     m_client.setConfig(m_config);
+    m_driver->diagClient->pushDiags();
 
     if (m_workspaceFolder) {
         auto options = m_fileWatchers.registrationOptions(m_workspaceFolder->uri);
@@ -879,7 +881,8 @@ bool SlangServer::loadConfig(const Config& config, bool forceIndexing, bool requ
     }
 
     // Send config to editor client if it needs to parse general configs
-    m_client.setConfig(m_config);
+    if (m_client.initialized)
+        m_client.setConfig(m_config);
     return true;
 }
 

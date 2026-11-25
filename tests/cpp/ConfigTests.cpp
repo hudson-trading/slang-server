@@ -222,6 +222,23 @@ TEST_CASE("Config build paths expand environment variables without changing save
     CHECK(server.openFile("source.sv").getDiagnostics().empty());
 }
 
+TEST_CASE("Build diagnostics are not published before the client is initialized") {
+    ConfigWorkspace workspace;
+    workspace.write("source.sv", "module source; missing_t value; endmodule\n");
+    workspace.write("design.f", "source.sv\n");
+    workspace.write(".slang/server.json", R"({"build":"design.f"})");
+    ServerHarness server(lsp::InitializeParams{.workspaceFolders = {{lsp::WorkspaceFolder{
+                                                   URI::fromFile(workspace.root), "config"}}}},
+                         ServerHarness::InitializeOnly{});
+
+    // LSP: nothing may be published before the initialize response
+    REQUIRE(server.m_driver->comp);
+    CHECK(server.client.diagnosticPublications.empty());
+
+    server.onInitialized(lsp::InitializedParams{});
+    CHECK_FALSE(server.client.getDiagnostics(URI::fromFile(workspace.root / "source.sv")).empty());
+}
+
 TEST_CASE("Unset config build variables notify the client and leave exploration available") {
     ConfigEnvironment environment;
     environment.set(GENERATE(static_cast<const char*>(nullptr), ""));
