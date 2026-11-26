@@ -787,3 +787,141 @@ endpackage
     CHECK(missing.getDefinitions().empty());
     CHECK_FALSE(doc.getHoverAt(missing.m_offset));
 }
+
+TEST_CASE("GotoDriversAllTokens_drivers.sv") {
+    /// Driver locations at each token in drivers.sv
+    ServerHarness server("goto_drivers");
+    auto hdl = server.openFile("drivers.sv");
+
+    DriversScanner scanner(server);
+    scanner.scanDocument(hdl);
+}
+
+TEST_CASE("GotoDrivers_JumpsToDrivers") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+module top(input logic clk);
+    logic a, b, c;
+    assign a = 1'b1;
+    always_comb b = a;
+    always_ff @(posedge clk) c <= b;
+    initial $display(a, b, c);
+endmodule
+)");
+
+    auto checkDriver = [&](const std::string& use, const std::string& driver) {
+        auto drivers = doc.after(use).getDrivers();
+        CAPTURE(use);
+        REQUIRE(drivers.size() == 1);
+        CHECK(drivers[0].uri == doc.m_uri);
+        CHECK(drivers[0].range.start == doc.before(driver).getPosition());
+    };
+    checkDriver("$display(", "a = 1'b1");
+    checkDriver("$display(a, ", "b = a");
+    checkDriver("$display(a, b, ", "c <= b");
+
+    // Not a driven value
+    CHECK(doc.before("top(").getDrivers().empty());
+}
+
+TEST_CASE("GotoDrivers_MultipleDrivers") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+module top(input logic sel);
+    logic [1:0] value;
+    always_comb begin
+        value[0] = sel;
+        value[1] = !sel;
+    end
+    assign value[1] = 1'b0;
+endmodule
+)");
+
+    auto drivers = doc.after("logic [1:0] ").getDrivers();
+    REQUIRE(drivers.size() == 3);
+    CHECK(drivers[0].range.start == doc.before("value[0] =").getPosition());
+    CHECK(drivers[1].range.start == doc.before("value[1] =").getPosition());
+    CHECK(drivers[2].range.start == doc.after("assign ").getPosition());
+}
+
+TEST_CASE("GotoDrivers_FollowsOutputPortDriver") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+module leaf(output logic data);
+    always_comb data = 1'b1;
+endmodule
+
+module top(output logic value);
+    leaf u(.data(value));
+endmodule
+)");
+
+    auto drivers = doc.after("output logic val").getDrivers();
+    REQUIRE(drivers.size() == 2);
+    CHECK(drivers[0].range.start == doc.after(".data(").getPosition());
+    CHECK(drivers[1].range.start == doc.before("data = 1'b1").getPosition());
+}
+
+TEST_CASE("GotoDrivers_InputPortJumpsToParentConnection") {
+    ServerHarness server;
+
+    auto doc = server.openFile("test.sv", R"(
+module leaf(input logic data);
+    logic copy;
+    assign copy = data;
+endmodule
+
+module open_leaf(input logic open_data);
+    logic open_copy;
+    assign open_copy = open_data;
+endmodule
+
+module explicit_leaf(.port_a(internal_a));
+    input logic internal_a;
+    logic explicit_copy;
+    assign explicit_copy = internal_a;
+endmodule
+
+module top(input logic value);
+    leaf u(.data(value));
+    open_leaf o(.open_data());
+    explicit_leaf e(.port_a(value));
+    logic top_copy;
+    assign top_copy = value;
+endmodule
+)");
+
+    auto drivers = doc.after("assign copy = ").getDrivers();
+    REQUIRE(drivers.size() == 1);
+    CHECK(drivers[0].range.start == doc.after("u(.data(").getPosition());
+
+    // Non-ANSI explicit port
+    drivers = doc.after("assign explicit_copy = ").getDrivers();
+    REQUIRE(drivers.size() == 1);
+    CHECK(drivers[0].range.start == doc.after("e(.port_a(").getPosition());
+
+    // Unconnected port and top-level input port have no driver
+    CHECK(doc.after("assign open_copy = ").getDrivers().empty());
+    CHECK(doc.after("assign top_copy = ").getDrivers().empty());
+}
+
+TEST_CASE("GotoDrivers_InputPortUsesActiveInstanceAcrossFiles") {
+    ServerHarness server("goto_drivers_input_port");
+    server.setBuildFile("design.f");
+
+    auto leaf = server.openFile("leaf.sv");
+    auto top = server.openFile("top.sv");
+    auto checkConnection = [&](const std::string& instance, const std::string& connection) {
+        REQUIRE(server.setActiveInstance(instance));
+        auto drivers = leaf.after("assign copy = ").getDrivers();
+        CAPTURE(instance);
+        REQUIRE(drivers.size() == 1);
+        CHECK(drivers[0].uri == top.m_uri);
+        CHECK(drivers[0].range.start == top.after(connection).getPosition());
+    };
+    checkConnection("top.u0", "u0(.data(");
+    checkConnection("top.u1", "u1(.data(");
+}

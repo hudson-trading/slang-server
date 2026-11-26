@@ -1,0 +1,154 @@
+
+module leaf(input logic data, output logic result);
+                        ^^^^ Drivers[1]: drivers.sv:50:18
+                                           ^^^^^^ Drivers[1]: drivers.sv:2:12
+
+    assign result = data;
+           ^^^^^^ Drivers[1]: drivers.sv:2:12
+                    ^^^^ Drivers[1]: drivers.sv:50:18
+
+endmodule
+
+
+
+module open_leaf(input logic open_data);
+
+    logic open_copy;
+          ^^^^^^^^^ Drivers[1]: drivers.sv:7:12
+
+    assign open_copy = open_data;
+           ^^^^^^^^^ Drivers[1]: drivers.sv:7:12
+
+endmodule
+
+
+
+module explicit_leaf(.port_a(internal_a));
+
+    input logic internal_a;
+                ^^^^^^^^^^ Drivers[1]: drivers.sv:54:29
+
+    logic explicit_copy;
+          ^^^^^^^^^^^^^ Drivers[1]: drivers.sv:13:12
+
+    assign explicit_copy = internal_a;
+           ^^^^^^^^^^^^^ Drivers[1]: drivers.sv:13:12
+                           ^^^^^^^^^^ Drivers[1]: drivers.sv:54:29
+
+endmodule
+
+
+
+module top(input logic clk, input logic rst, input logic sel);
+
+    typedef enum logic [1:0] {IDLE, RUN, DONE} state_t;
+
+    state_t state, next_state;
+            ^^^^^ Drivers[1]: drivers.sv:43:30
+                   ^^^^^^^^^^ Drivers[1]: drivers.sv:37:19
+
+    logic a, b, q, y, value;
+          ^ Drivers[1]: drivers.sv:23:12
+             ^ Drivers[1]: drivers.sv:26:17
+                ^ Drivers[1]: drivers.sv:30:18
+                   ^ Drivers[2]: drivers.sv:50:30 drivers.sv:2:12
+                      ^^^^^ Drivers[1]: drivers.sv:55:12
+
+    logic [1:0] bits;
+                ^^^^ Drivers[2]: drivers.sv:46:17 drivers.sv:47:12
+
+
+
+    // Continuous assign
+
+    assign a = sel;
+           ^ Drivers[1]: drivers.sv:23:12
+
+
+
+    // Combinational process
+
+    always_comb b = a;
+                ^ Drivers[1]: drivers.sv:26:17
+                    ^ Drivers[1]: drivers.sv:23:12
+
+
+
+    // Same bits assigned in both branches: only the first assignment is a driver
+
+    always_ff @(posedge clk) begin
+
+        if (rst) q <= 1'b0;
+                 ^ Drivers[1]: drivers.sv:30:18
+
+        else q <= b;
+             ^ Drivers[1]: drivers.sv:30:18
+                  ^ Drivers[1]: drivers.sv:26:17
+
+    end
+
+
+
+    // FSM: only the first assignment to next_state is a driver
+
+    always_comb begin
+
+        case (state)
+              ^^^^^ Drivers[1]: drivers.sv:43:30
+
+            IDLE: next_state = RUN;
+                  ^^^^^^^^^^ Drivers[1]: drivers.sv:37:19
+
+            RUN: next_state = DONE;
+                 ^^^^^^^^^^ Drivers[1]: drivers.sv:37:19
+
+            default: next_state = IDLE;
+                     ^^^^^^^^^^ Drivers[1]: drivers.sv:37:19
+
+        endcase
+
+    end
+
+
+
+    always_ff @(posedge clk) state <= next_state;
+                             ^^^^^ Drivers[1]: drivers.sv:43:30
+                                      ^^^^^^^^^^ Drivers[1]: drivers.sv:37:19
+
+
+
+    // Different bits from a process and a continuous assign
+
+    always_comb bits[0] = a;
+                ^^^^ Drivers[2]: drivers.sv:46:17 drivers.sv:47:12
+                          ^ Drivers[1]: drivers.sv:23:12
+
+    assign bits[1] = b;
+           ^^^^ Drivers[2]: drivers.sv:46:17 drivers.sv:47:12
+                     ^ Drivers[1]: drivers.sv:26:17
+
+
+
+    // Output port: the connection and the driver inside the module
+
+    leaf u(.data(q), .result(y));
+            ^^^^ Drivers[1]: drivers.sv:50:18
+                 ^ Drivers[1]: drivers.sv:30:18
+                      ^^^^^^ Drivers[1]: drivers.sv:2:12
+                             ^ Drivers[2]: drivers.sv:50:30 drivers.sv:2:12
+
+
+
+    // Unconnected input port and non-ANSI explicit port
+
+    open_leaf o(.open_data());
+
+    explicit_leaf e(.port_a(value));
+                     ^^^^^^ Drivers[1]: drivers.sv:54:29
+                            ^^^^^ Drivers[1]: drivers.sv:55:12
+
+    assign value = y;
+           ^^^^^ Drivers[1]: drivers.sv:55:12
+                   ^ Drivers[2]: drivers.sv:50:30 drivers.sv:2:12
+
+endmodule
